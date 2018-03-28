@@ -3,7 +3,7 @@ Contributors: ShortPixel
 Donate link: https://www.paypal.me/resizeImage
 Tags: admin, replace, attachment, media, files, replace image, replace jpg, change media, replace media
 Requires at least: 4.0
-Tested up to: 4.9.4
+Tested up to: 4.9.5
 Stable tag: trunk
 
 Easily replace any attached image/file by simply uploading a new file in the Media Library edit view.
