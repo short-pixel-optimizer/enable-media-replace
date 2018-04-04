@@ -240,3 +240,22 @@ function emr_install_plugin() {
         exit(json_encode(array("Status" => 2)));
     }
 }
+
+// Add Epsilon Smart Notification
+require_once 'class-epsilon-smart-notification.php';
+Epsilon_Smart_Notification::get_instance( array(
+	'id' => 'enable-media-replace',
+	'plugins' => array(
+		'shortpixel-image-optimiser' => array(
+			'name' => __( 'ShortPixel Image Optimizer', 'enable-media-replace' ),
+			'description' => __( 'A freemium easy to use, comprehensive, stable and frequently updated image compression plugin supported by the friendly team that created it.', 'enable-media-replace' ),
+			'image' => plugins_url('/img/shortpixel.png',__FILE__),
+		),
+		'modula-best-grid-gallery' => array(
+			'name' => __( 'Modula WordPress Photo Gallery', 'enable-media-replace' ),
+			'description' => __( 'Modula is currently the easiest and fastest photo gallery plugin for WordPress. With its wizard you are able to build an image gallery in a few seconds, unlike many other WordPress gallery plugins.', 'enable-media-replace' ),
+			'image' => plugins_url('/img/wp-modula.jpg',__FILE__),
+		),
+	),
+	
+) );
