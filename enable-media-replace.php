@@ -202,7 +202,7 @@ function emr_install_plugin() {
 
 // Add Epsilon Smart Notification
 require_once 'class-epsilon-smart-notification.php';
-Epsilon_Smart_Notification::get_instance( array(
+new Epsilon_Smart_Notification( array(
 	'id' => 'enable-media-replace',
 	'plugins' => array(
 		'shortpixel-image-optimiser' => array(

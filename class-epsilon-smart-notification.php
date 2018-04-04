@@ -1,5 +1,9 @@
 <?php
 
+if ( class_exists( 'Epsilon_Smart_Notification' ) ) {
+	return;
+}
+
 class Epsilon_Smart_Notification {
 
 	private static $_instance = null;
