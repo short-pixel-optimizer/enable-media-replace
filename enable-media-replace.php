@@ -201,9 +201,8 @@ function emr_install_plugin() {
 }
 
 // Add Epsilon Smart Notification
-require_once 'class-epsilon-smart-notification.php';
-new Epsilon_Smart_Notification( array(
-	'id' => 'enable-media-replace',
+require_once 'class-emr-smart-notification.php';
+EMR_Smart_Notification::get_instance( array(
 	'plugins' => array(
 		'shortpixel-image-optimiser' => array(
 			'name' => __( 'ShortPixel Image Optimizer', 'enable-media-replace' ),
