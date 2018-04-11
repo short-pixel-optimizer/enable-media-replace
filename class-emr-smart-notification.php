@@ -78,7 +78,7 @@ class EMR_Smart_Notification {
 			$notice_html .= '<p>' . $plugin['description'] . '</p>';
 			$notice_html .= '</div>';
 			$notice_html .= '<div>';
-			$notice_html .= '<button type="button" class="notice-dismiss" data-dismiss="' . esc_attr( $slug ) . '"><span class="screen-reader-text">Dismiss this notice.</span></button>';
+			$notice_html .= '<a href="#" class="emr-dismiss" data-dismiss="' . esc_attr( $slug ) . '"><span class="screen-reader-text">Dismiss this notice.</span></a>';
 			$notice_html .= '<span class="plugin-card-' . esc_attr( $slug ) . ' action_button ' . $plugin['needs'] . '">';
 				$notice_html .= '<a data-slug="' . esc_attr( $slug ) . '" data-action="' . esc_attr( $plugin['needs'] ) . '" class="emr-plugin-button ' . esc_attr( $plugin['class'] ) . '" href="' . esc_url( $url ) . '">' . esc_attr( $plugin['label'] ) . '</a>';
 			$notice_html .= '</span>';
@@ -92,7 +92,7 @@ class EMR_Smart_Notification {
 		}
 		echo '<div id="' . $this->container_id . '" class="emr-custom-notice notice ' . $class . '" style="background:transparent;border: 0 none;box-shadow: none;padding: 0;display: flex;">';
 		echo $notice_html;
-		echo '<style>.emr-plugin-card {display: flex;background: #fff;border-left: 4px solid #46b450;padding: .5em 12px;box-shadow: 0 1px 1px 0 rgba(0,0,0,.1);position:relative;align-items:center;}.emr-one-column .emr-plugin-card{ width:100%; }.emr-two-column .emr-plugin-card{width:49%;}.emr-two-column .emr-plugin-card:nth-child( 2n + 1 ){margin-right:2%;}</style>';
+		echo '<style>.emr-plugin-card {display: flex;background: #fff;border-left: 4px solid #46b450;padding: .5em 12px;box-shadow: 0 1px 1px 0 rgba(0,0,0,.1);position:relative;align-items:center;}.emr-one-column .emr-plugin-card{ width:100%; }.emr-two-column .emr-plugin-card{width:49%;}.emr-two-column .emr-plugin-card:nth-child( 2n + 1 ){margin-right:2%;}.emr-dismiss { position: absolute;top: 0;right: 1px;border: none;margin: 0;padding: 9px;background: 0 0;color: #72777c;cursor: pointer;text-decoration:none; }.emr-dismiss:before { background: 0 0;color: #72777c;content: "\f153";display: block;font: 400 16px/20px dashicons; speak: none;height: 20px;text-align: center;width: 20px;-webkit-font-smoothing: antialiased;-moz-osx-font-smoothing: grayscale; }.emr-dismiss:active:before, .emr-dismiss:focus:before, .emr-dismiss:hover:before { color: #c00; }</style>';
 		echo '</div>';
 		
 
@@ -238,80 +238,72 @@ class EMR_Smart_Notification {
 
 		?>
 		<script type="text/javascript">
-			(function( wp, $ ) {
-			  'use strict';
-
-			  if ( ! wp ) {
-			    return;
-			  }
+			
 			  
-			  function activatePlugin( url, el ) {
+			function emrActivatePlugin( url, el ) {
 
-			    $.ajax( {
-			      async: true,
-			      type: 'GET',
-			      dataType: 'html',
-			      url: url,
-			      success: function() {
-			        location.reload();
-			      }
-			    } );
-			  }
+				jQuery.ajax( {
+				  async: true,
+				  type: 'GET',
+				  dataType: 'html',
+				  url: url,
+				  success: function() {
+				    location.reload();
+				  }
+				} );
+			}
 
-			  $( function() {
-			  	var emrContainer = $( '#<?php echo $this->container_id ?>' );
-			    emrContainer.on( 'click', '.emr-plugin-button', function( event ) {
-			      var action = $( this ).data( 'action' ),
-			          url = $( this ).attr( 'href' ),
-			          slug = $( this ).data( 'slug' );
+		  	var emrContainer = jQuery( '#<?php echo $this->container_id ?>' );
+		    emrContainer.on( 'click', '.emr-plugin-button', function( event ) {
+		      var action = jQuery( this ).data( 'action' ),
+		          url = jQuery( this ).attr( 'href' ),
+		          slug = jQuery( this ).data( 'slug' );
 
-			      $(this).addClass( 'updating-message' );
-			      $(this).attr( 'disabled', 'disabled' );
+		      jQuery(this).addClass( 'updating-message' );
+		      jQuery(this).attr( 'disabled', 'disabled' );
 
-			      event.preventDefault();
+		      event.preventDefault();
 
-			      if ( 'install' === action ) {
+		      if ( 'install' === action ) {
 
-			        wp.updates.installPlugin( {
-			          slug: slug
-			        } );
+		        wp.updates.installPlugin( {
+		          slug: slug
+		        } );
 
-			      } else if ( 'activate' === action ) {
+		      } else if ( 'activate' === action ) {
 
-			        activatePlugin( url, $( this ) );
+		        emrActivatePlugin( url, jQuery( this ) );
 
-			      }
+		      }
 
-			    } );
+		    } );
 
-			    emrContainer.on( 'click', '.notice-dismiss', function( event ) {
-			    	var container = $(this).parents( '.emr-plugin-card' ),
-			    		data = $(this).data(),
-			    		ajaxData = {
-							action: 'emr_smart_notitification',
-							security: '<?php echo $ajax_nonce; ?>',
-						};
+		    emrContainer.on( 'click', '.emr-dismiss', function( event ) {
+		    	var container = jQuery(this).parents( '.emr-plugin-card' ),
+		    		data = jQuery(this).data(),
+		    		ajaxData = {
+						action: 'emr_smart_notitification',
+						security: '<?php echo $ajax_nonce; ?>',
+					};
 
-			    	event.preventDefault();
+		    	event.preventDefault();
 
-			    	ajaxData.slug = data.dismiss;
+		    	ajaxData.slug = data.dismiss;
 
-			    	$.post( '<?php echo admin_url( 'admin-ajax.php' ) ?>', ajaxData, function( response ) {
-						container.slideUp( 'fast', function() {
-							$( this ).remove();
-						} );
-					});
+		    	jQuery.post( '<?php echo admin_url( 'admin-ajax.php' ) ?>', ajaxData, function( response ) {
+					container.slideUp( 'fast', function() {
+						jQuery( this ).remove();
+					} );
+				});
 
-			    });
+		    });
 
-			    $( document ).on( 'wp-plugin-install-success', function( response, data ) {
-			      var el = emrContainer.find( '.emr-plugin-button[data-slug="' + data.slug + '"]' );
-			      event.preventDefault();
-			      activatePlugin( data.activateUrl, el );
-			    } );
+		    jQuery( document ).on( 'wp-plugin-install-success', function( response, data ) {
+		      var el = emrContainer.find( '.emr-plugin-button[data-slug="' + data.slug + '"]' );
+		      event.preventDefault();
+		      emrActivatePlugin( data.activateUrl, el );
+		    } );
 
-			  } );
-			})( window.wp, jQuery );
 		</script>
 
 		<?php
