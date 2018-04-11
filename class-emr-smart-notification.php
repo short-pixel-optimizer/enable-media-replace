@@ -4,6 +4,7 @@ class EMR_Smart_Notification {
 
 	private static $_instance = null;
 	private $plugins;
+	private $options;
 	
 	function __construct( $args ) {
 		
@@ -22,6 +23,11 @@ class EMR_Smart_Notification {
 
 	private function parse_plugins( $need_check ) {
 		$plugins = array();
+
+		$shortpixel_extra_check = get_option( 'emr_news', false );
+		if ( $shortpixel_extra_check ) {
+			$this->options[] = 'shortpixel-image-optimiser';
+		}
 
 		foreach ( $need_check as $slug => $plugin ) {
 
