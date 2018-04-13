@@ -42,6 +42,10 @@ If you want more control over the format used to display the time, you can use t
 
 == Changelog ==
 
+= 3.2.4 =
+* Fix PDF thumbnails not replaced when replacing a PDF
+* Fix not replacing text files with .dat extension
+
 = 3.2.3 =
 * disable ShortPixel recommendation on secondary sites of a multisite install when it was network activated.
 
