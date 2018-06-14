@@ -21,6 +21,7 @@ $sql = "SELECT guid, post_mime_type FROM $table_name WHERE ID = " . (int) $_GET[
 
 list($current_filename, $current_filetype) = $wpdb->get_row($sql, ARRAY_N);
 
+$current_fullpath = $current_filename;
 $current_filename = substr($current_filename, (strrpos($current_filename, "/") + 1));
 
 
@@ -84,7 +85,11 @@ $current_filename = substr($current_filename, (strrpos($current_filename, "/") +
 
 		<p><?php echo __("Choose a file to upload from your computer", "enable-media-replace"); ?></p>
 
-		<input type="file" name="userfile" />
+		<input type="file" name="userfile" id="userfile" onchange="imageHandle(event);" />
+        <div>
+            <img src="<?= $current_fullpath ?>" width="150px" height="150px" style="object-fit: cover"/>
+            <img id="previewImage" src="http://via.placeholder.com/150x150" width="150px" height="150px"/>
+        </div>
 
 		<?php do_action( 'emr_before_replace_type_options' ); ?>
 
@@ -102,7 +107,40 @@ $current_filename = substr($current_filename, (strrpos($current_filename, "/") +
 	<?php else : ?>
 		<input type="hidden" name="replace_type" value="replace" />
 	<?php endif; ?>
-		<input type="submit" class="button button-primary" value="<?php echo __("Upload", "enable-media-replace"); ?>" />
+		<input id="submit" type="submit" class="button button-primary" disabled="disabled" value="<?php echo __("Upload", "enable-media-replace"); ?>" />
         <a href="#" class="button" onclick="history.back();"><?php echo __("Cancel", "enable-media-replace"); ?></a>
 	</form>
 </div>
+<script>
+    function imageHandle(event) {
+        var file = document.getElementById("userfile");
+        var submit = document.getElementById("submit");
+        var preview = document.getElementById("previewImage");
+
+        appendPreview(file, preview, event);
+        enableSubmitButton(file, submit);
+    }
+
+    function appendPreview(fileSource, preview, event) {
+        if (fileSource.value) {
+            var file = fileSource.files[0];
+            if (file.type.match("image/*")) {
+                preview.setAttribute("src", window.URL.createObjectURL(file));
+                preview.setAttribute("style", "object-fit: cover");
+            } else {
+                preview.setAttribute("src", "https://dummyimage.com/150x150/ccc/969696.gif&text=File");
+                preview.removeAttribute("style");
+            }
+        } else {
+            preview.setAttribute("src", "http://via.placeholder.com/150x150");
+        }
+    }
+    function enableSubmitButton(file, submit)
+    {
+        if (file.value) {
+            submit.removeAttribute("disabled");
+        } else {
+            submit.setAttribute("disabled", true);
+        }
+    }
+</script>

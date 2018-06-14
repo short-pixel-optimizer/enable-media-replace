@@ -42,6 +42,13 @@ If you want more control over the format used to display the time, you can use t
 
 == Changelog ==
 
+= 3.2.6 =
+* an image needs to be selected before "update" button is active.
+* display original/replace thumbnail
+* add .dat files option added
+* file date is updated upon replacement
+
+
 = 3.2.5 =
 * remove the leftover setcookie and the plugins recommendations.
 
