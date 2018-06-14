@@ -3,7 +3,7 @@
 Plugin Name: Enable Media Replace
 Plugin URI: http://www.mansjonasson.se/enable-media-replace
 Description: Enable replacing media files by uploading a new file in the "Edit Media" section of the WordPress Media Library.
-Version: 3.2.4
+Version: 3.2.5
 Author: ShortPixel
 Author URI: https://shortpixel.com
 
@@ -26,24 +26,18 @@ add_action('admin_init', 'enable_media_replace_init');
 add_action('admin_menu', 'emr_menu');
 add_filter('attachment_fields_to_edit', 'enable_media_replace', 10, 2);
 add_filter('media_row_actions', 'add_media_action', 10, 2);
-add_filter('upload_mimes', 'dat_mime_types', 1, 1);
+
+add_action('admin_notices', 'emr_display_notices');
+add_action('network_admin_notices', 'emr_display_network_notices');
+add_action('wp_ajax_emr_dismiss_notices', 'emr_dismiss_notices');
+//add_action('wp_ajax_emr_install_plugin', 'emr_install_plugin');
+//add_action( 'admin_enqueue_scripts', 'emr_add_js' );
 
 add_shortcode('file_modified', 'emr_get_modified_date');
 
 if(!defined("SHORTPIXEL_AFFILIATE_CODE")) {
 	define("SHORTPIXEL_AFFILIATE_CODE", 'VKG6LYN28044');
 }
-
-/**
- * @param array $mime_types
- * @return array
- */
-function dat_mime_types($mime_types) {
-    $mime_types['dat'] = 'text/plain';     // Adding .dat extension
-
-    return $mime_types;
-}
-
 /**
  * Register this file in WordPress so we can call it with a ?page= GET var.
  * To suppress it in the menu we give it an empty menu title.
@@ -173,47 +167,37 @@ function ua_admin_date_replaced_media_on_edit_media_screen() {
 }
 add_action( 'attachment_submitbox_misc_actions', 'ua_admin_date_replaced_media_on_edit_media_screen', 91 );
 
-function emr_install_plugin() {
-    $slug = isset($_GET['slug']) ? trim($_GET['slug']) : null;
-    if($slug == 'shortpixel-image-optimiser') {
-        $response = json_encode(wp_remote_get('https://shortpixel.com/h/af/YXA6CHO28044', array(
-            'method' => 'GET',
-            'timeout' => 15,
-            'redirection' => 3,
-            'sslverify' => false,
-            'httpversion' => '1.0',
-            'blocking' => true,
-            'headers' => array(),
-            'body' => null,
-            'cookies' => array()
-        )));
+/*----------------------------------------------------------------------------------------------------------
+	Display/dismiss admin notices if needed
+-----------------------------------------------------------------------------------------------------------*/
 
-        setcookie("AffiliateShortPixel", "YXA6CHO28044", time() + 2592000, parse_url(get_admin_url(),PHP_URL_PATH), parse_url(get_admin_url(),PHP_URL_HOST));//30 days
-        /*
-        $spCookie = isset($response['cookies']['AffiliateShortPixel']) ? $response['cookies']['AffiliateShortPixel'] : false;
-        if($spCookie) {
-            setcookie("AffiliateShortPixel", $spCookie, time() + 2592000, "/", parse_url(get_site_url(),PHP_URL_HOST));//30 days
-        }
-        */
+function emr_display_notices() {
+	$current_screen = get_current_screen();
 
-        exit(json_encode(array("Status" => 2)));
+	$crtScreen = function_exists("get_current_screen") ? get_current_screen() : (object)array("base" => false);
+
+	if(current_user_can( 'activate_plugins' ) && !get_option( 'emr_news') && !is_plugin_active('shortpixel-image-optimiser/wp-shortpixel.php')
+	   && ($crtScreen->base == "upload" || $crtScreen->base == "plugins")
+       //for network installed plugins, don't display the message on subsites.
+       && !(function_exists('is_multisite') && is_multisite() && is_plugin_active_for_network('enable-media-replace/enable-media-replace.php') && !is_main_site()))
+	{
+		require_once( str_replace("enable-media-replace.php", "notice.php", __FILE__) );
+	}
+}
+
+function emr_display_network_notices() {
+    if(current_user_can( 'activate_plugins' ) && !get_option( 'emr_news') && !is_plugin_active_for_network('shortpixel-image-optimiser/wp-shortpixel.php')) {
+        require_once( str_replace("enable-media-replace.php", "notice.php", __FILE__) );
     }
 }
 
-// Add Epsilon Smart Notification
-require_once 'class-emr-smart-notification.php';
-EMR_Smart_Notification::get_instance( array(
-	'plugins' => array(
-		'shortpixel-image-optimiser' => array(
-			'name' => __( 'ShortPixel Image Optimizer', 'enable-media-replace' ),
-			'description' => __( 'A freemium easy to use, comprehensive, stable and frequently updated image compression plugin supported by the friendly team that created it.', 'enable-media-replace' ),
-			'image' => plugins_url('/img/shortpixel.png',__FILE__),
-		),
-		'modula-best-grid-gallery' => array(
-			'name' => __( 'Modula WordPress Photo Gallery', 'enable-media-replace' ),
-			'description' => __( 'Modula is currently the easiest and fastest photo gallery plugin for WordPress. With its wizard you are able to build an image gallery in a few seconds, unlike many other WordPress gallery plugins.', 'enable-media-replace' ),
-			'image' => plugins_url('/img/wp-modula.jpg',__FILE__),
-		),
-	),
-	
-) );
+function emr_dismiss_notices() {
+	update_option( 'emr_news', true);
+	exit(json_encode(array("Status" => 0)));
+}
+
+/*function emr_add_js($hook) {
+    if("media_page_enable-media-replace/enable-media-replace" == $hook) {
+        wp_enqueue_script('emr-plugin-install', plugins_url('/js/plugin-install.js',__FILE__), array( 'jquery', 'updates' ), '1.0.0', 'all' );
+    }
+}*/

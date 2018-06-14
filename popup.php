@@ -74,10 +74,7 @@ $current_filename = substr($current_filename, (strrpos($current_filename, "/") +
 				<?php _e("Get more Google love by compressing your site's images! Check out how much ShortPixel can save your site and get +50% credits when signing up as an Enable Media Replace user! Forever!", "enable-media-replace"); ?>
 			</div>
 			<div class=""><div style="text-align: right;">
-					<a href="#" data-action="install" data-slug="shortpixel-image-optimiser" data-message="Activated" data-add-link="options-general.php?page=wp-shortpixel" data-add-link-name="ShortPixel options" class="button-primary emr-plugin-button ">
-                        <?php _e("Install &amp; Activate", "enable-media-replace"); ?>
-                    </a>
-					<a class="button button-secondary" id="shortpixel-image-optimiser-info" href="https://shortpixel.com/wp/af/VKG6LYN28044" target="_blank">
+					<a class="button button-primary" id="shortpixel-image-optimiser-info" href="https://shortpixel.com/wp/af/VKG6LYN28044" target="_blank">
 						<?php _e("More info", "enable-media-replace"); ?></p>
 					</a>
 				</div>

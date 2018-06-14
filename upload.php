@@ -37,12 +37,6 @@ function emr_delete_current_files( $current_file, $metadta = null ) {
 	// Delete old resized versions if this was an image
 	$suffix = substr($current_file, (strlen($current_file)-4));
 	$prefix = substr($current_file, 0, (strlen($current_file)-4));
-
-	if (strtolower($suffix) === ".pdf") {
-		$prefix .= "-pdf";
-		$suffix = ".jpg";
-	}
-
 	$imgAr = array(".png", ".gif", ".jpg");
 	if (in_array($suffix, $imgAr)) { 
 		// It's a png/gif/jpg based on file name
@@ -200,9 +194,8 @@ function emr_normalize_file_urls( $old, $new ) {
 }
 
 // Get old guid and filetype from DB
-$sql = "SELECT post_mime_type FROM $table_name WHERE ID = '" . (int) $_POST["ID"] . "'";
-list($current_filetype) = $wpdb->get_row($sql, ARRAY_N);
-$current_filename = wp_get_attachment_url($_POST['ID']);
+$sql = "SELECT guid, post_mime_type FROM $table_name WHERE ID = '" . (int) $_POST["ID"] . "'";
+list($current_filename, $current_filetype) = $wpdb->get_row($sql, ARRAY_N);
 
 // Massage a bunch of vars
 $current_guid = $current_filename;
