@@ -212,7 +212,7 @@ $ID = (int) $_POST["ID"];
 
 $current_file = get_attached_file($ID, apply_filters( 'emr_unfiltered_get_attached_file', true ));
 $current_path = substr($current_file, 0, (strrpos($current_file, "/")));
-$current_file = str_replace("//", "/", $current_file);
+$current_file = preg_replace("|(?<!:)/{2,}|", "/", $current_file);
 $current_filename = basename($current_file);
 $current_metadata = wp_get_attachment_metadata( $_POST["ID"] );
 
