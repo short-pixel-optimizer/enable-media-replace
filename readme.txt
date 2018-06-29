@@ -1,12 +1,12 @@
 === Enable Media Replace ===
 Contributors: ShortPixel
 Donate link: https://www.paypal.me/resizeImage
-Tags: admin, replace, attachment, media, files, replace image, replace jpg, change media, replace media
+Tags: admin, replace, attachment, media, files, replace image, replace jpg, change media, replace media, image, file
 Requires at least: 4.0
-Tested up to: 4.9.4
+Tested up to: 4.9
 Stable tag: trunk
 
-Easily replace any attached image/file by simply uploading a new file in the Media Library edit view.
+Easily replace any attached image/file by simply uploading a new file in the Media Library edit view - a real time saver!
 
 == Description ==
 
@@ -26,10 +26,7 @@ Now you'll be able to replace any uploaded file from the media "edit" view, wher
 1. Just replace the file. This option requires you to upload a file of the same type as the one you are replacing. The name of the attachment will stay the same no matter what the file you upload is called.
 1. Replace the file, use new file name and update all links. If you check this option, the name and type of the file you are about to upload will replace the old file. All links pointing to the current file will be updated to point to the new file name.
 
-This plugin is very powerful and a must-have for any larger sites built with WordPress. 
-
-Enable Media Replace is fully compatible with the <a href="https://wordpress.org/plugins/shortpixel-image-optimiser/" target="_blank">ShortPixel Image Optimizer plugin</a>, which, once enabled, will optimize the images you replace automatically.
-It's also compatible with the <a href="https://wordpress.org/plugins/resize-image-after-upload/" target="_blank">Resize Image After Upload plugin</a> which can do a sanity check on the size in pixels of the images uploaded.
+This plugin is very powerful and a must-have for any larger sites built with WordPress. It now also comes with preview of the replaced image! 
 
 #### Display file modification time
 
@@ -40,7 +37,24 @@ So `[file_modified id=870]` would display the last time the file with ID 870 was
 
 If you want more control over the format used to display the time, you can use the format option, so `[file_modified id=870 format=Y-m-d]` would display the file modification date but not the time. The format string uses [standard PHP date() formatting tags](http://php.net/manual/en/function.date.php). 
 
+
+#### Compatible and recommended Plugins =
+
+* [ShortPixel Image Optimization](https://wordpress.org/plugins/shortpixel-image-optimiser/) - Enable Media Replace is fully compatible with this plugin. Once enabled, ShortPixell will automatically optimize the images you replace using Enable Media Replace.
+* [Resize Image After Upload plugin](https://wordpress.org/plugins/resize-image-after-upload/) - automatically resize images upon upload to save traffic&disk space. Good for SEO and compatible with EMR.
+* [Regenerate Thumbnails Advanced](https://wordpress.org/plugins/regenerate-thumbnails-advanced/advanced/) - Fast, free and simple to use plugin to regenerate the thumbnails for your site after chainging a theme (for example). Supported & maintained by [ShortPixel](https://ShortPixel.com) 
+
 == Changelog ==
+
+= 3.2.6 =
+* no more 404 error if no image was selected when trying to replace it
+* added preview so you can check the image being replaced and also the image that's being replaced with
+* .dat files can be replaced (functionality accidetanly removed in the previous version)
+* added compatibility with S3 upload plugin
+* when an image is replaced the date is also updated
+
+= 3.2.5 =
+* remove the leftover setcookie and the plugins recommendations.
 
 = 3.2.4 =
 * Fix PDF thumbnails not replaced when replacing a PDF
@@ -243,4 +257,4 @@ Second, if the file really looks unchanged, make sure WordPress has write permis
 
 == Wishlist / Coming attractons ==
 
-Do you have suggestions? Feel free to contact contact ShortPixel <a href="https://shortpixel.com/contact" target="_blank">here</a>
+Do you have suggestions? Feel free to contact ShortPixel <a href="https://shortpixel.com/contact" target="_blank">here</a>

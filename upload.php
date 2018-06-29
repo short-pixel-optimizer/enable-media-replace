@@ -44,7 +44,7 @@ function emr_delete_current_files( $current_file, $metadta = null ) {
 	}
 
 	$imgAr = array(".png", ".gif", ".jpg");
-	if (in_array($suffix, $imgAr)) { 
+	if (in_array($suffix, $imgAr)) {
 		// It's a png/gif/jpg based on file name
 		// Get thumbnail filenames from metadata
 		if ( empty( $metadata ) ) {
@@ -245,11 +245,25 @@ if (is_uploaded_file($_FILES["userfile"]["tmp_name"])) {
 
         emr_delete_current_files( $current_file, $current_metadata );
 
-		// Move new file to old location/name
-		move_uploaded_file($_FILES["userfile"]["tmp_name"], $current_file);
+        $new_filename = wp_unique_filename( $current_path, $current_filename );
+        $new_filename = apply_filters( 'emr_unique_filename', $current_filename, $current_path, $ID );
+
+        // Move new file to old location, new name
+        $new_file = $current_path . "/" . $current_filename;
+        move_uploaded_file($_FILES["userfile"]["tmp_name"], $new_file);
 
 		// Chmod new file to original file permissions
 		@chmod($current_file, $original_file_perms);
+
+		apply_filters( 'enable_media_replace_title', basename($new_file) ); // Thanks Jonas Lundman (http://wordpress.org/support/topic/add-filter-hook-suggestion-to)
+
+        // Update database file timestamp
+        $post_date = gmdate( 'Y-m-d H:i:s' );
+        $sql = $wpdb->prepare(
+            "UPDATE $table_name SET post_date = '$post_date', post_date_gmt = '$post_date' WHERE ID = %d;",
+            $ID
+        );
+        $wpdb->query($sql);
 
         //call upload action to give a chance to plugins like Resize Image After Upload to handle the new image
         do_action('wp_handle_upload', array('file' => $current_file, 'url' => wp_get_attachment_url($ID), 'type' => $new_filetype));
@@ -285,9 +299,11 @@ if (is_uploaded_file($_FILES["userfile"]["tmp_name"])) {
 		//call upload action to give a chance to plugins like ShortPixel to handle the new image
 		//do_action('wp_handle_upload', array('file' => $new_file, 'url' => $new_guid, 'type' => $new_filetype));
 
-		// Update database file name
-		$sql = $wpdb->prepare(
-			"UPDATE $table_name SET post_title = '$new_filetitle', post_name = '$new_filetitle', guid = '$new_guid', post_mime_type = '$new_filetype' WHERE ID = %d;",
+
+        // Update database file name
+        $post_date = gmdate( 'Y-m-d H:i:s' );
+        $sql = $wpdb->prepare(
+			"UPDATE $table_name SET post_title = '$new_filetitle', post_name = '$new_filetitle', guid = '$new_guid', post_mime_type = '$new_filetype', post_date = '$post_date', post_date_gmt = '$post_date' WHERE ID = %d;",
 			$ID
 		);
 		$wpdb->query($sql);
