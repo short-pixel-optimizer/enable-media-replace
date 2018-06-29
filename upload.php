@@ -50,6 +50,7 @@ function emr_delete_current_files( $current_file, $metadta = null ) {
 		if ( empty( $metadata ) ) {
 			$metadata = wp_get_attachment_metadata( $_POST["ID"] );
 		}
+//		var_dump($metadata);exit;
 
 		if (is_array($metadata)) { // Added fix for error messages when there is no metadata (but WHY would there not be? I don't know…)
 			foreach($metadata["sizes"] AS $thissize) {
@@ -70,7 +71,6 @@ function emr_delete_current_files( $current_file, $metadta = null ) {
 		//$mask = $prefix . "-*x*" . $suffix;
 		//array_map( "unlink", glob( $mask ) );
 	}
-
 }
 
 /**
@@ -299,10 +299,10 @@ if (is_uploaded_file($_FILES["userfile"]["tmp_name"])) {
 		//call upload action to give a chance to plugins like ShortPixel to handle the new image
 		//do_action('wp_handle_upload', array('file' => $new_file, 'url' => $new_guid, 'type' => $new_filetype));
 
+        $post_date = gmdate( 'Y-m-d H:i:s' );
 
         // Update database file name
-        $post_date = gmdate( 'Y-m-d H:i:s' );
-        $sql = $wpdb->prepare(
+		$sql = $wpdb->prepare(
 			"UPDATE $table_name SET post_title = '$new_filetitle', post_name = '$new_filetitle', guid = '$new_guid', post_mime_type = '$new_filetype', post_date = '$post_date', post_date_gmt = '$post_date' WHERE ID = %d;",
 			$ID
 		);
