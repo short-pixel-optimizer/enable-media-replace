@@ -1,7 +1,7 @@
 === Enable Media Replace ===
 Contributors: ShortPixel
 Donate link: https://www.paypal.me/resizeImage
-Tags: admin, replace, attachment, media, files, replace image, replace jpg, change media, replace media, image, file
+Tags: replace, attachment, media, files, replace image, replace jpg, change media, replace media, image, file
 Requires at least: 4.0
 Tested up to: 4.9
 Stable tag: trunk
@@ -40,9 +40,9 @@ If you want more control over the format used to display the time, you can use t
 
 #### Compatible and recommended Plugins =
 
-* [ShortPixel Image Optimization](https://wordpress.org/plugins/shortpixel-image-optimiser/) - Enable Media Replace is fully compatible with this plugin. Once enabled, ShortPixell will automatically optimize the images you replace using Enable Media Replace.
-* [Resize Image After Upload plugin](https://wordpress.org/plugins/resize-image-after-upload/) - automatically resize images upon upload to save traffic&disk space. Good for SEO and compatible with EMR.
-* [Regenerate Thumbnails Advanced](https://wordpress.org/plugins/regenerate-thumbnails-advanced/advanced/) - Fast, free and simple to use plugin to regenerate the thumbnails for your site after chainging a theme (for example). Supported & maintained by [ShortPixel](https://ShortPixel.com) 
+* [ShortPixel Image Optimization](https://wordpress.org/plugins/shortpixel-image-optimiser/) - Enable Media Replace is fully compatible with this plugin. Once enabled, ShortPixel will automatically optimize the images you replace using Enable Media Replace.
+* [Resize Image After Upload plugin](https://wordpress.org/plugins/resize-image-after-upload/) - automatically resize images upon upload to save traffic & disk space. Good for SEO and compatible with EMR.
+* [Regenerate Thumbnails Advanced](https://wordpress.org/plugins/regenerate-thumbnails-advanced/) - Fast, free and simple to use plugin to regenerate the thumbnails for your site after changing a theme (for example). Supported & maintained by [ShortPixel](https://ShortPixel.com)
 
 == Changelog ==
 
