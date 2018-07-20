@@ -10,6 +10,9 @@
  *
  */
 
+ if ( ! defined( 'ABSPATH' ) )
+	exit; // Exit if accessed directly.
+
 if (!current_user_can('upload_files'))
 	wp_die(__('You do not have permission to upload files.', 'enable-media-replace'));
 

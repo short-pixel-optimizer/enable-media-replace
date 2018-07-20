@@ -47,6 +47,7 @@ If you want more control over the format used to display the time, you can use t
 == Changelog ==
 
 = 3.2.7 =
+* Prevent direct access to php files.
 * Prevent direct access to directories.
 
 = 3.2.6 =

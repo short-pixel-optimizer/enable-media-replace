@@ -23,6 +23,10 @@ http://www.gnu.org/licenses/gpl.html
  *
  */
 
+if ( ! defined( 'ABSPATH' ) ) {
+	exit; // Exit if accessed directly.
+}
+
 if(!defined("S3_UPLOADS_AUTOENABLE")) {
     define('S3_UPLOADS_AUTOENABLE', true);
 }
