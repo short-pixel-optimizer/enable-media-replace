@@ -4,6 +4,7 @@ Donate link: https://www.paypal.me/resizeImage
 Tags: replace, attachment, media, files, replace image, replace jpg, change media, replace media, image, file
 Requires at least: 4.0
 Tested up to: 4.9
+Requires PHP: 5.4
 Stable tag: trunk
 
 Easily replace any attached image/file by simply uploading a new file in the Media Library edit view - a real time saver!
@@ -47,6 +48,7 @@ If you want more control over the format used to display the time, you can use t
 == Changelog ==
 
 = 3.2.7 =
+* Add minimum required php version to run the plugin.
 * Prevent direct access to php files.
 * Prevent direct access to directories.
 
