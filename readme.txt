@@ -46,6 +46,9 @@ If you want more control over the format used to display the time, you can use t
 
 == Changelog ==
 
+= 3.2.7 =
+* Fix RTL issues.
+
 = 3.2.6 =
 * no more 404 error if no image was selected when trying to replace it
 * added preview so you can check the image being replaced and also the image that's being replaced with
