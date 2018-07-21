@@ -62,7 +62,7 @@ function dat_mime_types($mime_types) {
  * To suppress it in the menu we give it an empty menu title.
  */
 function emr_menu() {
-	add_submenu_page(NULL, __("Replace media", "enable-media-replace"), '','upload_files', 'enable-media-replace/enable-media-replace', 'emr_options');
+	add_submenu_page(NULL, esc_html__("Replace media", "enable-media-replace"), '','upload_files', 'enable-media-replace/enable-media-replace', 'emr_options');
 }
 
 /**
@@ -88,7 +88,7 @@ function enable_media_replace( $form_fields, $post ) {
 		$editurl = str_replace("http:", "https:", $editurl);
 	}
 	$link = "href=\"$editurl\"";
-	$form_fields["enable-media-replace"] = array("label" => __("Replace media", "enable-media-replace"), "input" => "html", "html" => "<p><a class='button-secondary'$link>" . __("Upload a new file", "enable-media-replace") . "</a></p>", "helps" => __("To replace the current file, click the link and upload a replacement.", "enable-media-replace"));
+	$form_fields["enable-media-replace"] = array("label" => esc_html__("Replace media", "enable-media-replace"), "input" => "html", "html" => "<p><a class='button-secondary'$link>" . esc_html__("Upload a new file", "enable-media-replace") . "</a></p>", "helps" => esc_html__("To replace the current file, click the link and upload a replacement.", "enable-media-replace"));
 
 	return $form_fields;
 }
@@ -129,7 +129,7 @@ function add_media_action( $actions, $post) {
 	}
 	$link = "href=\"$editurl\"";
 
-	$newaction['adddata'] = '<a ' . $link . ' aria-label="' . __("Replace media", "enable-media-replace") . '" rel="permalink">' . __("Replace media", "enable-media-replace") . '</a>';
+	$newaction['adddata'] = '<a ' . $link . ' aria-label="' . esc_html__("Replace media", "enable-media-replace") . '" rel="permalink">' . esc_html__("Replace media", "enable-media-replace") . '</a>';
 	return array_merge($actions,$newaction);
 }
 
@@ -180,7 +180,7 @@ function ua_admin_date_replaced_media_on_edit_media_screen() {
 	}
 	?>
 	<div class="misc-pub-section curtime">
-		<span id="timestamp"><?php _e( 'Revised', 'enable-media-replace' ); ?>: <b><?php echo $file_modified_time; ?></b></span>
+		<span id="timestamp"><?php echo esc_html__( 'Revised', 'enable-media-replace' ); ?>: <b><?php echo $file_modified_time; ?></b></span>
 	</div>
 	<?php
 }
