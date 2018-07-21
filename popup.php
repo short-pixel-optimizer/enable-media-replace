@@ -74,10 +74,11 @@ $current_filename = substr($current_filename, (strrpos($current_filename, "/") +
 			<div class="" style="margin-bottom: 10px;">
 				<?php _e("Get more Google love by compressing your site's images! Check out how much ShortPixel can save your site and get +50% credits when signing up as an Enable Media Replace user! Forever!", "enable-media-replace"); ?>
 			</div>
-			<div style="text-align: <?php echo (is_rtl()) ? 'left' : 'right' ?>;">
-                <a class="button button-primary" id="shortpixel-image-optimiser-info" href="https://shortpixel.com/wp/af/VKG6LYN28044" target="_blank">
-                    <?php _e("More info", "enable-media-replace"); ?>
-                </a>
+			<div class=""><div style="text-align: <?php echo (is_rtl()) ? 'left' : 'right' ?>;">
+					<a class="button button-primary" id="shortpixel-image-optimiser-info" href="https://shortpixel.com/wp/af/VKG6LYN28044" target="_blank">
+						<?php _e("More info", "enable-media-replace"); ?></p>
+					</a>
+				</div>
 			</div>
 		</div>
 		<?php } ?>
