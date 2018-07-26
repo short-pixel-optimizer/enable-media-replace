@@ -139,7 +139,7 @@ $current_filename = substr($current_filename, (strrpos($current_filename, "/") +
                 preview.removeAttribute("style");
             }
         } else {
-            preview.setAttribute("src", "http://via.placeholder.com/150x150");
+            preview.setAttribute("src", "https://via.placeholder.com/150x150");
         }
     }
     function enableSubmitButton(file, submit)
