@@ -88,7 +88,7 @@ $current_filename = substr($current_filename, (strrpos($current_filename, "/") +
 		<input type="file" name="userfile" id="userfile" onchange="imageHandle(event);" />
         <div>
             <img src="<?= $current_fullpath ?>" width="150px" height="150px" style="object-fit: cover"/>
-            <img id="previewImage" src="http://via.placeholder.com/150x150" width="150px" height="150px"/>
+            <img id="previewImage" src="https://via.placeholder.com/150x150" width="150px" height="150px"/>
         </div>
 
 		<?php do_action( 'emr_before_replace_type_options' ); ?>
@@ -139,7 +139,7 @@ $current_filename = substr($current_filename, (strrpos($current_filename, "/") +
                 preview.removeAttribute("style");
             }
         } else {
-            preview.setAttribute("src", "http://via.placeholder.com/150x150");
+            preview.setAttribute("src", "https://via.placeholder.com/150x150");
         }
     }
     function enableSubmitButton(file, submit)
