@@ -3,7 +3,7 @@
     <a href="https://shortpixel.com/wp/af/VKG6LYN28044" target="_blank" style="float: <?php echo (is_rtl()) ? 'right' : 'left' ?>;margin-<?php echo (is_rtl()) ? 'left' : 'right' ?>: 10px;">
         <img src="<?php echo plugins_url('img/sp.png', __FILE__ ); ?>" class="emr-sp"/>
     </a>
-    <h3 style="margin:10px;"><?php _e('Enable Media Replace is now compatible with ShortPixel!','enable-media-replace');?></h3>
+    <h3 style="margin:10px;"><?php echo esc_html__('Enable Media Replace is now compatible with ShortPixel!','enable-media-replace');?></h3>
     <p style="margin-bottom:0px;">
         <?php _e( '<a href="https://shortpixel.com/wp/af/VKG6LYN28044" target="_blank">ShortPixel</a> is an image optimization plugin and if you have it activated, upon replacing an image in Enable Media Replace, the image will be also automatically optimized.', 'enable-media-replace' ); ?>
     </p>

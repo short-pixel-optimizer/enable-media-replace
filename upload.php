@@ -1,6 +1,9 @@
 <?php
+if ( ! defined( 'ABSPATH' ) )
+	exit; // Exit if accessed directly.
+
 if (!current_user_can('upload_files'))
-	wp_die(__('You do not have permission to upload files.', 'enable-media-replace'));
+	wp_die( esc_html__('You do not have permission to upload files.', 'enable-media-replace') );
 
 // Define DB table names
 global $wpdb;
@@ -29,7 +32,7 @@ function emr_delete_current_files( $current_file, $metadta = null ) {
 		}
 		else {
 			// File exists, but has wrong permissions. Let the user know.
-			printf(__('The file %1$s can not be deleted by the web server, most likely because the permissions on the file are wrong.', "enable-media-replace"), $current_file);
+			printf( esc_html__('The file %1$s can not be deleted by the web server, most likely because the permissions on the file are wrong.', "enable-media-replace"), $current_file);
 			exit;	
 		}
 	}
@@ -225,7 +228,7 @@ if (is_uploaded_file($_FILES["userfile"]["tmp_name"])) {
 	$filedata = wp_check_filetype_and_ext($_FILES["userfile"]["tmp_name"], $_FILES["userfile"]["name"]);
 
 	if ($filedata["ext"] == "") {
-		echo __("File type does not meet security guidelines. Try another.", 'enable-media-replace');
+		echo esc_html__("File type does not meet security guidelines. Try another.", 'enable-media-replace');
 		exit;
 	}
 
