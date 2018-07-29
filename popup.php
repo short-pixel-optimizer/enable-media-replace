@@ -63,7 +63,7 @@ $current_filename = substr($current_filename, (strrpos($current_filename, "/") +
 		<div id="message" class="updated notice notice-success is-dismissible"><p><?php printf( esc_html__('NOTE: You are about to replace the media file "%s". There is no undo. Think about it!', "enable-media-replace"), $current_filename ); ?></p></div>
 
 		<?php if(!$spInstalled) {?>
-		<div style="background: #fff;width: 250px;min-height: 270px;border: 1px solid #ccc;float: right;padding: 15px;position: relative;margin: 0 0 10px 10px;">
+		<div style="background: #fff;width: 250px;min-height: 270px;border: 1px solid #ccc;float: <?php echo (is_rtl()) ? 'left' : 'right' ?>;padding: 15px;margin: 0 0 10px;">
 			<h3 class="" style="margin-top: 0;text-align: center;">
 				<a href="https://shortpixel.com/wp/af/VKG6LYN28044" target="_blank">
 					<?php echo esc_html__("Optimize your images with ShortPixel, get +50% credits!", "enable-media-replace"); ?>
@@ -77,7 +77,7 @@ $current_filename = substr($current_filename, (strrpos($current_filename, "/") +
 			<div class="" style="margin-bottom: 10px;">
 				<?php echo esc_html__("Get more Google love by compressing your site's images! Check out how much ShortPixel can save your site and get +50% credits when signing up as an Enable Media Replace user! Forever!", "enable-media-replace"); ?>
 			</div>
-			<div class=""><div style="text-align: right;">
+			<div class=""><div style="text-align: <?php echo (is_rtl()) ? 'left' : 'right' ?>;">
 					<a class="button button-primary" id="shortpixel-image-optimiser-info" href="https://shortpixel.com/wp/af/VKG6LYN28044" target="_blank">
 						<?php echo esc_html__("More info", "enable-media-replace"); ?></p>
 					</a>

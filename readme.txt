@@ -52,6 +52,7 @@ If you want more control over the format used to display the time, you can use t
 * Security: Prevent direct access to php files.
 * Security: Prevent direct access to directories.
 * Security: Escape translation strings using `esc_attr__()` and `esc_html__()` functions.
+* Fix RTL issues.
 
 = 3.2.6 =
 * no more 404 error if no image was selected when trying to replace it
