@@ -205,18 +205,20 @@ function emr_normalize_file_urls( $old, $new ) {
 // Get old guid and filetype from DB
 $sql = "SELECT post_mime_type FROM $table_name WHERE ID = '" . (int) $_POST["ID"] . "'";
 list($current_filetype) = $wpdb->get_row($sql, ARRAY_N);
-$current_filename = wp_get_attachment_url($_POST['ID']);
 
 // Massage a bunch of vars
-$current_guid = $current_filename;
-$current_filename = substr($current_filename, (strrpos($current_filename, "/") + 1));
+$current_guid =wp_get_attachment_url($_POST['ID']);
 
 $ID = (int) $_POST["ID"];
 
 $current_file = get_attached_file($ID, apply_filters( 'emr_unfiltered_get_attached_file', true ));
 $current_path = substr($current_file, 0, (strrpos($current_file, "/")));
 $current_file = preg_replace("|(?<!:)/{2,}|", "/", $current_file);
-$current_filename = basename($current_file);
+// Temporary change encoding cause basename doesn't deal well with UTF-8 names
+$encoding=mb_detect_encoding($current_file);
+$filename_html_encoding = mb_convert_encoding($current_file,'HTML-ENTITIES',$encoding);
+$current_filename = basename($filename_html_encoding);
+$current_filename=mb_convert_encoding($current_filename,$encoding,'HTML-ENTITIES');
 $current_metadata = wp_get_attachment_metadata( $_POST["ID"] );
 
 $replace_type = $_POST["replace_type"];
