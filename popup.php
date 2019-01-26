@@ -107,8 +107,8 @@ $current_filename = substr($current_filename, (strrpos($current_filename, "/") +
         <?php endif; ?>
 		<?php if ( apply_filters( 'emr_enable_replace_and_search', true ) ) : ?>
 		<label for="replace_type_2"><input <?php echo $s3pluginExist ? 'CHECKED' : '' ?> id="replace_type_2" type="radio" name="replace_type" value="replace_and_search"> <?php echo __("Replace the file, use new file name and update all links", "enable-media-replace"); ?></label>
-		<p class="howto"><?php printf( __("Note: If you check this option, the name and type of the file you are about to upload will replace the old file. All links pointing to the current file (%s) will be updated to point to the new file name.", "enable-media-replace"), $current_filename ); ?></p>
-		<p class="howto"><?php echo __("Please note that if you upload a new image, only embeds/links of the original size image will be replaced in your posts.", "enable-media-replace"); ?></p>
+		<p class="howto"><?php printf( esc_html__("Note: If you check this option, the name and type of the file you are about to upload will replace the old file. All links pointing to the current file (%s) will be updated to point to the new file name.", "enable-media-replace"), $current_filename ); ?></p>
+		<p class="howto"><?php echo esc_html__("Please note that if you upload a new image, only embeds/links of the original size image will be replaced in your posts.", "enable-media-replace"); ?></p>
 		<?php endif; ?>
 	<?php else : ?>
         <?php if ( ! $s3pluginExist) : ?>

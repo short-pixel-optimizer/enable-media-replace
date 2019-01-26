@@ -214,11 +214,7 @@ $ID = (int) $_POST["ID"];
 $current_file = get_attached_file($ID, apply_filters( 'emr_unfiltered_get_attached_file', true ));
 $current_path = substr($current_file, 0, (strrpos($current_file, "/")));
 $current_file = preg_replace("|(?<!:)/{2,}|", "/", $current_file);
-// Temporary change encoding cause basename doesn't deal well with UTF-8 names
-$encoding=mb_detect_encoding($current_file);
-$filename_html_encoding = mb_convert_encoding($current_file,'HTML-ENTITIES',$encoding);
-$current_filename = basename($filename_html_encoding);
-$current_filename=mb_convert_encoding($current_filename,$encoding,'HTML-ENTITIES');
+$current_filename = wp_basename($current_file);
 $current_metadata = wp_get_attachment_metadata( $_POST["ID"] );
 
 $replace_type = $_POST["replace_type"];

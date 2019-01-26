@@ -3,7 +3,7 @@ Contributors: ShortPixel
 Donate link: https://www.paypal.me/resizeImage
 Tags: replace, attachment, media, files, replace image, replace jpg, change media, replace media, image, file
 Requires at least: 4.0
-Tested up to: 4.9
+Tested up to: 5.0
 Requires PHP: 5.4
 Stable tag: trunk
 
@@ -46,6 +46,10 @@ If you want more control over the format used to display the time, you can use t
 * [Regenerate Thumbnails Advanced](https://wordpress.org/plugins/regenerate-thumbnails-advanced/) - Fast, free and simple to use plugin to regenerate the thumbnails for your site after changing a theme (for example). Supported & maintained by [ShortPixel](https://ShortPixel.com)
 
 == Changelog ==
+
+= 3.2.8 =
+* fix for failures in link updating when replacing file because of addslashes - use prepared query instead
+* replace basename with wp_basename because basename doesn't work well with UTF8
 
 = 3.2.7 =
 * Add minimum required php version to run the plugin.
