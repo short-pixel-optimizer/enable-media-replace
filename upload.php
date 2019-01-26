@@ -360,11 +360,11 @@ if (is_uploaded_file($_FILES["userfile"]["tmp_name"])) {
 
 				// replace old URLs with new URLs.
 				$post_content = $rows["post_content"];
-				$post_content = addslashes( str_replace( $search_urls, $replace_urls, $post_content ) );
+				$post_content = str_replace( $search_urls, $replace_urls, $post_content );
 
 				$sql = $wpdb->prepare(
-					"UPDATE $table_name SET post_content = '$post_content' WHERE ID = %d;",
-					$rows["ID"]
+					"UPDATE $table_name SET post_content = %s WHERE ID = %d;",
+					array($post_content, $rows["ID"])
 				);
 
 				$wpdb->query( $sql );
