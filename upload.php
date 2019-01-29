@@ -383,7 +383,7 @@ if (is_uploaded_file($_FILES["userfile"]["tmp_name"])) {
 } else {
 	//TODO Better error handling when no file is selected.
 	//For now just go back to media management
-	$returnurl = admin_url("/wp-admin/upload.php");
+	$returnurl = admin_url("upload.php");
 }
 
 if (FORCE_SSL_ADMIN) {
