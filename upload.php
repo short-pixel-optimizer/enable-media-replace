@@ -222,17 +222,16 @@ $replace_type = $_POST["replace_type"];
 
 if (is_uploaded_file($_FILES["userfile"]["tmp_name"])) {
 
-	// New method for validating that the uploaded file is allowed, using WP:s internal wp_check_filetype_and_ext() function.
-	$filedata = wp_check_filetype_and_ext($_FILES["userfile"]["tmp_name"], $_FILES["userfile"]["name"]);
+	$filedata = wp_check_filetype( $_FILES["userfile"]["name"] );
 
-	if ($filedata["ext"] == "") {
+	if ( empty( $filedata["ext"] ) || !array_key_exists( $filedata["ext"], get_allowed_mime_types() ) ) {
 		echo esc_html__("File type does not meet security guidelines. Try another.", 'enable-media-replace');
 		exit;
 	}
 
 	$new_filename = $_FILES["userfile"]["name"];
 	$new_filesize = $_FILES["userfile"]["size"];
-	$new_filetype = $filedata["type"];
+	$new_filetype = $filedata[ "ext" ];
 
 	// save original file permissions
 	$original_file_perms = fileperms($current_file) & 0777;
