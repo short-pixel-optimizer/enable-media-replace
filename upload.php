@@ -223,15 +223,19 @@ $replace_type = $_POST["replace_type"];
 if (is_uploaded_file($_FILES["userfile"]["tmp_name"])) {
 
 	$filedata = wp_check_filetype( $_FILES["userfile"]["name"] );
+	
+	$wp_get_allowed_mime_types = get_allowed_mime_types();
 
-	if ( empty( $filedata["ext"] ) || !array_key_exists( $filedata["ext"], get_allowed_mime_types() ) ) {
+	$validate_mymetypes = ( !empty( $filedata[ 'ext' ] ) ? preg_grep( '/'. $filedata[ 'ext' ] .'/', array_keys( $wp_get_allowed_mime_types ) ) : '' );
+
+	if ( empty( $filedata["ext"] ) || empty( $validate_mymetypes ) ) {
 		echo esc_html__("File type does not meet security guidelines. Try another.", 'enable-media-replace');
-		exit;
+		exit();
 	}
 
 	$new_filename = $_FILES["userfile"]["name"];
 	$new_filesize = $_FILES["userfile"]["size"];
-	$new_filetype = $filedata[ "ext" ];
+	$new_filetype = $wp_get_allowed_mime_types[ array_shift( $validate_mymetypes ) ];
 
 	// save original file permissions
 	$original_file_perms = fileperms($current_file) & 0777;
