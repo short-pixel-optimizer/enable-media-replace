@@ -10,6 +10,8 @@ global $wpdb;
 $table_name = $wpdb->prefix . "posts";
 $postmeta_table_name = $wpdb->prefix . "postmeta";
 
+require_once('thumbnail_updater.php');
+
 /**
  * Delete a media file and its thumbnails.
  *
@@ -21,7 +23,7 @@ function emr_delete_current_files( $current_file, $metadta = null ) {
 
 	// Find path of current file
 	$current_path = substr($current_file, 0, (strrpos($current_file, "/")));
-	
+
 	// Check if old file exists first
 	if (file_exists($current_file)) {
 		// Now check for correct file permissions for old file
@@ -33,10 +35,10 @@ function emr_delete_current_files( $current_file, $metadta = null ) {
 		else {
 			// File exists, but has wrong permissions. Let the user know.
 			printf( esc_html__('The file %1$s can not be deleted by the web server, most likely because the permissions on the file are wrong.', "enable-media-replace"), $current_file);
-			exit;	
+			exit;
 		}
 	}
-	
+
 	// Delete old resized versions if this was an image
 	$suffix = substr($current_file, (strlen($current_file)-4));
 	$prefix = substr($current_file, 0, (strlen($current_file)-4));
@@ -53,7 +55,6 @@ function emr_delete_current_files( $current_file, $metadta = null ) {
 		if ( empty( $metadata ) ) {
 			$metadata = wp_get_attachment_metadata( $_POST["ID"] );
 		}
-//		var_dump($metadata);exit;
 
 		if (is_array($metadata)) { // Added fix for error messages when there is no metadata (but WHY would there not be? I don't know…)
 			foreach($metadata["sizes"] AS $thissize) {
@@ -230,6 +231,9 @@ if (is_uploaded_file($_FILES["userfile"]["tmp_name"])) {
 		exit;
 	}
 
+	$thumbUpdater = new ThumbnailUpdater($ID);
+	$thumbUpdater->setOldMetadata($current_metadata);
+
 	$new_filename = $_FILES["userfile"]["name"];
 	$new_filesize = $_FILES["userfile"]["size"];
 	$new_filetype = $filedata["type"];
@@ -270,10 +274,17 @@ if (is_uploaded_file($_FILES["userfile"]["tmp_name"])) {
         do_action('wp_handle_upload', array('file' => $current_file, 'url' => wp_get_attachment_url($ID), 'type' => $new_filetype));
 
         // Make thumb and/or update metadata
-		wp_update_attachment_metadata( $ID, wp_generate_attachment_metadata( $ID, $current_file ) );
+			$metadata = wp_generate_attachment_metadata( $ID, $current_file );
+			wp_update_attachment_metadata( $ID, $metadata );
 
-		// Trigger possible updates on CDN and other plugins 
+			$thumbUpdater->setNewMetadata($metadata);
+			$thumbUpdater->updateThumbnails();
+
+
+		// Trigger possible updates on CDN and other plugins
 		update_attached_file( $ID, $current_file);
+
+
 	} elseif ( 'replace_and_search' == $replace_type && apply_filters( 'emr_enable_replace_and_search', true ) ) {
 		// Replace file, replace file name, update meta data, replace links pointing to old file name
 
@@ -316,7 +327,7 @@ if (is_uploaded_file($_FILES["userfile"]["tmp_name"])) {
 			"SELECT meta_value FROM $postmeta_table_name WHERE meta_key = '_wp_attached_file' AND post_id = %d;",
 			$ID
 		);
-		
+
 		$old_meta_name = $wpdb->get_row($sql, ARRAY_A);
 		$old_meta_name = $old_meta_name["meta_value"];
 
@@ -369,7 +380,10 @@ if (is_uploaded_file($_FILES["userfile"]["tmp_name"])) {
 			}
 		}
 
-		// Trigger possible updates on CDN and other plugins 
+		$thumbUpdater->setNewMetadata($new_metadata);
+		$thumbUpdater->updateThumbnails();
+
+		// Trigger possible updates on CDN and other plugins
 		update_attached_file( $ID, $new_file );
 	}
 

@@ -47,6 +47,9 @@ If you want more control over the format used to display the time, you can use t
 
 == Changelog ==
 
+= 3.2.9 =
+* properly replace thumbnails names in the content when the replaced image has a different aspect ratio, thus the new thumbnails have a different height in the name.
+
 = 3.2.8 =
 * fix for failures in link updating when replacing file because of addslashes - use prepared query instead
 * replace basename with wp_basename because basename doesn't work well with UTF8
