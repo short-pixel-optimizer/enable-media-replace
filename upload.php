@@ -263,9 +263,11 @@ if (is_uploaded_file($_FILES["userfile"]["tmp_name"])) {
 		apply_filters( 'enable_media_replace_title', basename($new_file) ); // Thanks Jonas Lundman (http://wordpress.org/support/topic/add-filter-hook-suggestion-to)
 
         // Update database file timestamp
-        $post_date = gmdate( 'Y-m-d H:i:s' );
+        //$post_date = gmdate( 'Y-m-d H:i:s' );
+		$post_date = current_time('mysql');
+		$post_date_gmt = get_gmt_from_date($post_date);
         $sql = $wpdb->prepare(
-            "UPDATE $table_name SET post_date = '$post_date', post_date_gmt = '$post_date' WHERE ID = %d;",
+            "UPDATE $table_name SET post_date = '$post_date', post_date_gmt = '$post_date_gmt' WHERE ID = %d;",
             $ID
         );
         $wpdb->query($sql);
@@ -311,11 +313,13 @@ if (is_uploaded_file($_FILES["userfile"]["tmp_name"])) {
 		//call upload action to give a chance to plugins like ShortPixel to handle the new image
 		//do_action('wp_handle_upload', array('file' => $new_file, 'url' => $new_guid, 'type' => $new_filetype));
 
-        $post_date = gmdate( 'Y-m-d H:i:s' );
+        //$post_date = gmdate( 'Y-m-d H:i:s' );
+		$post_date = current_time('mysql');
+		$post_date_gmt = get_gmt_from_date($post_date);
 
         // Update database file name
 		$sql = $wpdb->prepare(
-			"UPDATE $table_name SET post_title = '$new_filetitle', post_name = '$new_filetitle', guid = '$new_guid', post_mime_type = '$new_filetype', post_date = '$post_date', post_date_gmt = '$post_date' WHERE ID = %d;",
+			"UPDATE $table_name SET post_title = '$new_filetitle', post_name = '$new_filetitle', guid = '$new_guid', post_mime_type = '$new_filetype', post_date = '$post_date', post_date_gmt = '$post_date_gmt' WHERE ID = %d;",
 			$ID
 		);
 		$wpdb->query($sql);
