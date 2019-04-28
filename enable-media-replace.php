@@ -129,7 +129,7 @@ function add_media_action( $actions, $post) {
 	}
 	$link = "href=\"$editurl\"";
 
-	$newaction['adddata'] = '<a ' . $link . ' aria-label="' . esc_html__("Replace media", "enable-media-replace") . '" rel="permalink">' . esc_html__("Replace media", "enable-media-replace") . '</a>';
+	$newaction['adddata'] = '<a ' . $link . ' aria-label="' . esc_attr__("Replace media", "enable-media-replace") . '" rel="permalink">' . esc_html__("Replace media", "enable-media-replace") . '</a>';
 	return array_merge($actions,$newaction);
 }
 
