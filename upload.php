@@ -273,15 +273,21 @@ if (is_uploaded_file($_FILES["userfile"]["tmp_name"])) {
         $wpdb->query($sql);
 
         //call upload action to give a chance to plugins like Resize Image After Upload to handle the new image
-        do_action('wp_handle_upload', array('file' => $current_file, 'url' => wp_get_attachment_url($ID), 'type' => $new_filetype));
+        //do_action('wp_handle_upload', array('file' => $current_file, 'url' => wp_get_attachment_url($ID), 'type' => $new_filetype));
+        //changed as per https://wordpress.org/support/topic/wp_handle_upload-filter-should-be-treated-as-such-and-not-as-action/
+        $filtered = apply_filters( 'wp_handle_upload', array(
+            'file' => $current_file,
+            'url'  => wp_get_attachment_url($ID),
+            'type' => $new_filetype
+        ), 'sideload');
+        $current_file = $filtered['file'];
 
         // Make thumb and/or update metadata
-			$metadata = wp_generate_attachment_metadata( $ID, $current_file );
-			wp_update_attachment_metadata( $ID, $metadata );
+        $metadata = wp_generate_attachment_metadata( $ID, $current_file );
+        wp_update_attachment_metadata( $ID, $metadata );
 
-			$thumbUpdater->setNewMetadata($metadata);
-			$thumbUpdater->updateThumbnails();
-
+        $thumbUpdater->setNewMetadata($metadata);
+        $thumbUpdater->updateThumbnails();
 
 		// Trigger possible updates on CDN and other plugins
 		update_attached_file( $ID, $current_file);
