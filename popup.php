@@ -148,6 +148,7 @@ $current_filename = substr($current_filename, (strrpos($current_filename, "/") +
     function enableSubmitButton(file, submit)
     {
         if (file.value) {
+            submit.disabled = false;
             submit.removeAttribute("disabled");
         } else {
             submit.setAttribute("disabled", true);
