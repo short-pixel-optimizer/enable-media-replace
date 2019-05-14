@@ -3,7 +3,7 @@
 Plugin Name: Enable Media Replace
 Plugin URI: http://www.mansjonasson.se/enable-media-replace
 Description: Enable replacing media files by uploading a new file in the "Edit Media" section of the WordPress Media Library.
-Version: 3.2.9
+Version: 3.2.8
 Author: ShortPixel
 Author URI: https://shortpixel.com
 
@@ -99,20 +99,19 @@ function enable_media_replace( $form_fields, $post ) {
  * Called by GET var ?page=enable-media-replace/enable-media-replace.php
  */
 function emr_options() {
+	$action = isset($_GET['action']) ? sanitize_text_field($_GET['action']) : '';
 
-	if ( isset( $_GET['action'] ) && $_GET['action'] == 'media_replace' ) {
-    	check_admin_referer( 'media_replace' ); // die if invalid or missing nonce
-		if ( array_key_exists("attachment_id", $_GET) && (int) $_GET["attachment_id"] > 0) {
-			include("popup.php");
+	if ( $action == 'media_replace' ) {
+    	check_admin_referer( $action, '_wpnonce'); // die if invalid or missing nonce
+		if ( array_key_exists("attachment_id", $_GET) && intval($_GET["attachment_id"]) > 0) {
+			include("popup.php"); // warning variables like $action be overwritten here.
 		}
 	}
-
-	if ( isset( $_GET['action'] ) && $_GET['action'] == 'media_replace_upload' ) {
+	elseif ( $action == 'media_replace_upload' ) {
 		$plugin_url =  str_replace("enable-media-replace.php", "", __FILE__);
-    	check_admin_referer( 'media_replace_upload' ); // die if invalid or missing nonce
+    	check_admin_referer( $action, '_wpnonce' ); // die if invalid or missing nonce
 		require_once($plugin_url . "upload.php");
 	}
-
 }
 
 /**

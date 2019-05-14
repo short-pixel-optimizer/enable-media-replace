@@ -204,21 +204,23 @@ function emr_normalize_file_urls( $old, $new ) {
 }
 
 // Get old guid and filetype from DB
-$sql = "SELECT post_mime_type FROM $table_name WHERE ID = '" . (int) $_POST["ID"] . "'";
+$post_id = intval($_POST['ID']); // sanitize, post_id.
+$sql = "SELECT post_mime_type FROM $table_name WHERE ID = '%d'";
+$sql = $wpdb->prepare($sql, array($post_id) );
 list($current_filetype) = $wpdb->get_row($sql, ARRAY_N);
 
 // Massage a bunch of vars
-$current_guid =wp_get_attachment_url($_POST['ID']);
+$current_guid =wp_get_attachment_url($post_id);
 
-$ID = (int) $_POST["ID"];
+$ID = intval($_POST["ID"]); // legacy
 
-$current_file = get_attached_file($ID, apply_filters( 'emr_unfiltered_get_attached_file', true ));
+$current_file = get_attached_file($post_id, apply_filters( 'emr_unfiltered_get_attached_file', true ));
 $current_path = substr($current_file, 0, (strrpos($current_file, "/")));
 $current_file = preg_replace("|(?<!:)/{2,}|", "/", $current_file);
 $current_filename = wp_basename($current_file);
-$current_metadata = wp_get_attachment_metadata( $_POST["ID"] );
+$current_metadata = wp_get_attachment_metadata( $post_id );
 
-$replace_type = $_POST["replace_type"];
+$replace_type = sanitize_text_field($_POST["replace_type"]);
 // We have two types: replace / replace_and_search
 
 if (is_uploaded_file($_FILES["userfile"]["tmp_name"])) {
@@ -286,8 +288,11 @@ if (is_uploaded_file($_FILES["userfile"]["tmp_name"])) {
         $metadata = wp_generate_attachment_metadata( $ID, $current_file );
         wp_update_attachment_metadata( $ID, $metadata );
 
-        $thumbUpdater->setNewMetadata($metadata);
-        $thumbUpdater->updateThumbnails();
+					if(wp_attachment_is_image($post_id))
+       		{
+					$thumbUpdater->setNewMetadata($metadata);
+        	$thumbUpdater->updateThumbnails();
+					}
 
 		// Trigger possible updates on CDN and other plugins
 		update_attached_file( $ID, $current_file);
@@ -390,8 +395,11 @@ if (is_uploaded_file($_FILES["userfile"]["tmp_name"])) {
 			}
 		}
 
-		$thumbUpdater->setNewMetadata($new_metadata);
-		$thumbUpdater->updateThumbnails();
+			if(wp_attachment_is_image($post_id))
+			{
+				$thumbUpdater->setNewMetadata($new_metadata);
+				$thumbUpdater->updateThumbnails();
+			}
 
 		// Trigger possible updates on CDN and other plugins
 		update_attached_file( $ID, $new_file );

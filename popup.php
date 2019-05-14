@@ -44,9 +44,9 @@ $current_filename = substr($current_filename, (strrpos($current_filename, "/") +
 	<h1><?php echo esc_html__("Replace Media Upload", "enable-media-replace"); ?></h1>
 
 	<?php
-	$url = admin_url( "upload.php?page=enable-media-replace/enable-media-replace.php&noheader=true&action=media_replace_upload&attachment_id=" . (int) $_GET["attachment_id"]);
-	$action = "media_replace_upload";
-    $formurl = wp_nonce_url( $url, $action );
+	$url = admin_url( "upload.php?page=enable-media-replace/enable-media-replace.php&noheader=true&action=media_replace_upload&attachment_id=" . intval($_GET["attachment_id"]) );
+
+  $formurl = wp_nonce_url( $url, "media_replace_upload" );
 	if (FORCE_SSL_ADMIN) {
 			$formurl = str_replace("http:", "https:", $formurl);
 		}
