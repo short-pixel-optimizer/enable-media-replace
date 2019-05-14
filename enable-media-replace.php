@@ -61,8 +61,8 @@ function dat_mime_types($mime_types) {
  * Register this file in WordPress so we can call it with a ?page= GET var.
  * To suppress it in the menu we give it an empty menu title.
  */
-function emr_menu() {
-	add_submenu_page('upload.php', esc_html__("Replace media", "enable-media-replace"), '','upload_files', 'enable-media-replace/enable-media-replace', 'emr_options');
+function emr_menu() { //'upload.php'
+	add_submenu_page(null, esc_html__("Replace media", "enable-media-replace"), esc_html__("Replace media", "enable-media-replace"), 'upload_files', 'enable-media-replace/enable-media-replace', 'emr_options');
 }
 
 /**
