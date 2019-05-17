@@ -5,12 +5,16 @@ if ( ! defined( 'ABSPATH' ) )
 if (!current_user_can('upload_files'))
 	wp_die( esc_html__('You do not have permission to upload files.', 'enable-media-replace') );
 
+require_once('thumbnail_updater.php');
+require_once('classes/replacer.php');
+require_once('classes/file.php');
+
+use \EnableMediaReplace\Replacer as Replacer;
+
 // Define DB table names
 global $wpdb;
 $table_name = $wpdb->prefix . "posts";
 $postmeta_table_name = $wpdb->prefix . "postmeta";
-
-require_once('thumbnail_updater.php');
 
 /**
  * Delete a media file and its thumbnails.
@@ -132,7 +136,6 @@ function emr_get_match_url($url) {
 	$url = emr_maybe_remove_query_string($url);
 	$url = emr_remove_size_from_filename($url, true);
 	$url = emr_remove_domain_from_filename($url);
-
 	return $url;
 }
 
@@ -203,25 +206,61 @@ function emr_normalize_file_urls( $old, $new ) {
 	return $result;
 }
 
+// Starts processing.
+
 // Get old guid and filetype from DB
 $post_id = intval($_POST['ID']); // sanitize, post_id.
-$sql = "SELECT post_mime_type FROM $table_name WHERE ID = '%d'";
-$sql = $wpdb->prepare($sql, array($post_id) );
-list($current_filetype) = $wpdb->get_row($sql, ARRAY_N);
 
+$replacer = new replacer($post_id);
+
+/*$sql = "SELECT post_mime_type FROM $table_name WHERE ID = '%d'";
+$sql = $wpdb->prepare($sql, array($post_id) );
+list($current_filetype) = $wpdb->get_row($sql, ARRAY_N); // seems unused as well.
+*/
 // Massage a bunch of vars
-$current_guid =wp_get_attachment_url($post_id);
+//$current_guid = wp_get_attachment_url($post_id); // this is used for search / replace
 
 $ID = intval($_POST["ID"]); // legacy
+$replace_type = sanitize_text_field($_POST["replace_type"]);
+$timestamp_replace = intval($_POST['timestamp_replace']);
 
 $current_file = get_attached_file($post_id, apply_filters( 'emr_unfiltered_get_attached_file', true ));
 $current_path = substr($current_file, 0, (strrpos($current_file, "/")));
-$current_file = preg_replace("|(?<!:)/{2,}|", "/", $current_file);
+$current_file = preg_replace("|(?<!:)/{2,}|", "/", $current_file); // @todo what does this mean?
 $current_filename = wp_basename($current_file);
 $current_metadata = wp_get_attachment_metadata( $post_id );
 
-$replace_type = sanitize_text_field($_POST["replace_type"]);
+switch($timestamp_replace)
+{
+	case \EnableMediaReplace\Replacer::TIME_UPDATEALL:
+	case \EnableMediaReplace\Replacer::TIME_UPDATEMODIFIED:
+		$datetime = current_time('mysql');
+	break;
+	case \EnableMediaReplace\Replacer::TIME_CUSTOM:
+		$custom_date = $_POST['custom_date_formatted'];
+		$custom_hour = $_POST['custom_hour'];
+		$custom_minute = $_POST['custom_minute'];
+
+		// create a mysql time representation from what we have.
+		$custom_date = DateTime::createFromFormat('Y-m-d H:i', $custom_date . ' ' . $custom_hour . ':' . $custom_minute );
+ 		$datetime  =  $custom_date->format("Y-m-d H:i:s");
+	break;
+}
+
+
+
 // We have two types: replace / replace_and_search
+if ($replace_type == 'replace')
+{
+	$replacer->setMode(\EnableMediaReplace\Replacer::MODE_REPLACE);
+}
+elseif ( 'replace_and_search' == $replace_type && apply_filters( 'emr_enable_replace_and_search', true ) )
+{
+	$replacer->setMode(\EnableMediaReplace\Replacer::MODE_SEARCHREPLACE);
+}
+
+$replacer->setTimeMode($timestamp_replace, $datetime);
+
 
 if (is_uploaded_file($_FILES["userfile"]["tmp_name"])) {
 
@@ -233,30 +272,38 @@ if (is_uploaded_file($_FILES["userfile"]["tmp_name"])) {
 		exit;
 	}
 
+	// Here we have the uploaded file
+
 	$thumbUpdater = new ThumbnailUpdater($ID);
 	$thumbUpdater->setOldMetadata($current_metadata);
 
 	$new_filename = $_FILES["userfile"]["name"];
-	$new_filesize = $_FILES["userfile"]["size"];
+	//$new_filesize = $_FILES["userfile"]["size"]; // Seems not to be in use.
 	$new_filetype = $filedata["type"];
 
 	// save original file permissions
 	$original_file_perms = fileperms($current_file) & 0777;
+
+	// Gather all functions that both options do.
+	do_action('wp_handle_replace', array('post_id' => $post_id));
+
+	$replacer->replaceWith($_FILES["userfile"]["tmp_name"], $new_filename);
+	//emr_delete_current_files( $current_file, $current_metadata );
 
 	if ($replace_type == "replace") {
 		// Drop-in replace and we don't even care if you uploaded something that is the wrong file-type.
 		// That's your own fault, because we warned you!
 
         //call replace action to give a chance to plugins like ShortPixel to delete the metadata, backups and cleanup the cache on server
-        do_action('wp_handle_replace', array('post_id' => $ID));
+        //do_action('wp_handle_replace', array('post_id' => $ID));
 
-        emr_delete_current_files( $current_file, $current_metadata );
+      //  emr_delete_current_files( $current_file, $current_metadata );
 
-        $new_filename = wp_unique_filename( $current_path, $current_filename );
+    /*    $new_filename = wp_unique_filename( $current_path, $current_filename );
         $new_filename = apply_filters( 'emr_unique_filename', $current_filename, $current_path, $ID );
-
+    */
         // Move new file to old location, new name
-        $new_file = $current_path . "/" . $current_filename;
+    /*    $new_file = $current_path . "/" . $current_filename;
         move_uploaded_file($_FILES["userfile"]["tmp_name"], $new_file);
 
 		// Chmod new file to original file permissions
@@ -296,17 +343,17 @@ if (is_uploaded_file($_FILES["userfile"]["tmp_name"])) {
 
 		// Trigger possible updates on CDN and other plugins
 		update_attached_file( $ID, $current_file);
-
+*/
 
 	} elseif ( 'replace_and_search' == $replace_type && apply_filters( 'emr_enable_replace_and_search', true ) ) {
 		// Replace file, replace file name, update meta data, replace links pointing to old file name
-
 		//call replace action to give a chance to plugins like ShortPixel to delete the metadata, backups and cleanup the cache on server
-		do_action('wp_handle_replace', array('post_id' => $ID));
+	//	do_action('wp_handle_replace', array('post_id' => $ID));
 
-		emr_delete_current_files( $current_file, $current_metadata );
+		//emr_delete_current_files( $current_file, $current_metadata );
 
 		// Massage new filename to adhere to WordPress standards
+		/*
 		$new_filename = wp_unique_filename( $current_path, $new_filename );
 		$new_filename = apply_filters( 'emr_unique_filename', $new_filename, $current_path, $ID );
 
@@ -394,15 +441,11 @@ if (is_uploaded_file($_FILES["userfile"]["tmp_name"])) {
 				$wpdb->query( $sql );
 			}
 		}
-
-			if(wp_attachment_is_image($post_id))
-			{
-				$thumbUpdater->setNewMetadata($new_metadata);
-				$thumbUpdater->updateThumbnails();
-			}
+*/
 
 		// Trigger possible updates on CDN and other plugins
-		update_attached_file( $ID, $new_file );
+//		update_attached_file( $ID, $new_file );
+
 	}
 
 	#echo "Updated: " . $number_of_updates;
@@ -425,6 +468,7 @@ if (FORCE_SSL_ADMIN) {
 // Allow developers to override $returnurl
 $returnurl = apply_filters('emr_returnurl', $returnurl);
 
+//exit('Pre-redirection upload.php');
 //save redirection
 wp_redirect($returnurl);
 ?>

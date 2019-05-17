@@ -48,6 +48,7 @@ class ThumbnailUpdater
       $this->relPath = trailingslashit($month_path);
   }
 
+
   public function updateThumbnails()
   {
     if (count($this->oldMeta) == 0 || count($this->newMeta) == 0)

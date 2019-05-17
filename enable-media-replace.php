@@ -3,7 +3,7 @@
 Plugin Name: Enable Media Replace
 Plugin URI: http://www.mansjonasson.se/enable-media-replace
 Description: Enable replacing media files by uploading a new file in the "Edit Media" section of the WordPress Media Library.
-Version: 3.2.8
+Version: 3.2.9
 Author: ShortPixel
 Author URI: https://shortpixel.com
 
@@ -36,6 +36,7 @@ add_action('admin_menu', 'emr_menu');
 add_filter('attachment_fields_to_edit', 'enable_media_replace', 10, 2);
 add_filter('media_row_actions', 'add_media_action', 10, 2);
 add_filter('upload_mimes', 'dat_mime_types', 1, 1);
+add_action('admin_enqueue_scripts', 'emr_admin_scripts');
 
 add_action('admin_notices', 'emr_display_notices');
 add_action('network_admin_notices', 'emr_display_network_notices');
@@ -93,6 +94,12 @@ function enable_media_replace( $form_fields, $post ) {
 	return $form_fields;
 }
 
+function emr_admin_scripts()
+{
+		wp_register_style('emr_style', plugins_url('css/admin.css', __FILE__) );
+		wp_register_script('emr_admin', plugins_url('js/emr_admin.js', __FILE__), array('jquery'), false, true );
+}
+
 /**
  * Load the replace media panel.
  * Panel is show on the action 'media-replace' and a given attachement.
@@ -100,6 +107,15 @@ function enable_media_replace( $form_fields, $post ) {
  */
 function emr_options() {
 	$action = isset($_GET['action']) ? sanitize_text_field($_GET['action']) : '';
+
+	// prepare scripts etc for this page.
+	wp_enqueue_style('emr_style');
+
+	wp_enqueue_script('jquery-ui-datepicker');
+	wp_enqueue_style('jquery-ui-datepicker');
+
+	wp_localize_script('emr_admin', 'emr_options', array('dateFormat' => emr_convertdate(get_option( 'date_format' ))));
+	wp_enqueue_script('emr_admin');
 
 	if ( $action == 'media_replace' ) {
     	check_admin_referer( $action, '_wpnonce'); // die if invalid or missing nonce
@@ -112,6 +128,26 @@ function emr_options() {
     	check_admin_referer( $action, '_wpnonce' ); // die if invalid or missing nonce
 		require_once($plugin_url . "upload.php");
 	}
+}
+
+/** Utility function for the Jquery UI Datepicker */
+function emr_convertdate( $sFormat ) {
+    switch( $sFormat ) {
+        //Predefined WP date formats
+        case 'F j, Y':
+            return( 'MM dd, yy' );
+            break;
+        case 'Y/m/d':
+            return( 'yy/mm/dd' );
+            break;
+        case 'm/d/Y':
+            return( 'mm/dd/yy' );
+            break;
+        case 'd/m/Y':
+				default:
+            return( 'dd/mm/yy' );
+        break;
+    }
 }
 
 /**
@@ -136,6 +172,7 @@ function add_media_action( $actions, $post) {
  * Shorttag function to show the media file modification date/time.
  * @param array shorttag attributes
  * @return string content / replacement shorttag
+ * @todo Note this returns the wrong date, ie. server date not corrected for timezone. Function could be removed altogether, not sure about purpose.
  */
 function emr_get_modified_date($atts) {
 	$id=0;
@@ -167,19 +204,20 @@ function emr_get_modified_date($atts) {
 }
 
 // Add Last replaced by EMR plugin in the media edit screen metabox - Thanks Jonas Lundman (http://wordpress.org/support/topic/add-filter-hook-suggestion-to)
-function ua_admin_date_replaced_media_on_edit_media_screen() {
-	if( !function_exists( 'enable_media_replace' ) ) return;
-	global $post;
-	$id = $post->ID;
-	$shortcode = "[file_modified id=$id]";
+function ua_admin_date_replaced_media_on_edit_media_screen($post) {
+	if( !function_exists( 'enable_media_replace' ) ) return; // @todo seems this can go?
 
-	$file_modified_time = do_shortcode($shortcode);
-	if ( ! $file_modified_time ) {
+	$post_id = $post->ID;
+
+	if ( $post->post_modified == $post->post_date ) {
 		return;
 	}
+
+	$modified = date_i18n( __( 'M j, Y @ H:i' ) , strtotime( $post->post_modified ) );
+
 	?>
 	<div class="misc-pub-section curtime">
-		<span id="timestamp"><?php echo esc_html__( 'Revised', 'enable-media-replace' ); ?>: <b><?php echo $file_modified_time; ?></b></span>
+		<span id="timestamp"><?php echo esc_html__( 'Revised', 'enable-media-replace' ); ?>: <b><?php echo $modified; ?></b></span>
 	</div>
 	<?php
 }
