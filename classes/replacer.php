@@ -155,6 +155,10 @@ class Replacer
         $this->ThumbnailUpdater->updateThumbnails();
       }
 
+      // Give the caching a kick -- off for now - pending specifics.
+      //$cache = new emrCache();
+     //$cache->flushCache();
+
   }
 
   /** Returns a full target path to place to new file. Including the file name!  **/
@@ -224,7 +228,6 @@ class Replacer
 
      // Search-and-replace filename in post database
  		$current_base_url = emr_get_match_url( $this->source_url );
-
 
     /* Search and replace in WP_POSTS */
  		$posts_sql = $wpdb->remove_placeholder_escape($wpdb->prepare(
