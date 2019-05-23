@@ -10,7 +10,7 @@ class emrFile
   protected $filePath;
   protected $fileURL;
   protected $fileMime;
-  protected $permissions;
+  protected $permissions = 0;
 
   protected $exists = false;
 
@@ -29,7 +29,8 @@ class emrFile
      $this->fileName = isset($fileparts['basename']) ? $fileparts['basename'] : '';
      $this->filePath = isset($fileparts['dirname']) ? $fileparts['dirname'] : '';
      $this->extension = isset($fileparts['extension']) ? $fileparts['extension'] : '';
-     $this->permissions = fileperms($file) & 0777;
+     if ($this->exists) // doesn't have to be.
+      $this->permissions = fileperms($file) & 0777;
 
      $filedata = wp_check_filetype_and_ext($this->file, $this->fileName);
      // This will *not* be checked, is not meant for permission of validation!

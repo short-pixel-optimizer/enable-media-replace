@@ -55,7 +55,7 @@ class EnableMediaReplacePlugin
    */
   public function init()
   {
-    load_plugin_textdomain( 'enable-media-replace', false, dirname( plugin_basename(EMR_ROOT_FILE) ) . '/languages' );
+    load_plugin_textdomain( 'enable-media-replace', false, basename(dirname(EMR_ROOT_FILE) ) . '/languages' );
   }
 
   /** Load EMR views based on request */
@@ -100,9 +100,15 @@ class EnableMediaReplacePlugin
   */
   public function admin_scripts()
   {
-    wp_register_style('emr_style', plugins_url('css/admin.css', EMR_ROOT_FILE) );
-    wp_register_script('emr_admin', plugins_url('js/emr_admin.js', EMR_ROOT_FILE), array('jquery'), false, true );
+    if (is_rtl())
+    {
+      wp_register_style('emr_style', plugins_url('css/admin.rtl.css', EMR_ROOT_FILE) );
+    }
+    else {
+      wp_register_style('emr_style', plugins_url('css/admin.css', EMR_ROOT_FILE) );
+    }
 
+    wp_register_script('emr_admin', plugins_url('js/emr_admin.js', EMR_ROOT_FILE), array('jquery'), false, true );
     wp_localize_script('emr_admin', 'emr_options', array('dateFormat' => $this->convertdate(get_option( 'date_format' ))));
 
   }

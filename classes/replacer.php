@@ -98,9 +98,6 @@ class Replacer
         // 'Setting permissions failed';
       }
 
-
-      $this->updateDate(); // updates the date.
-
       // update the file attached. This is required for wp_get_attachment_url to work.
       update_attached_file($this->post_id, $this->targetFile->getFullFilePath() );
       $this->target_url = wp_get_attachment_url($this->post_id);
@@ -125,20 +122,18 @@ class Replacer
 
       if ($this->replaceMode == self::MODE_SEARCHREPLACE)
       {
-          $new_filetitle = preg_replace('/\.[^.]+$/', '', $this->targetFile->getFileName() );
-          $new_filetitle = apply_filters( 'enable_media_replace_title', $new_filetitle ); // Thanks Jonas Lundman   (http://wordpress.org/support/topic/add-filter-hook-suggestion-to)
-         // $new_guid = str_replace($current_filename, $new_filename, $current_guid);
+         $title = $this->getNewTitle();
 
          $update_ar = array('ID' => $this->post_id);
-         $update_ar['post_title'] = $new_filetitle;
-         $update_ar['post_name'] = sanitize_title($new_filetitle);
+         $update_ar['post_title'] = $title;
+         $update_ar['post_name'] = sanitize_title($title);
     //     $update_ar['guid'] = wp_get_attachment_url($this->post_id);
          $update_ar['post_mime_type'] = $this->targetFile->getFileMime();
          $post_id = \wp_update_post($update_ar, true);
 
          // update post doesn't update GUID on updates.
          $wpdb->update( $wpdb->posts, array( 'guid' =>  $this->target_url), array('ID' => $this->post_id) );
-
+         //enable-media-replace-upload-done
          if (is_wp_error($post_id))
          {
           $errors = $post_id->get_error_messages();
@@ -147,6 +142,7 @@ class Replacer
           }
          }
           $this->doSearchReplace();
+          do_action("enable-media-replace-upload-done", $this->target_url, $this->source_url);
       }
 
       if(wp_attachment_is_image($this->post_id))
@@ -155,10 +151,43 @@ class Replacer
         $this->ThumbnailUpdater->updateThumbnails();
       }
 
-      // Give the caching a kick -- off for now - pending specifics.
-      //$cache = new emrCache();
-     //$cache->flushCache();
+      // if all set and done, update the date.
+      // This must be done after wp_update_posts
+      $this->updateDate(); // updates the date.
 
+      // Give the caching a kick. Off pending specifics.
+      $cache_args = array(
+        'flush_mode' => 'post',
+        'post_id' => $this->post_id,
+      );
+
+      $cache = new emrCache();
+      $cache->flushCache($cache_args);
+
+  }
+
+  protected function getNewTitle()
+  {
+    $title = preg_replace('/\.[^.]+$/', '', $this->targetFile->getFileName() );
+
+    $meta = $this->target_metadata;
+
+    if (isset($meta['image_meta']))
+    {
+      if (isset($meta['image_meta']['title']))
+      {
+          $title = $meta['image_meta']['title'];
+          if (strlen(trim($title) > 0))
+          {
+             $title = $meta['image_meta']['title'];
+          }
+      }
+    }
+
+    // Thanks Jonas Lundman   (http://wordpress.org/support/topic/add-filter-hook-suggestion-to)
+    $title = apply_filters( 'enable_media_replace_title', $title );
+
+    return $title;
   }
 
   /** Returns a full target path to place to new file. Including the file name!  **/
@@ -212,6 +241,7 @@ class Replacer
 
     $updated = $wpdb->update( $wpdb->posts, $update_ar , array('ID' => $this->post_id) );
 
+    wp_cache_delete($this->post_id, 'posts');
 
 
     /*    $sql = $wpdb->prepare(
@@ -245,7 +275,7 @@ class Replacer
 
  		$number_of_updates = 0;
 
-    $search_urls  = array_values(emr_get_file_urls( $this->source_url, $this->source_metadata ));
+    $search_urls  = emr_get_file_urls( $this->source_url, $this->source_metadata );
     $replace_urls = emr_get_file_urls( $this->target_url, $this->target_metadata );
     $replace_urls = array_values(emr_normalize_file_urls( $search_urls, $replace_urls ));
 

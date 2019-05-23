@@ -6,7 +6,8 @@ Description: Enable replacing media files by uploading a new file in the "Edit M
 Version: 3.2.9
 Author: ShortPixel
 Author URI: https://shortpixel.com
-
+Text Domain: enable-media-replace
+Domain Path: /languages
 Dual licensed under the MIT and GPL licenses:
 http://www.opensource.org/licenses/mit-license.php
 http://www.gnu.org/licenses/gpl.html

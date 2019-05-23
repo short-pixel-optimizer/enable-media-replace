@@ -20,7 +20,7 @@ class emrCache
       if ( function_exists( 'w3tc_pgcache_flush' ) )
         $this->has_w3tc = true;
 
-      if ( function_exists('\wp_cache_clean_cache') )
+      if ( function_exists('wp_cache_clean_cache') )
         $this->has_supercache = true;
 
       if ( class_exists( 'WpeCommon' ) )
@@ -39,17 +39,33 @@ class emrCache
       // @todo BlueHost Caching?
     }
 
-    public function flushCache()
+    /* Tries to flush cache there were we have issues
+    *
+    * @param Array $args Argument Array to provide data.
+    */
+    public function flushCache($args)
     {
+        $defaults = array(
+            'flush_mode' => 'post',
+            'post_id' => 0,
+        );
+
+        $args = wp_parse_args($args, $defaults);
+        $post_id = $args['post_id']; // can be zero!
+
         // important - first check the available cache plugins
         $this->checkCaches();
 
         // general WP
-        wp_cache_flush();
+        if ($post_id > 0)
+          clean_post_cache($post_id);
+        else
+          wp_cache_flush();
 
-        if ($this->has_supercache)
+        /*  Verified working without.
+          if ($this->has_supercache)
             $this->removeSuperCache();
-
+        */
         if ($this->has_w3tc)
             $this->removeW3tcCache();
 
