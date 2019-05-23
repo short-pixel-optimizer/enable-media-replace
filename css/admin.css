@@ -768,8 +768,10 @@
     border-bottom: 1px solid #ccc;
     padding: 6px 0;
     margin: 0 0 15px 0; }
-.emr_upload_form .image_chooser.wrapper .image_previews {
-  margin: 15px 0; }
+.emr_upload_form .image_chooser.wrapper {
+  min-height: 350px; }
+  .emr_upload_form .image_chooser.wrapper .image_previews {
+    margin: 15px 0; }
 .emr_upload_form .option-flex-wrapper {
   display: flex; }
 .emr_upload_form .replace_type.wrapper {
@@ -820,3 +822,13 @@
   .emr_upload_form .form_controls.wrapper .button {
     padding-left: 20px;
     padding-right: 20px; }
+.emr_upload_form .shortpixel-notice {
+  background: #fff;
+  width: 250px;
+  min-height: 270px;
+  border: 1px solid #ccc;
+  padding: 15px;
+  margin: 0 0 10px;
+  float: right; }
+  .emr_upload_form .shortpixel-notice h3 {
+    line-height: 1.3em; }
