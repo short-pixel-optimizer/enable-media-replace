@@ -71,7 +71,7 @@ $filename = basename($filepath);
 		<div id="message" class="updated notice notice-success is-dismissible"><p><?php printf( esc_html__('NOTE: You are about to replace the media file "%s". There is no undo. Think about it!', "enable-media-replace"), $filename ); ?></p></div>
 
 		<?php if(!$spInstalled) {?>
-		<div style='shortpixel-notice'>
+		<div class='shortpixel-notice'>
 			<h3 class="" style="margin-top: 0;text-align: center;">
 				<a href="https://shortpixel.com/wp/af/VKG6LYN28044" target="_blank">
 					<?php echo esc_html__("Optimize your images with ShortPixel, get +50% credits!", "enable-media-replace"); ?>
