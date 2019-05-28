@@ -310,7 +310,5 @@ if (FORCE_SSL_ADMIN) {
 // Allow developers to override $returnurl
 $returnurl = apply_filters('emr_returnurl', $returnurl);
 
-//exit('Pre-redirection upload.php');
-//save redirection
 wp_redirect($returnurl);
 ?>

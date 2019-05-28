@@ -168,16 +168,14 @@ class Replacer
 
   protected function getNewTitle()
   {
-    $title = preg_replace('/\.[^.]+$/', '', $this->targetFile->getFileName() );
-
+    $title = $this->targetFile->getFileName();
     $meta = $this->target_metadata;
 
     if (isset($meta['image_meta']))
     {
       if (isset($meta['image_meta']['title']))
       {
-          $title = $meta['image_meta']['title'];
-          if (strlen(trim($title) > 0))
+          if (strlen($meta['image_meta']['title']) > 0)
           {
              $title = $meta['image_meta']['title'];
           }
