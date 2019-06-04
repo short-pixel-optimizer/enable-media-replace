@@ -221,7 +221,7 @@ list($current_filetype) = $wpdb->get_row($sql, ARRAY_N); // seems unused as well
 //$current_guid = wp_get_attachment_url($post_id); // this is used for search / replace
 
 $ID = intval($_POST["ID"]); // legacy
-$replace_type = sanitize_text_field($_POST["replace_type"]);
+$replace_type = isset($_POST["replace_type"]) ? sanitize_text_field($_POST["replace_type"]) : false;
 $timestamp_replace = intval($_POST['timestamp_replace']);
 
 $current_file = get_attached_file($post_id, apply_filters( 'emr_unfiltered_get_attached_file', true ));
