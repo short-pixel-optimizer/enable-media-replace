@@ -47,6 +47,20 @@ If you want more control over the format used to display the time, you can use t
 
 == Changelog ==
 
+= 3.3.0 =
+* When replacing an image and changing the name, Search / Replace is now also done on the meta_value of postmeta.
+* Replace PDF thumbnails too
+* Copy title from EXIF
+* RTL View incorporated into the CSS
+* ‘wp_handle_upload’ filter should be treated as such (and not as action)
+* Use wp_attached_file instead of the GUID
+* Fix: replace missing file
+* Fix: aphostrophe breaking the upload
+* Fix: broken "before" image
+* Fix: update properly the date
+* Fix: errors for non-image items in Media Library
+* Fix: empty admin menu item created
+
 = 3.2.9 =
 * properly replace thumbnails names in the content when the replaced image has a different aspect ratio, thus the new thumbnails have a different height in the name.
 
