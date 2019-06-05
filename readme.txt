@@ -3,7 +3,7 @@ Contributors: ShortPixel
 Donate link: https://www.paypal.me/resizeImage
 Tags: replace, attachment, media, files, replace image, replace jpg, change media, replace media, image, file
 Requires at least: 4.0
-Tested up to: 5.1
+Tested up to: 5.2
 Requires PHP: 5.4
 Stable tag: trunk
 
@@ -60,6 +60,7 @@ If you want more control over the format used to display the time, you can use t
 * Fix: update properly the date
 * Fix: errors for non-image items in Media Library
 * Fix: empty admin menu item created
+* Refactored all the code
 
 = 3.2.9 =
 * properly replace thumbnails names in the content when the replaced image has a different aspect ratio, thus the new thumbnails have a different height in the name.
