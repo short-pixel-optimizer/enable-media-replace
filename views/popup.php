@@ -20,7 +20,6 @@ global $wpdb;
 
 $table_name = $wpdb->prefix . "posts";
 
-
 //$sql = "SELECT guid, post_mime_type FROM $table_name WHERE ID = " . (int) $_GET["attachment_id"];
 //list($current_filename, $current_filetype) = $wpdb->get_row($sql, ARRAY_N);
 
@@ -95,8 +94,11 @@ $filename = basename($filepath);
 		<?php } ?>
 
 		<p><?php echo esc_html__("Choose a file to upload from your computer", "enable-media-replace"); ?></p>
+    <p><?php printf(__('Maximum file size: <strong>%s</strong>','enable-media-replace'), size_format(wp_max_upload_size() ) ) ?></p>
+    <div class='form-error filesize'><p><?php printf(__('%s f %s exceeds the maximum upload size for this site.', 'enable-media-replace'), '<span class="fn">', '</span>'); ?></p>
+    </div>
 
-		<input type="file" name="userfile" id="userfile" onchange="imageHandle(event);" />
+		<input type="file" name="userfile" id="userfile" />
         <div class='image_previews'>
             <img src="<?php echo $fileurl ?>" width="150px" height="150px" style="object-fit: cover"/>
             <img id="previewImage" src="https://via.placeholder.com/150x150" width="150px" height="150px"/>
@@ -166,7 +168,7 @@ $filename = basename($filepath);
 	</form>
 </div>
 <script>
-    function imageHandle(event) {
+    /*function imageHandle(event) {
         var file = document.getElementById("userfile");
         var submit = document.getElementById("submit");
         var preview = document.getElementById("previewImage");
@@ -197,5 +199,5 @@ $filename = basename($filepath);
         } else {
             submit.setAttribute("disabled", true);
         }
-    }
+    } */
 </script>

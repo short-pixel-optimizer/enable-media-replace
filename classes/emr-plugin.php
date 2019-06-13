@@ -109,7 +109,12 @@ class EnableMediaReplacePlugin
     }
 
     wp_register_script('emr_admin', plugins_url('js/emr_admin.js', EMR_ROOT_FILE), array('jquery'), false, true );
-    wp_localize_script('emr_admin', 'emr_options', array('dateFormat' => $this->convertdate(get_option( 'date_format' ))));
+    wp_localize_script('emr_admin', 'emr_options',
+        array(
+            'dateFormat' => $this->convertdate(get_option( 'date_format' )),
+            'maxfilesize' => wp_max_upload_size(),  
+        )
+      );
 
   }
 
@@ -180,7 +185,6 @@ class EnableMediaReplacePlugin
    * @param array $mime_types
    * @return array
    */
-
   public function add_mime_types($mime_types)
   {
     $mime_types['dat'] = 'text/plain';     // Adding .dat extension

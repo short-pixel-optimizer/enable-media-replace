@@ -27,6 +27,18 @@
     }
   }
 
+  .form-error
+  {
+    background: #fff;
+    padding: 8px;
+    border-left: 4px solid #ff0000;
+  //  display: inline-block;
+    margin: 10px 0;
+    display: none;
+    p { margin: 0; }
+
+  }
+
   .option-flex-wrapper
   {
     display: flex;
@@ -130,4 +142,4 @@
       line-height: 1.3em; // match size
     }
   }
-}
+} // emr_upload_form

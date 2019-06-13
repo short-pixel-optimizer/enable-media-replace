@@ -255,7 +255,13 @@ class Replacer
       global $wpdb;
 
      // Search-and-replace filename in post database
- 		$current_base_url = emr_get_match_url( $this->source_url );
+ 		$current_base_url = emr_get_match_url( $this->source_url);
+
+    /** Fail-safe if base_url is a whole directory, don't go search/replace */
+    if (is_dir($current_base_url))
+    {
+      exit('Source Location seems to be a directory.');
+    }
 
     /* Search and replace in WP_POSTS */
  		$posts_sql = $wpdb->remove_placeholder_escape($wpdb->prepare(
@@ -278,7 +284,6 @@ class Replacer
     $replace_urls = array_values(emr_normalize_file_urls( $search_urls, $replace_urls ));
 
  		if ( ! empty( $rs ) ) {
-
  			foreach ( $rs AS $rows ) {
  				$number_of_updates = $number_of_updates + 1;
  				// replace old URLs with new URLs.

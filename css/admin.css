@@ -772,6 +772,14 @@
   min-height: 350px; }
   .emr_upload_form .image_chooser.wrapper .image_previews {
     margin: 15px 0; }
+.emr_upload_form .form-error {
+  background: #fff;
+  padding: 8px;
+  border-left: 4px solid #ff0000;
+  margin: 10px 0;
+  display: none; }
+  .emr_upload_form .form-error p {
+    margin: 0; }
 .emr_upload_form .option-flex-wrapper {
   display: flex; }
 .emr_upload_form .replace_type.wrapper {

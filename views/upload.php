@@ -22,6 +22,7 @@ $postmeta_table_name = $wpdb->prefix . "postmeta";
  * @param string     $current_file
  * @param array|null $metadta
  */
+ /* Phased-out, marked for delete.
 function emr_delete_current_files( $current_file, $metadta = null ) {
 	// Delete old file
 
@@ -79,7 +80,7 @@ function emr_delete_current_files( $current_file, $metadta = null ) {
 		//$mask = $prefix . "-*x*" . $suffix;
 		//array_map( "unlink", glob( $mask ) );
 	}
-}
+} */
 
 /**
  * Maybe remove query string from URL.
@@ -210,7 +211,6 @@ function emr_normalize_file_urls( $old, $new ) {
 
 // Get old guid and filetype from DB
 $post_id = intval($_POST['ID']); // sanitize, post_id.
-
 $replacer = new replacer($post_id);
 
 /*$sql = "SELECT post_mime_type FROM $table_name WHERE ID = '%d'";
@@ -247,8 +247,6 @@ switch($timestamp_replace)
 	break;
 }
 
-
-
 // We have two types: replace / replace_and_search
 if ($replace_type == 'replace')
 {
@@ -260,7 +258,6 @@ elseif ( 'replace_and_search' == $replace_type && apply_filters( 'emr_enable_rep
 }
 
 $replacer->setTimeMode($timestamp_replace, $datetime);
-
 
 
 if (is_uploaded_file($_FILES["userfile"]["tmp_name"])) {
@@ -289,8 +286,6 @@ if (is_uploaded_file($_FILES["userfile"]["tmp_name"])) {
 	do_action('wp_handle_replace', array('post_id' => $post_id));
 
 	$replacer->replaceWith($_FILES["userfile"]["tmp_name"], $new_filename);
-
-	#echo "Updated: " . $number_of_updates;
 
 	$returnurl = admin_url("/post.php?post={$_POST["ID"]}&action=edit&message=1");
 
