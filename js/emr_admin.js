@@ -3,6 +3,11 @@ jQuery(document).ready(function($)
   // interface for emr.
   var emrIf = new function ()
   {
+    var source_type;
+    var source_is_image;
+    var target_type;
+    var target_is_image;
+
 
     this.init = function()
     {
@@ -10,6 +15,15 @@ jQuery(document).ready(function($)
       $('input[name="userfile"]').on('change', $.proxy(this.handleImage, this));
       this.checkCustomDate();
       this.loadDatePicker();
+
+      var source = $('.image_placeholder').first();
+      if ( $(source).hasClass('is_image'))
+      {
+        source_is_image = true;
+        source_type = $(source).find('img').data('filetype');
+
+      }
+
     },
     this.loadDatePicker = function()
     {
@@ -55,7 +69,7 @@ jQuery(document).ready(function($)
         if (! target.files || target.files.length <= 0)  // FileAPI appears to be not present, handle files on backend.
         {
           if ($('input[name="userfile"]').val().length > 0)
-            this.toggleSubmit(true);
+            this.checkSubmit();
           console.log('FileAPI not detected');
           return;
         }
@@ -65,33 +79,62 @@ jQuery(document).ready(function($)
         if (status)
         {
           this.updatePreview(file);
-          this.toggleSubmit(true);
         }
         else {
           this.updatePreview(null);
-          this.toggleSubmit(false);
         }
+        this.checkSubmit();
+
 
     },
     this.updatePreview = function(file)
     {
-      var preview = document.getElementById("previewImage");
+      var preview = $('.image_placeholder').last();
 
-      if (file) {
-          if (file.type.match("image/*")) {
-              preview.setAttribute("src", window.URL.createObjectURL(file));
-              preview.setAttribute("style", "object-fit: cover");
-          } else {
-              preview.setAttribute("src", "https://dummyimage.com/150x150/ccc/969696.gif&text=File");
-              preview.removeAttribute("style");
-          }
-      } else {
-          preview.setAttribute("src", "https://via.placeholder.com/150x150");
+      $(preview).find('img').remove();
+      $(preview).removeClass('is_image not_image is_document');
+
+      if (file !== null) /// file is null when empty, or error
+      {
+        target_is_image = (file.type.indexOf('image') >= 0) ? true : false;
+        target_type = file.type;
+      }
+      if (file && target_is_image)
+      {
+        var img = new Image();
+        img.src = window.URL.createObjectURL(file);
+
+        img.setAttribute('style', 'max-width:100%; max-height: 100%; height: 100%;');
+        img.addEventListener("load", function () {
+              $(preview).find('.textlayer').text(img.naturalWidth + ' x ' + img.naturalHeight );
+        });
+
+        $(preview).prepend(img);
+        $(preview).addClass('is_image');
+      }
+      else if(file === null)
+      {
+        $(preview).addClass('not_image');
+        $(preview).find('.dashicons').removeClass().addClass('dashicons dashicons-no');
+        $(preview).find('.textlayer').text('');
+      }
+      else { // not an image
+        $(preview).addClass('not_image is_document');
+        $(preview).find('.dashicons').removeClass().addClass('dashicons dashicons-media-document');
+
+        $(preview).find('.textlayer').text(file.name);
+      }
+
+      if (target_type != source_type)
+      {
+        this.warningFileType();
       }
     },
-    this.toggleSubmit = function(toggle)
+    this.checkSubmit = function()
     {
-        if (toggle)
+       var check = ($('input[name="userfile"]').val().length > 0) ? true : false;
+
+        if (check)
         {
           $('input[type="submit"]').prop('disabled', false);
         }
@@ -102,6 +145,7 @@ jQuery(document).ready(function($)
     this.toggleErrors = function(toggle)
     {
       $('.form-error').fadeOut();
+      $('.form-warning').fadeOut();
     }
     this.checkUpload = function(fileItem)
     {
@@ -110,6 +154,7 @@ jQuery(document).ready(function($)
       if ($('input[name="userfile"]').val().length <= 0)
       {
         console.info('[EMR] - Upload file value not set in form. Pick a file');
+        $('input[name="userfile"]').val('');
         return false;
       }
 
@@ -117,6 +162,7 @@ jQuery(document).ready(function($)
       {
           console.info('[EMR] - File too big for uploading - exceeds upload limits');
           this.errorFileSize(fileItem);
+          $('input[name="userfile"]').val('');
           return false;
       }
       return true;
@@ -126,6 +172,11 @@ jQuery(document).ready(function($)
       $('.form-error.filesize').find('.fn').text(fileItem.name);
       $('.form-error.filesize').fadeIn();
 
+
+    }
+    this.warningFileType = function(fileItem)
+    {
+      $('.form-warning.filetype').fadeIn();
     }
   } // emrIf
 

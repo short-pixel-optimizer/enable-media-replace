@@ -112,7 +112,7 @@ class EnableMediaReplacePlugin
     wp_localize_script('emr_admin', 'emr_options',
         array(
             'dateFormat' => $this->convertdate(get_option( 'date_format' )),
-            'maxfilesize' => wp_max_upload_size(),  
+            'maxfilesize' => wp_max_upload_size(),
         )
       );
 
@@ -175,7 +175,7 @@ class EnableMediaReplacePlugin
     	$form_fields["enable-media-replace"] = array(
               "label" => esc_html__("Replace media", "enable-media-replace"),
               "input" => "html",
-              "html" => "<p><a class='button-secondary'$link>" . esc_html__("Upload a new file", "enable-media-replace") . "</a></p>", "helps" => esc_html__("To replace the current file, click the link and upload a replacement.", "enable-media-replace")
+              "html" => "<p><a class='button-secondary' $link>" . esc_html__("Upload a new file", "enable-media-replace") . "</a></p>", "helps" => esc_html__("To replace the current file, click the link and upload a replacement.", "enable-media-replace")
             );
 
     	return $form_fields;

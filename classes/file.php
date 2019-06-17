@@ -64,9 +64,19 @@ class emrFile
     return $this->fileName;
   }
 
+  public function getFileExtension()
+  {
+    return $this->extension;
+  }
+
   public function getFileMime()
   {
     return $this->fileMime;
+  }
+
+  public function exists()
+  {
+    return $this->exists; 
   }
 
 

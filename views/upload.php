@@ -213,13 +213,7 @@ function emr_normalize_file_urls( $old, $new ) {
 $post_id = intval($_POST['ID']); // sanitize, post_id.
 $replacer = new replacer($post_id);
 
-/*$sql = "SELECT post_mime_type FROM $table_name WHERE ID = '%d'";
-$sql = $wpdb->prepare($sql, array($post_id) );
-list($current_filetype) = $wpdb->get_row($sql, ARRAY_N); // seems unused as well.
-*/
 // Massage a bunch of vars
-//$current_guid = wp_get_attachment_url($post_id); // this is used for search / replace
-
 $ID = intval($_POST["ID"]); // legacy
 $replace_type = isset($_POST["replace_type"]) ? sanitize_text_field($_POST["replace_type"]) : false;
 $timestamp_replace = intval($_POST['timestamp_replace']);
@@ -259,11 +253,17 @@ elseif ( 'replace_and_search' == $replace_type && apply_filters( 'emr_enable_rep
 
 $replacer->setTimeMode($timestamp_replace, $datetime);
 
-
+/** Check if file is uploaded properly **/
 if (is_uploaded_file($_FILES["userfile"]["tmp_name"])) {
 
 	// New method for validating that the uploaded file is allowed, using WP:s internal wp_check_filetype_and_ext() function.
 	$filedata = wp_check_filetype_and_ext($_FILES["userfile"]["tmp_name"], $_FILES["userfile"]["name"]);
+
+	if (isset($_FILES['userfile']['error']) && $_FILES['userfile']['error'] > 0)
+	{
+		 $e = new RunTimeException('File Uploaded Failed');
+		 exit($e->getMessage());
+	}
 
 	if ($filedata["ext"] == "") {
 		echo esc_html__("File type does not meet security guidelines. Try another.", 'enable-media-replace');
@@ -272,8 +272,8 @@ if (is_uploaded_file($_FILES["userfile"]["tmp_name"])) {
 
 	// Here we have the uploaded file
 
-	$thumbUpdater = new ThumbnailUpdater($ID);
-	$thumbUpdater->setOldMetadata($current_metadata);
+	//$thumbUpdater = new ThumbnailUpdater($ID);
+	//$thumbUpdater->setOldMetadata($current_metadata);
 
 	$new_filename = $_FILES["userfile"]["name"];
 	//$new_filesize = $_FILES["userfile"]["size"]; // Seems not to be in use.
@@ -285,7 +285,17 @@ if (is_uploaded_file($_FILES["userfile"]["tmp_name"])) {
 	// Gather all functions that both options do.
 	do_action('wp_handle_replace', array('post_id' => $post_id));
 
-	$replacer->replaceWith($_FILES["userfile"]["tmp_name"], $new_filename);
+	try
+	{
+		$replacer->replaceWith($_FILES["userfile"]["tmp_name"], $new_filename);
+
+	}
+	catch(RunTimeException $e)
+	{
+		 exit($e->getMessage());
+
+	}
+
 
 	$returnurl = admin_url("/post.php?post={$_POST["ID"]}&action=edit&message=1");
 

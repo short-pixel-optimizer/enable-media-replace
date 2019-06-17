@@ -1,4 +1,7 @@
 <?php
+use \EnableMediaReplace\UIHelper;
+
+
 /**
  * Uploadscreen for selecting and uploading new media file
  *
@@ -27,10 +30,12 @@ $attachment_id = intval($_GET['attachment_id']);
 $attachment = get_post($attachment_id);
 
 $filepath = get_attached_file($attachment_id); // fullpath
-$fileurl = wp_get_attachment_url($attachment_id); //full url
-
 $filetype = $attachment->post_mime_type;
 $filename = basename($filepath);
+
+$uiHelper = new UIHelper();
+$uiHelper->setPreviewSizes();
+$uiHelper->setSourceSizes($attachment_id);
 
 ?>
 <style>
@@ -98,10 +103,29 @@ $filename = basename($filepath);
     <div class='form-error filesize'><p><?php printf(__('%s f %s exceeds the maximum upload size for this site.', 'enable-media-replace'), '<span class="fn">', '</span>'); ?></p>
     </div>
 
+    <div class='form-warning filetype'><p><?php printf(__('Replacement file is not the same filetype. This might cause unexpected issues')); ?></p></div>
+
+
 		<input type="file" name="userfile" id="userfile" />
         <div class='image_previews'>
-            <img src="<?php echo $fileurl ?>" width="150px" height="150px" style="object-fit: cover"/>
-            <img id="previewImage" src="https://via.placeholder.com/150x150" width="150px" height="150px"/>
+            <?php if (wp_attachment_is('image', $attachment_id))
+            {
+                echo $uiHelper->getPreviewImage($attachment_id);
+                echo $uiHelper->getPreviewImage(-1);
+            }
+            else {
+                  if (strlen($filepath) == 0) // check if image in error state.
+                  {
+                      echo $uiHelper->getPreviewError(-1);
+                      echo $uiHelper->getPreviewImage(-1);
+                  }
+                  else {
+                      echo $uiHelper->getPreviewFile($attachment_id);
+                      echo $uiHelper->getPreviewFile(-1);
+                  }
+
+            }
+            ?>
         </div>
 
 </section>

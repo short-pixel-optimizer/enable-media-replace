@@ -39,11 +39,14 @@ class Replacer
       $source_file = trim(get_attached_file($post_id, apply_filters( 'emr_unfiltered_get_attached_file', true )));
 
       $this->sourceFile = new File($source_file);
+      var_dump($source_file);
+
       $this->source_post = get_post($post_id);
       $this->source_is_image = wp_attachment_is('image', $this->source_post);
       $this->source_metadata = wp_get_attachment_metadata( $post_id );
       $this->source_url = wp_get_attachment_url($post_id);
 
+echo "<PRE>"; var_dump($this->source_metadata); echo "</PRE>";
       $this->ThumbnailUpdater = new \ThumbnailUpdater($post_id);
       $this->ThumbnailUpdater->setOldMetadata($this->source_metadata);
   }
@@ -65,6 +68,7 @@ class Replacer
   /** Replace the sourceFile with a target
   * @param $file String Full Path to the Replacement File. This will usually be an uploaded file in /tmp/
   * @param $fileName String The fileName of the uploaded file. This will be used if sourcefile is not to be overwritten.
+  * @throws RunTimeException  Can throw exception if something went wrong with the files.
   */
   public function replaceWith($file, $fileName)
   {
@@ -78,8 +82,8 @@ class Replacer
 
       if (is_null($targetFile))
       {
-        _e('Target File could not be set. The source file might not be there. In case of search and replace, a filter might prevent this', "enable-media-replace");
-        exit;
+        $ex = __('Target File could not be set. The source file might not be there. In case of search and replace, a filter might prevent this', "enable-media-replace");
+        throw new RuntimeException($ex);
       }
 
       /* @todo See if wp_handle_sideload / wp_handle_upload can be more securely used for this */
@@ -87,8 +91,8 @@ class Replacer
 
       if (false === $result_moved)
       {
-        printf( esc_html__('The uploaded file could not be moved to %1$s , most likely because it could not remove the old images (file permissions) or the upload failed.', "enable-media-replace"), $targetFile );
-        exit;
+        $ex = sprintf( esc_html__('The uploaded file could not be moved to %1$s , most likely because it could not remove the old images (file permissions) or the upload failed.', "enable-media-replace"), $targetFile );
+        throw new RuntimeException($ex);
       }
       $this->targetFile = new File($targetFile);
 
@@ -168,7 +172,8 @@ class Replacer
 
   protected function getNewTitle()
   {
-    $title = $this->targetFile->getFileName();
+    // get basename without extension
+    $title = basename($this->targetFile->getFileName(), '.' . $this->targetFile->getFileExtension());
     $meta = $this->target_metadata;
 
     if (isset($meta['image_meta']))
@@ -194,7 +199,7 @@ class Replacer
     $targetPath = null;
     if ($this->replaceMode == self::MODE_REPLACE)
     {
-      $targetPath = $this->sourceFile->getFullFilePath(); // overwrite source
+      $targetFile = $this->sourceFile->getFullFilePath(); // overwrite source
     }
     elseif ($this->replaceMode == self::MODE_SEARCHREPLACE)
     {
@@ -202,9 +207,24 @@ class Replacer
         $unique = wp_unique_filename($path, $this->targetName);
 
         $new_filename = apply_filters( 'emr_unique_filename', $unique, $path, $this->post_id );
-        $targetPath = trailingslashit($path) . $new_filename;
+        $targetFile = trailingslashit($path) . $new_filename;
     }
-    return $targetPath;
+    if (is_dir($targetFile)) // this indicates an error with the source.
+    {
+        echo 'TargetFile, is dir';
+
+        $upload_dir = wp_upload_dir();
+        var_dump($upload_dir);
+        if (isset($upload_dir['path']))
+        {
+          $targetFile = trailingslashit($upload_dir['path']) . wp_unique_filename($targetFile, $this->targetName);
+        }
+        else {
+          exit('EMR could not establish a proper destination for replacement');
+        }
+    }
+
+    return $targetFile;
   }
 
   /** Tries to remove all of the old image, without touching the metadata in database
