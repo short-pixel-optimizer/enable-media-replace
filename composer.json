@@ -1,0 +1,25 @@
+{
+    "repositories": [
+        {
+            "packagist.org": false,
+            "type": "path",
+            "url": "../modules/*",
+	    "options": {
+                "symlink": true
+            }
+        }
+    ],
+    "require": {
+        "shortpixel/notices":"@dev",
+        "shortpixel/build" : "@dev"
+    },
+
+    "scripts": {
+        "post-update-cmd" : "\\ShortPixel\\Build\\Build::BuildIt",
+        "buildSP" : "\\ShortPixel\\Build\\Build::BuildIt"
+    },
+    "extra": {
+         "targetNamespace" : "EnableMediaReplace"
+    }
+
+}
