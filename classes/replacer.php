@@ -1,6 +1,8 @@
 <?php
 namespace EnableMediaReplace;
 use \EnableMediaReplace\emrFile as File;
+use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
+use EnableMediaReplace\Notices\NoticeController as Notices;
 
 class Replacer
 {
@@ -39,14 +41,12 @@ class Replacer
       $source_file = trim(get_attached_file($post_id, apply_filters( 'emr_unfiltered_get_attached_file', true )));
 
       $this->sourceFile = new File($source_file);
-      var_dump($source_file);
 
       $this->source_post = get_post($post_id);
       $this->source_is_image = wp_attachment_is('image', $this->source_post);
       $this->source_metadata = wp_get_attachment_metadata( $post_id );
       $this->source_url = wp_get_attachment_url($post_id);
 
-echo "<PRE>"; var_dump($this->source_metadata); echo "</PRE>";
       $this->ThumbnailUpdater = new \ThumbnailUpdater($post_id);
       $this->ThumbnailUpdater->setOldMetadata($this->source_metadata);
   }
@@ -138,6 +138,8 @@ echo "<PRE>"; var_dump($this->source_metadata); echo "</PRE>";
          // update post doesn't update GUID on updates.
          $wpdb->update( $wpdb->posts, array( 'guid' =>  $this->target_url), array('ID' => $this->post_id) );
          //enable-media-replace-upload-done
+
+         // @todo Replace this one with proper Notices:addError;
          if (is_wp_error($post_id))
          {
           $errors = $post_id->get_error_messages();
@@ -211,10 +213,7 @@ echo "<PRE>"; var_dump($this->source_metadata); echo "</PRE>";
     }
     if (is_dir($targetFile)) // this indicates an error with the source.
     {
-        echo 'TargetFile, is dir';
-
         $upload_dir = wp_upload_dir();
-        var_dump($upload_dir);
         if (isset($upload_dir['path']))
         {
           $targetFile = trailingslashit($upload_dir['path']) . wp_unique_filename($targetFile, $this->targetName);

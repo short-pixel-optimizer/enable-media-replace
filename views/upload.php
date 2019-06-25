@@ -1,6 +1,11 @@
 <?php
+namespace EnableMediaReplace;
+
 if ( ! defined( 'ABSPATH' ) )
 	exit; // Exit if accessed directly.
+
+use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
+use EnableMediaReplace\Notices\NoticeController as Notices;
 
 if (!current_user_can('upload_files'))
 	wp_die( esc_html__('You do not have permission to upload files.', 'enable-media-replace') );
@@ -208,6 +213,7 @@ function emr_normalize_file_urls( $old, $new ) {
 }
 
 // Starts processing.
+$uihelper = new UIHelper();
 
 // Get old guid and filetype from DB
 $post_id = intval($_POST['ID']); // sanitize, post_id.
@@ -223,6 +229,10 @@ $current_path = substr($current_file, 0, (strrpos($current_file, "/")));
 $current_file = preg_replace("|(?<!:)/{2,}|", "/", $current_file); // @todo what does this mean?
 $current_filename = wp_basename($current_file);
 $current_metadata = wp_get_attachment_metadata( $post_id );
+
+
+$redirect_error = $uihelper->getFailedRedirect($post_id);
+$redirect_success = $uihelper->getSuccesRedirect($post_id);
 
 switch($timestamp_replace)
 {
@@ -256,18 +266,25 @@ $replacer->setTimeMode($timestamp_replace, $datetime);
 /** Check if file is uploaded properly **/
 if (is_uploaded_file($_FILES["userfile"]["tmp_name"])) {
 
+	Log::addDebug($_FILES['userfile']);
+
 	// New method for validating that the uploaded file is allowed, using WP:s internal wp_check_filetype_and_ext() function.
 	$filedata = wp_check_filetype_and_ext($_FILES["userfile"]["tmp_name"], $_FILES["userfile"]["name"]);
 
+	Log::addDebug('Data after check', $filedata);
 	if (isset($_FILES['userfile']['error']) && $_FILES['userfile']['error'] > 0)
 	{
 		 $e = new RunTimeException('File Uploaded Failed');
-		 exit($e->getMessage());
+		 Notices::addError($e->getMessage());
+		 wp_safe_redirect($redirect_error);
+		 exit();
 	}
 
 	if ($filedata["ext"] == "") {
-		echo esc_html__("File type does not meet security guidelines. Try another.", 'enable-media-replace');
-		exit;
+
+		Notices::addError(esc_html__("File type does not meet security guidelines. Try another.", 'enable-media-replace') );
+		wp_safe_redirect($redirect_error);
+		exit();
 	}
 
 	// Here we have the uploaded file
@@ -296,7 +313,6 @@ if (is_uploaded_file($_FILES["userfile"]["tmp_name"])) {
 
 	}
 
-
 	$returnurl = admin_url("/post.php?post={$_POST["ID"]}&action=edit&message=1");
 
 	// Execute hook actions - thanks rubious for the suggestion!
@@ -305,15 +321,17 @@ if (is_uploaded_file($_FILES["userfile"]["tmp_name"])) {
 } else {
 	//TODO Better error handling when no file is selected.
 	//For now just go back to media management
-	$returnurl = admin_url("upload.php");
+	//$returnurl = admin_url("upload.php");
+	Log::addInfo('Failed. Redirecting - '.  $redirect_error);
+	Notices::addError(__('File Upload seems to have failed. No files were returned by system','enable-media-replace'));
+	wp_safe_redirect($redirect_error);
+	exit();
 }
 
-if (FORCE_SSL_ADMIN) {
-	$returnurl = str_replace("http:", "https:", $returnurl);
-}
+Notices::addSuccess(__('File successfully replaced'));
 
 // Allow developers to override $returnurl
-$returnurl = apply_filters('emr_returnurl', $returnurl);
-
-wp_redirect($returnurl);
+//$returnurl = apply_filters('emr_returnurl', $returnurl);
+wp_redirect($redirect_success);
+exit();
 ?>

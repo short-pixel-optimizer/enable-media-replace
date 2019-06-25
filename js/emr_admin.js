@@ -8,9 +8,16 @@ jQuery(document).ready(function($)
     var target_type;
     var target_is_image;
 
+    var is_debug = false;
 
     this.init = function()
     {
+      if ( emr_options.is_debug)
+      {
+        this.is_debug = true;
+        this.debug('EMR Debug is active');
+      }
+
       $('input[name="timestamp_replace"]').on('change', $.proxy(this.checkCustomDate, this));
       $('input[name="userfile"]').on('change', $.proxy(this.handleImage, this));
       this.checkCustomDate();
@@ -21,8 +28,9 @@ jQuery(document).ready(function($)
       {
         source_is_image = true;
         source_type = $(source).find('img').data('filetype');
-
+        this.debug('detected image type' + source_type);
       }
+
 
     },
     this.loadDatePicker = function()
@@ -75,6 +83,7 @@ jQuery(document).ready(function($)
         }
 
         var status = this.checkUpload(file);
+        this.debug('check upload status ' + status);
 
         if (status)
         {
@@ -117,12 +126,13 @@ jQuery(document).ready(function($)
         $(preview).addClass('not_image');
         $(preview).find('.dashicons').removeClass().addClass('dashicons dashicons-no');
         $(preview).find('.textlayer').text('');
+        this.debug('File is null');
       }
       else { // not an image
         $(preview).addClass('not_image is_document');
         $(preview).find('.dashicons').removeClass().addClass('dashicons dashicons-media-document');
-
         $(preview).find('.textlayer').text(file.name);
+        this.debug('Not image, media document');
       }
 
       if (target_type != source_type)
@@ -177,6 +187,10 @@ jQuery(document).ready(function($)
     this.warningFileType = function(fileItem)
     {
       $('.form-warning.filetype').fadeIn();
+    }
+    this.debug = function(message)
+    {
+      console.debug(message);
     }
   } // emrIf
 

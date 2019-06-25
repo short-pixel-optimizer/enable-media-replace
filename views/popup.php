@@ -1,5 +1,9 @@
 <?php
-use \EnableMediaReplace\UIHelper;
+namespace EnableMediaReplace;
+
+//use \EnableMediaReplace\UIHelper;
+use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
+use EnableMediaReplace\Notices\NoticeController as Notices;
 
 
 /**
@@ -23,6 +27,8 @@ global $wpdb;
 
 $table_name = $wpdb->prefix . "posts";
 
+Log::addDebug('Load Popup Form View');
+
 //$sql = "SELECT guid, post_mime_type FROM $table_name WHERE ID = " . (int) $_GET["attachment_id"];
 //list($current_filename, $current_filetype) = $wpdb->get_row($sql, ARRAY_N);
 
@@ -32,10 +38,13 @@ $attachment = get_post($attachment_id);
 $filepath = get_attached_file($attachment_id); // fullpath
 $filetype = $attachment->post_mime_type;
 $filename = basename($filepath);
+$source_mime = get_post_mime_type($attachment_id);
 
 $uiHelper = new UIHelper();
 $uiHelper->setPreviewSizes();
 $uiHelper->setSourceSizes($attachment_id);
+
+Log::addDebug('Popup view Data', array('id' => $attachment_id, 'source_mime' => $source_mime, 'filepath' => $filepath));
 
 ?>
 <style>
@@ -53,15 +62,15 @@ $uiHelper->setSourceSizes($attachment_id);
 	<h1><?php echo esc_html__("Replace Media Upload", "enable-media-replace"); ?></h1>
 
 	<?php
-	$url = admin_url( "upload.php?page=enable-media-replace/enable-media-replace.php&noheader=true&action=media_replace_upload&attachment_id=" . $attachment_id );
 
+$url = $uiHelper->getFormUrl($attachment_id);
   $formurl = wp_nonce_url( $url, "media_replace_upload" );
 	if (FORCE_SSL_ADMIN) {
 			$formurl = str_replace("http:", "https:", $formurl);
 		}
 	?>
 
-	<form enctype="multipart/form-data" method="post" action="<?php echo $formurl; ?>">
+	<form enctype="multipart/form-data" method="POST" action="<?php echo $formurl; ?>">
     <section class='image_chooser wrapper'>
       <div class='section-header'> <?php _e('Choose Replacement Image', 'enable-replace-media'); ?></div>
 
@@ -108,7 +117,7 @@ $uiHelper->setSourceSizes($attachment_id);
 
 		<input type="file" name="userfile" id="userfile" />
         <div class='image_previews'>
-            <?php if (wp_attachment_is('image', $attachment_id))
+            <?php if (wp_attachment_is('image', $attachment_id) || $source_mime == 'application/pdf')
             {
                 echo $uiHelper->getPreviewImage($attachment_id);
                 echo $uiHelper->getPreviewImage(-1);
@@ -164,7 +173,7 @@ $uiHelper->setSourceSizes($attachment_id);
         <?php
           $attachment_current_date = date_i18n('d/M/Y H:i', strtotime($attachment->post_date) );
           $time = current_time('mysql');
-          $date = new dateTime($time);
+          $date = new \dateTime($time);
         ?>
           <p><?php _e('When replacing the media, do you want to:', 'enable-media-replace'); ?></p>
           <ul>

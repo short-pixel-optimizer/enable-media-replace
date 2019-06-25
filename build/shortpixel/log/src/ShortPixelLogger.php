@@ -4,8 +4,9 @@ namespace EnableMediaReplace\ShortPixelLogger;
   /*** Logger class
   *
   * Class uses the debug data model for keeping log entries.
+  * Logger should not be called before init hook!
   */
- class ShortPixelLogger // extends shortPixelController
+ class ShortPixelLogger
  {
    static protected $instance = null;
    protected $start_time;
@@ -22,13 +23,13 @@ namespace EnableMediaReplace\ShortPixelLogger;
    protected $format = "[ %%time%% ] %%color%% %%level%% %%color_end%% \t %%message%%  \t %%caller%% ( %%time_passed%% )";
    protected $format_data = "\t %%data%% ";
 
+   protected $hooks = array();
 /*   protected $hooks = array(
       'shortpixel_image_exists' => array('numargs' => 3),
       'shortpixel_webp_image_base' => array('numargs' => 2),
       'shortpixel_image_urls' => array('numargs' => 2),
    ); // @todo monitor hooks, but this should be more dynamic. Do when moving to module via config.
 */
-  protected $hooks = array();
 
    protected $template = 'view-debug-box';
 
@@ -40,6 +41,14 @@ namespace EnableMediaReplace\ShortPixelLogger;
    {
       $this->start_time = microtime(true);
       $this->logLevel = DebugItem::LEVEL_WARN;
+
+      if ($this->logPath === false)
+      {
+        $upload_dir = wp_upload_dir(null,false,false);
+        $ns = __NAMESPACE__;
+        $ns = substr($ns, 0, strpos($ns, '\\')); // try to get first part of namespace
+        $this->logPath = $upload_dir['basedir'] . '/' . $ns . ".log";
+      }
 
       if (isset($_REQUEST['SHORTPIXEL_DEBUG'])) // manual takes precedence over constants
       {
@@ -67,7 +76,7 @@ namespace EnableMediaReplace\ShortPixelLogger;
 
       if (defined('SHORTPIXEL_DEBUG_TARGET') && SHORTPIXEL_DEBUG_TARGET || $this->is_manual_request)
       {
-          $this->logPath = SHORTPIXEL_BACKUP_FOLDER . "/shortpixel_log";
+          //$this->logPath = SHORTPIXEL_BACKUP_FOLDER . "/shortpixel_log";
           //$this->logMode = defined('SHORTPIXEL_LOG_OVERWRITE') ? 0 : FILE_APPEND;
           if (defined('SHORTPIXEL_LOG_OVERWRITE')) // if overwrite, do this on init once.
             file_put_contents($this->logPath,'-- Log Reset -- ' .PHP_EOL);
@@ -79,7 +88,7 @@ namespace EnableMediaReplace\ShortPixelLogger;
       if ($this->is_active && $this->is_manual_request && $user_is_administrator )
       {
           $this->layout = new \stdClass;
-          $this->layout->logLink = SHORTPIXEL_BACKUP_URL . "/shortpixel_log";
+          $this->layout->logLink = $this->logPath;
 
           add_action('admin_footer', array($this, 'loadView'));
       }
@@ -97,6 +106,10 @@ namespace EnableMediaReplace\ShortPixelLogger;
       return self::$instance;
    }
 
+   public function setLogPath($logPath)
+   {
+     $this->logPath = $logPath;
+   }
    protected static function addLog($message, $level, $data = array())
    {
      $log = self::getInstance();
@@ -111,7 +124,7 @@ namespace EnableMediaReplace\ShortPixelLogger;
      $args['level'] = $level;
      $args['data'] = $data;
 
-     $newItem = new \EnableMediaReplace\DebugItem($message, $args);
+     $newItem = new DebugItem($message, $args);
      $log->items[] = $newItem;
 
       if ($log->is_active)
@@ -260,6 +273,25 @@ namespace EnableMediaReplace\ShortPixelLogger;
       array_shift($args);
       self::addInfo('[Hook] - ' . $hook . ' with ' . var_export($value,true), $args);
       return $value;
+   }
+
+   public function loadView()
+   {
+       // load either param or class template.
+       $template = $this->template;
+
+       $view = new \stdClass;
+       $controller = $this;
+
+       $template_path = __DIR__ . '/' . $this->template  . '.php';
+       if (file_exists($template_path))
+       {
+         include($template_path);
+       }
+       else {
+         self::addError("View $template could not be found in " . $template_path,
+         array('class' => get_class($this), 'req' => $_REQUEST));
+       }
    }
 
 

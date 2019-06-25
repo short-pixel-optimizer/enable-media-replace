@@ -1,7 +1,9 @@
 <?php
 namespace EnableMediaReplace;
+use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
+use EnableMediaReplace\Notices\NoticeController as Notices;
 
-/* Collection of functions helping the interface being cleaner.  */
+/* Collection of functions helping the interface being cleaner. */
 class UIHelper
 {
   protected $preview_size = '';
@@ -15,6 +17,62 @@ class UIHelper
   {
 
   }
+
+  public function getFormUrl($attach_id)
+  {
+      $url = admin_url('upload.php');
+      $url = add_query_arg(array(
+          'page' => 'enable-media-replace/enable-media-replace.php',
+          'noheader' => true,
+          'action' => 'media_replace_upload',
+          'attachment_id' => $attach_id,
+      ));
+
+      if (isset($_REQUEST['SHORTPIXEL_DEBUG']))
+      {
+        $spdebug = $_REQUEST['SHORTPIXEL_DEBUG'];
+        if (is_numeric($spdebug))
+          $spdebug = intval($spdebug);
+        else {
+          $spdebug = sanitize_text_field($spdebug);
+        }
+
+        $url = add_query_arg('SHORTPIXEL_DEBUG', $spdebug, $url);
+      }
+
+      return $url;
+
+  }
+
+  public function getSuccesRedirect($post_id)
+  {
+    $url = admin_url('post.php');
+    $url = add_query_arg(array('action' => 'edit', 'post' => $post_id), $url);
+
+    $url = apply_filters('emr_returnurl', $url);
+    Log::addDebug('Success URL- ' . $url);
+
+    return $url;
+
+  }
+
+  public function getFailedRedirect($attach_id)
+  {
+    $url = admin_url('upload.php');
+    $url = add_query_arg(array(
+          'page' => 'enable-media-replace/enable-media-replace.php',
+          'action' => 'media_replace',
+          'attachment_id' => $attach_id,
+          '_wpnonce' => wp_create_nonce('media_replace'),
+        ), $url
+    );
+
+    $url = apply_filters('emr_returnurl_failed', $url);
+    Log::addDebug('Failed URL- ' . $url);
+    return $url;
+  }
+
+
 
   public function setPreviewSizes()
   {
@@ -40,6 +98,8 @@ class UIHelper
       {
         $data = wp_get_attachment_image_src($attach_id, $this->preview_size);
         $file = get_attached_file($attach_id);
+        Log::addDebug('Attached File '  . $file, $data);
+
       }
 
       if (! is_array($data) || ! file_exists($file) )
@@ -89,11 +149,21 @@ class UIHelper
 
   public function getPreviewFile($attach_id)
   {
+    if ($attach_id > 0)
+    {
+      $filepath = get_attached_file($attach_id);
+      $filename = basename($filepath);
+    }
+    else {
+      $filename = false;
+    }
+
     $args = array(
-      'width' => 150,
-      'height' => 150,
+      'width' => 250,
+      'height' => 250,
       'is_image' => false,
       'is_document' => true,
+      'layer' => $filename,
     );
     $output = $this->getPlaceHolder($args);
     return $output;

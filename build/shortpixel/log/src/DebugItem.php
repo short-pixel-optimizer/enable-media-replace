@@ -3,7 +3,7 @@
 namespace EnableMediaReplace\ShortPixelLogger;
 
 
-class DebugItem // extends ShortPixelModel Too early init for this.
+class DebugItem
 {
     protected $time;
     protected $level;

@@ -1,18 +1,28 @@
 <?php
 namespace EnableMediaReplace;
+use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
+use EnableMediaReplace\Notices\NoticeController as Notices;
 
 // Does what a plugin does.
 class EnableMediaReplacePlugin
 {
 
   protected $plugin_path;
+  private static $instance;
 
   public function __construct()
   {
      $this->plugin_actions(); // init
-
-
   }
+
+  public static function get()
+  {
+    if (is_null(self::$instance))
+      self::$instance = new EnableMediaReplacePlugin();
+
+    return self::$instance;
+  }
+
 
   public function plugin_actions()
   {
@@ -51,11 +61,19 @@ class EnableMediaReplacePlugin
 
   /**
    * Initialize this plugin. Called by 'admin_init' hook.
-   * Only languages files needs loading during init.
+   *
    */
   public function init()
   {
     load_plugin_textdomain( 'enable-media-replace', false, basename(dirname(EMR_ROOT_FILE) ) . '/languages' );
+
+    // Load Submodules
+    Log::addDebug('Plugin Init');
+    $notices = Notices::getInstance();
+
+    // Enqueue notices
+    add_action('admin_notices', array($notices, 'admin_notices')); // previous page / init time
+    add_action('admin_footer', array($notices, 'admin_notices')); // fresh notices between init - end
   }
 
   /** Load EMR views based on request */
@@ -109,12 +127,15 @@ class EnableMediaReplacePlugin
     }
 
     wp_register_script('emr_admin', plugins_url('js/emr_admin.js', EMR_ROOT_FILE), array('jquery'), false, true );
-    wp_localize_script('emr_admin', 'emr_options',
-        array(
-            'dateFormat' => $this->convertdate(get_option( 'date_format' )),
-            'maxfilesize' => wp_max_upload_size(),
-        )
-      );
+    $emr_options = array(
+        'dateFormat' => $this->convertdate(get_option( 'date_format' )),
+        'maxfilesize' => wp_max_upload_size(),
+    );
+
+    if (Log::debugIsActive())
+        $emr_options['is_debug'] = true;
+
+    wp_localize_script('emr_admin', 'emr_options', $emr_options);
 
   }
 

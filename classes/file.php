@@ -36,7 +36,6 @@ class emrFile
      // This will *not* be checked, is not meant for permission of validation!
      $this->fileMime = (isset($filedata['type'])) ? $filedata['type'] : false;
 
-    // echo "<PRE>"; var_dump($this); echo "</PRE><BR>";
   }
 
   public function getFullFilePath()
@@ -76,7 +75,7 @@ class emrFile
 
   public function exists()
   {
-    return $this->exists; 
+    return $this->exists;
   }
 
 
