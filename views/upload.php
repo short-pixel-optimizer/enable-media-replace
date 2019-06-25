@@ -246,7 +246,7 @@ switch($timestamp_replace)
 		$custom_minute = $_POST['custom_minute'];
 
 		// create a mysql time representation from what we have.
-		$custom_date = DateTime::createFromFormat('Y-m-d H:i', $custom_date . ' ' . $custom_hour . ':' . $custom_minute );
+		$custom_date = \DateTime::createFromFormat('Y-m-d H:i', $custom_date . ' ' . $custom_hour . ':' . $custom_minute );
  		$datetime  =  $custom_date->format("Y-m-d H:i:s");
 	break;
 }
@@ -305,12 +305,11 @@ if (is_uploaded_file($_FILES["userfile"]["tmp_name"])) {
 	try
 	{
 		$replacer->replaceWith($_FILES["userfile"]["tmp_name"], $new_filename);
-
 	}
 	catch(RunTimeException $e)
 	{
-		 exit($e->getMessage());
-
+		Log::addError($e->getMessage());
+	  exit($e->getMessage());
 	}
 
 	$returnurl = admin_url("/post.php?post={$_POST["ID"]}&action=edit&message=1");

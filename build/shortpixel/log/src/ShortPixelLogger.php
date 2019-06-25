@@ -31,6 +31,10 @@ namespace EnableMediaReplace\ShortPixelLogger;
    ); // @todo monitor hooks, but this should be more dynamic. Do when moving to module via config.
 */
 
+   // utility
+   private $namespace;
+   private $view;
+
    protected $template = 'view-debug-box';
 
    /** Debugger constructor
@@ -42,12 +46,13 @@ namespace EnableMediaReplace\ShortPixelLogger;
       $this->start_time = microtime(true);
       $this->logLevel = DebugItem::LEVEL_WARN;
 
+      $ns = __NAMESPACE__;
+      $this->namespace = substr($ns, 0, strpos($ns, '\\')); // try to get first part of namespace
+
       if ($this->logPath === false)
       {
         $upload_dir = wp_upload_dir(null,false,false);
-        $ns = __NAMESPACE__;
-        $ns = substr($ns, 0, strpos($ns, '\\')); // try to get first part of namespace
-        $this->logPath = $upload_dir['basedir'] . '/' . $ns . ".log";
+        $this->logPath = $upload_dir['basedir'] . '/' . $this->namespace . ".log";
       }
 
       if (isset($_REQUEST['SHORTPIXEL_DEBUG'])) // manual takes precedence over constants
@@ -83,18 +88,35 @@ namespace EnableMediaReplace\ShortPixelLogger;
 
       }
 
-      $user_is_administrator = (current_user_can('manage_options')) ? true : false;
+      /* On Early init, this function might not exist, then queue it when needed */
+      if (! function_exists('wp_get_current_user'))
+        add_action('plugins_loaded', array($this, 'initView'));
+      else
+       $this->initView();
 
-      if ($this->is_active && $this->is_manual_request && $user_is_administrator )
-      {
-          $this->layout = new \stdClass;
-          $this->layout->logLink = $this->logPath;
-
-          add_action('admin_footer', array($this, 'loadView'));
-      }
 
       if ($this->is_active && count($this->hooks) > 0)
           $this->monitorHooks();
+   }
+
+   /** Init the view when needed. Private function ( public because of WP_HOOK )
+   * Never call directly */
+   public function initView()
+   {
+     $user_is_administrator = (current_user_can('manage_options')) ? true : false;
+
+     if ($this->is_active && $this->is_manual_request && $user_is_administrator )
+     {
+          $content_url = content_url();
+          $logPath = $this->logPath;
+          $pathpos = strpos($logPath, 'wp-content') + strlen('wp-content');
+          $logPart = substr($logPath, $pathpos);
+          $logLink = $content_url . $logPart;
+
+         $this->view = new \stdClass;
+         $this->view->logLink = $logLink;
+         add_action('admin_footer', array($this, 'loadView'));
+     }
    }
 
    public static function getInstance()
@@ -280,12 +302,14 @@ namespace EnableMediaReplace\ShortPixelLogger;
        // load either param or class template.
        $template = $this->template;
 
-       $view = new \stdClass;
+       $view = $this->view;
+       $view->namespace = $this->namespace;
        $controller = $this;
 
        $template_path = __DIR__ . '/' . $this->template  . '.php';
        if (file_exists($template_path))
        {
+
          include($template_path);
        }
        else {

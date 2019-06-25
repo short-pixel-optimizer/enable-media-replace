@@ -2,6 +2,9 @@
 if ( ! defined( 'ABSPATH' ) )
 	exit; // Exit if accessed directly.
 
+use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
+use EnableMediaReplace\Notices\NoticeController as Notices;
+
 /* Simple class for updating thumbnails.
 *
 *
@@ -84,6 +87,7 @@ class ThumbnailUpdater
     global $wpdb;
     $sql = "UPDATE " . $this->post_table . " set post_content = REPLACE(post_content, %s, %s)";
 
+		Log::addDebug('Thumbnail Updater - Converting Thumbnails for sizes', $this->convertArray);
     foreach($this->convertArray as $convert_item)
     {
         $from = $convert_item['imageFrom'];

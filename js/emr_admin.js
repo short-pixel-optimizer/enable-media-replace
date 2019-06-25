@@ -24,13 +24,17 @@ jQuery(document).ready(function($)
       this.loadDatePicker();
 
       var source = $('.image_placeholder').first();
-      if ( $(source).hasClass('is_image'))
+      if (typeof( $(source).data('filetype') ) !== 'undefined')
       {
-        source_is_image = true;
-        source_type = $(source).find('img').data('filetype');
-        this.debug('detected image type' + source_type);
+        source_type = $(source).data('filetype');
+        this.debug('detected type - ' + source_type);
+      }
+      if (source.hasClass('is_image'))
+      {
+          source_is_image = true;
       }
 
+      this.updateTextLayer(source, false);
 
     },
     this.loadDatePicker = function()
@@ -93,8 +97,6 @@ jQuery(document).ready(function($)
           this.updatePreview(null);
         }
         this.checkSubmit();
-
-
     },
     this.updatePreview = function(file)
     {
@@ -108,14 +110,17 @@ jQuery(document).ready(function($)
         target_is_image = (file.type.indexOf('image') >= 0) ? true : false;
         target_type = file.type;
       }
+      // If image, load thumbnail and get dimensions.
       if (file && target_is_image)
       {
         var img = new Image();
         img.src = window.URL.createObjectURL(file);
+        self = this;
 
         img.setAttribute('style', 'max-width:100%; max-height: 100%; height: 100%;');
         img.addEventListener("load", function () {
-              $(preview).find('.textlayer').text(img.naturalWidth + ' x ' + img.naturalHeight );
+            //  $(preview).find('.textlayer').text(img.naturalWidth + ' x ' + img.naturalHeight );
+              self.updateTextLayer(preview, img.naturalWidth + ' x ' + img.naturalHeight);
         });
 
         $(preview).prepend(img);
@@ -125,20 +130,39 @@ jQuery(document).ready(function($)
       {
         $(preview).addClass('not_image');
         $(preview).find('.dashicons').removeClass().addClass('dashicons dashicons-no');
-        $(preview).find('.textlayer').text('');
+        //$(preview).find('.textlayer').text('');
+        this.updateTextLayer(preview, '');
         this.debug('File is null');
       }
       else { // not an image
         $(preview).addClass('not_image is_document');
         $(preview).find('.dashicons').removeClass().addClass('dashicons dashicons-media-document');
-        $(preview).find('.textlayer').text(file.name);
+        //$(preview).find('.textlayer').text(file.name);
+        this.updateTextLayer(preview, file.name);
         this.debug('Not image, media document');
       }
 
       if (target_type != source_type)
       {
+        this.debug(target_type + ' not ' + source_type);
         this.warningFileType();
       }
+    },
+    // replace the text, check if text is there ( or hide ), and fix the layout.
+    this.updateTextLayer = function (preview, newtext)
+    {
+        textlayer = $(preview).find('.textlayer');
+        textlayer.css('opacity', '0');
+        if (newtext !== false)
+          textlayer.text(newtext);
+
+        if (textlayer.text() !== '')
+        {
+          textlayer.css('opacity', '0.7');
+          this.debug('tlwidth ' + textlayer.width());
+      //    textlayer.css('margin-left', '-' + (textlayer.width() / 2 ) + 'px');
+        }
+
     },
     this.checkSubmit = function()
     {
@@ -181,8 +205,6 @@ jQuery(document).ready(function($)
     {
       $('.form-error.filesize').find('.fn').text(fileItem.name);
       $('.form-error.filesize').fadeIn();
-
-
     }
     this.warningFileType = function(fileItem)
     {
@@ -193,25 +215,6 @@ jQuery(document).ready(function($)
       console.debug(message);
     }
   } // emrIf
-
-  /*emrIf.
-
-  $('input[name="timestamp_replace"]').on('change',function(e)
-  {
-      var target = e.target;
-      var value = $(e.target).val();
-      if (value == 3) // custom date
-      {
-        $('.custom_date').css('visibility', 'visible').fadeTo(100, 1);
-      }
-      else {
-        $('.custom_date').fadeTo(100,0,
-            function ()
-            {
-              $('.custom_date').css('visibility', 'hidden');
-            });
-      }
-  });*/
 
   window.enableMediaReplace = emrIf;
   window.enableMediaReplace.init();

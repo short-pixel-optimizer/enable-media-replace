@@ -779,13 +779,14 @@
       border: 1px solid #ddd;
       vertical-align: top; }
       .emr_upload_form .image_chooser.wrapper .image_previews .image_placeholder .textlayer {
-        font-size: 45px;
-        line-height: 45px;
+        font-size: 25px;
+        line-height: 25px;
         opacity: 0.7;
         position: absolute;
         color: #ccc;
-        left: 10%;
-        top: 40%;
+        left: 48%;
+        top: 50%;
+        transform: translate(-50%, -50%);
         border: 1px dashed #eee;
         background-color: #333;
         padding: 8px; }

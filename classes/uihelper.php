@@ -102,19 +102,30 @@ class UIHelper
 
       }
 
+      $mime_type = get_post_mime_type($attach_id);
+
       if (! is_array($data) || ! file_exists($file) )
       {
-        // if attachid higher than zero ( exists ) but not the fail, that's an error state.
+        // if attachid higher than zero ( exists ) but not the image, fail, that's an error state.
         $icon = ($attach_id < 0) ? '' : 'dashicons-no';
+        $is_document = false;
+
         $args = array(
             'width' => $this->preview_width,
             'height' => $this->preview_height,
             'is_image' => false,
+            'is_document' => $is_document,
             'icon' => $icon,
         );
+
+        // failed, it might be this server doens't support PDF thumbnails. Fallback to File preview.
+        if ($mime_type == 'application/pdf')
+        {
+            return $this->getPreviewFile($attach_id);
+        }
+
         return $this->getPlaceHolder($args);
       }
-
 
       $url = $data[0];
       $width = $data[1];
@@ -123,13 +134,14 @@ class UIHelper
       $this->preview_width = $width;
       $this->preview_height = $height;
 
-      $type = get_post_mime_type($attach_id);
-      $image = "<img src='$url' data-filetype='$type' width='$width' height='$height' class='image' />";
+
+      $image = "<img src='$url' width='$width' height='$height' class='image' />";
 
       $args = array(
         'width' => $width,
         'height' => $height,
         'image' => $image,
+        'mime_type' => $mime_type,
       );
       $output = $this->getPlaceHolder($args);
       return $output;
@@ -158,12 +170,15 @@ class UIHelper
       $filename = false;
     }
 
+    $mime_type = get_post_mime_type($attach_id);
+
     $args = array(
-      'width' => 250,
-      'height' => 250,
+      'width' => 300,
+      'height' => 300,
       'is_image' => false,
       'is_document' => true,
       'layer' => $filename,
+      'mime_type' => $mime_type,
     );
     $output = $this->getPlaceHolder($args);
     return $output;
@@ -201,6 +216,7 @@ class UIHelper
         'layer' =>  $this->full_width . ' x ' . $this->full_height,
         'is_image' => true,
         'is_document' => false,
+        'mime_type' => false,
     );
 
     $args = wp_parse_args($args, $defaults);
@@ -221,7 +237,14 @@ class UIHelper
       $placeholder_class .= ' is_document';
     }
 
-    $output = "<div class='image_placeholder $placeholder_class' style='width:" . $w . "px; min-height:". $h ."px'> ";
+    $filetype = '';
+    if ($args['mime_type'])
+    {
+      $filetype = 'data-filetype="' . $args['mime_type'] . '"';
+    }
+
+
+    $output = "<div class='image_placeholder $placeholder_class' $filetype style='width:" . $w . "px; min-height:". $h ."px'> ";
     $output .= $args['image'];
     $output .= "<div class='dashicons $icon'>&nbsp;</div>";
     $output .= "<span class='textlayer'>" . $args['layer'] . "</span>";

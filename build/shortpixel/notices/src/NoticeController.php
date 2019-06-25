@@ -16,11 +16,12 @@ class NoticeController //extends ShortPixelController
   public function __construct()
   {
   //    $this->loadModel('notice');
-      $this->loadNotices();
-
       $ns = __NAMESPACE__;
       $ns = substr($ns, 0, strpos($ns, '\\')); // try to get first part of namespace
       $this->notice_option = $ns . '-notices';
+
+      $this->loadNotices();
+
   }
 
 

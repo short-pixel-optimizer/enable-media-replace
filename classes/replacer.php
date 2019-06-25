@@ -118,6 +118,7 @@ class Replacer
       {
         update_attached_file($this->post_id, $filtered['file'] );
         $this->targetFile = new File($filtered['file']);  // handle as a new file
+        Log::addInfo('WP_Handle_upload filter returned different file', $filtered);
       }
 
       $metadata = wp_generate_attachment_metadata( $this->post_id, $this->targetFile->getFullFilePath() );
@@ -153,8 +154,10 @@ class Replacer
 
       if(wp_attachment_is_image($this->post_id))
       {
-        $this->ThumbnailUpdater->setNewMetadata($metadata);
-        $this->ThumbnailUpdater->updateThumbnails();
+        $this->ThumbnailUpdater->setNewMetadata($this->target_metadata);
+        $result = $this->ThumbnailUpdater->updateThumbnails();
+        if (false === $result)
+          Log::addWarn('Thumbnail Updater returned false');
       }
 
       // if all set and done, update the date.
@@ -231,9 +234,10 @@ class Replacer
   */
   protected function removeCurrent()
   {
-    $meta = wp_get_attachment_metadata( $this->post_id );
+    $meta = \wp_get_attachment_metadata( $this->post_id );
     $backup_sizes = get_post_meta( $this->post_id, '_wp_attachment_backup_sizes', true );
-    $result = wp_delete_attachment_files($this->post_id, $meta, $backup_sizes, $this->sourceFile->getFullFilePath() );
+    $result = \wp_delete_attachment_files($this->post_id, $meta, $backup_sizes, $this->sourceFile->getFullFilePath() );
+
   }
 
   /** Handle new dates for the replacement */
@@ -279,7 +283,8 @@ class Replacer
     /** Fail-safe if base_url is a whole directory, don't go search/replace */
     if (is_dir($current_base_url))
     {
-      exit('Source Location seems to be a directory.');
+      Log::addError('Search Replace tried to replace to directory - ' . $current_base_url);
+      exit('Fail Safe :: Source Location seems to be a directory.');
     }
 
     /* Search and replace in WP_POSTS */
