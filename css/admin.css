@@ -826,6 +826,10 @@
   margin: 15px 0; }
   .emr_upload_form .replace_type.wrapper label {
     font-size: 1.2em; }
+  .emr_upload_form .replace_type.wrapper .nofeature-notice {
+    border: 1px solid #ccc;
+    padding: 8px;
+    margin: 16px 0; }
 .emr_upload_form .options.wrapper {
   flex: 1;
   border: 1px solid #ccc;

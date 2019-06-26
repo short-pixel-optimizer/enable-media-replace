@@ -74,6 +74,8 @@ class EnableMediaReplacePlugin
     // Enqueue notices
     add_action('admin_notices', array($notices, 'admin_notices')); // previous page / init time
     add_action('admin_footer', array($notices, 'admin_notices')); // fresh notices between init - end
+
+    new Externals();
   }
 
   /** Load EMR views based on request */
@@ -130,6 +132,7 @@ class EnableMediaReplacePlugin
     $emr_options = array(
         'dateFormat' => $this->convertdate(get_option( 'date_format' )),
         'maxfilesize' => wp_max_upload_size(),
+
     );
 
     if (Log::debugIsActive())

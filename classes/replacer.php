@@ -83,17 +83,24 @@ class Replacer
       if (is_null($targetFile))
       {
         $ex = __('Target File could not be set. The source file might not be there. In case of search and replace, a filter might prevent this', "enable-media-replace");
-        throw new RuntimeException($ex);
+        throw new \RuntimeException($ex);
       }
+
+      $targetFileObj = new File($targetFile);
+      $result = $targetFileObj->checkAndCreateFolder();
+      if ($result === false)
+        Log::addError('Directory creation for targetFile failed');
 
       /* @todo See if wp_handle_sideload / wp_handle_upload can be more securely used for this */
       $result_moved = move_uploaded_file($file,$targetFile);
 
       if (false === $result_moved)
       {
-        $ex = sprintf( esc_html__('The uploaded file could not be moved to %1$s , most likely because it could not remove the old images (file permissions) or the upload failed.', "enable-media-replace"), $targetFile );
-        throw new RuntimeException($ex);
+        $ex = sprintf( esc_html__('The uploaded file could not be moved to %1$s. This is most likely an issue with permissions, or upload failed.', "enable-media-replace"), $targetFile );
+        throw new \RuntimeException($ex);
       }
+
+      // init targetFile.
       $this->targetFile = new File($targetFile);
 
       if ($this->sourceFile->getPermissions() > 0)
@@ -216,13 +223,18 @@ class Replacer
     }
     if (is_dir($targetFile)) // this indicates an error with the source.
     {
+        Log::addWarn('TargetFile is directory ' . $targetFile );
         $upload_dir = wp_upload_dir();
         if (isset($upload_dir['path']))
         {
           $targetFile = trailingslashit($upload_dir['path']) . wp_unique_filename($targetFile, $this->targetName);
         }
         else {
-          exit('EMR could not establish a proper destination for replacement');
+          $err = 'EMR could not establish a proper destination for replacement';
+          Log::addError($err);
+          throw new \RuntimeException($err);
+          exit($err); // fallback
+
         }
     }
 

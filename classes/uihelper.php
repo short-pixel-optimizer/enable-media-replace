@@ -18,6 +18,7 @@ class UIHelper
 
   }
 
+
   public function getFormUrl($attach_id)
   {
       $url = admin_url('upload.php');

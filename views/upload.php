@@ -306,7 +306,7 @@ if (is_uploaded_file($_FILES["userfile"]["tmp_name"])) {
 	{
 		$replacer->replaceWith($_FILES["userfile"]["tmp_name"], $new_filename);
 	}
-	catch(RunTimeException $e)
+	catch(\RunTimeException $e)
 	{
 		Log::addError($e->getMessage());
 	  exit($e->getMessage());
