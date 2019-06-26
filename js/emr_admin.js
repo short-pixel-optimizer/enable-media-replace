@@ -159,7 +159,6 @@ jQuery(document).ready(function($)
         if (textlayer.text() !== '')
         {
           textlayer.css('opacity', '0.7');
-          this.debug('tlwidth ' + textlayer.width());
       //    textlayer.css('margin-left', '-' + (textlayer.width() / 2 ) + 'px');
         }
 
