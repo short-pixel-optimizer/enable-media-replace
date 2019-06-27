@@ -6,6 +6,8 @@ class NoticeController //extends ShortPixelController
 {
   protected static $notices = array();
   protected static $instance = null;
+  protected static $cssHookLoaded = false; // prevent css output more than once.
+
   public $notice_count = 0;
 
   protected $has_stored = false;
@@ -21,7 +23,26 @@ class NoticeController //extends ShortPixelController
       $this->notice_option = $ns . '-notices';
 
       $this->loadNotices();
+      //$this->loadConfig();
+  }
 
+  /** Load Notices Config File, if any
+  *
+  * [ Future Use ]
+  */
+  public function loadConfig()
+  {
+    if (file_exists('../notice_config.json'))
+    {
+      $config = file_get_contents('../notice_config.json');
+      $json_config = json_decode($config);
+    }
+  }
+
+  public function loadIcons($icons)
+  {
+      foreach($icons as $name => $icon)
+        NoticeModel::setIcon($name, $icon);
   }
 
 
@@ -143,6 +164,11 @@ class NoticeController //extends ShortPixelController
   {
       if ($this->countNotices() > 0)
       {
+          if (! self::$cssHookLoaded)
+          {
+            add_action('admin_print_footer_scripts', array($this, 'printNoticeStyle'));
+            self::$cssHookLoaded = true;
+          }
           foreach($this->getNotices() as $notice)
           {
             echo $notice->getForDisplay();
@@ -150,6 +176,19 @@ class NoticeController //extends ShortPixelController
       }
       $this->update(); // puts views, and updates
   }
+
+  public function printNoticeStyle()
+  {
+     if (file_exists(__DIR__ . '/css/notices.css'))
+     {
+       echo '<style>' . file_get_contents(__DIR__ . '/css/notices.css') . '</style>';
+     }
+     else {
+       Log::addDebug('Notices : css/notices.css could not be loaded');
+     }
+  }
+
+
 
 
 }
