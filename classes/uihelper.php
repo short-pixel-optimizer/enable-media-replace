@@ -10,6 +10,9 @@ class UIHelper
   protected $preview_width = 0;
   protected $preview_height = 0;
 
+  protected $preview_max_height = 500;
+  protected $preview_max_width = 400;
+
   protected $full_width = 0;
   protected $full_height = 0;
 
@@ -77,7 +80,7 @@ class UIHelper
 
   public function setPreviewSizes()
   {
-    list($this->preview_size, $this->preview_width, $this->preview_height) = $this->findImageSizeByMax(400);
+    list($this->preview_size, $this->preview_width, $this->preview_height) = $this->findImageSizeByMax($this->preview_max_width);
   }
 
   public function setSourceSizes($attach_id)
@@ -135,8 +138,12 @@ class UIHelper
       $this->preview_width = $width;
       $this->preview_height = $height;
 
+      if ($width > $this->preview_max_width)
+        $width = $this->preview_max_width;
+      if ($height > $this->preview_max_height)
+        $height = $this->preview_max_height;
 
-      $image = "<img src='$url' width='$width' height='$height' class='image' />";
+      $image = "<img src='$url' width='$width' height='$height' class='image' style='max-width:100%; max-height: 100%; height: 100%;' />";
 
       $args = array(
         'width' => $width,
@@ -223,6 +230,12 @@ class UIHelper
     $args = wp_parse_args($args, $defaults);
     $w = $args['width'];
     $h = $args['height'];
+
+    if ($w < 150)   // minimum
+      $w = 150;
+    if ($h < 150)
+      $h = 150;
+
     $icon = $args['icon'];
 
     if ($args['is_image'])
@@ -245,7 +258,7 @@ class UIHelper
     }
 
 
-    $output = "<div class='image_placeholder $placeholder_class' $filetype style='width:" . $w . "px; min-height:". $h ."px'> ";
+    $output = "<div class='image_placeholder $placeholder_class' $filetype style='width:" . $w . "px; height:". $h ."px'> ";
     $output .= $args['image'];
     $output .= "<div class='dashicons $icon'>&nbsp;</div>";
     $output .= "<span class='textlayer'>" . $args['layer'] . "</span>";
