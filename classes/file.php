@@ -1,6 +1,9 @@
 <?php
 namespace EnableMediaReplace;
 
+use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
+use EnableMediaReplace\Notices\NoticeController as Notices;
+
 class emrFile
 {
 
@@ -36,7 +39,15 @@ class emrFile
      // This will *not* be checked, is not meant for permission of validation!
      $this->fileMime = (isset($filedata['type'])) ? $filedata['type'] : false;
 
-    // echo "<PRE>"; var_dump($this); echo "</PRE><BR>";
+  }
+
+  public function checkAndCreateFolder()
+  {
+     $path = $this->getFilePath();
+     if (! is_dir($path) && ! file_exists($path))
+     {
+       return wp_mkdir_p($path);
+     }
   }
 
   public function getFullFilePath()
@@ -64,9 +75,19 @@ class emrFile
     return $this->fileName;
   }
 
+  public function getFileExtension()
+  {
+    return $this->extension;
+  }
+
   public function getFileMime()
   {
     return $this->fileMime;
+  }
+
+  public function exists()
+  {
+    return $this->exists;
   }
 
 

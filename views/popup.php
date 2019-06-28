@@ -1,4 +1,11 @@
 <?php
+namespace EnableMediaReplace;
+
+//use \EnableMediaReplace\UIHelper;
+use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
+use EnableMediaReplace\Notices\NoticeController as Notices;
+
+
 /**
  * Uploadscreen for selecting and uploading new media file
  *
@@ -20,6 +27,7 @@ global $wpdb;
 
 $table_name = $wpdb->prefix . "posts";
 
+Log::addDebug('Load Popup Form View');
 
 //$sql = "SELECT guid, post_mime_type FROM $table_name WHERE ID = " . (int) $_GET["attachment_id"];
 //list($current_filename, $current_filetype) = $wpdb->get_row($sql, ARRAY_N);
@@ -28,10 +36,15 @@ $attachment_id = intval($_GET['attachment_id']);
 $attachment = get_post($attachment_id);
 
 $filepath = get_attached_file($attachment_id); // fullpath
-$fileurl = wp_get_attachment_url($attachment_id); //full url
-
 $filetype = $attachment->post_mime_type;
 $filename = basename($filepath);
+$source_mime = get_post_mime_type($attachment_id);
+
+$uiHelper = new UIHelper();
+$uiHelper->setPreviewSizes();
+$uiHelper->setSourceSizes($attachment_id);
+
+Log::addDebug('Popup view Data', array('id' => $attachment_id, 'source_mime' => $source_mime, 'filepath' => $filepath));
 
 ?>
 <style>
@@ -49,15 +62,15 @@ $filename = basename($filepath);
 	<h1><?php echo esc_html__("Replace Media Upload", "enable-media-replace"); ?></h1>
 
 	<?php
-	$url = admin_url( "upload.php?page=enable-media-replace/enable-media-replace.php&noheader=true&action=media_replace_upload&attachment_id=" . $attachment_id );
 
+$url = $uiHelper->getFormUrl($attachment_id);
   $formurl = wp_nonce_url( $url, "media_replace_upload" );
 	if (FORCE_SSL_ADMIN) {
 			$formurl = str_replace("http:", "https:", $formurl);
 		}
 	?>
 
-	<form enctype="multipart/form-data" method="post" action="<?php echo $formurl; ?>">
+	<form enctype="multipart/form-data" method="POST" action="<?php echo $formurl; ?>">
     <section class='image_chooser wrapper'>
       <div class='section-header'> <?php _e('Choose Replacement Image', 'enable-replace-media'); ?></div>
 
@@ -95,11 +108,33 @@ $filename = basename($filepath);
 		<?php } ?>
 
 		<p><?php echo esc_html__("Choose a file to upload from your computer", "enable-media-replace"); ?></p>
+    <p><?php printf(__('Maximum file size: <strong>%s</strong>','enable-media-replace'), size_format(wp_max_upload_size() ) ) ?></p>
+    <div class='form-error filesize'><p><?php printf(__('%s f %s exceeds the maximum upload size for this site.', 'enable-media-replace'), '<span class="fn">', '</span>'); ?></p>
+    </div>
 
-		<input type="file" name="userfile" id="userfile" onchange="imageHandle(event);" />
+    <div class='form-warning filetype'><p><?php printf(__('Replacement file is not the same filetype. This might cause unexpected issues')); ?></p></div>
+
+
+		<input type="file" name="userfile" id="userfile" />
         <div class='image_previews'>
-            <img src="<?php echo $fileurl ?>" width="150px" height="150px" style="object-fit: cover"/>
-            <img id="previewImage" src="https://via.placeholder.com/150x150" width="150px" height="150px"/>
+            <?php if (wp_attachment_is('image', $attachment_id) || $source_mime == 'application/pdf')
+            {
+                echo $uiHelper->getPreviewImage($attachment_id);
+                echo $uiHelper->getPreviewImage(-1);
+            }
+            else {
+                  if (strlen($filepath) == 0) // check if image in error state.
+                  {
+                      echo $uiHelper->getPreviewError(-1);
+                      echo $uiHelper->getPreviewImage(-1);
+                  }
+                  else {
+                      echo $uiHelper->getPreviewFile($attachment_id);
+                      echo $uiHelper->getPreviewFile(-1);
+                  }
+
+            }
+            ?>
         </div>
 
 </section>
@@ -107,30 +142,33 @@ $filename = basename($filepath);
   <section class='replace_type wrapper'>
     <div class='section-header'> <?php _e('Replacement Options', 'enable-replace-media'); ?></div>
 
-  		<?php do_action( 'emr_before_replace_type_options' ); ?>
+  		<?php
+      // these are also used in externals, for checks.
+      do_action( 'emr_before_replace_type_options' ); ?>
 
 
-      <?php $s3pluginExist =  class_exists('S3_Uploads'); ?>
   	<?php if ( apply_filters( 'emr_display_replace_type_options', true ) ) : ?>
-          <?php if ( ! $s3pluginExist) : ?>
 
+  		<label for="replace_type_1"><input CHECKED id="replace_type_1" type="radio" name="replace_type" value="replace"> <?php echo esc_html__("Just replace the file", "enable-media-replace"); ?>
+      </label>
 
-  		<label for="replace_type_1"><input CHECKED id="replace_type_1" type="radio" name="replace_type" value="replace"> <?php echo esc_html__("Just replace the file", "enable-media-replace"); ?></label>
-  		<p class="howto"><?php printf( esc_html__("Note: This option requires you to upload a file of the same type (%s) as the one you are replacing. The name of the attachment will stay the same (%s) no matter what the file you upload is called.", "enable-media-replace"), $filetype, $filename ); ?></p>
+  		<p class="howto">
+          <?php printf( esc_html__("Note: This option requires you to upload a file of the same type (%s) as the one you are replacing. The name of the attachment will stay the same (%s) no matter what the file you upload is called.", "enable-media-replace"), $filetype, $filename ); ?>
+      </p>
 
-          <?php endif; ?>
+      <?php endif; ?>
   		<?php if ( apply_filters( 'emr_enable_replace_and_search', true ) ) : ?>
-  		<label for="replace_type_2"><input <?php echo $s3pluginExist ? 'CHECKED' : '' ?> id="replace_type_2" type="radio" name="replace_type" value="replace_and_search"> <?php echo __("Replace the file, use new file name and update all links", "enable-media-replace"); ?></label>
+
+  		<label for="replace_type_2"><input id="replace_type_2" type="radio" name="replace_type" value="replace_and_search"> <?php echo __("Replace the file, use new file name and update all links", "enable-media-replace"); ?>
+      </label>
+
   		<p class="howto"><?php printf( esc_html__("Note: If you check this option, the name and type of the file you are about to upload will replace the old file. All links pointing to the current file (%s) will be updated to point to the new file name.", "enable-media-replace"), $filename ); ?></p>
-  		<p class="howto"><?php echo esc_html__("Please note that if you upload a new image, only embeds/links of the original size image will be replaced in your posts.", "enable-media-replace"); ?></p>
+
+  	<!--	<p class="howto"><?php echo esc_html__("Please note that if you upload a new image, only embeds/links of the original size image will be replaced in your posts.", "enable-media-replace"); ?></p> -->
   		<?php endif; ?>
-  	<?php else : ?>
-          <?php if ( ! $s3pluginExist) : ?>
-              <input type="hidden" name="replace_type" value="replace" />
-          <?php else : ?>
-              <input type="hidden" name="replace_type" value="replace_and_search" />
-          <?php endif; ?>
-  	<?php endif; ?>
+
+      <?php do_action('emr_after_replace_type_options'); ?>
+
     </section>
     <section class='options wrapper'>
       <div class='section-header'> <?php _e('Date Options', 'enable-media-replace'); ?></div>
@@ -138,7 +176,7 @@ $filename = basename($filepath);
         <?php
           $attachment_current_date = date_i18n('d/M/Y H:i', strtotime($attachment->post_date) );
           $time = current_time('mysql');
-          $date = new dateTime($time);
+          $date = new \dateTime($time);
         ?>
           <p><?php _e('When replacing the media, do you want to:', 'enable-media-replace'); ?></p>
           <ul>
@@ -165,37 +203,3 @@ $filename = basename($filepath);
   </section>
 	</form>
 </div>
-<script>
-    function imageHandle(event) {
-        var file = document.getElementById("userfile");
-        var submit = document.getElementById("submit");
-        var preview = document.getElementById("previewImage");
-
-        appendPreview(file, preview, event);
-        enableSubmitButton(file, submit);
-    }
-
-    function appendPreview(fileSource, preview, event) {
-        if (fileSource.value) {
-            var file = fileSource.files[0];
-            if (file.type.match("image/*")) {
-                preview.setAttribute("src", window.URL.createObjectURL(file));
-                preview.setAttribute("style", "object-fit: cover");
-            } else {
-                preview.setAttribute("src", "https://dummyimage.com/150x150/ccc/969696.gif&text=File");
-                preview.removeAttribute("style");
-            }
-        } else {
-            preview.setAttribute("src", "https://via.placeholder.com/150x150");
-        }
-    }
-    function enableSubmitButton(file, submit)
-    {
-        if (file.value) {
-            submit.disabled = false;
-            submit.removeAttribute("disabled");
-        } else {
-            submit.setAttribute("disabled", true);
-        }
-    }
-</script>

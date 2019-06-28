@@ -772,6 +772,53 @@
   min-height: 350px; }
   .emr_upload_form .image_chooser.wrapper .image_previews {
     margin: 15px 0; }
+    .emr_upload_form .image_chooser.wrapper .image_previews .image_placeholder {
+      position: relative;
+      display: inline-block;
+      margin-right: 25px;
+      border: 1px solid #ddd;
+      vertical-align: top;
+      max-height: 500px; }
+      .emr_upload_form .image_chooser.wrapper .image_previews .image_placeholder .textlayer {
+        font-size: 25px;
+        line-height: 25px;
+        opacity: 0.7;
+        position: absolute;
+        color: #ccc;
+        left: 48%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        border: 1px dashed #eee;
+        background-color: #333;
+        padding: 8px; }
+      .emr_upload_form .image_chooser.wrapper .image_previews .image_placeholder .dashicons {
+        font-size: 60px;
+        position: absolute;
+        top: 50%;
+        margin-top: -30px;
+        left: 50%;
+        margin-left: -30px;
+        opacity: 0.5; }
+      .emr_upload_form .image_chooser.wrapper .image_previews .image_placeholder.is_image .dashicons::before, .emr_upload_form .image_chooser.wrapper .image_previews .image_placeholder.is_image .dashicons {
+        display: none; }
+      .emr_upload_form .image_chooser.wrapper .image_previews .image_placeholder.not_image img {
+        display: none; }
+      .emr_upload_form .image_chooser.wrapper .image_previews .image_placeholder.not_image .textlayer {
+        display: none; }
+      .emr_upload_form .image_chooser.wrapper .image_previews .image_placeholder.not_image.is_document .textlayer {
+        font-size: 18px;
+        line-height: 20px;
+        display: block; }
+.emr_upload_form .form-error, .emr_upload_form .form-warning {
+  background: #fff;
+  padding: 8px;
+  border-left: 4px solid #ff0000;
+  margin: 10px 0;
+  display: none; }
+  .emr_upload_form .form-error p, .emr_upload_form .form-warning p {
+    margin: 0; }
+.emr_upload_form .form-warning {
+  border-left: 4px solid #ffb900; }
 .emr_upload_form .option-flex-wrapper {
   display: flex; }
 .emr_upload_form .replace_type.wrapper {
@@ -780,6 +827,10 @@
   margin: 15px 0; }
   .emr_upload_form .replace_type.wrapper label {
     font-size: 1.2em; }
+  .emr_upload_form .replace_type.wrapper .nofeature-notice {
+    border: 1px solid #ccc;
+    padding: 8px;
+    margin: 16px 0; }
 .emr_upload_form .options.wrapper {
   flex: 1;
   border: 1px solid #ccc;
