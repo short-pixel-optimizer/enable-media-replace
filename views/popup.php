@@ -192,7 +192,7 @@ $url = $uiHelper->getFormUrl($attachment_id);
 
            @ <input type='text' name="custom_hour" class='emr_hour' value="<?php echo $date->format('H') ?>" /> &nbsp;
             <input type="text" name="custom_minute" class='emr_minute' value="<?php echo $date->format('i'); ?>" />
-            <input type="hidden" name="custom_date_formatted" value="" />
+            <input type="hidden" name="custom_date_formatted" value="<?php echo $date->format('Y-m-d'); ?>" />
          </div>
       </div>
     </section>
