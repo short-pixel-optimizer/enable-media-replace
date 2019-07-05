@@ -319,6 +319,8 @@ class Replacer
     $replace_urls = emr_get_file_urls( $this->target_url, $this->target_metadata );
     $replace_urls = array_values(emr_normalize_file_urls( $search_urls, $replace_urls ));
 
+    Log::addDebug('Replacing references', array($search_urls, $replace_urls));
+
  		if ( ! empty( $rs ) ) {
  			foreach ( $rs AS $rows ) {
  				$number_of_updates = $number_of_updates + 1;
@@ -333,6 +335,9 @@ class Replacer
       //  echo "$sql <BR>";
  				$wpdb->query( $sql );
  			}
+    }
+    if (! empty($rsmeta))
+    {
       foreach ($rsmeta as $row)
       {
         $number_of_updates++;
@@ -342,8 +347,8 @@ class Replacer
         $sql = $wpdb->prepare('UPDATE ' . $wpdb->postmeta . ' SET meta_value = %s WHERE meta_id = %d', $content, $row['meta_id'] );
         $wpdb->query($sql);
       }
+    }
 
- 		}
 
   } // doSearchReplace
 
