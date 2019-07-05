@@ -52,7 +52,7 @@ class Externals
   {
       foreach($this->messages as $message)
       {
-        echo '<p class="nofeature-notice">'. $message . '</p>';
+        echo '<span class="nofeature-notice"><p>'. $message . '</p></span>';
       }
 
   }

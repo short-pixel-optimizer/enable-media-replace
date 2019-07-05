@@ -825,12 +825,27 @@
   flex: 1;
   border: 1px solid #ccc;
   margin: 15px 0; }
-  .emr_upload_form .replace_type.wrapper label {
-    font-size: 1.2em; }
-  .emr_upload_form .replace_type.wrapper .nofeature-notice {
-    border: 1px solid #ccc;
-    padding: 8px;
-    margin: 16px 0; }
+  .emr_upload_form .replace_type.wrapper .option {
+    position: relative;
+    z-index: 1; }
+    .emr_upload_form .replace_type.wrapper .option label {
+      font-size: 1.2em; }
+    .emr_upload_form .replace_type.wrapper .option .nofeature-notice {
+      border: 1px solid #ccc;
+      padding: 8px;
+      margin: 0;
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 0;
+      bottom: 0;
+      opacity: 0.8;
+      z-index: 9;
+      background: #444; }
+      .emr_upload_form .replace_type.wrapper .option .nofeature-notice p {
+        text-align: center;
+        color: #fff;
+        margin: 15px 0; }
 .emr_upload_form .options.wrapper {
   flex: 1;
   border: 1px solid #ccc;

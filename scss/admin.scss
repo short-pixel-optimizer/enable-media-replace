@@ -107,16 +107,39 @@
     flex: 1;
     border: 1px solid #ccc;
     margin: 15px 0;
-    label
+    .option
     {
-      font-size: 1.2em;
+      position: relative;
+      z-index: 1;
+      &.disabled
+      {
+      //  color: #eee;
+      }
+      label
+      {
+        font-size: 1.2em;
+      }
+      .nofeature-notice
+      {
+        border: 1px solid #ccc;
+        padding: 8px;
+        margin: 0;
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 0;
+        bottom: 0;
+        opacity: 0.8;
+        z-index: 9;
+        background: #444;
+        p {
+          text-align: center;
+          color: #fff;
+          margin: 15px 0;
+        }
+      }
     }
-    .nofeature-notice
-    {
-      border: 1px solid #ccc;
-      padding: 8px;
-      margin: 16px 0;
-    }
+
   }
 
   .options.wrapper
