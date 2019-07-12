@@ -64,7 +64,7 @@ class ThumbnailUpdater
          {
 
            //in some rare cases 'file' is missing
-           $oldFile = $data['file'];
+           $oldFile = isset($data['file']) ? $data['file'] : null;
            if(is_array($oldFile)) { $oldFile = $oldFile[0];} // HelpScout case 709692915
            if(empty($oldFile)) {
                return false; //make sure we don't replace in this case as we will break the URLs for all the images in the folder.
