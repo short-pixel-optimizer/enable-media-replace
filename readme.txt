@@ -47,6 +47,11 @@ If you want more control over the format used to display the time, you can use t
 
 == Changelog ==
 
+= 3.3.1 =
+
+Release date: 18th June 2019
+* Fix error class not found on WPEngine
+
 = 3.3.0 =
 * When replacing an image and changing the name, Search / Replace is now also done on the meta_value of postmeta.
 * Replace PDF thumbnails too
