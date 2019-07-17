@@ -143,7 +143,7 @@ class UIHelper
       if ($height > $this->preview_max_height)
         $height = $this->preview_max_height;
 
-      $image = "<img src='$url' width='$width' height='$height' class='image' style='max-width:100%; max-height: 100%; height: 100%;' />";
+      $image = "<img src='$url' width='$width' height='$height' class='image' style='max-width:100%; max-height: 100%;' />";
 
       $args = array(
         'width' => $width,

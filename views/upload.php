@@ -242,11 +242,27 @@ switch($timestamp_replace)
 	break;
 	case \EnableMediaReplace\Replacer::TIME_CUSTOM:
 		$custom_date = $_POST['custom_date_formatted'];
-		$custom_hour = $_POST['custom_hour'];
-		$custom_minute = $_POST['custom_minute'];
+		$custom_hour = str_pad($_POST['custom_hour'],2,0, STR_PAD_LEFT);
+		$custom_minute = str_pad($_POST['custom_minute'], 2, 0, STR_PAD_LEFT);
 
 		// create a mysql time representation from what we have.
-		$custom_date = \DateTime::createFromFormat('Y-m-d H:i', $custom_date . ' ' . $custom_hour . ':' . $custom_minute );
+		Log::addDebug($_POST);
+		Log::addDebug('Custom Date - ' . $custom_date . ' ' . $custom_hour . ':' . $custom_minute );
+		$custom_date = \DateTime::createFromFormat('Y-m-d G:i', $custom_date . ' ' . $custom_hour . ':' . $custom_minute );
+		if ($custom_date === false)
+		{
+
+			wp_safe_redirect($redirect_error);
+			$errors = \DateTime::getLastErrors();
+			$error = '';
+			if (isset($errors['errors']))
+			{
+				$error = implode(',', $errors['errors']);
+			}
+			Notices::addError(sprintf(__('Invalid Custom Date. Please custom date values (%s)', 'enable-media-replace'), $error));
+
+			exit();
+		}
  		$datetime  =  $custom_date->format("Y-m-d H:i:s");
 	break;
 }

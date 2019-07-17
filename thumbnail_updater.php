@@ -63,7 +63,12 @@ class ThumbnailUpdater
          if (isset($this->newMeta['sizes'][$sizeName]))
          {
 
-           $oldFile = $data['file'];
+           //in some rare cases 'file' is missing
+           $oldFile = isset($data['file']) ? $data['file'] : null;
+           if(is_array($oldFile)) { $oldFile = $oldFile[0];} // HelpScout case 709692915
+           if(empty($oldFile)) {
+               return false; //make sure we don't replace in this case as we will break the URLs for all the images in the folder.
+           }
            $newFile = $this->newMeta['sizes'][$sizeName]['file'];
 
            // if images are not same size.
@@ -116,13 +121,22 @@ class ThumbnailUpdater
 
           if ( $thisdiff  < $diff )
           {
-              $diff = $thisdiff;
               $closest_file = $data['file'];
-              $found_metasize = true;
+              if(is_array($closest_file)) { $closest_file = $closest_file[0];} // HelpScout case 709692915
+              if(!empty($closest_file)) {
+                  $diff = $thisdiff;
+                  $found_metasize = true;
+              }
           }
       }
 
-      $this->convertArray[] = array('imageFrom' => $this->relPath .  $oldData['file'], 'imageTo' => $this->relPath . $closest_file);
+      if(empty($closest_file)) return;
+      $oldFile = $oldData['file'];
+      if(is_array($oldFile)) { $oldFile = $oldFile[0];} // HelpScout case 709692915
+      if(empty($oldFile)) {
+          return; //make sure we don't replace in this case as we will break the URLs for all the images in the folder.
+      }
+      $this->convertArray[] = array('imageFrom' => $this->relPath .  $oldFile, 'imageTo' => $this->relPath . $closest_file);
 
   }
 

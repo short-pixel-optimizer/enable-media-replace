@@ -117,7 +117,7 @@ jQuery(document).ready(function($)
         img.src = window.URL.createObjectURL(file);
         self = this;
 
-        img.setAttribute('style', 'max-width:100%; max-height: 100%; height: 100%;');
+        img.setAttribute('style', 'max-width:100%; max-height: 100%;');
         img.addEventListener("load", function () {
             //  $(preview).find('.textlayer').text(img.naturalWidth + ' x ' + img.naturalHeight );
               self.updateTextLayer(preview, img.naturalWidth + ' x ' + img.naturalHeight);
