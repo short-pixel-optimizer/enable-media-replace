@@ -293,3 +293,8 @@ Second, if the file really looks unchanged, make sure WordPress has write permis
 == Wishlist / Coming attractions ==
 
 Do you have suggestions? Feel free to contact ShortPixel <a href="https://shortpixel.com/contact" target="_blank">here</a>
+
+
+== Contribute ==
+
+Want to help us improve the plugin feel free to submit PRs via GitHub <a href="https://github.com/short-pixel-optimizer/enable-media-replace" target="_blank">here</a>.
