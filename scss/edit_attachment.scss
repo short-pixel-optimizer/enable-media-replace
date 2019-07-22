@@ -6,6 +6,8 @@
   {
     display: inline-block;
     position: relative;
+    clear: both;
+    margin: 3px 0;
 
     img { max-width: 100%; }
     span.label

@@ -292,8 +292,15 @@ class EnableMediaReplacePlugin
   *   @param $post Obj Post Object
   */
   function admin_date_replaced_media_on_edit_media_screen($post) {
-  	$post_id = $post->ID;
 
+    // Fallback for before version 4.9, doens't pass post.
+    if (! is_object($post))
+      global $post;
+
+    if (! is_object($post)) // try to global, if it doesn't work - return.
+      return false;
+
+    $post_id = $post->ID;
   	if ( $post->post_modified == $post->post_date ) {
   		return;
   	}

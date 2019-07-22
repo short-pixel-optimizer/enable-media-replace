@@ -1,7 +1,9 @@
 /* Styling for the edit attachment screen */
 #emr-replace-box .previewwrapper {
   display: inline-block;
-  position: relative; }
+  position: relative;
+  clear: both;
+  margin: 3px 0; }
   #emr-replace-box .previewwrapper img {
     max-width: 100%; }
   #emr-replace-box .previewwrapper span.label {
