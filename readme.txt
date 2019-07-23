@@ -47,6 +47,11 @@ If you want more control over the format used to display the time, you can use t
 
 == Changelog ==
 
+= 3.3.3 =
+
+Release date: 19th July 2019
+* Fix error "using $this when not in object context" on some PHP versions
+
 = 3.3.2 =
 
 Release date: 17th July 2019
