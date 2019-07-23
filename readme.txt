@@ -47,6 +47,12 @@ If you want more control over the format used to display the time, you can use t
 
 == Changelog ==
 
+= 3.3.4 =
+
+Release date: 23rd July 2019
+* compatibility fixes for WP version 4.8 and below
+* cache killer
+
 = 3.3.3 =
 
 Release date: 19th July 2019
