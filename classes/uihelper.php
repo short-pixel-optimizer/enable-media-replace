@@ -51,7 +51,7 @@ class UIHelper
   public function getSuccesRedirect($post_id)
   {
     $url = admin_url('post.php');
-    $url = add_query_arg(array('action' => 'edit', 'post' => $post_id), $url);
+    $url = add_query_arg(array('action' => 'edit', 'post' => $post_id, 'emr_replaced' => '1'), $url);
 
     $url = apply_filters('emr_returnurl', $url);
     Log::addDebug('Success URL- ' . $url);

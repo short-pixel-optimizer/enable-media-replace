@@ -2,7 +2,7 @@
 Contributors: ShortPixel
 Donate link: https://www.paypal.me/resizeImage
 Tags: replace, attachment, media, files, replace image, replace jpg, change media, replace media, image, file
-Requires at least: 4.2
+Requires at least: 4.8
 Tested up to: 5.2
 Requires PHP: 5.4
 Stable tag: trunk

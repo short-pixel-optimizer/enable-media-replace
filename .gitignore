@@ -16,4 +16,6 @@ vendor
 /readme.html
 /sitemap.xml
 /sitemap.xml.gz
-
+.*
+bin
+composer.lock

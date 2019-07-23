@@ -300,15 +300,16 @@ class Replacer
     }
 
     /* Search and replace in WP_POSTS */
- 		$posts_sql = $wpdb->remove_placeholder_escape($wpdb->prepare(
+    // Removed $wpdb->remove_placeholder_escape from here, not compatible with WP 4.8
+ 		$posts_sql = $wpdb->prepare(
  			"SELECT ID, post_content FROM $wpdb->posts WHERE post_status = 'publish' AND post_content LIKE %s;",
- 			'%' . $current_base_url . '%'));
+ 			'%' . $current_base_url . '%');
 
 //INNER JOIN ' . $wpdb->posts . ' on ' . $wpdb->posts . '.ID = ' . $wpdb->postmeta . '.post_id
 
     $postmeta_sql = 'SELECT meta_id, post_id, meta_value FROM ' . $wpdb->postmeta . '
         WHERE post_id in (SELECT ID from '. $wpdb->posts . ' where post_status = "publish") AND meta_value like %s  ';
-    $postmeta_sql = $wpdb->remove_placeholder_escape($wpdb->prepare($postmeta_sql, '%' . $current_base_url . '%'));
+    $postmeta_sql = $wpdb->prepare($postmeta_sql, '%' . $current_base_url . '%');
 
     $rsmeta = $wpdb->get_results($postmeta_sql, ARRAY_A);
  		$rs = $wpdb->get_results( $posts_sql, ARRAY_A );
