@@ -47,6 +47,24 @@ If you want more control over the format used to display the time, you can use t
 
 == Changelog ==
 
+= 3.3.3 =
+
+Release date: 19th July 2019
+* Fix error "using $this when not in object context" on some PHP versions
+
+= 3.3.2 =
+
+Release date: 17th July 2019
+* Check if medium size !> 400px, display that one, otherwise smallest.
+* Fixed: Links not updated when using Advanced Custom Fields
+* Fixed: Fails silently when file is too big for upload
+* When source file does not exist, show placeholder instead of failed image load
+* Fixed: Fatal error when replacing images
+* Fixed: Not the right time zone on replace
+* Fixed Beaver Builder incompatibility by not allowing replace with rename.
+* Fixed: Cannot replace non default Wordpress file types, even those allowed to upload [ Media Library Assistant compat ]
+* Fixed: error when trying to remove a file that doesn't exist - because the files are actually on another server
+
 = 3.3.1 =
 
 Release date: 18th June 2019
@@ -293,3 +311,8 @@ Second, if the file really looks unchanged, make sure WordPress has write permis
 == Wishlist / Coming attractions ==
 
 Do you have suggestions? Feel free to contact ShortPixel <a href="https://shortpixel.com/contact" target="_blank">here</a>
+
+
+== Contribute ==
+
+Want to help us improve the plugin feel free to submit PRs via GitHub <a href="https://github.com/short-pixel-optimizer/enable-media-replace" target="_blank">here</a>.
