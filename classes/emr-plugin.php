@@ -34,6 +34,7 @@ class EnableMediaReplacePlugin
     add_action('admin_init', array($this,'init'));
     add_action('admin_enqueue_scripts', array($this,'admin_scripts'));
 
+
     // content filters
     add_filter('media_row_actions', array($this,'add_media_action'), 10, 2);
     add_action('attachment_submitbox_misc_actions', array($this,'admin_date_replaced_media_on_edit_media_screen'), 91 );
@@ -44,7 +45,10 @@ class EnableMediaReplacePlugin
     add_action('network_admin_notices', array($this,'display_network_notices'));
     add_action('wp_ajax_emr_dismiss_notices', array($this,'dismiss_notices'));
 
+    // editors 
     add_action( 'add_meta_boxes', function () { add_meta_box('emr-eplace-box', __('Replace Image', 'enable-media-replace'), array($this, 'replace_meta_box'), 'attachment', 'side', 'low'); }  );
+    add_filter('attachment_fields_to_edit', array($this, 'attachment_editor'), 10, 2);
+
     // shortcode
     add_shortcode('file_modified', array($this, 'get_modified_date'));
 
@@ -226,9 +230,21 @@ class EnableMediaReplacePlugin
       $img = wp_get_attachment_image_src($post->ID, $size);
       echo "<div class='$size previewwrapper'><img src='" . $img[0] . "'><span class='label'>$display_size</span></div>";
     }
+  }
 
+  public function attachment_editor($form_fields, $post)
+  {
+      $url = $this->getMediaReplaceURL($post->ID);
+      $action = "media_replace";
+      $editurl = wp_nonce_url( $url, $action );
 
-
+      $link = "href=\"$editurl\"";
+      $form_fields["enable-media-replace"] = array(
+              "label" => esc_html__("Replace media", "enable-media-replace"),
+              "input" => "html",
+              "html" => "<p><a class='button-secondary' $link>" . esc_html__("Upload a new file", "enable-media-replace") . "</a></p>", "helps" => esc_html__("To replace the current file, click the link and upload a replacement.", "enable-media-replace")
+            );
+      return $form_fields;
   }
 
   /**
