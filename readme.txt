@@ -47,6 +47,11 @@ If you want more control over the format used to display the time, you can use t
 
 == Changelog ==
 
+= 3.3.5 =
+
+Release date: 25th July 2019
+* fix Replace button on the MediaLibrary image details popup
+
 = 3.3.4 =
 
 Release date: 23rd July 2019
