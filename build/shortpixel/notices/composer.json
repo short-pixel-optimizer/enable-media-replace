@@ -26,6 +26,6 @@
     ],
 
     "autoload": {
-        "psr-4": { "ShortPixel\\Notices\\" : "src/" }
+        "psr-4": { "ShortPixel\\Notices\\" : "src" }
     }
 }
