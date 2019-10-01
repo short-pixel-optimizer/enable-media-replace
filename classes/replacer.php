@@ -156,7 +156,6 @@ class Replacer
           }
          }
           $this->doSearchReplace();
-          do_action("enable-media-replace-upload-done", $this->target_url, $this->source_url);
       }
 
       if(wp_attachment_is_image($this->post_id))
@@ -179,7 +178,7 @@ class Replacer
 
       $cache = new emrCache();
       $cache->flushCache($cache_args);
-
+      do_action("enable-media-replace-upload-done", $this->target_url, $this->source_url);
   }
 
   protected function getNewTitle()
