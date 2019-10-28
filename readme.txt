@@ -47,6 +47,11 @@ If you want more control over the format used to display the time, you can use t
 
 == Changelog ==
 
+= 3.3.6 =
+
+Release date: 5th September 2019
+* fix JSON compatibility for hostings that don't have JSON module activated
+
 = 3.3.5 =
 
 Release date: 25th July 2019
