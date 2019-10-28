@@ -171,7 +171,7 @@ namespace EnableMediaReplace\ShortPixelLogger;
       $line = $this->formatLine($items);
 
       // try to write to file. Don't write if directory doesn't exists (leads to notices)
-      if ($this->logPath && is_dir(dirname($this->logPath) ))
+      if ($this->logPath && is_dir(dirname($this->logPath)) )
       {
         file_put_contents($this->logPath,$line, FILE_APPEND);
       }

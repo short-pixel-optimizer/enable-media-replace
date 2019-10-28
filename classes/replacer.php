@@ -39,7 +39,6 @@ class Replacer
       $this->post_id = $post_id;
 
       $source_file = trim(get_attached_file($post_id, apply_filters( 'emr_unfiltered_get_attached_file', true )));
-
       $this->sourceFile = new File($source_file);
 
       $this->source_post = get_post($post_id);
@@ -134,8 +133,9 @@ class Replacer
 
       if ($this->replaceMode == self::MODE_SEARCHREPLACE)
       {
-         $title = $this->getNewTitle();
 
+         // Write new image title.
+         $title = $this->getNewTitle();
          $update_ar = array('ID' => $this->post_id);
          $update_ar['post_title'] = $title;
          $update_ar['post_name'] = sanitize_title($title);
@@ -156,8 +156,8 @@ class Replacer
           }
          }
           $this->doSearchReplace();
-          do_action("enable-media-replace-upload-done", $this->target_url, $this->source_url);
-      }
+
+      }  // SEARCH REPLACE MODE
 
       if(wp_attachment_is_image($this->post_id))
       {
@@ -179,6 +179,8 @@ class Replacer
 
       $cache = new emrCache();
       $cache->flushCache($cache_args);
+
+      do_action("enable-media-replace-upload-done", $this->target_url, $this->source_url);
 
   }
 

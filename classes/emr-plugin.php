@@ -20,6 +20,11 @@ class EnableMediaReplacePlugin
     if (is_null(self::$instance))
       self::$instance = new EnableMediaReplacePlugin();
 
+    $log = Log::getInstance();
+    $uploaddir =wp_upload_dir();
+    if (isset($uploaddir['basedir']))
+      $log->setLogPath($uploaddir['basedir'] . "/emr_log");
+      
     return self::$instance;
   }
 
@@ -45,7 +50,7 @@ class EnableMediaReplacePlugin
     add_action('network_admin_notices', array($this,'display_network_notices'));
     add_action('wp_ajax_emr_dismiss_notices', array($this,'dismiss_notices'));
 
-    // editors 
+    // editors
     add_action( 'add_meta_boxes', function () { add_meta_box('emr-eplace-box', __('Replace Image', 'enable-media-replace'), array($this, 'replace_meta_box'), 'attachment', 'side', 'low'); }  );
     add_filter('attachment_fields_to_edit', array($this, 'attachment_editor'), 10, 2);
 
