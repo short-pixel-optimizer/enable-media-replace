@@ -3,7 +3,7 @@ Contributors: ShortPixel
 Donate link: https://www.paypal.me/resizeImage
 Tags: replace, attachment, media, files, replace image, replace jpg, change media, replace media, image, file
 Requires at least: 4.2
-Tested up to: 5.2
+Tested up to: 5.3
 Requires PHP: 5.4
 Stable tag: trunk
 
@@ -50,6 +50,7 @@ If you want more control over the format used to display the time, you can use t
 = 3.3.7 =
 
 Release date: 13th November 2019
+* call the hook enable-media-replace-upload-done on both modes
 * fix JSON compatibility for hostings that don't have JSON module activated
 * Language – 0 new strings added, 0 updated, 0 fuzzied, and 0 obsoleted
 
