@@ -94,8 +94,8 @@ if (is_uploaded_file($_FILES["userfile"]["tmp_name"])) {
 
 	Log::addDebug($_FILES['userfile']);
 
-	// New method for validating that the uploaded file is allowed, using WP:s internal wp_check_filetype_and_ext() function.
-	$filedata = wp_check_filetype_and_ext($_FILES["userfile"]["tmp_name"], $_FILES["userfile"]["name"]);
+	// New method for validating that the uploaded file is allowed, using WP:s internal wp_check_filetype() function as wp_check_filetype_and_ext() is only validation images files type.
+	$filedata = wp_check_filetype( $_FILES["userfile"]["name"] );
 
 	Log::addDebug('Data after check', $filedata);
 	if (isset($_FILES['userfile']['error']) && $_FILES['userfile']['error'] > 0)
@@ -106,7 +106,7 @@ if (is_uploaded_file($_FILES["userfile"]["tmp_name"])) {
 		 exit();
 	}
 
-	if ($filedata["ext"] == "") {
+	if ( empty( $filedata["ext"] ) || !array_key_exists( $filedata["ext"], get_allowed_mime_types() ) ) { //New condision
 
 		Notices::addError(esc_html__("File type does not meet security guidelines. Try another.", 'enable-media-replace') );
 		wp_safe_redirect($redirect_error);
