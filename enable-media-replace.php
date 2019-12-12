@@ -30,6 +30,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit; // Exit if accessed directly.
 }
 
+if ( ! is_admin() ) {
+	return;
+}
+
 if(!defined("S3_UPLOADS_AUTOENABLE")) {
     define('S3_UPLOADS_AUTOENABLE', true);
 }
