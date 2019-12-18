@@ -147,6 +147,14 @@ jQuery(document).ready(function($)
         this.debug(target_type + ' not ' + source_type);
         this.warningFileType();
       }
+
+      if (emr_options.allowed_mime.indexOf(target_type) == -1)
+      {
+         this.debug(target_type + ' not ' + ' in allowed types ');
+         this.warningMimeType();
+      }
+    //  this.debug(emr_options.allowed_mime);
+
     },
     // replace the text, check if text is there ( or hide ), and fix the layout.
     this.updateTextLayer = function (preview, newtext)
@@ -208,6 +216,10 @@ jQuery(document).ready(function($)
     this.warningFileType = function(fileItem)
     {
       $('.form-warning.filetype').fadeIn();
+    }
+    this.warningMimeType = function(fileItem)
+    {
+      $('.form-warning.mimetype').fadeIn();
     }
     this.debug = function(message)
     {

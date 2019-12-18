@@ -52,6 +52,7 @@ If you want more control over the format used to display the time, you can use t
 * Updating and replacing images and thumbnails should now work for serialized (and such) metadata.
   - For Beaver Builder
   - For Elementor
+* Add extra warning if mimetype is not allowed by WordPress for upload
 * Put Javascript version in wp_register_script
 * Hidden double 'replace media'
 * Replace Image label to Replace Media

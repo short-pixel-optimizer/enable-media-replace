@@ -113,6 +113,7 @@ $url = $uiHelper->getFormUrl($attachment_id);
 
     <div class='form-warning filetype'><p><?php printf(__('Replacement file is not the same filetype. This might cause unexpected issues')); ?></p></div>
 
+    <div class='form-warning mimetype'><p><?php printf(__('Replacement file type doesn\'t seem to be allowed by WordPress. This might cause unexpected issues')); ?></p></div>
 
 		<input type="file" name="userfile" id="userfile" />
         <div class='image_previews'>

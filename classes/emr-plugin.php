@@ -149,10 +149,13 @@ class EnableMediaReplacePlugin
 
     wp_register_style('emr_edit-attachment', plugins_url('css/edit_attachment.css', EMR_ROOT_FILE));
 
+    $mimes = array_values(get_allowed_mime_types());
+
     wp_register_script('emr_admin', plugins_url('js/emr_admin.js', EMR_ROOT_FILE), array('jquery'), EMR_VERSION, true );
     $emr_options = array(
         'dateFormat' => $this->convertdate(get_option( 'date_format' )),
         'maxfilesize' => wp_max_upload_size(),
+        'allowed_mime' => $mimes,
 
     );
 
