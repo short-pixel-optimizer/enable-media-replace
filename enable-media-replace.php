@@ -30,10 +30,6 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit; // Exit if accessed directly.
 }
 
-if ( ! is_admin() ) {
-	return;
-}
-
 if(!defined("S3_UPLOADS_AUTOENABLE")) {
     define('S3_UPLOADS_AUTOENABLE', true);
 }
@@ -57,4 +53,4 @@ require_once('classes/emr-plugin.php');
 require_once('classes/externals.php');
 require_once('thumbnail_updater.php');
 
-$emr_plugin = EnableMediaReplacePlugin::get();
+add_action('admin_init', 'EnableMediaReplacePlugin::get');
