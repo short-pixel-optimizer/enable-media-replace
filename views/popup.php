@@ -71,7 +71,7 @@ $url = $uiHelper->getFormUrl($attachment_id);
 
 	<form enctype="multipart/form-data" method="POST" action="<?php echo $formurl; ?>">
     <section class='image_chooser wrapper'>
-      <div class='section-header'> <?php _e('Choose Replacement Image', 'enable-replace-media'); ?></div>
+      <div class='section-header'> <?php _e('Choose Replacement Media', 'enable-replace-media'); ?></div>
 
 	<?php
 		#wp_nonce_field('enable-media-replace');

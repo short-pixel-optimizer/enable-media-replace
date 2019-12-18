@@ -47,10 +47,20 @@ If you want more control over the format used to display the time, you can use t
 
 == Changelog ==
 
+= 3.3.7 =
+
+* Updating and replacing images and thumbnails should now work for serialized (and such) metadata.
+  - For Beaver Builder
+  - For Elementor
+* Put Javascript version in wp_register_script
+* Hidden double 'replace media'
+* Replace Image label to Replace Media
+* Removed constant S3_UPLOADS_AUTOENABLE
+
 = 3.3.6 =
 
 Release date: 5th September 2019
-* fix JSON compatibility for hostings that don't have JSON module activated
+* fix JSON compatibility for hosters that don't have JSON module activated
 
 = 3.3.5 =
 

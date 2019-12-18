@@ -24,7 +24,7 @@ class EnableMediaReplacePlugin
     $uploaddir =wp_upload_dir();
     if (isset($uploaddir['basedir']))
       $log->setLogPath($uploaddir['basedir'] . "/emr_log");
-      
+
     return self::$instance;
   }
 
@@ -51,7 +51,7 @@ class EnableMediaReplacePlugin
     add_action('wp_ajax_emr_dismiss_notices', array($this,'dismiss_notices'));
 
     // editors
-    add_action( 'add_meta_boxes', function () { add_meta_box('emr-eplace-box', __('Replace Image', 'enable-media-replace'), array($this, 'replace_meta_box'), 'attachment', 'side', 'low'); }  );
+    add_action( 'add_meta_boxes', function () { add_meta_box('emr-replace-box', __('Replace Media', 'enable-media-replace'), array($this, 'replace_meta_box'), 'attachment', 'side', 'low'); }  );
     add_filter('attachment_fields_to_edit', array($this, 'attachment_editor'), 10, 2);
 
     // shortcode
@@ -63,8 +63,8 @@ class EnableMediaReplacePlugin
       add_filter('wp_get_attachment_image_src',array($this, 'attempt_uncache_image'),  10, 4);
 
       // adds a metabox to list thumbnails. This is a cache reset hidden as feature.
-      add_action( 'add_meta_boxes', function () { add_meta_box('emr-replace-box', __('Replaced Thumbnails Preview', 'enable-media-replace'), array($this, 'show_thumbs_box'), 'attachment', 'side', 'low'); }  );
-      add_filter('postbox_classes_attachment_emr-replace-box', function($classes) { $classes[] = 'closed'; return $classes; });
+      add_action( 'add_meta_boxes', function () { add_meta_box('emr-showthumbs-box', __('Replaced Thumbnails Preview', 'enable-media-replace'), array($this, 'show_thumbs_box'), 'attachment', 'side', 'low'); }  );
+      add_filter('postbox_classes_attachment_emr-showthumbs-box', function($classes) { $classes[] = 'closed'; return $classes; });
     }
 
   }
@@ -149,7 +149,7 @@ class EnableMediaReplacePlugin
 
     wp_register_style('emr_edit-attachment', plugins_url('css/edit_attachment.css', EMR_ROOT_FILE));
 
-    wp_register_script('emr_admin', plugins_url('js/emr_admin.js', EMR_ROOT_FILE), array('jquery'), false, true );
+    wp_register_script('emr_admin', plugins_url('js/emr_admin.js', EMR_ROOT_FILE), array('jquery'), EMR_VERSION, true );
     $emr_options = array(
         'dateFormat' => $this->convertdate(get_option( 'date_format' )),
         'maxfilesize' => wp_max_upload_size(),
@@ -203,6 +203,7 @@ class EnableMediaReplacePlugin
 
   public function replace_meta_box($post)
   {
+
     $url = $this->getMediaReplaceURL($post->ID);
 
     $action = "media_replace";
@@ -239,6 +240,10 @@ class EnableMediaReplacePlugin
 
   public function attachment_editor($form_fields, $post)
   {
+      $screen = get_current_screen();
+      if(! is_null($screen) && $screen->id == 'attachment') // hide on edit attachment screen.
+        return $form_fields;
+
       $url = $this->getMediaReplaceURL($post->ID);
       $action = "media_replace";
       $editurl = wp_nonce_url( $url, $action );

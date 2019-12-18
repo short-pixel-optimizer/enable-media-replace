@@ -88,12 +88,14 @@ namespace EnableMediaReplace\ShortPixelLogger;
 
       }
 
-      /* On Early init, this function might not exist, then queue it when needed */
-      if (! function_exists('wp_get_current_user'))
-        add_action('plugins_loaded', array($this, 'initView'));
-      else
-       $this->initView();
-
+      if ($this->is_active)
+      {
+        /* On Early init, this function might not exist, then queue it when needed */
+        if (! function_exists('wp_get_current_user'))
+          add_action('init', array($this, 'initView'));
+        else
+         $this->initView();
+      }
 
       if ($this->is_active && count($this->hooks) > 0)
           $this->monitorHooks();

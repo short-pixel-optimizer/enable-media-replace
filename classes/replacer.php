@@ -15,7 +15,7 @@ class Replacer
   protected $source_metadata;
   protected $source_url;
 
-  // everything target is what will be.
+  // everything target is what will be. This is set when the image is replace, the result. Used for replacing.
   protected $targetFile;
   protected $targetName;
   protected $target_metadata;
@@ -46,8 +46,8 @@ class Replacer
       $this->source_metadata = wp_get_attachment_metadata( $post_id );
       $this->source_url = wp_get_attachment_url($post_id);
 
-      $this->ThumbnailUpdater = new \ThumbnailUpdater($post_id);
-      $this->ThumbnailUpdater->setOldMetadata($this->source_metadata);
+    //  $this->ThumbnailUpdater = new \ThumbnailUpdater($post_id);
+      //$this->ThumbnailUpdater->setOldMetadata($this->source_metadata);
   }
 
   public function setMode($mode)
@@ -133,7 +133,6 @@ class Replacer
 
       if ($this->replaceMode == self::MODE_SEARCHREPLACE)
       {
-
          // Write new image title.
          $title = $this->getNewTitle();
          $update_ar = array('ID' => $this->post_id);
@@ -155,17 +154,23 @@ class Replacer
              echo $error;
           }
          }
-          $this->doSearchReplace();
 
       }  // SEARCH REPLACE MODE
 
-      if(wp_attachment_is_image($this->post_id))
+      $args = array(
+          'thumbnails_only' => ($this->replaceMode == self::MODE_SEARCHREPLACE) ? false : true,
+      );
+
+      // Search Replace will also update thumbnails.
+      $this->doSearchReplace($args);
+
+      /*if(wp_attachment_is_image($this->post_id))
       {
         $this->ThumbnailUpdater->setNewMetadata($this->target_metadata);
         $result = $this->ThumbnailUpdater->updateThumbnails();
         if (false === $result)
           Log::addWarn('Thumbnail Updater returned false');
-      }
+      }*/
 
       // if all set and done, update the date.
       // This must be done after wp_update_posts
@@ -278,18 +283,18 @@ class Replacer
 
     wp_cache_delete($this->post_id, 'posts');
 
-
-    /*    $sql = $wpdb->prepare(
-            "UPDATE $table_name SET post_date = '$post_date', post_date_gmt = '$post_date_gmt' WHERE ID = %d;",
-            $ID
-        );
-        $wpdb->query($sql);   */
   }
 
 
-  protected function doSearchReplace()
+  protected function doSearchReplace($args = array())
   {
-      global $wpdb;
+    $defaults = array(
+        'thumbnails_only' => false,
+    );
+
+    $args = wp_parse_args($args, $defaults);
+
+    global $wpdb;
 
      // Search-and-replace filename in post database
  		$current_base_url = emr_get_match_url( $this->source_url);
@@ -298,8 +303,83 @@ class Replacer
     if (is_dir($current_base_url))
     {
       Log::addError('Search Replace tried to replace to directory - ' . $current_base_url);
-      exit('Fail Safe :: Source Location seems to be a directory.');
+      Notices::addError(__('Fail Safe :: Source Location seems to be a directory.', 'enable-media-replace'));
+      return;
     }
+
+    //$search_files = $this->getFilesFromMetadata($this->source_metadata);
+    //$replace_files = $this->getFilesFromMetadata($this->target_metadata);
+  //  $arr = $this->getRelativeURLS();
+
+    /*$search_urls  = emr_get_file_urls( $this->source_url, $this->source_metadata );
+    $replace_urls = emr_get_file_urls( $this->target_url, $this->target_metadata );
+    $replace_urls = array_values(emr_normalize_file_urls( $search_urls, $replace_urls ));*/
+
+    // get relurls of both source and target.
+    $urls = $this->getRelativeURLS();
+
+
+    if ($args['thumbnails_only'])
+    {
+      foreach($urls as $side => $data)
+      {
+        if (isset($data['base']))
+        {
+          unset($urls[$side]['base']);
+        }
+        if (isset($data['file']))
+        {
+          unset($urls[$side]['file']);
+        }
+      }
+    }
+
+    $search_urls = $urls['source'];
+    $replace_urls = $urls['target'];
+
+    /* If the replacement is much larger than the source, there can be more thumbnails. This leads to disbalance in the search/replace arrays.
+      Remove those from the equation. If the size doesn't exist in the source, it shouldn't be in use either */
+    foreach($replace_urls as $size => $url)
+    {
+      if (! isset($search_urls[$size]))
+      {
+        Log::addDebug('Dropping size ' . $size . ' - not found in source urls');
+        unset($replace_urls[$size]);
+      }
+    }
+
+    /* If on the other hand, some sizes are available in source, but not in target, try to replace them with something closeby.  */
+    foreach($search_urls as $size => $url)
+    {
+        if (! isset($replace_urls[$size]))
+        {
+           $closest = $this->findNearestSize($size);
+           if ($closest)
+           {
+              $sourceUrl = $search_urls[$size];
+              $baseurl = trailingslashit(str_replace(wp_basename($sourceUrl), '', $sourceUrl));
+              Log::addDebug('Nearest size of source ' . $size . ' for target is ' . $closest);
+              $replace_urls[$size] = $baseurl . $closest;
+           }
+           else
+           {
+             Log::addDebug('Unset size ' . $size . ' - no closest found in source');
+           }
+        }
+    }
+
+    // If the two sides are disbalanced, the str_replace part will cause everything that has an empty replace counterpart to replace it with empty. Unwanted.
+
+    if (count($search_urls) !== count($replace_urls))
+    {
+
+      Log::addError('Unbalanced Replace Arrays, aborting', array($search_urls, $replace_urls, count($search_urls), count($replace_urls) ));
+      Notices::addError(__('There was an issue with updating your image URLS: Search and replace have different amount of values. Aborting updating thumbnails', 'enable-media-replace'));
+      return;
+    }
+
+    Log::addDebug('Doing meta search and replace -', array($search_urls, $replace_urls) );
+
 
     /* Search and replace in WP_POSTS */
     // Removed $wpdb->remove_placeholder_escape from here, not compatible with WP 4.8
@@ -309,34 +389,40 @@ class Replacer
 
 //INNER JOIN ' . $wpdb->posts . ' on ' . $wpdb->posts . '.ID = ' . $wpdb->postmeta . '.post_id
 
-    $postmeta_sql = 'SELECT meta_id, post_id, meta_value FROM ' . $wpdb->postmeta . '
+    $postmeta_sql = 'SELECT meta_id, post_id, meta_key, meta_value FROM ' . $wpdb->postmeta . '
         WHERE post_id in (SELECT ID from '. $wpdb->posts . ' where post_status = "publish") AND meta_value like %s  ';
     $postmeta_sql = $wpdb->prepare($postmeta_sql, '%' . $current_base_url . '%');
 
     $rsmeta = $wpdb->get_results($postmeta_sql, ARRAY_A);
+  //  Log::addDebug('RSMETA', $rsmeta);
  		$rs = $wpdb->get_results( $posts_sql, ARRAY_A );
 
  		$number_of_updates = 0;
 
-    $search_urls  = emr_get_file_urls( $this->source_url, $this->source_metadata );
-    $replace_urls = emr_get_file_urls( $this->target_url, $this->target_metadata );
-    $replace_urls = array_values(emr_normalize_file_urls( $search_urls, $replace_urls ));
+    Log::addDebug('Queries found '  . count($rs) . ' post rows and ' . count($rsmeta) . ' meta rows');
 
-    Log::addDebug('Replacing references', array($search_urls, $replace_urls));
 
  		if ( ! empty( $rs ) ) {
  			foreach ( $rs AS $rows ) {
  				$number_of_updates = $number_of_updates + 1;
  				// replace old URLs with new URLs.
  				$post_content = $rows["post_content"];
- 				$post_content = str_replace( $search_urls, $replace_urls, $post_content );
+ 				//$post_content = str_replace( $search_urls, $replace_urls, $post_content );
 
- 				$sql = $wpdb->prepare(
- 					"UPDATE $wpdb->posts SET post_content = %s WHERE ID = %d;",
- 					array($post_content, $rows["ID"])
- 				);
-      //  echo "$sql <BR>";
- 				$wpdb->query( $sql );
+        $post_id = $rows['ID'];
+        $post_ar = array('ID' => $post_id);
+        $post_ar['post_content'] = $this->replaceContent($post_content, $search_urls, $replace_urls);
+
+        if ($post_ar['post_content'] !== $post_content)
+        {
+          $result = wp_update_post($post_ar);
+          if (is_wp_error($result))
+          {
+            Notice::addError('Something went wrong while replacing' .  $result->get_error_message() );
+            Log::addError('WP-Error during post update', $result);
+          }
+        }
+
  			}
     }
     if (! empty($rsmeta))
@@ -345,14 +431,142 @@ class Replacer
       {
         $number_of_updates++;
         $content = $row['meta_value'];
-        $content = str_replace($search_urls, $replace_urls, $content);
+        $meta_key = $row['meta_key'];
+        $post_id = $row['post_id'];
+        $content = $this->replaceContent($content, $search_urls, $replace_urls); //str_replace($search_urls, $replace_urls, $content);
 
-        $sql = $wpdb->prepare('UPDATE ' . $wpdb->postmeta . ' SET meta_value = %s WHERE meta_id = %d', $content, $row['meta_id'] );
-        $wpdb->query($sql);
+        update_post_meta($post_id, $meta_key, $content);
+    //    $sql = $wpdb->prepare('UPDATE ' . $wpdb->postmeta . ' SET meta_value = %s WHERE meta_id = %d', $content, $row['meta_id'] );
+    //    $wpdb->query($sql);
       }
     }
 
 
   } // doSearchReplace
+
+  private function replaceContent($content, $search, $replace)
+  {
+    //$is_serial = false;
+    $content = maybe_unserialize($content);
+
+    if (is_string($content))  // let's check the normal one first.
+    {
+      return str_replace($search, $replace, $content);
+    }
+    elseif (is_wp_error($content)) // seen this.
+    {
+       return $content;  // do nothing.
+    }
+    elseif (is_array($content) ) // array metadata and such.
+    {
+      foreach($content as $index => $value)
+      {
+        $content[$index] = $this->replaceContent($value, $search, $replace); //str_replace($value, $search, $replace);
+      }
+      return $content;
+    }
+    elseif(is_object($content)) // metadata objects, they exist.
+    {
+      foreach($content as $key => $value)
+      {
+        $content->{$key} = $this->replaceContent($value, $search, $replace); //str_replace($value, $search, $replace);
+      }
+      return $content;
+    }
+
+
+    //Notices::addWarning('Replacement Content was not an error,array, string. Possibly content replacement failed. ', $content );
+    return $content;
+  }
+
+  private function getFilesFromMetadata($meta)
+  {
+        $fileArray = array();
+        if (isset($meta['file']))
+          $fileArray['file'] = $meta['file'];
+
+        if (isset($meta['sizes']))
+        {
+          foreach($meta['sizes'] as $name => $data)
+          {
+            if (isset($data['file']))
+            {
+              $fileArray[$name] = $data['file'];
+            }
+          }
+        }
+      return $fileArray;
+  }
+
+  // Get REL Urls of both source and target.
+  private function getRelativeURLS()
+  {
+      $dataArray = array(
+          'source' => array('url' => $this->source_url, 'metadata' => $this->getFilesFromMetadata($this->source_metadata) ),
+          'target' => array('url' => $this->target_url, 'metadata' => $this->getFilesFromMetadata($this->target_metadata) ),
+      );
+
+      $result = array();
+
+      foreach($dataArray as $index => $item)
+      {
+          $result[$index] = array();
+          $metadata = $item['metadata'];
+
+          $baseurl = parse_url($item['url'], PHP_URL_PATH);
+          $result[$index]['base'] = $baseurl;  // this is the relpath of the mainfile.
+          $baseurl = trailingslashit(str_replace( wp_basename($item['url']), '', $baseurl)); // get the relpath of main file.
+
+          foreach($metadata as $name => $filename)
+          {
+              $result[$index][$name] =  $baseurl . wp_basename($filename); // filename can have a path like 19/08 etc.
+          }
+
+      }
+
+      return $result;
+  }
+
+
+  /** FindNearestsize
+  * This works on the assumption that when the exact image size name is not available, find the nearest width with the smallest possible difference to impact the site the least.
+  */
+  private function findNearestSize($sizeName)
+  {
+
+      $old_width = $this->source_metadata['sizes'][$sizeName]['width']; // the width from size not in new image
+      $new_width = $this->target_metadata['width']; // default check - the width of the main image
+
+      $diff = abs($old_width - $new_width);
+    //  $closest_file = str_replace($this->relPath, '', $this->newMeta['file']);
+      $closest_file = wp_basename($this->target_metadata['file']); // mainfile as default
+
+      foreach($this->target_metadata['sizes'] as $sizeName => $data)
+      {
+          $thisdiff = abs($old_width - $data['width']);
+
+          if ( $thisdiff  < $diff )
+          {
+              $closest_file = $data['file'];
+              if(is_array($closest_file)) { $closest_file = $closest_file[0];} // HelpScout case 709692915
+              if(!empty($closest_file)) {
+                  $diff = $thisdiff;
+                  $found_metasize = true;
+              }
+          }
+      }
+
+
+      if(empty($closest_file)) return false;
+
+      return $closest_file;
+      //$oldFile = $oldData['file'];
+      //if(is_array($oldFile)) { $oldFile = $oldFile[0];} // HelpScout case 709692915
+      /*if(empty($oldFile)) {
+          return false; //make sure we don't replace in this case as we will break the URLs for all the images in the folder.
+      } */
+    //  $this->convertArray[] = array('imageFrom' => $this->relPath .  $oldFile, 'imageTo' => $this->relPath . $closest_file);
+
+  }
 
 } // class
