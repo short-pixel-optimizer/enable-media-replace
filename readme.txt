@@ -3,8 +3,8 @@ Contributors: ShortPixel
 Donate link: https://www.paypal.me/resizeImage
 Tags: replace, attachment, media, files, replace image, replace jpg, change media, replace media, image, file
 Requires at least: 4.2
-Tested up to: 5.2
-Requires PHP: 5.4
+Tested up to: 5.3
+Requires PHP: 5.6
 Stable tag: trunk
 
 Easily replace any attached image/file by simply uploading a new file in the Media Library edit view - a real time saver!
@@ -47,7 +47,7 @@ If you want more control over the format used to display the time, you can use t
 
 == Changelog ==
 
-= 3.3.7 =
+= 3.3.8 =
 
 * Updating and replacing images and thumbnails should now work for serialized (and such) metadata.
   - For Beaver Builder
@@ -57,10 +57,18 @@ If you want more control over the format used to display the time, you can use t
 * Replace Image label to Replace Media
 * Removed constant S3_UPLOADS_AUTOENABLE
 
+= 3.3.7 =
+
+Release date: 13th November 2019
+* call the hook enable-media-replace-upload-done on both modes
+* fix JSON compatibility for hostings that don't have JSON module activated
+* Language – 0 new strings added, 0 updated, 0 fuzzied, and 0 obsoleted
+
+
 = 3.3.6 =
 
 Release date: 5th September 2019
-* fix JSON compatibility for hosters that don't have JSON module activated
+* fix JSON compatibility for hostings that don't have JSON module activated
 
 = 3.3.5 =
 
