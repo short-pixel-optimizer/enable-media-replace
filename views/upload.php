@@ -106,7 +106,8 @@ if (is_uploaded_file($_FILES["userfile"]["tmp_name"])) {
 		 exit();
 	}
 
-	if ($filedata["ext"] == "") {
+
+	if ($filedata["ext"] == false) {
 
 		Notices::addError(esc_html__("File type does not meet security guidelines. Try another.", 'enable-media-replace') );
 		wp_safe_redirect($redirect_error);
