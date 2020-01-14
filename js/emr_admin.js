@@ -119,8 +119,15 @@ jQuery(document).ready(function($)
 
         img.setAttribute('style', 'max-width:100%; max-height: 100%;');
         img.addEventListener("load", function () {
+          // with formats like svg it can be rough.
+            var width = img.naturalWidth;
+            var height = img.naturalHeight;
+            if (width == 0)
+              width = img.width;
+            if (height == 0)
+              height = img.height;
             //  $(preview).find('.textlayer').text(img.naturalWidth + ' x ' + img.naturalHeight );
-              self.updateTextLayer(preview, img.naturalWidth + ' x ' + img.naturalHeight);
+              self.updateTextLayer(preview, width + ' x ' + height);
         });
 
         $(preview).prepend(img);

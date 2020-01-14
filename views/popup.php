@@ -33,17 +33,24 @@ Log::addDebug('Load Popup Form View');
 
 $attachment_id = intval($_GET['attachment_id']);
 $attachment = get_post($attachment_id);
+$replacer = new Replacer($attachment_id);
 
-$filepath = get_attached_file($attachment_id); // fullpath
+$file = $replacer->getSourceFile();
+$filepath = $file->getFullFilePath();
+$filename = $file->getFileName();
+$filetype = $file->getFileExtension();
+$source_mime = get_post_mime_type($attachment_id);
+
+/*$filepath = get_attached_file($attachment_id); // fullpath
 $filetype = $attachment->post_mime_type;
 $filename = basename($filepath);
-$source_mime = get_post_mime_type($attachment_id);
+ */
 
 $uiHelper = new UIHelper();
 $uiHelper->setPreviewSizes();
 $uiHelper->setSourceSizes($attachment_id);
 
-Log::addDebug('Popup view Data', array('id' => $attachment_id, 'source_mime' => $source_mime, 'filepath' => $filepath));
+//Log::addDebug('Popup view Data', array('id' => $attachment_id, 'source_mime' => $source_mime, 'filepath' => $filepath));
 
 ?>
 <style>

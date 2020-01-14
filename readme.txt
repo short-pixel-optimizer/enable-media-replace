@@ -2,7 +2,7 @@
 Contributors: ShortPixel
 Donate link: https://www.paypal.me/resizeImage
 Tags: replace, attachment, media, files, replace image, replace jpg, change media, replace media, image, file
-Requires at least: 4.2
+Requires at least: 4.9.7
 Tested up to: 5.3
 Requires PHP: 5.6
 Stable tag: trunk
@@ -47,8 +47,9 @@ If you want more control over the format used to display the time, you can use t
 
 == Changelog ==
 
-= 3.3.8 =
+= 3.3.8-DEV04 =
 
+* Fixes for WP 5.3+ -scaled images system. Will now replace those as well.
 * Updating and replacing images and thumbnails should now work for serialized (and such) metadata.
   - For Beaver Builder
   - For Elementor
@@ -57,6 +58,8 @@ If you want more control over the format used to display the time, you can use t
 * Hidden double 'replace media'
 * Replace Image label to Replace Media
 * Removed constant S3_UPLOADS_AUTOENABLE
+* Improved detection of SVG image sizes
+* Fixed - Logger doesn't call wp_upload_dir when not debugging
 
 = 3.3.7 =
 

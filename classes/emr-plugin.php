@@ -21,10 +21,12 @@ class EnableMediaReplacePlugin
       self::$instance = new EnableMediaReplacePlugin();
 
     $log = Log::getInstance();
-    $uploaddir =wp_upload_dir();
-    if (isset($uploaddir['basedir']))
-      $log->setLogPath($uploaddir['basedir'] . "/emr_log");
-
+    if (Log::debugIsActive())
+    {
+      $uploaddir = wp_upload_dir(null, false, false);
+      if (isset($uploaddir['basedir']))
+        $log->setLogPath($uploaddir['basedir'] . "/emr_log");
+    }
     return self::$instance;
   }
 
@@ -53,6 +55,8 @@ class EnableMediaReplacePlugin
     // editors
     add_action( 'add_meta_boxes', function () { add_meta_box('emr-replace-box', __('Replace Media', 'enable-media-replace'), array($this, 'replace_meta_box'), 'attachment', 'side', 'low'); }  );
     add_filter('attachment_fields_to_edit', array($this, 'attachment_editor'), 10, 2);
+
+
 
     // shortcode
     add_shortcode('file_modified', array($this, 'get_modified_date'));
@@ -233,6 +237,20 @@ class EnableMediaReplacePlugin
       return false;
     }
 
+    if (function_exists('wp_get_original_image_url')) // indicating WP 5.3+
+    {
+      $source_url = wp_get_original_image_url($post->ID);
+      // oldway will give -scaled in case of scaling.
+      $source_url_oldway = wp_get_attachment_url($post->ID);
+
+      if ($source_url !== $source_url_oldway)
+      {
+        echo "<div class='original previewwrapper'><img src='" . $source_url_oldway . "'><span class='label'>" . __('Original') . "</span></div>";
+      }
+
+    }
+
+
     foreach($meta['sizes'] as $size => $data)
     {
       $display_size = ucfirst(str_replace("_", " ", $size));
@@ -257,6 +275,7 @@ class EnableMediaReplacePlugin
               "input" => "html",
               "html" => "<p><a class='button-secondary' $link>" . esc_html__("Upload a new file", "enable-media-replace") . "</a></p>", "helps" => esc_html__("To replace the current file, click the link and upload a replacement.", "enable-media-replace")
             );
+
       return $form_fields;
   }
 

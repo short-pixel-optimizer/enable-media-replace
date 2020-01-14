@@ -38,14 +38,26 @@ class Replacer
   {
       $this->post_id = $post_id;
 
-      $source_file = trim(get_attached_file($post_id, apply_filters( 'emr_unfiltered_get_attached_file', true )));
+      if (function_exists('wp_get_original_image_path')) // WP 5.3+
+      {
+          $source_file = wp_get_original_image_path($post_id);
+          if ($source_file === false) // if it's not an image, returns false, use the old way.
+            $source_file = trim(get_attached_file($post_id, apply_filters( 'emr_unfiltered_get_attached_file', true )));
+      }
+      else
+        $source_file = trim(get_attached_file($post_id, apply_filters( 'emr_unfiltered_get_attached_file', true )));
+
+      Log::addDebug('SourceFile ' . $source_file);
       $this->sourceFile = new File($source_file);
 
       $this->source_post = get_post($post_id);
       $this->source_is_image = wp_attachment_is('image', $this->source_post);
       $this->source_metadata = wp_get_attachment_metadata( $post_id );
-      $this->source_url = wp_get_attachment_url($post_id);
 
+      if (function_exists('wp_get_original_image_url')) // WP 5.3+
+        $this->source_url = wp_get_original_image_url($post_id);
+      else
+        $this->source_url = wp_get_attachment_url($post_id);
     //  $this->ThumbnailUpdater = new \ThumbnailUpdater($post_id);
       //$this->ThumbnailUpdater->setOldMetadata($this->source_metadata);
   }
@@ -212,6 +224,12 @@ class Replacer
     return $title;
   }
 
+  /** Gets the source file after processing. Returns a file */
+  public function getSourceFile()
+  {
+     return $this->sourceFile;
+  }
+
   /** Returns a full target path to place to new file. Including the file name!  **/
   protected function getTargetFile()
   {
@@ -255,7 +273,10 @@ class Replacer
   {
     $meta = \wp_get_attachment_metadata( $this->post_id );
     $backup_sizes = get_post_meta( $this->post_id, '_wp_attachment_backup_sizes', true );
-    $result = \wp_delete_attachment_files($this->post_id, $meta, $backup_sizes, $this->sourceFile->getFullFilePath() );
+
+    // this must be -scaled if that exists, since wp_delete_attachment_files checks for original_files but doesn't recheck if scaled is included since that the one 'that exists' in WP . $this->source_file replaces original image, not the -scaled one.
+    $file = get_attached_file($this->post_id);
+    $result = \wp_delete_attachment_files($this->post_id, $meta, $backup_sizes, $file );
 
   }
 
@@ -297,7 +318,9 @@ class Replacer
     global $wpdb;
 
      // Search-and-replace filename in post database
- 		$current_base_url = emr_get_match_url( $this->source_url);
+     // @todo Check this with scaled images.
+ 		$current_base_url = parse_url($this->source_url, PHP_URL_PATH);// emr_get_match_url( $this->source_url);
+    $current_base_url = str_replace('.' . pathinfo($current_base_url, PATHINFO_EXTENSION), '', $current_base_url);
 
     /** Fail-safe if base_url is a whole directory, don't go search/replace */
     if (is_dir($current_base_url))
@@ -368,8 +391,21 @@ class Replacer
         }
     }
 
-    // If the two sides are disbalanced, the str_replace part will cause everything that has an empty replace counterpart to replace it with empty. Unwanted.
+    /* If source and target are the same, remove them from replace. This happens when replacing a file with same name, and +/- same dimensions generated.
 
+    After previous loops, for every search there should be a replace size.
+    */
+    foreach($search_urls as $size => $url)
+    {
+        $replace_url = $replace_urls[$size];
+        if ($url == $replace_url) // if source and target as the same, no need for replacing.
+        {
+          unset($search_urls[$size]);
+          unset($replace_urls[$size]);
+        }
+    }
+
+    // If the two sides are disbalanced, the str_replace part will cause everything that has an empty replace counterpart to replace it with empty. Unwanted.
     if (count($search_urls) !== count($replace_urls))
     {
 
@@ -379,7 +415,7 @@ class Replacer
     }
 
     Log::addDebug('Doing meta search and replace -', array($search_urls, $replace_urls) );
-
+    Log::addDebug('Searching with BaseuRL' . $current_base_url);
 
     /* Search and replace in WP_POSTS */
     // Removed $wpdb->remove_placeholder_escape from here, not compatible with WP 4.8
@@ -398,6 +434,8 @@ class Replacer
  		$rs = $wpdb->get_results( $posts_sql, ARRAY_A );
 
  		$number_of_updates = 0;
+
+    Log::addDebug('Queries', array($postmeta_sql, $posts_sql));
 
     Log::addDebug('Queries found '  . count($rs) . ' post rows and ' . count($rsmeta) . ' meta rows');
 
@@ -506,6 +544,9 @@ class Replacer
           'target' => array('url' => $this->target_url, 'metadata' => $this->getFilesFromMetadata($this->target_metadata) ),
       );
 
+    //  Log::addDebug('Source Metadata', $this->source_metadata);
+  //    Log::addDebug('Target Metadata', $this->target_metadata);
+
       $result = array();
 
       foreach($dataArray as $index => $item)
@@ -523,7 +564,7 @@ class Replacer
           }
 
       }
-
+  //    Log::addDebug('Relative URLS', $result);
       return $result;
   }
 
