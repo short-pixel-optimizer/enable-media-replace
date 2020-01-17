@@ -1,7 +1,6 @@
-jQuery(document).ready(function($)
-{
+
   // interface for emr.
-  var emrIf = new function ()
+  var emrIf = function ($)
   {
     var source_type;
     var source_is_image;
@@ -234,6 +233,26 @@ jQuery(document).ready(function($)
     }
   } // emrIf
 
-  window.enableMediaReplace = emrIf;
+jQuery(document).ready(function($)
+{
+  window.enableMediaReplace =  new emrIf($);
   window.enableMediaReplace.init();
 });
+
+
+  function emrDelayedInit() {
+        console.log('Checking delayed init ');
+        if(typeof window.enableMediaReplace == "undefined") {
+            console.log(emrIf);
+            window.enableMediaReplace =  new emrIf(jQuery);
+            window.enableMediaReplace.init();
+        }
+        else if (typeof window.enableMediaReplace !== 'undefined')
+        {
+            // All fine.
+        }
+        else { // Nothing yet, try again.
+            setTimeout(emrdelayedInit, 3000);
+        }
+    }
+    setTimeout(emrDelayedInit, 3000);

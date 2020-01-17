@@ -56,8 +56,6 @@ class EnableMediaReplacePlugin
     add_action( 'add_meta_boxes', function () { add_meta_box('emr-replace-box', __('Replace Media', 'enable-media-replace'), array($this, 'replace_meta_box'), 'attachment', 'side', 'low'); }  );
     add_filter('attachment_fields_to_edit', array($this, 'attachment_editor'), 10, 2);
 
-
-
     // shortcode
     add_shortcode('file_modified', array($this, 'get_modified_date'));
 
@@ -70,6 +68,7 @@ class EnableMediaReplacePlugin
       add_action( 'add_meta_boxes', function () { add_meta_box('emr-showthumbs-box', __('Replaced Thumbnails Preview', 'enable-media-replace'), array($this, 'show_thumbs_box'), 'attachment', 'side', 'low'); }  );
       add_filter('postbox_classes_attachment_emr-showthumbs-box', function($classes) { $classes[] = 'closed'; return $classes; });
     }
+
 
   }
 
