@@ -423,20 +423,23 @@ class Replacer
  			"SELECT ID, post_content FROM $wpdb->posts WHERE post_status = 'publish' AND post_content LIKE %s;",
  			'%' . $current_base_url . '%');
 
-//INNER JOIN ' . $wpdb->posts . ' on ' . $wpdb->posts . '.ID = ' . $wpdb->postmeta . '.post_id
+    // json encodes it all differently. Catch json-like encoded urls
+    //$json_url = str_replace('/', '\/', ltrim($current_base_url, '/') );
 
     $postmeta_sql = 'SELECT meta_id, post_id, meta_key, meta_value FROM ' . $wpdb->postmeta . '
-        WHERE post_id in (SELECT ID from '. $wpdb->posts . ' where post_status = "publish") AND meta_value like %s  ';
+        WHERE post_id in (SELECT ID from '. $wpdb->posts . ' where post_status = "publish") AND meta_value like %s';
     $postmeta_sql = $wpdb->prepare($postmeta_sql, '%' . $current_base_url . '%');
 
+    // This is a desparate solution. Can't find anyway for wpdb->prepare not the add extra slashes to the query, which messes up the query.
+//    $postmeta_sql = str_replace('[JSON_URL]', $json_url, $postmeta_sql);
+
     $rsmeta = $wpdb->get_results($postmeta_sql, ARRAY_A);
-  //  Log::addDebug('RSMETA', $rsmeta);
+
  		$rs = $wpdb->get_results( $posts_sql, ARRAY_A );
 
  		$number_of_updates = 0;
 
     Log::addDebug('Queries', array($postmeta_sql, $posts_sql));
-
     Log::addDebug('Queries found '  . count($rs) . ' post rows and ' . count($rsmeta) . ' meta rows');
 
 
@@ -486,6 +489,12 @@ class Replacer
   {
     //$is_serial = false;
     $content = maybe_unserialize($content);
+    $isJson = $this->isJSON($content);
+
+    if ($isJson)
+    {
+      $content = json_decode($content);
+    }
 
     if (is_string($content))  // let's check the normal one first.
     {
@@ -512,8 +521,11 @@ class Replacer
       return $content;
     }
 
+    if ($isJson) // convert back to JSON, if this was JSON. Different than serialize which does WP automatically.
+    {
+      $content = json_encode($content);
+    }
 
-    //Notices::addWarning('Replacement Content was not an error,array, string. Possibly content replacement failed. ', $content );
     return $content;
   }
 
@@ -534,6 +546,13 @@ class Replacer
           }
         }
       return $fileArray;
+  }
+
+  /* Check if given content is JSON format. */
+  private function isJSON($content)
+  {
+      $json = json_decode($content);
+      return $json && $content != $json;
   }
 
   // Get REL Urls of both source and target.

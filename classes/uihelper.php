@@ -97,15 +97,15 @@ class UIHelper
 
   public function setSourceSizes($attach_id)
   {
-    $data = $this->getImageSizes($attach_id, $this->preview_size);  // wp_get_attachment_image_src($attach_id, 'full');
+    $data = $this->getImageSizes($attach_id, 'full');  // wp_get_attachment_image_src($attach_id, 'full');
     $file = get_attached_file($attach_id);
 
     if (is_array($data))
     {
+
       $this->full_width = $data[1];
       $this->full_height = $data[2];
     }
-
 
   }
 
@@ -119,6 +119,7 @@ class UIHelper
         $data = $this->getImageSizes($attach_id, $this->preview_size); //wp_get_attachment_image_src($attach_id, $this->preview_size);
         $file = get_attached_file($attach_id);
         Log::addDebug('Attached File '  . $file, $data);
+
 
       }
 
@@ -153,8 +154,6 @@ class UIHelper
 
       // SVG's without any helpers return around 0 for width / height. Fix preview.
 
-
-
       // preview width, if source if found, should be set to source.
       $this->preview_width = $width;
       $this->preview_height = $height;
@@ -173,19 +172,20 @@ class UIHelper
         'image' => $image,
         'mime_type' => $mime_type,
       );
+
       $output = $this->getPlaceHolder($args);
       return $output;
   }
 
   protected function getImageSizes($attach_id, $size = 'thumbnail')
   {
-    $data = wp_get_attachment_image_src($attach_id, $this->preview_size);
-    $width = $data[1]; 
-    $file = get_attached_file($attach_id);
+    $data = wp_get_attachment_image_src($attach_id, $size);
+    $width = $data[1];
     $mime_type = get_post_mime_type($attach_id);
 
     if (strpos($mime_type, 'svg') !== false && $width <= 5)
     {
+        $file = get_attached_file($attach_id);
         $data = $this->fixSVGSize($data, $file);
     }
 

@@ -47,7 +47,7 @@ If you want more control over the format used to display the time, you can use t
 
 == Changelog ==
 
-= 3.3.8-DEV04 =
+= 3.3.8-DEV05 =
 
 * Fixes for WP 5.3+ -scaled images system. Will now replace those as well.
 * Updating and replacing images and thumbnails should now work for serialized (and such) metadata.
@@ -60,6 +60,7 @@ If you want more control over the format used to display the time, you can use t
 * Removed constant S3_UPLOADS_AUTOENABLE
 * Improved detection of SVG image sizes
 * Fixed - Logger doesn't call wp_upload_dir when not debugging
+* Extra - Javascript tries to resume after external errors. 
 
 = 3.3.7 =
 
