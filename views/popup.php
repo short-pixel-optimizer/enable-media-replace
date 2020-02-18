@@ -33,17 +33,24 @@ Log::addDebug('Load Popup Form View');
 
 $attachment_id = intval($_GET['attachment_id']);
 $attachment = get_post($attachment_id);
+$replacer = new Replacer($attachment_id);
 
-$filepath = get_attached_file($attachment_id); // fullpath
+$file = $replacer->getSourceFile();
+$filepath = $file->getFullFilePath();
+$filename = $file->getFileName();
+$filetype = $file->getFileExtension();
+$source_mime = get_post_mime_type($attachment_id);
+
+/*$filepath = get_attached_file($attachment_id); // fullpath
 $filetype = $attachment->post_mime_type;
 $filename = basename($filepath);
-$source_mime = get_post_mime_type($attachment_id);
+ */
 
 $uiHelper = new UIHelper();
 $uiHelper->setPreviewSizes();
 $uiHelper->setSourceSizes($attachment_id);
 
-Log::addDebug('Popup view Data', array('id' => $attachment_id, 'source_mime' => $source_mime, 'filepath' => $filepath));
+//Log::addDebug('Popup view Data', array('id' => $attachment_id, 'source_mime' => $source_mime, 'filepath' => $filepath));
 
 ?>
 <style>
@@ -71,7 +78,7 @@ $url = $uiHelper->getFormUrl($attachment_id);
 
 	<form enctype="multipart/form-data" method="POST" action="<?php echo $formurl; ?>">
     <section class='image_chooser wrapper'>
-      <div class='section-header'> <?php _e('Choose Replacement Image', 'enable-replace-media'); ?></div>
+      <div class='section-header'> <?php _e('Choose Replacement Media', 'enable-replace-media'); ?></div>
 
 	<?php
 		#wp_nonce_field('enable-media-replace');
@@ -113,6 +120,7 @@ $url = $uiHelper->getFormUrl($attachment_id);
 
     <div class='form-warning filetype'><p><?php printf(__('Replacement file is not the same filetype. This might cause unexpected issues')); ?></p></div>
 
+    <div class='form-warning mimetype'><p><?php printf(__('Replacement file type doesn\'t seem to be allowed by WordPress. This might cause unexpected issues')); ?></p></div>
 
 		<input type="file" name="userfile" id="userfile" />
         <div class='image_previews'>

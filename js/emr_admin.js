@@ -1,7 +1,6 @@
-jQuery(document).ready(function($)
-{
+
   // interface for emr.
-  var emrIf = new function ()
+  var emrIf = function ($)
   {
     var source_type;
     var source_is_image;
@@ -119,8 +118,15 @@ jQuery(document).ready(function($)
 
         img.setAttribute('style', 'max-width:100%; max-height: 100%;');
         img.addEventListener("load", function () {
+          // with formats like svg it can be rough.
+            var width = img.naturalWidth;
+            var height = img.naturalHeight;
+            if (width == 0)
+              width = img.width;
+            if (height == 0)
+              height = img.height;
             //  $(preview).find('.textlayer').text(img.naturalWidth + ' x ' + img.naturalHeight );
-              self.updateTextLayer(preview, img.naturalWidth + ' x ' + img.naturalHeight);
+              self.updateTextLayer(preview, width + ' x ' + height);
         });
 
         $(preview).prepend(img);
@@ -147,6 +153,14 @@ jQuery(document).ready(function($)
         this.debug(target_type + ' not ' + source_type);
         this.warningFileType();
       }
+
+      if (emr_options.allowed_mime.indexOf(target_type) == -1)
+      {
+         this.debug(target_type + ' not ' + ' in allowed types ');
+         this.warningMimeType();
+      }
+    //  this.debug(emr_options.allowed_mime);
+
     },
     // replace the text, check if text is there ( or hide ), and fix the layout.
     this.updateTextLayer = function (preview, newtext)
@@ -209,12 +223,36 @@ jQuery(document).ready(function($)
     {
       $('.form-warning.filetype').fadeIn();
     }
+    this.warningMimeType = function(fileItem)
+    {
+      $('.form-warning.mimetype').fadeIn();
+    }
     this.debug = function(message)
     {
       console.debug(message);
     }
   } // emrIf
 
-  window.enableMediaReplace = emrIf;
+jQuery(document).ready(function($)
+{
+  window.enableMediaReplace =  new emrIf($);
   window.enableMediaReplace.init();
 });
+
+
+  function emrDelayedInit() {
+        console.log('Checking delayed init ');
+        if(typeof window.enableMediaReplace == "undefined") {
+            console.log(emrIf);
+            window.enableMediaReplace =  new emrIf(jQuery);
+            window.enableMediaReplace.init();
+        }
+        else if (typeof window.enableMediaReplace !== 'undefined')
+        {
+            // All fine.
+        }
+        else { // Nothing yet, try again.
+            setTimeout(emrdelayedInit, 3000);
+        }
+    }
+    setTimeout(emrDelayedInit, 3000);
