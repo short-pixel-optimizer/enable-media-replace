@@ -61,7 +61,7 @@ Release date: 18th February 2020
 * Improved detection of SVG image sizes
 * Fixed - Logger doesn't call wp_upload_dir when not debugging
 * Extra - Javascript tries to resume after external errors.
-* Language – 0 new strings added, 0 updated, 0 fuzzied, and 0 obsoleted
+* Language – 0 new strings added, 2 updated, 0 fuzzied, and 0 obsoleted
 
 = 3.3.7 =
 
