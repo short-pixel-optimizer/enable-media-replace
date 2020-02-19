@@ -47,6 +47,11 @@ If you want more control over the format used to display the time, you can use t
 
 == Changelog ==
 
+= 3.3.9 =
+
+Release date: 19th February 2020
+* Fix issue with search/replacing non-image attachments and query
+
 = 3.3.8 =
 
 Release date: 18th February 2020
