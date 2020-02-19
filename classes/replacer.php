@@ -55,7 +55,13 @@ class Replacer
       $this->source_metadata = wp_get_attachment_metadata( $post_id );
 
       if (function_exists('wp_get_original_image_url')) // WP 5.3+
-        $this->source_url = wp_get_original_image_url($post_id);
+      {
+        $source_url = wp_get_original_image_url($post_id);
+        if ($source_url === false)  // not an image, or borked, try the old way
+          $source_url = wp_get_attachment_url($post_id);
+
+        $this->source_url = $source_url;
+      }
       else
         $this->source_url = wp_get_attachment_url($post_id);
     //  $this->ThumbnailUpdater = new \ThumbnailUpdater($post_id);
@@ -322,6 +328,7 @@ class Replacer
  		$current_base_url = parse_url($this->source_url, PHP_URL_PATH);// emr_get_match_url( $this->source_url);
     $current_base_url = str_replace('.' . pathinfo($current_base_url, PATHINFO_EXTENSION), '', $current_base_url);
 
+
     /** Fail-safe if base_url is a whole directory, don't go search/replace */
     if (is_dir($current_base_url))
     {
@@ -329,6 +336,14 @@ class Replacer
       Notices::addError(__('Fail Safe :: Source Location seems to be a directory.', 'enable-media-replace'));
       return;
     }
+
+    if (strlen(trim($current_base_url)) == 0)
+    {
+      Log::addError('Current Base URL emtpy - ' . $current_base_url);
+      Notices::addError(__('Fail Safe :: Source Location returned empty string. Not replacing content','enable-media-replace'));
+      return;
+    }
+
 
     //$search_files = $this->getFilesFromMetadata($this->source_metadata);
     //$replace_files = $this->getFilesFromMetadata($this->target_metadata);
@@ -553,8 +568,11 @@ class Replacer
   private function isJSON($content)
   {
       if (is_array($content) || is_object($content))
-        return false; // can never be. 
+        return false; // can never be.
+
       $json = json_decode($content);
+      $json = is_string($content) && json_decode($content);
+
       return $json && $content != $json;
   }
 
