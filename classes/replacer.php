@@ -551,7 +551,7 @@ class Replacer
   /* Check if given content is JSON format. */
   private function isJSON($content)
   {
-      $json = json_decode($content);
+      $json = is_string($content) && json_decode($content);
       return $json && $content != $json;
   }
 
