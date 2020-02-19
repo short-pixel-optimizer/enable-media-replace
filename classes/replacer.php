@@ -523,6 +523,7 @@ class Replacer
 
     if ($isJson) // convert back to JSON, if this was JSON. Different than serialize which does WP automatically.
     {
+      Log::addDebug('Value was found to be JSON, encoding');
       $content = json_encode($content);
     }
 
@@ -551,6 +552,8 @@ class Replacer
   /* Check if given content is JSON format. */
   private function isJSON($content)
   {
+      if (is_array($content) || is_object($content))
+        return false; // can never be. 
       $json = json_decode($content);
       return $json && $content != $json;
   }
