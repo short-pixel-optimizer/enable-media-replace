@@ -508,16 +508,17 @@ class Replacer
 
     if ($isJson)
     {
+      Log::addDebug('Found JSON Content');
       $content = json_decode($content);
     }
 
     if (is_string($content))  // let's check the normal one first.
     {
-      return str_replace($search, $replace, $content);
+      $content = str_replace($search, $replace, $content);
     }
     elseif (is_wp_error($content)) // seen this.
     {
-       return $content;  // do nothing.
+       //return $content;  // do nothing.
     }
     elseif (is_array($content) ) // array metadata and such.
     {
@@ -525,7 +526,7 @@ class Replacer
       {
         $content[$index] = $this->replaceContent($value, $search, $replace); //str_replace($value, $search, $replace);
       }
-      return $content;
+      //return $content;
     }
     elseif(is_object($content)) // metadata objects, they exist.
     {
@@ -533,13 +534,15 @@ class Replacer
       {
         $content->{$key} = $this->replaceContent($value, $search, $replace); //str_replace($value, $search, $replace);
       }
-      return $content;
+      //return $content;
     }
 
     if ($isJson) // convert back to JSON, if this was JSON. Different than serialize which does WP automatically.
     {
       Log::addDebug('Value was found to be JSON, encoding');
-      $content = json_encode($content);
+      // wp-slash -> WP does stripslashes_deep which destroys JSON
+      $content = wp_slash(json_encode($content, JSON_UNESCAPED_SLASHES));
+      Log::addDebug('Content returning', array($content));
     }
 
     return $content;
@@ -571,9 +574,7 @@ class Replacer
         return false; // can never be.
 
       $json = json_decode($content);
-      $json = is_string($content) && json_decode($content);
-
-      return $json && $content != $json;
+      return $json && $json != $content;
   }
 
   // Get REL Urls of both source and target.

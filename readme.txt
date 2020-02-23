@@ -49,8 +49,13 @@ If you want more control over the format used to display the time, you can use t
 
 = 3.3.9 =
 
+Release date: 23rd February 2020
+* Fix issue with JSON encoded strings
+* Language – 0 new strings added, 2 updated, 0 fuzzied, and 0 obsoleted
+
 Release date: 19th February 2020
 * Fix issue with search/replacing non-image attachments and query
+* Language – 0 new strings added, 2 updated, 0 fuzzied, and 0 obsoleted
 
 = 3.3.8 =
 
