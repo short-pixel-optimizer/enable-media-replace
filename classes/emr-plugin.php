@@ -260,9 +260,14 @@ class EnableMediaReplacePlugin
 
   public function attachment_editor($form_fields, $post)
   {
-      $screen = get_current_screen();
-      if(! is_null($screen) && $screen->id == 'attachment') // hide on edit attachment screen.
-        return $form_fields;
+      $screen = null;
+      if (function_exists('get_current_screen'))
+      {
+        $screen = get_current_screen();
+
+        if(! is_null($screen) && $screen->id == 'attachment') // hide on edit attachment screen.
+          return $form_fields;
+      }
 
       $url = $this->getMediaReplaceURL($post->ID);
       $action = "media_replace";
