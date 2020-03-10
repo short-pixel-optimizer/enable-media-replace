@@ -25,6 +25,7 @@ http://www.gnu.org/licenses/gpl.html
  */
 
 namespace EnableMediaReplace;
+
 define('EMR_VERSION', '3.3.11');
 
 if ( ! defined( 'ABSPATH' ) ) {
