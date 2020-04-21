@@ -223,10 +223,44 @@
     min-height: 270px;
     border: 1px solid #ccc;
     padding: 15px;
-    margin: 0 0 10px;
+    margin: 0 0 10px 25px;
     float: right;
+    clear: both;
     h3 {
       line-height: 1.3em; // match size
+    }
+    &.site-speed
+    {
+        background-color: #dcfdff;
+        .img-wrapper
+        {
+          text-align: center;
+          margin: 0 0 25px 0;
+          img { max-width: 140px; max-height: 140px; margin: 0; }
+        }
+        h3 {
+          color: #00d0e5;
+          font-size: 20px;
+          text-align: center;
+          margin: 0;
+          line-height: 1.3em;
+        }
+        .button-wrapper
+        {
+          text-align: center;
+          margin-top: 35px;
+          a {
+            background-color: #ff0000;
+            color: #fff;
+            display: inline-block;
+            padding: 8px;
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 20px;
+          }
+        }
+        .red { color: #ff0000; }
+
     }
   }
 } // emr_upload_form

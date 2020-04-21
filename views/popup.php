@@ -50,6 +50,8 @@ $uiHelper = new UIHelper();
 $uiHelper->setPreviewSizes();
 $uiHelper->setSourceSizes($attachment_id);
 
+$emr = EnableMediaReplacePlugin::get();
+
 //Log::addDebug('Popup view Data', array('id' => $attachment_id, 'source_mime' => $source_mime, 'filepath' => $filepath));
 
 ?>
@@ -106,12 +108,19 @@ $url = $uiHelper->getFormUrl($attachment_id);
 			</div>
 			<div class=""><div style="text-align: <?php echo (is_rtl()) ? 'left' : 'right' ?>;">
 					<a class="button button-primary" id="shortpixel-image-optimiser-info" href="https://shortpixel.com/wp/af/VKG6LYN28044" target="_blank">
-						<?php echo esc_html__("More info", "enable-media-replace"); ?></p>
+						<?php echo esc_html__("More info", "enable-media-replace"); ?>
 					</a>
 				</div>
 			</div>
 		</div>
 		<?php } ?>
+    <div class='shortpixel-notice site-speed'>
+      <p class='img-wrapper'><img src="<?php echo $emr->getPluginURL('img/shortpixel.png'); ?>" alt='ShortPixel'></p>
+      <h3><?php printf(__('ARE YOU %s CONCERNED WITH %s YOUR %s %s SITE SPEED? %s', 'enable-media-replace'),'<br>', '<br>','<br>', '<span class="red">','</span>'); ?><br><br>
+       <?php printf(__('ALLOW ShortPixel %s SPECIALISTS TO %s FIND THE %s PROBLEM FOR YOU.', 'enable-media-replace'), '<br>','<br>','<br>'); ?></h3>
+      <p class='button-wrapper'><a href='https://shortpixel.com/lp/wso/?utm_source=EMR' target="_blank"><?php _e('FIND OUT MORE', 'enable-media-replace') ?></a></p>
+    </div>
+
 
 		<p><?php echo esc_html__("Choose a file to upload from your computer", "enable-media-replace"); ?></p>
     <p><?php printf(__('Maximum file size: <strong>%s</strong>','enable-media-replace'), size_format(wp_max_upload_size() ) ) ?></p>

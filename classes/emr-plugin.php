@@ -78,7 +78,8 @@ class EnableMediaReplacePlugin
    */
   public function menu()
   {
-  	add_submenu_page(null, esc_html__("Replace media", "enable-media-replace"), esc_html__("Replace media", "enable-media-replace"), 'upload_files', 'enable-media-replace/enable-media-replace', array($this, 'route'));
+  	/* add_submenu_page(null, esc_html__("Replace media", "enable-media-replace"), esc_html__("Replace media", "enable-media-replace"), 'upload_files', 'enable-media-replace/enable-media-replace', array($this, 'route'));  */
+    add_submenu_page(null, esc_html__("Replace media", "enable-media-replace"), esc_html__("Replace media", "enable-media-replace"), 'upload_files', 'enable-media-replace/enable-media-replace', array($this, 'route'));
   }
 
   /**
@@ -134,6 +135,11 @@ class EnableMediaReplacePlugin
         break;
     }
 
+  }
+
+  public function getPluginURL($path = '')
+  {
+     return plugins_url($path, EMR_ROOT_FILE);
   }
 
   /** register styles and scripts
