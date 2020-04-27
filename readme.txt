@@ -5,7 +5,7 @@ Tags: replace, attachment, media, files, replace image, replace jpg, change medi
 Requires at least: 4.9.7
 Tested up to: 5.3.2
 Requires PHP: 5.6
-Stable tag: 3.3.11
+Stable tag: 3.3.12
 
 Easily replace any attached image/file by simply uploading a new file in the Media Library edit view - a real time saver!
 
@@ -49,8 +49,9 @@ If you want more control over the format used to display the time, you can use t
 
 = 3.3.12 =
 
-
-* Fixed - When trying to upload over-limit file would show too many error messages
+Release date: 27th April 2020
+* Fixed - When trying to upload over-limit file would show too many error messages;
+* Language – 2 new strings added, 0 updated, 0 fuzzied, and 0 obsoleted.
 
 = 3.3.11 =
 
@@ -66,11 +67,11 @@ Release date: 23rd February 2020
 
 Release date: 23rd February 2020
 * Fix issue with JSON encoded strings
-* Language – 0 new strings added, 0 updated, 0 fuzzied, and 0 obsoleted
+* Language – 0 new strings added, 2 updated, 0 fuzzied, and 0 obsoleted
 
 Release date: 19th February 2020
 * Fix issue with search/replacing non-image attachments and query
-* Language – 0 new strings added, 0 updated, 0 fuzzied, and 0 obsoleted
+* Language – 0 new strings added, 2 updated, 0 fuzzied, and 0 obsoleted
 
 = 3.3.8 =
 
