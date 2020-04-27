@@ -2,9 +2,19 @@
 
 .emr_upload_form
 {
+  form
+  {
+    display: flex; //editor and upsell
+    .upsell-wrapper
+    {
+      margin-left: 10px;
+    }
+  }
+
+
   .wrapper
   {
-    margin: 15px 0;
+//    margin: 15px 0;
     padding: 18px;
     border: 1px solid #ccc;
 
@@ -18,6 +28,8 @@
     }
   }
 
+
+
   .image_chooser.wrapper
   {
     min-height: 350px;
@@ -29,6 +41,7 @@
         position: relative;
         display: inline-block;
         margin-right: 25px;
+        margin-bottom: 10px;
         border: 1px solid #ddd;
         vertical-align: top;
         max-height: 500px;
@@ -89,7 +102,11 @@
   //  display: inline-block;
     margin: 10px 0;
     display: none;
-    p { margin: 0; }
+    p {
+        margin: 0;
+        font-size: 12px;
+        font-weight: 700;
+    }
 
   }
   .form-warning
@@ -223,10 +240,62 @@
     min-height: 270px;
     border: 1px solid #ccc;
     padding: 15px;
-    margin: 0 0 10px;
+    //margin: 0 0 10px 25px;
+    margin-bottom:25px;
     float: right;
+    clear: both;
     h3 {
       line-height: 1.3em; // match size
     }
+    &.site-speed
+    {
+        background-color: #dcfdff;
+        .img-wrapper
+        {
+          text-align: center;
+          margin: 0 0 25px 0;
+          img { max-width: 140px; max-height: 140px; margin: 0; }
+        }
+        h3 {
+          color: #00d0e5;
+          font-size: 20px;
+          text-align: center;
+          margin: 0;
+          line-height: 1.3em;
+        }
+        .button-wrapper
+        {
+          text-align: center;
+          margin-top: 35px;
+          a {
+            background-color: #ff0000;
+            color: #fff;
+            display: inline-block;
+            padding: 8px;
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 20px;
+          }
+        }
+        .red { color: #ff0000; }
+
+    }
+  }
+
+  @media( max-width: 1200px)
+  {
+      .image_previews
+      {
+         text-align: center;
+      }
+      .option-flex-wrapper {
+        flex-direction: column;
+        .options.wrapper
+        { margin-left: 0;}
+      }
+  }
+  @media (max-width: 960px)
+  {
+    .upsell-wrapper { display: none; }
   }
 } // emr_upload_form

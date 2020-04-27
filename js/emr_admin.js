@@ -82,7 +82,7 @@
           if ($('input[name="userfile"]').val().length > 0)
             this.checkSubmit();
           console.log('FileAPI not detected');
-          return;
+          return false;
         }
 
         var status = this.checkUpload(file);
@@ -103,11 +103,16 @@
 
       $(preview).find('img').remove();
       $(preview).removeClass('is_image not_image is_document');
+      var is_empty = false;
 
       if (file !== null) /// file is null when empty, or error
       {
         target_is_image = (file.type.indexOf('image') >= 0) ? true : false;
         target_type = file.type.trim();
+      }
+      else
+      {
+        is_empty = true;
       }
       // If image, load thumbnail and get dimensions.
       if (file && target_is_image)
@@ -148,13 +153,13 @@
         this.debug('Not image, media document');
       }
 
-      if (target_type != source_type)
+      if (! is_empty && target_type != source_type)
       {
         this.debug(target_type + ' not ' + source_type);
         this.warningFileType();
       }
 
-      if (emr_options.allowed_mime.indexOf(target_type) == -1)
+      if (! is_empty && emr_options.allowed_mime.indexOf(target_type) == -1)
       {
          this.debug(target_type + ' not ' + ' in allowed types ');
          this.warningMimeType();
@@ -193,7 +198,7 @@
     {
       $('.form-error').fadeOut();
       $('.form-warning').fadeOut();
-    }
+    },
     this.checkUpload = function(fileItem)
     {
       var maxsize = emr_options.maxfilesize;

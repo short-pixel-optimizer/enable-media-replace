@@ -759,8 +759,11 @@
 .ui-corner-br {
   border-bottom-right-radius: 3px; }
 
+.emr_upload_form form {
+  display: flex; }
+  .emr_upload_form form .upsell-wrapper {
+    margin-left: 10px; }
 .emr_upload_form .wrapper {
-  margin: 15px 0;
   padding: 18px;
   border: 1px solid #ccc; }
   .emr_upload_form .wrapper .section-header {
@@ -776,6 +779,7 @@
       position: relative;
       display: inline-block;
       margin-right: 25px;
+      margin-bottom: 10px;
       border: 1px solid #ddd;
       vertical-align: top;
       max-height: 500px; }
@@ -816,7 +820,9 @@
   margin: 10px 0;
   display: none; }
   .emr_upload_form .form-error p, .emr_upload_form .form-warning p {
-    margin: 0; }
+    margin: 0;
+    font-size: 12px;
+    font-weight: 700; }
 .emr_upload_form .form-warning {
   border-left: 4px solid #ffb900; }
 .emr_upload_form .option-flex-wrapper {
@@ -894,7 +900,46 @@
   min-height: 270px;
   border: 1px solid #ccc;
   padding: 15px;
-  margin: 0 0 10px;
-  float: right; }
+  margin-bottom: 25px;
+  float: right;
+  clear: both; }
   .emr_upload_form .shortpixel-notice h3 {
     line-height: 1.3em; }
+  .emr_upload_form .shortpixel-notice.site-speed {
+    background-color: #dcfdff; }
+    .emr_upload_form .shortpixel-notice.site-speed .img-wrapper {
+      text-align: center;
+      margin: 0 0 25px 0; }
+      .emr_upload_form .shortpixel-notice.site-speed .img-wrapper img {
+        max-width: 140px;
+        max-height: 140px;
+        margin: 0; }
+    .emr_upload_form .shortpixel-notice.site-speed h3 {
+      color: #00d0e5;
+      font-size: 20px;
+      text-align: center;
+      margin: 0;
+      line-height: 1.3em; }
+    .emr_upload_form .shortpixel-notice.site-speed .button-wrapper {
+      text-align: center;
+      margin-top: 35px; }
+      .emr_upload_form .shortpixel-notice.site-speed .button-wrapper a {
+        background-color: #ff0000;
+        color: #fff;
+        display: inline-block;
+        padding: 8px;
+        text-decoration: none;
+        font-weight: 700;
+        font-size: 20px; }
+    .emr_upload_form .shortpixel-notice.site-speed .red {
+      color: #ff0000; }
+@media (max-width: 1200px) {
+  .emr_upload_form .image_previews {
+    text-align: center; }
+  .emr_upload_form .option-flex-wrapper {
+    flex-direction: column; }
+    .emr_upload_form .option-flex-wrapper .options.wrapper {
+      margin-left: 0; } }
+@media (max-width: 960px) {
+  .emr_upload_form .upsell-wrapper {
+    display: none; } }
