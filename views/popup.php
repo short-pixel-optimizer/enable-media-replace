@@ -215,7 +215,7 @@ $url = $uiHelper->getFormUrl($attachment_id);
     <div class='shortpixel-offer site-speed'>
       <p class='img-wrapper'><img src="<?php echo $emr->getPluginURL('img/shortpixel.png'); ?>" alt='ShortPixel'></p>
       <h3><?php printf(__('ARE YOU %s CONCERNED WITH %s YOUR %s %s SITE SPEED? %s', 'enable-media-replace'),'<br>', '<br>','<br>', '<span class="red">','</span>'); ?><br><br>
-       <?php printf(__('ALLOW ShortPixel %s SPECIALISTS TO %s FIND THE %s PROBLEM FOR YOU.', 'enable-media-replace'), '<br>','<br>','<br>'); ?></h3>
+       <?php printf(__('ALLOW ShortPixel %s SPECIALISTS TO %s FIND THE %s SOLUTION FOR YOU.', 'enable-media-replace'), '<br>','<br>','<br>'); ?></h3>
       <p class='button-wrapper'><a href='https://shortpixel.com/lp/wso/?utm_source=EMR' target="_blank"><?php _e('FIND OUT MORE', 'enable-media-replace') ?></a></p>
     </div>
   </section>
