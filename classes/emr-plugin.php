@@ -359,17 +359,28 @@ class EnableMediaReplacePlugin
       return false;
 
     $post_id = $post->ID;
-  	if ( $post->post_modified == $post->post_date ) {
-  		return;
-  	}
+  	if ( $post->post_modified !== $post->post_date ) {
 
-  	$modified = date_i18n( __( 'M j, Y @ H:i' ) , strtotime( $post->post_modified ) );
+    	$modified = date_i18n( __( 'M j, Y @ H:i' ) , strtotime( $post->post_modified ) );
+    	?>
+    	<div class="misc-pub-section curtime">
+    		<span id="timestamp"><?php echo esc_html__( 'Revised', 'enable-media-replace' ); ?>: <b><?php echo $modified; ?></b></span>
+    	</div>
 
-  	?>
-  	<div class="misc-pub-section curtime">
-  		<span id="timestamp"><?php echo esc_html__( 'Revised', 'enable-media-replace' ); ?>: <b><?php echo $modified; ?></b></span>
-  	</div>
   	<?php
+    }
+    $author_id = get_post_meta($post_id, '_emr_replace_author', true);
+
+    if ($author_id)
+    {
+      $display_name = get_the_author_meta('display_name', $author_id);
+      ?>
+      <div class="misc-pub-section replace_author">
+        <span><?php echo esc_html__( 'Replaced By', 'enable-media-replace' ); ?>: <b><?php echo $display_name; ?></b></span>
+      </div>
+      <?php
+    }
+
   }
 
   /** When an image is just replaced, it can stuck in the browser cache making a look like it was not replaced. Try

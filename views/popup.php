@@ -79,8 +79,9 @@ $url = $uiHelper->getFormUrl($attachment_id);
 
     <div class='emr_drop_area'>
       <div class='drop-wrapper'>
-      
+
   		  <p><input type="file" name="userfile" id="userfile" /></p>
+        <h1><?php _e('Drop File Here', 'enable-media-replace'); ?></h1>
       </div>
 
     </div>

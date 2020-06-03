@@ -106,6 +106,7 @@ class Replacer
       }
 
 
+
       $targetFileObj = new File($targetFile);
       $result = $targetFileObj->checkAndCreateFolder();
       if ($result === false)
@@ -154,6 +155,20 @@ class Replacer
       $metadata = wp_generate_attachment_metadata( $this->post_id, $this->targetFile->getFullFilePath() );
       wp_update_attachment_metadata( $this->post_id, $metadata );
       $this->target_metadata = $metadata;
+
+      /** If author is different from replacer, note this */
+      $author_id = get_post_meta($this->post_id, '_emr_replace_author', true);
+      Log::addTemp('Previous Author ID', $author_id);
+      if ( intval($this->source_post->post_author) !== get_current_user_id())
+      {
+         Log::addTemp("THIS AUTHOR NOT THE SAME AS THE OTHER");
+         update_post_meta($this->post_id, '_emr_replace_author', get_current_user_id());
+      }
+      elseif ($author_id)
+      {
+
+        delete_post_meta($this->post_id, '_emr_replace_author');
+      }
 
       if ($this->replaceMode == self::MODE_SEARCHREPLACE)
       {

@@ -9,6 +9,8 @@
 
     var is_debug = false;
 
+    var is_dragging = false;
+
     this.init = function()
     {
 
@@ -18,14 +20,13 @@
         this.debug('EMR Debug is active');
       }
 
-
       $('input[name="timestamp_replace"]').on('change', $.proxy(this.checkCustomDate, this));
       $('input[name="replace_type"]').on('change', $.proxy(this.showReplaceOptions, this));
       $('input[name="userfile"]').on('change', $.proxy(this.handleImage, this));
 
       // DragDrop
-      $('.emr_drop_area').on('dragover', $.proxy(this.dragOverArea, this));
-      $('.emr_drop_area').on('dragleave', $.proxy(this.dragOutArea, this));
+      $('.wrap.emr_upload_form').on('dragover', $.proxy(this.dragOverArea, this));
+      $('.wrap.emr_upload_form').on('dragleave', $.proxy(this.dragOutArea, this));
       $('.emr_drop_area').on('drop', $.proxy(this.fileDrop, this));
 
       this.checkCustomDate();
@@ -276,13 +277,22 @@
       e.preventDefault();
       e.stopPropagation();
 
-      $('.emr_drop_area').css('border-color', '#83b4d8');
+      if ( this.is_dragging)
+        return;
+
+      //this.debug('dragover');
+      //$('.emr_drop_area').css('border-color', '#83b4d8');
+      $('.emr_drop_area').addClass('drop_breakout');
+      this.is_dragging = true;
     }
     this.dragOutArea = function(e)
     {
       e.preventDefault();
       e.stopPropagation();
-      $('.emr_drop_area').css('border-color', '#b4b9be');
+    //  this.debug('dragout');
+      //$('.emr_drop_area').css('border-color', '#b4b9be');
+      $('.emr_drop_area').removeClass('drop_breakout');
+      this.is_dragging = false;
     }
     this.fileDrop = function (e)
     {
@@ -291,27 +301,10 @@
       ev.preventDefault();
       e.preventDefault();
 
-      this.debug(ev);
-  //    this.debug(e);
       if (ev.dataTransfer.items) {
          // Use DataTransferItemList interface to access the file(s)
           document.getElementById('userfile').files = ev.dataTransfer.files;
            $('input[name="userfile"]').trigger('change');
-
-         /*for (var i = 0; i < ev.dataTransfer.items.length; i++) {
-           // If dropped items aren't files, reject them
-           if (ev.dataTransfer.items[i].kind === 'file') {
-             var file = ev.dataTransfer.items[i].getAsFile();
-             console.log('... file[' + i + '].name = ' + file.name);
-
-             */
-          // }
-         //}
-       } else {
-         // Use DataTransfer interface to access the file(s)
-         for (var i = 0; i < ev.dataTransfer.files.length; i++) {
-           console.log('... file[' + i + '].name = ' + ev.dataTransfer.files[i].name);
-         }
        }
     }
   } // emrIf

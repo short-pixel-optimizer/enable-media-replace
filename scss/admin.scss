@@ -41,10 +41,36 @@
       padding: 28px 14px;
       text-align: center;
       position: relative;
+      h1 { display: none; }
       .drop-wrapper
       {
         margin: 0 auto;
 
+      }
+      &.drop_breakout
+      {
+          position: fixed;
+          left: 0;
+          right:0;
+          bottom: 0;
+          top: 0;
+          max-width: none;
+          border-color: #83b4d8;
+          border-width: 10px;
+          z-index: 999999;
+          background-color: rgba(#444, 0.7);
+          h1 {
+            color: #fff;
+            position: absolute;
+            font-size: 50px;
+            line-height: 50px;
+            margin-top: -25px;
+            top: 50%;
+            width: 100%;
+            text-align: center;
+            display: block;
+          }
+          .drop-wrapper { display: none; }
       }
     }
     .image_previews

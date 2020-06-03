@@ -49,7 +49,10 @@ If you want more control over the format used to display the time, you can use t
 
 = 3.4.0 =
 
+* New - In edit media screen EMR notes user who replaced file if this was not uploader. 
+* New - Added Drag and Drop area for files
 * New - When replacing with new file name, now also possible to update upload path
+* Update of Underlying libraries
 
 = 3.3.12 =
 

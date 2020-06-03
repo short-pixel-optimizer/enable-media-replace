@@ -250,6 +250,12 @@ namespace EnableMediaReplace\ShortPixelLogger;
      $log->addLog($message, $level, $args);
    }
 
+   /** These should be removed every release. They are temporary only for d'bugging the current release */
+   public static function addTemp($message, $args = array())
+   {
+     self::addDebug($message, $args);
+   }
+
    public static function logLevel($level)
    {
       $log = self::getInstance();
