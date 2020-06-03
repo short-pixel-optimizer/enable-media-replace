@@ -158,17 +158,32 @@
       if (! is_empty && target_type != source_type)
       {
         this.debug(target_type + ' not ' + source_type);
-        this.warningFileType();
+        var falsePositive = this.checkFalsePositiveType(source_type, target_type);
+        if (! falsePositive)
+          this.warningFileType();
       }
 
       if (! is_empty && emr_options.allowed_mime.indexOf(target_type) == -1)
       {
          this.debug(target_type + ' not ' + ' in allowed types ');
-         this.warningMimeType();
+         var falsePositive = this.checkFalsePositiveType(source_type, target_type);
+
+         if (! falsePositive)
+          this.warningMimeType();
       }
     //  this.debug(emr_options.allowed_mime);
 
-    },
+    }
+    this.checkFalsePositiveType = function(source_type, target_type)
+    {
+        // windows (sigh) reports application/zip as application/x-zip-compressed. Or something else, why not.
+       if (source_type.indexOf('zip') >= 0 && target_type.indexOf('zip') >= 0)
+       {
+          this.debug('Finding ' + source_type + ' ' + target_type + ' close enough, false positive');
+          return true;
+       }
+       return false;
+    }
     // replace the text, check if text is there ( or hide ), and fix the layout.
     this.updateTextLayer = function (preview, newtext)
     {
