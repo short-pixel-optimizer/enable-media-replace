@@ -218,6 +218,16 @@
         }
       }
     } // custom_date
+    .location_option
+    {
+      display: none;
+      margin-top: 12px;
+      label
+      {
+        vertical-align: baseline;
+        margin-right: 8px;
+      }
+    }
   }
 
   .form_controls.wrapper
@@ -233,7 +243,11 @@
     }
   }
 
-  .shortpixel-notice
+  .shortpixel.notice
+  {
+     padding: 12px;
+  }
+  .shortpixel-offer
   {
     background: #fff;
     width: 250px;

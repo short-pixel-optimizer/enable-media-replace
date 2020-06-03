@@ -50,6 +50,7 @@ If you want more control over the format used to display the time, you can use t
 = 3.4.0 =
 
 
+* New - When replacing with new file name, now also possible to update upload path
 
 = 3.3.12 =
 

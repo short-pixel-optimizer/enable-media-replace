@@ -42,6 +42,8 @@ $uiHelper->setSourceSizes($attachment_id);
 
 $emr = EnableMediaReplacePlugin::get();
 
+
+
 ?>
 
 <div class="wrap emr_upload_form">
@@ -62,8 +64,9 @@ $url = $uiHelper->getFormUrl($attachment_id);
     <section class='image_chooser wrapper'>
       <div class='section-header'> <?php _e('Choose Replacement Media', 'enable-replace-media'); ?></div>
 
+		<div id="message" class=""><strong><?php printf( esc_html__('NOTE: You are about to replace the media file "%s". There is no undo. Think about it!', "enable-media-replace"), $filename ); ?></strong></div>
+
 		<input type="hidden" name="ID" value="<?php echo $attachment_id ?>" />
-		<div id="message" class="updated notice notice-success is-dismissible"><p><?php printf( esc_html__('NOTE: You are about to replace the media file "%s". There is no undo. Think about it!', "enable-media-replace"), $filename ); ?></p></div>
 
 		<p><?php echo esc_html__("Choose a file to upload from your computer", "enable-media-replace"); ?></p>
     <p><?php printf(__('Maximum file size: <strong>%s</strong>','enable-media-replace'), size_format(wp_max_upload_size() ) ) ?></p>
@@ -147,8 +150,8 @@ $url = $uiHelper->getFormUrl($attachment_id);
         ?>
           <p><?php _e('When replacing the media, do you want to:', 'enable-media-replace'); ?></p>
           <ul>
-            <li><label><input type='radio' name='timestamp_replace' value='1' checked /><?php _e('Replace the date', 'enable-media-replace'); ?></label></li>
-            <li><label><input type='radio' name='timestamp_replace' value='2'  /><?php printf(__('Keep the date %s(%s)%s', 'enable-media-replace'), "<span class='small'>", $attachment_current_date, "</span>"); ?></label></li>
+            <li><label><input type='radio' name='timestamp_replace' value='1' /><?php _e('Replace the date', 'enable-media-replace'); ?></label></li>
+            <li><label><input type='radio' name='timestamp_replace' value='2' checked /><?php printf(__('Keep the date %s(%s)%s', 'enable-media-replace'), "<span class='small'>", $attachment_current_date, "</span>"); ?></label></li>
             <li><label><input type='radio' name='timestamp_replace' value='3' /><?php _e('Set a Custom Date', 'enable-media-replace'); ?></label></li>
           </ul>
           <div class='custom_date'>
@@ -161,7 +164,14 @@ $url = $uiHelper->getFormUrl($attachment_id);
             <input type="text" name="custom_minute" class='emr_minute' value="<?php echo $date->format('i'); ?>" />
             <input type="hidden" name="custom_date_formatted" value="<?php echo $date->format('Y-m-d'); ?>" />
          </div>
+         <?php if ($subdir = $uiHelper->getRelPathNow()): ?>
+         <div class='location_option'>
+           <label><input type="checkbox" name="new_location" value="1" /> <?php _e('Put new Upload in Updated Folder: '); ?></label>
+            <input type="text" name="location_dir" value="<?php echo $subdir ?>" />
+          </div>
+        <?php endif; ?>
       </div>
+
     </section>
   </div>
   <section class='form_controls wrapper'>
@@ -180,7 +190,7 @@ $url = $uiHelper->getFormUrl($attachment_id);
 
   <section class='upsell-wrapper'>
     <?php if(! $spInstalled) {?>
-    <div class='shortpixel-notice'>
+    <div class='shortpixel-offer'>
       <h3 class="" style="margin-top: 0;text-align: center;">
         <a href="https://shortpixel.com/wp/af/VKG6LYN28044" target="_blank">
           <?php echo esc_html__("Optimize your images with ShortPixel, get +50% credits!", "enable-media-replace"); ?>
@@ -202,7 +212,7 @@ $url = $uiHelper->getFormUrl($attachment_id);
       </div>
     </div>
     <?php } ?>
-    <div class='shortpixel-notice site-speed'>
+    <div class='shortpixel-offer site-speed'>
       <p class='img-wrapper'><img src="<?php echo $emr->getPluginURL('img/shortpixel.png'); ?>" alt='ShortPixel'></p>
       <h3><?php printf(__('ARE YOU %s CONCERNED WITH %s YOUR %s %s SITE SPEED? %s', 'enable-media-replace'),'<br>', '<br>','<br>', '<span class="red">','</span>'); ?><br><br>
        <?php printf(__('ALLOW ShortPixel %s SPECIALISTS TO %s FIND THE %s PROBLEM FOR YOU.', 'enable-media-replace'), '<br>','<br>','<br>'); ?></h3>

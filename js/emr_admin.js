@@ -18,6 +18,7 @@
       }
 
       $('input[name="timestamp_replace"]').on('change', $.proxy(this.checkCustomDate, this));
+      $('input[name="replace_type"]').on('change', $.proxy(this.showReplaceOptions, this));
       $('input[name="userfile"]').on('change', $.proxy(this.handleImage, this));
       this.checkCustomDate();
       this.loadDatePicker();
@@ -34,8 +35,9 @@
       }
 
       this.updateTextLayer(source, false);
+      this.showReplaceOptions();
 
-    },
+    }
     this.loadDatePicker = function()
     {
       $('#emr_datepicker').datepicker({
@@ -235,6 +237,16 @@
     this.debug = function(message)
     {
       console.debug(message);
+    }
+    this.showReplaceOptions = function(e)
+    {
+        $('section.options .location_option').hide();
+        var replace_option = $('input[name="replace_type"]:checked').val();
+        if (replace_option == 'replace_and_search')
+        {
+           $('section.options .location_option').show();
+        }
+
     }
   } // emrIf
 

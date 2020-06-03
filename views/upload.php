@@ -11,6 +11,7 @@ if (!current_user_can('upload_files'))
 	wp_die( esc_html__('You do not have permission to upload files.', 'enable-media-replace') );
 
 
+
 /*require_once('classes/replacer.php');
 require_once('classes/file.php'); */
 
@@ -35,6 +36,9 @@ $timestamp_replace = intval($_POST['timestamp_replace']);
 
 $redirect_error = $uihelper->getFailedRedirect($post_id);
 $redirect_success = $uihelper->getSuccesRedirect($post_id);
+
+$do_new_location  = isset($_POST['new_location']) ? sanitize_text_field($_POST['new_location']) : false;
+$new_location_dir = isset($_POST['location_dir']) ? sanitize_text_field($_POST['location_dir']) : null;
 
 switch($timestamp_replace)
 {
@@ -73,10 +77,22 @@ switch($timestamp_replace)
 if ($replace_type == 'replace')
 {
 	$replacer->setMode(\EnableMediaReplace\Replacer::MODE_REPLACE);
+	$mode = \EnableMediaReplace\Replacer::MODE_REPLACE;
 }
 elseif ( 'replace_and_search' == $replace_type && apply_filters( 'emr_enable_replace_and_search', true ) )
 {
 	$replacer->setMode(\EnableMediaReplace\Replacer::MODE_SEARCHREPLACE);
+	$mode = \EnableMediaReplace\Replacer::MODE_SEARCHREPLACE;
+
+	if ($do_new_location && ! is_null($new_location_dir))
+	{
+		 $result = $replacer->setNewTargetLocation($new_location_dir);
+		 if (! $result)
+		 {
+		 	 wp_safe_redirect($redirect_error);
+			 exit();
+		 }
+	}
 }
 
 $replacer->setTimeMode($timestamp_replace, $datetime);
@@ -114,17 +130,29 @@ if (is_uploaded_file($_FILES["userfile"]["tmp_name"])) {
 	// Gather all functions that both options do.
 	do_action('wp_handle_replace', array('post_id' => $post_id));
 
+
+/*	if ($mode = \EnableMediaReplace\Replacer::MODE_SEARCHREPLACE && $do_new_location && ! is_null($new_location_dir))
+	{
+		exit($new_filename);
+		 $newdirfile = $replacer->newTargetLocation($new_location_dir);
+	}
+*/
 	try
 	{
-		$replacer->replaceWith($_FILES["userfile"]["tmp_name"], $new_filename);
+		$result = $replacer->replaceWith($_FILES["userfile"]["tmp_name"], $new_filename);
 	}
 	catch(\RunTimeException $e)
 	{
 		Log::addError($e->getMessage());
-	  exit($e->getMessage());
+	//  exit($e->getMessage());
 	}
 
-	$returnurl = admin_url("/post.php?post={$_POST["ID"]}&action=edit&message=1");
+	if (is_null($result))
+	{
+		 wp_safe_redirect($redirect_error);
+		 exit();
+  }
+//	$returnurl = admin_url("/post.php?post={$_POST["ID"]}&action=edit&message=1");
 
 	// Execute hook actions - thanks rubious for the suggestion!
 
