@@ -47,8 +47,11 @@ If you want more control over the format used to display the time, you can use t
 
 == Changelog ==
 
-= 3.3.12 =
+= 3.4.0 =
 
+
+
+= 3.3.12 =
 
 * Fixed - When trying to upload over-limit file would show too many error messages
 

@@ -283,7 +283,7 @@ class EnableMediaReplacePlugin
       $form_fields["enable-media-replace"] = array(
               "label" => esc_html__("Replace media", "enable-media-replace"),
               "input" => "html",
-              "html" => "<p><a class='button-secondary' $link>" . esc_html__("Upload a new file", "enable-media-replace") . "</a></p>", "helps" => esc_html__("To replace the current file, click the link and upload a replacement.", "enable-media-replace")
+              "html" => "<a class='button-secondary' $link>" . esc_html__("Upload a new file", "enable-media-replace") . "</a>", "helps" => esc_html__("To replace the current file, click the link and upload a replacement.", "enable-media-replace")
             );
 
       return $form_fields;
