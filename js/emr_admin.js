@@ -11,15 +11,23 @@
 
     this.init = function()
     {
+
       if ( emr_options.is_debug)
       {
         this.is_debug = true;
         this.debug('EMR Debug is active');
       }
 
+
       $('input[name="timestamp_replace"]').on('change', $.proxy(this.checkCustomDate, this));
       $('input[name="replace_type"]').on('change', $.proxy(this.showReplaceOptions, this));
       $('input[name="userfile"]').on('change', $.proxy(this.handleImage, this));
+
+      // DragDrop
+      $('.emr_drop_area').on('dragover', $.proxy(this.dragOverArea, this));
+      $('.emr_drop_area').on('dragleave', $.proxy(this.dragOutArea, this));
+      $('.emr_drop_area').on('drop', $.proxy(this.fileDrop, this));
+
       this.checkCustomDate();
       this.loadDatePicker();
 
@@ -262,6 +270,49 @@
            $('section.options .location_option').show();
         }
 
+    }
+    this.dragOverArea = function(e)
+    {
+      e.preventDefault();
+      e.stopPropagation();
+
+      $('.emr_drop_area').css('border-color', '#83b4d8');
+    }
+    this.dragOutArea = function(e)
+    {
+      e.preventDefault();
+      e.stopPropagation();
+      $('.emr_drop_area').css('border-color', '#b4b9be');
+    }
+    this.fileDrop = function (e)
+    {
+      var ev = e.originalEvent;
+      this.dragOutArea(e);
+      ev.preventDefault();
+      e.preventDefault();
+
+      this.debug(ev);
+  //    this.debug(e);
+      if (ev.dataTransfer.items) {
+         // Use DataTransferItemList interface to access the file(s)
+          document.getElementById('userfile').files = ev.dataTransfer.files;
+           $('input[name="userfile"]').trigger('change');
+
+         /*for (var i = 0; i < ev.dataTransfer.items.length; i++) {
+           // If dropped items aren't files, reject them
+           if (ev.dataTransfer.items[i].kind === 'file') {
+             var file = ev.dataTransfer.items[i].getAsFile();
+             console.log('... file[' + i + '].name = ' + file.name);
+
+             */
+          // }
+         //}
+       } else {
+         // Use DataTransfer interface to access the file(s)
+         for (var i = 0; i < ev.dataTransfer.files.length; i++) {
+           console.log('... file[' + i + '].name = ' + ev.dataTransfer.files[i].name);
+         }
+       }
     }
   } // emrIf
 

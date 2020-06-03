@@ -77,27 +77,33 @@ $url = $uiHelper->getFormUrl($attachment_id);
 
     <div class='form-warning mimetype'><p><?php printf(__('Replacement file type doesn\'t seem to be allowed by WordPress. This might cause unexpected issues')); ?></p></div>
 
-		<input type="file" name="userfile" id="userfile" />
-        <div class='image_previews'>
-            <?php if (wp_attachment_is('image', $attachment_id) || $source_mime == 'application/pdf')
-            {
-                echo $uiHelper->getPreviewImage($attachment_id);
-                echo $uiHelper->getPreviewImage(-1);
-            }
-            else {
-                  if (strlen($filepath) == 0) // check if image in error state.
-                  {
-                      echo $uiHelper->getPreviewError(-1);
-                      echo $uiHelper->getPreviewImage(-1);
-                  }
-                  else {
-                      echo $uiHelper->getPreviewFile($attachment_id);
-                      echo $uiHelper->getPreviewFile(-1);
-                  }
+    <div class='emr_drop_area'>
+      <div class='drop-wrapper'>
+      
+  		  <p><input type="file" name="userfile" id="userfile" /></p>
+      </div>
 
-            }
-            ?>
-        </div>
+    </div>
+    <div class='image_previews'>
+              <?php if (wp_attachment_is('image', $attachment_id) || $source_mime == 'application/pdf')
+              {
+                  echo $uiHelper->getPreviewImage($attachment_id);
+                  echo $uiHelper->getPreviewImage(-1);
+              }
+              else {
+                    if (strlen($filepath) == 0) // check if image in error state.
+                    {
+                        echo $uiHelper->getPreviewError(-1);
+                        echo $uiHelper->getPreviewImage(-1);
+                    }
+                    else {
+                        echo $uiHelper->getPreviewFile($attachment_id);
+                        echo $uiHelper->getPreviewFile(-1);
+                    }
+
+              }
+              ?>
+      </div>
 
 </section>
 

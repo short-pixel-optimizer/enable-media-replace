@@ -33,6 +33,20 @@
   .image_chooser.wrapper
   {
     min-height: 350px;
+
+    .emr_drop_area
+    {
+      border: 4px dashed #b4b9be;
+      max-width: 600px;
+      padding: 28px 14px;
+      text-align: center;
+      position: relative;
+      .drop-wrapper
+      {
+        margin: 0 auto;
+
+      }
+    }
     .image_previews
     {
       margin: 15px 0;

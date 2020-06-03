@@ -773,6 +773,14 @@
     margin: 0 0 15px 0; }
 .emr_upload_form .image_chooser.wrapper {
   min-height: 350px; }
+  .emr_upload_form .image_chooser.wrapper .emr_drop_area {
+    border: 4px dashed #b4b9be;
+    max-width: 600px;
+    padding: 28px 14px;
+    text-align: center;
+    position: relative; }
+    .emr_upload_form .image_chooser.wrapper .emr_drop_area .drop-wrapper {
+      margin: 0 auto; }
   .emr_upload_form .image_chooser.wrapper .image_previews {
     margin: 15px 0; }
     .emr_upload_form .image_chooser.wrapper .image_previews .image_placeholder {
