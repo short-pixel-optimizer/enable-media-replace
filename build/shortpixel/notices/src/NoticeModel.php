@@ -4,6 +4,7 @@ namespace EnableMediaReplace\Notices;
 class NoticeModel //extends ShortPixelModel
 {
   public $message; // The message we want to convey.
+  public $details = array(); // extra details, like the files involved. Something could be hideable in the future.
   public $code;
 
   private $id = null; // used for persistent messages.
@@ -16,6 +17,7 @@ class NoticeModel //extends ShortPixelModel
   public $messageType = self::NOTICE_NORMAL;
 
   public $notice_action; // empty unless for display. Ajax action to talk back to controller.
+  protected $callback; // empty unless callback is needed
 
   public static $icons = array();
 
@@ -72,15 +74,43 @@ class NoticeModel //extends ShortPixelModel
      $this->suppress_until = time() + $this->suppress_period;
   }
 
+  public function unDismiss()
+  {
+    $this->is_dismissed = false;
+  }
+
+  public function setDismissedUntil($timestamp)
+  {
+    $this->suppress_until = $timestamp;
+  }
+
+  /** Support for extra information beyond the message.
+  * Can help to not overwhelm users w/ the same message but different file /circumstances.
+   */
+  public function addDetail($detail, $clean = false)
+  {
+      if ($clean)
+        $this->details = array();
+
+      if (! in_array($detail, $this->details) )
+        $this->details[] = $detail;
+  }
+
+
+
   /** Set a notice persistent. Meaning it shows every page load until dismissed.
   * @param $key Unique Key of this message. Required
   * @param $suppress When dismissed do not show this message again for X amount of time. When -1 it will just be dropped from the Notices and not suppressed
   */
-  public function setPersistent($key, $suppress = -1)
+  public function setPersistent($key, $suppress = -1, $callback = null)
   {
       $this->id = $key;
       $this->is_persistent = true;
       $this->suppress_period = $suppress;
+      if ( ! is_null($callback) && is_callable($callback))
+      {
+        $this->callback = $callback;
+      }
   }
 
   public static function setIcon($notice_type, $icon)
@@ -110,6 +140,13 @@ class NoticeModel //extends ShortPixelModel
     $class = 'shortpixel notice ';
 
     $icon = '';
+
+    if ($this->callback)
+    {
+       $return = call_user_func($this->callback, $this);
+       if ($return === false) // don't display is callback returns false explicitly.
+        return;
+    }
 
     switch($this->messageType)
     {
@@ -147,15 +184,43 @@ class NoticeModel //extends ShortPixelModel
       $class .= 'is-persistent ';
     }
 
-      $id = ! is_null($this->id) ? 'id="' . $this->id . '"' : '';
+    $id = ! is_null($this->id) ?  $this->id : uniqid();
+    //'id="' . $this->id . '"'
+    $output = "<div id='$id' class='$class'><span class='icon'> " . $icon . "</span> <span class='content'>" . $this->message;
+    if ($this->hasDetails())
+    {
+      $output .= '<div class="details-wrapper">
+      <input type="checkbox" name="detailhider" id="check-' . $id .'">
+      <label for="check-' . $id . '"  class="show-details"><span>' . __('See Details', 'shortpixel-image-optimiser')   . '</span>
+      </label>';
 
-    $output = "<div $id class='$class'><span class='icon'> " . $icon . "</span> <span class='content'>" . $this->message . "</span></div>";
+      $output .= "<div class='detail-content-wrapper'><p class='detail-content'>" . $this->parseDetails() . "</p></div>";
+      $output .= '<label for="check-' . $id . '" class="hide-details"><span>' . __('Hide Details', 'shortpixel-image-optimiser') . '</span></label>';
+
+      $output .= '</div>'; // detail rapper
+
+    }
+    $output .= "</span></div>";
+
     if ($this->is_persistent && $this->is_removable)
     {
         $output .= "<script type='text/javascript'>\n" . $this->getDismissJS() . "\n</script>";
     }
     return $output;
 
+  }
+
+  protected function hasDetails()
+  {
+     if (is_array($this->details) && count($this->details) > 0)
+      return true;
+    else
+      return false;
+  }
+
+  protected function parseDetails()
+  {
+      return implode('<BR>', $this->details);
   }
 
   private function getDismissJS()
@@ -168,7 +233,7 @@ class NoticeModel //extends ShortPixelModel
 
   //  $data_string = "{action:'$this->notice_action'}";
 
-      $js = "jQuery(document).on('click','#$this->id button',
+      $js = "jQuery(document).on('click','#$this->id button.notice-dismiss',
          function() {
            var data = $data;
            var url = $url;

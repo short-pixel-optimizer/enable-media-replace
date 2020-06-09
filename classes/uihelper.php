@@ -348,4 +348,14 @@ class UIHelper
    return $sizes;
   }
 
+  /** For Location Dir replacement. Get the Subdir that is in use now.  */
+  public function getRelPathNow()
+  {
+      $uploadDir = wp_upload_dir();
+      if (isset($uploadDir['subdir']))
+        return ltrim($uploadDir['subdir'], '/'); 
+      else
+        return false;
+  }
+
 } // class

@@ -773,6 +773,39 @@
     margin: 0 0 15px 0; }
 .emr_upload_form .image_chooser.wrapper {
   min-height: 350px; }
+  .emr_upload_form .image_chooser.wrapper .emr_drop_area {
+    border: 4px dashed #b4b9be;
+    max-width: 600px;
+    padding: 28px 14px;
+    text-align: center;
+    position: relative; }
+    .emr_upload_form .image_chooser.wrapper .emr_drop_area h1 {
+      display: none; }
+    .emr_upload_form .image_chooser.wrapper .emr_drop_area .drop-wrapper {
+      margin: 0 auto; }
+    .emr_upload_form .image_chooser.wrapper .emr_drop_area.drop_breakout {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      top: 0;
+      max-width: none;
+      border-color: #83b4d8;
+      border-width: 10px;
+      z-index: 999999;
+      background-color: rgba(68, 68, 68, 0.7); }
+      .emr_upload_form .image_chooser.wrapper .emr_drop_area.drop_breakout h1 {
+        color: #fff;
+        position: absolute;
+        font-size: 50px;
+        line-height: 50px;
+        margin-top: -25px;
+        top: 50%;
+        width: 100%;
+        text-align: center;
+        display: block; }
+      .emr_upload_form .image_chooser.wrapper .emr_drop_area.drop_breakout .drop-wrapper {
+        display: none; }
   .emr_upload_form .image_chooser.wrapper .image_previews {
     margin: 15px 0; }
     .emr_upload_form .image_chooser.wrapper .image_previews .image_placeholder {
@@ -886,6 +919,12 @@
         font-size: 20px;
         vertical-align: top;
         margin-right: 4px; }
+  .emr_upload_form .options.wrapper .location_option {
+    display: none;
+    margin-top: 12px; }
+    .emr_upload_form .options.wrapper .location_option label {
+      vertical-align: baseline;
+      margin-right: 8px; }
 .emr_upload_form .form_controls.wrapper {
   clear: both;
   margin: 8px 0 15px 0;
@@ -894,7 +933,9 @@
   .emr_upload_form .form_controls.wrapper .button {
     padding-left: 20px;
     padding-right: 20px; }
-.emr_upload_form .shortpixel-notice {
+.emr_upload_form .shortpixel.notice {
+  padding: 12px; }
+.emr_upload_form .shortpixel-offer {
   background: #fff;
   width: 250px;
   min-height: 270px;
@@ -903,27 +944,27 @@
   margin-bottom: 25px;
   float: right;
   clear: both; }
-  .emr_upload_form .shortpixel-notice h3 {
+  .emr_upload_form .shortpixel-offer h3 {
     line-height: 1.3em; }
-  .emr_upload_form .shortpixel-notice.site-speed {
+  .emr_upload_form .shortpixel-offer.site-speed {
     background-color: #dcfdff; }
-    .emr_upload_form .shortpixel-notice.site-speed .img-wrapper {
+    .emr_upload_form .shortpixel-offer.site-speed .img-wrapper {
       text-align: center;
       margin: 0 0 25px 0; }
-      .emr_upload_form .shortpixel-notice.site-speed .img-wrapper img {
+      .emr_upload_form .shortpixel-offer.site-speed .img-wrapper img {
         max-width: 140px;
         max-height: 140px;
         margin: 0; }
-    .emr_upload_form .shortpixel-notice.site-speed h3 {
+    .emr_upload_form .shortpixel-offer.site-speed h3 {
       color: #00d0e5;
       font-size: 20px;
       text-align: center;
       margin: 0;
       line-height: 1.3em; }
-    .emr_upload_form .shortpixel-notice.site-speed .button-wrapper {
+    .emr_upload_form .shortpixel-offer.site-speed .button-wrapper {
       text-align: center;
       margin-top: 35px; }
-      .emr_upload_form .shortpixel-notice.site-speed .button-wrapper a {
+      .emr_upload_form .shortpixel-offer.site-speed .button-wrapper a {
         background-color: #ff0000;
         color: #fff;
         display: inline-block;
@@ -931,7 +972,7 @@
         text-decoration: none;
         font-weight: 700;
         font-size: 20px; }
-    .emr_upload_form .shortpixel-notice.site-speed .red {
+    .emr_upload_form .shortpixel-offer.site-speed .red {
       color: #ff0000; }
 @media (max-width: 1200px) {
   .emr_upload_form .image_previews {

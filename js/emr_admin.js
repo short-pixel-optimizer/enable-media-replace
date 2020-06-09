@@ -9,8 +9,11 @@
 
     var is_debug = false;
 
+    var is_dragging = false;
+
     this.init = function()
     {
+
       if ( emr_options.is_debug)
       {
         this.is_debug = true;
@@ -18,7 +21,14 @@
       }
 
       $('input[name="timestamp_replace"]').on('change', $.proxy(this.checkCustomDate, this));
+      $('input[name="replace_type"]').on('change', $.proxy(this.showReplaceOptions, this));
       $('input[name="userfile"]').on('change', $.proxy(this.handleImage, this));
+
+      // DragDrop
+      $('.wrap.emr_upload_form').on('dragover', $.proxy(this.dragOverArea, this));
+      $('.wrap.emr_upload_form').on('dragleave', $.proxy(this.dragOutArea, this));
+      $('.emr_drop_area').on('drop', $.proxy(this.fileDrop, this));
+
       this.checkCustomDate();
       this.loadDatePicker();
 
@@ -34,8 +44,9 @@
       }
 
       this.updateTextLayer(source, false);
+      this.showReplaceOptions();
 
-    },
+    }
     this.loadDatePicker = function()
     {
       $('#emr_datepicker').datepicker({
@@ -156,17 +167,32 @@
       if (! is_empty && target_type != source_type)
       {
         this.debug(target_type + ' not ' + source_type);
-        this.warningFileType();
+        var falsePositive = this.checkFalsePositiveType(source_type, target_type);
+        if (! falsePositive)
+          this.warningFileType();
       }
 
       if (! is_empty && emr_options.allowed_mime.indexOf(target_type) == -1)
       {
          this.debug(target_type + ' not ' + ' in allowed types ');
-         this.warningMimeType();
+         var falsePositive = this.checkFalsePositiveType(source_type, target_type);
+
+         if (! falsePositive)
+          this.warningMimeType();
       }
     //  this.debug(emr_options.allowed_mime);
 
-    },
+    }
+    this.checkFalsePositiveType = function(source_type, target_type)
+    {
+        // windows (sigh) reports application/zip as application/x-zip-compressed. Or something else, why not.
+       if (source_type.indexOf('zip') >= 0 && target_type.indexOf('zip') >= 0)
+       {
+          this.debug('Finding ' + source_type + ' ' + target_type + ' close enough, false positive');
+          return true;
+       }
+       return false;
+    }
     // replace the text, check if text is there ( or hide ), and fix the layout.
     this.updateTextLayer = function (preview, newtext)
     {
@@ -235,6 +261,51 @@
     this.debug = function(message)
     {
       console.debug(message);
+    }
+    this.showReplaceOptions = function(e)
+    {
+        $('section.options .location_option').hide();
+        var replace_option = $('input[name="replace_type"]:checked').val();
+        if (replace_option == 'replace_and_search')
+        {
+           $('section.options .location_option').show();
+        }
+
+    }
+    this.dragOverArea = function(e)
+    {
+      e.preventDefault();
+      e.stopPropagation();
+
+      if ( this.is_dragging)
+        return;
+
+      //this.debug('dragover');
+      //$('.emr_drop_area').css('border-color', '#83b4d8');
+      $('.emr_drop_area').addClass('drop_breakout');
+      this.is_dragging = true;
+    }
+    this.dragOutArea = function(e)
+    {
+      e.preventDefault();
+      e.stopPropagation();
+    //  this.debug('dragout');
+      //$('.emr_drop_area').css('border-color', '#b4b9be');
+      $('.emr_drop_area').removeClass('drop_breakout');
+      this.is_dragging = false;
+    }
+    this.fileDrop = function (e)
+    {
+      var ev = e.originalEvent;
+      this.dragOutArea(e);
+      ev.preventDefault();
+      e.preventDefault();
+
+      if (ev.dataTransfer.items) {
+         // Use DataTransferItemList interface to access the file(s)
+          document.getElementById('userfile').files = ev.dataTransfer.files;
+           $('input[name="userfile"]').trigger('change');
+       }
     }
   } // emrIf
 

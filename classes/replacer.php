@@ -21,6 +21,8 @@ class Replacer
   protected $target_metadata;
   protected $target_url;
 
+  protected $target_location = false; // option for replacing to another target location
+
   protected $replaceMode = 1; // replace if nothing is set
   protected $timeMode = 1;
   protected $datetime = null;
@@ -94,19 +96,24 @@ class Replacer
       $this->targetName = $fileName;
       //$this->targetFile = new File($file); // this will point to /tmp!
 
-      $this->removeCurrent(); // tries to remove the current files.
       $targetFile = $this->getTargetFile();
 
       if (is_null($targetFile))
       {
-        $ex = __('Target File could not be set. The source file might not be there. In case of search and replace, a filter might prevent this', "enable-media-replace");
-        throw new \RuntimeException($ex);
+        return null;
+      //  $ex = __('Target File could not be set. The source file might not be there. In case of search and replace, a filter might prevent this', "enable-media-replace");
+      //  throw new \RuntimeException($ex);
       }
+
+
 
       $targetFileObj = new File($targetFile);
       $result = $targetFileObj->checkAndCreateFolder();
       if ($result === false)
         Log::addError('Directory creation for targetFile failed');
+
+
+      $this->removeCurrent(); // tries to remove the current files.
 
       /* @todo See if wp_handle_sideload / wp_handle_upload can be more securely used for this */
       $result_moved = move_uploaded_file($file,$targetFile);
@@ -123,7 +130,7 @@ class Replacer
       if ($this->sourceFile->getPermissions() > 0)
         chmod( $targetFile, $this->sourceFile->getPermissions() ); // restore permissions
       else {
-        // 'Setting permissions failed';
+        Log::addWarning('Setting permissions failed');
       }
 
       // update the file attached. This is required for wp_get_attachment_url to work.
@@ -148,6 +155,20 @@ class Replacer
       $metadata = wp_generate_attachment_metadata( $this->post_id, $this->targetFile->getFullFilePath() );
       wp_update_attachment_metadata( $this->post_id, $metadata );
       $this->target_metadata = $metadata;
+
+      /** If author is different from replacer, note this */
+      $author_id = get_post_meta($this->post_id, '_emr_replace_author', true);
+      Log::addTemp('Previous Author ID', $author_id);
+      if ( intval($this->source_post->post_author) !== get_current_user_id())
+      {
+         Log::addTemp("THIS AUTHOR NOT THE SAME AS THE OTHER");
+         update_post_meta($this->post_id, '_emr_replace_author', get_current_user_id());
+      }
+      elseif ($author_id)
+      {
+
+        delete_post_meta($this->post_id, '_emr_replace_author');
+      }
 
       if ($this->replaceMode == self::MODE_SEARCHREPLACE)
       {
@@ -205,6 +226,7 @@ class Replacer
 
       do_action("enable-media-replace-upload-done", $this->target_url, $this->source_url);
 
+      return true;
   }
 
   protected function getNewTitle()
@@ -236,6 +258,20 @@ class Replacer
      return $this->sourceFile;
   }
 
+  public function setNewTargetLocation($new_rel_location)
+  {
+      $uploadDir = wp_upload_dir();
+      $newPath = trailingslashit($uploadDir['basedir']) . $new_rel_location;
+
+      if (! is_dir($newPath))
+      {
+        Notices::addError(__('Specificed new directory does not exist. Path must be a relative path from the upload directory and exist', 'enable-media-replace'));
+        return false;
+      }
+      $this->target_location = trailingslashit($newPath);
+      return true;
+  }
+
   /** Returns a full target path to place to new file. Including the file name!  **/
   protected function getTargetFile()
   {
@@ -247,6 +283,16 @@ class Replacer
     elseif ($this->replaceMode == self::MODE_SEARCHREPLACE)
     {
         $path = $this->sourceFile->getFilePath();
+        if ($this->target_location) // Replace to another path.
+        {
+           $otherTarget = new File($this->target_location . $this->targetName);
+           if ($otherTarget->exists())
+           {
+              Notices::addError(__('In specificied directory there is already a file with the same name. Can\'t replace.', 'enable-media-replace'));
+              return null;
+           }
+           $path = $this->target_location; // if all went well.
+        }
         $unique = wp_unique_filename($path, $this->targetName);
 
         $new_filename = apply_filters( 'emr_unique_filename', $unique, $path, $this->post_id );
@@ -261,11 +307,12 @@ class Replacer
           $targetFile = trailingslashit($upload_dir['path']) . wp_unique_filename($targetFile, $this->targetName);
         }
         else {
-          $err = 'EMR could not establish a proper destination for replacement';
+          $err = __('EMR could not establish a proper destination for replacement', 'enable-media-replace');
+          Notices::addError($err);
           Log::addError($err);
-          throw new \RuntimeException($err);
-          exit($err); // fallback
-
+        //  throw new \RuntimeException($err);
+        //  exit($err); // fallback
+          return null;
         }
     }
 
