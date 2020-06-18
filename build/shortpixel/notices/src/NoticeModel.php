@@ -134,6 +134,11 @@ class NoticeModel //extends ShortPixelModel
     self::$icons[$type] = $icon;
   }
 
+  private function checkIncomplete($var)
+  {
+     return ($var instanceof \__PHP_Incomplete_Class);
+  }
+
   public function getForDisplay()
   {
     $this->viewed = true;
@@ -143,6 +148,21 @@ class NoticeModel //extends ShortPixelModel
 
     if ($this->callback)
     {
+      if (is_array($this->callback))
+      {
+        foreach($this->callback as $part)
+        {
+          if ($this->checkIncomplete($part) === true)
+          {
+              return false;
+          }
+        }
+      } elseif (is_object($this->callback))
+      {
+            if ($this->checkIncomplete($part) === true)
+              return false;
+      }
+
        $return = call_user_func($this->callback, $this);
        if ($return === false) // don't display is callback returns false explicitly.
         return;
