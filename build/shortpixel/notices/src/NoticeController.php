@@ -39,6 +39,14 @@ class NoticeController //extends ShortPixelController
      return self::$instance;
   }
 
+  /** Reset all notices, before loading them, to ensure on updates / activations one starts fresh */
+  public static function resetNotices()
+  {
+    $ns = __NAMESPACE__;
+    $ns = substr($ns, 0, strpos($ns, '\\')); // try to get first part of namespace
+    $result = delete_option($ns . '-notices');
+  }
+
   /** Load Notices Config File, if any
   *
   * [ Future Use ]
@@ -67,7 +75,15 @@ class NoticeController //extends ShortPixelController
 
     if ($notices !== false && is_array($notices))
     {
-      self::$notices = $notices;
+      $checked = array();
+      foreach($notices as $noticeObj)
+      {
+        if (is_object($noticeObj) && $noticeObj instanceOf NoticeModel)
+        {
+          $checked[] = $noticeObj;
+        }
+      }
+      self::$notices = $checked;
       $this->has_stored = true;
     }
     else {
@@ -182,7 +198,7 @@ class NoticeController //extends ShortPixelController
     for($i = 0; $i < count(self::$notices); $i++)
     {
       $item = self::$notices[$i];
-      if ($item->getID() == $id)
+      if (is_object($item) && $item->getID() == $id)
       {
         Log::addDebug('Removing notice with ID ' . $id);
         unset(self::$notices[$i]);

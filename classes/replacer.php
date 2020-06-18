@@ -130,7 +130,7 @@ class Replacer
       if ($this->sourceFile->getPermissions() > 0)
         chmod( $targetFile, $this->sourceFile->getPermissions() ); // restore permissions
       else {
-        Log::addWarning('Setting permissions failed');
+        Log::addWarn('Setting permissions failed');
       }
 
       // update the file attached. This is required for wp_get_attachment_url to work.
@@ -158,10 +158,10 @@ class Replacer
 
       /** If author is different from replacer, note this */
       $author_id = get_post_meta($this->post_id, '_emr_replace_author', true);
-      Log::addTemp('Previous Author ID', $author_id);
+
       if ( intval($this->source_post->post_author) !== get_current_user_id())
       {
-         Log::addTemp("THIS AUTHOR NOT THE SAME AS THE OTHER");
+
          update_post_meta($this->post_id, '_emr_replace_author', get_current_user_id());
       }
       elseif ($author_id)

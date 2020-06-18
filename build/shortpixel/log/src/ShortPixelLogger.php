@@ -237,6 +237,11 @@ namespace EnableMediaReplace\ShortPixelLogger;
      $log = self::getInstance();
      $log->addLog($message, $level, $args);
    }
+   // Alias, since it goes wrong so often. 
+   public static function addWarning($message, $args = array())
+   {
+      self::addWarn($message, $args);
+   }
    public static function addInfo($message, $args = array())
    {
      $level = DebugItem::LEVEL_INFO;
