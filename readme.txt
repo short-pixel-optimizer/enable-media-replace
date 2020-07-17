@@ -5,7 +5,7 @@ Tags: replace, attachment, media, files, replace image, replace jpg, change medi
 Requires at least: 4.9.7
 Tested up to: 5.4.2
 Requires PHP: 5.6
-Stable tag: 3.4.1
+Stable tag: 3.4.2
 
 Easily replace any attached image/file by simply uploading a new file in the Media Library edit view - a real time saver!
 
@@ -47,6 +47,12 @@ If you want more control over the format used to display the time, you can use t
 
 == Changelog ==
 
+
+= 3.4.2 =
+
+* Fix - Replacing image with pdf file would cause notices
+* Fix - Compensation for faulty WordPress installation that return empty error string on wp_upload_dir and falsely return relative paths and urls on WP core functions.
+
 = 3.4.1 =
 
 Release date: June 18th 2020
@@ -55,7 +61,7 @@ Release date: June 18th 2020
 = 3.4.0 =
 
 Release date: June 9th 2020
-* New - In edit media screen EMR notes user who replaced file if this was not uploader; 
+* New - In edit media screen EMR notes user who replaced file if this was not uploader;
 * New - Added Drag and Drop area for files;
 * New - When replacing with new file name, now also possible to update upload path;
 * Fix - Various minor CSS tweaks and fixes;
