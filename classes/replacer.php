@@ -49,6 +49,16 @@ class Replacer
       else
         $source_file = trim(get_attached_file($post_id, apply_filters( 'emr_unfiltered_get_attached_file', true )));
 
+      /* It happens that the SourceFile returns relative / incomplete when something messes up get_upload_dir with an error something.
+         This case shoudl be detected here and create a non-relative path anyhow..
+      */
+      if (! file_exists($source_file) && $source_file && 0 !== strpos( $source_file, '/' ) && ! preg_match( '|^.:\\\|', $source_file ) )
+      {
+        $file = get_post_meta( $post_id, '_wp_attached_file', true );
+        $uploads = wp_get_upload_dir();
+        $source_file = $uploads['basedir'] . "/$source_file";
+      }
+
       Log::addDebug('SourceFile ' . $source_file);
       $this->sourceFile = new File($source_file);
 
@@ -105,8 +115,6 @@ class Replacer
       //  throw new \RuntimeException($ex);
       }
 
-
-
       $targetFileObj = new File($targetFile);
       $result = $targetFileObj->checkAndCreateFolder();
       if ($result === false)
@@ -133,9 +141,13 @@ class Replacer
         Log::addWarn('Setting permissions failed');
       }
 
+      Log::addTemp('Updating Attached File to ' . $this->targetFile->getFullFilePath());
       // update the file attached. This is required for wp_get_attachment_url to work.
-      update_attached_file($this->post_id, $this->targetFile->getFullFilePath() );
-      $this->target_url = wp_get_attachment_url($this->post_id);
+      $updated = update_attached_file($this->post_id, $this->targetFile->getFullFilePath() );
+      if (! $updated)
+        Log::addError('Update Attached File reports as not updated');
+
+      $this->target_url = $this->getTargetURL(); //wp_get_attachment_url($this->post_id);
 
       // Run the filter, so other plugins can hook if needed.
       $filtered = apply_filters( 'wp_handle_upload', array(
@@ -156,6 +168,8 @@ class Replacer
       wp_update_attachment_metadata( $this->post_id, $metadata );
       $this->target_metadata = $metadata;
 
+Log::addTemp('Target URL', $this->target_url);
+Log::addTemp('Target', $this->targetFile);
       /** If author is different from replacer, note this */
       $author_id = get_post_meta($this->post_id, '_emr_replace_author', true);
 
@@ -177,10 +191,12 @@ class Replacer
          $update_ar = array('ID' => $this->post_id);
          $update_ar['post_title'] = $title;
          $update_ar['post_name'] = sanitize_title($title);
-    //     $update_ar['guid'] = wp_get_attachment_url($this->post_id);
+         $update_ar['guid'] = $this->target_url; //wp_get_attachment_url($this->post_id);
          $update_ar['post_mime_type'] = $this->targetFile->getFileMime();
          $post_id = \wp_update_post($update_ar, true);
 
+        Log::addTemp('UpdateAR', $update_ar);
+        Log::addTemp('Result', $post_id);
          // update post doesn't update GUID on updates.
          $wpdb->update( $wpdb->posts, array( 'guid' =>  $this->target_url), array('ID' => $this->post_id) );
          //enable-media-replace-upload-done
@@ -315,8 +331,38 @@ class Replacer
           return null;
         }
     }
-
+    Log::addTemp("targetFile", $targetFile);
     return $targetFile;
+  }
+
+  /** Since WP functions also can't be trusted here in certain cases, create the URL by ourselves */
+  protected function getTargetURL()
+  {
+    //$uploads['baseurl']
+    $url = wp_get_attachment_url($this->post_id);
+    $url_basename = basename($url);
+    Log::addTemp('BaseName URL', $url_basename);
+
+    // Seems all worked as normal.
+    if (strpos($url, '://') >= 0 && $this->targetFile->getFileName() == $url_basename)
+        return $url;
+
+    // Relative path for some reason
+    if (strpos($url, '://') === false)
+    {
+        $uploads = wp_get_upload_dir();
+        $url = str_replace($uploads['basedir'], $uploads['baseurl'], $this->targetFile->getFullFilePath());
+    }
+    // This can happen when WordPress is not taking from attached file, but wrong /old GUID. Try to replace it to the new one.
+    elseif ($this->targetFile->getFileName() != $url_basename)
+    {
+        $url = str_replace($url_basename, $this->targetFile->getFileName(), $url);
+    }
+
+    Log::addTemp('New TargetURL', $url);
+    return $url;
+    //$this->targetFile
+
   }
 
   /** Tries to remove all of the old image, without touching the metadata in database
@@ -328,7 +374,7 @@ class Replacer
     $backup_sizes = get_post_meta( $this->post_id, '_wp_attachment_backup_sizes', true );
 
     // this must be -scaled if that exists, since wp_delete_attachment_files checks for original_files but doesn't recheck if scaled is included since that the one 'that exists' in WP . $this->source_file replaces original image, not the -scaled one.
-    $file = get_attached_file($this->post_id);
+    $file = $this->sourceFile->getFullFilePath();
     $result = \wp_delete_attachment_files($this->post_id, $meta, $backup_sizes, $file );
 
   }
@@ -433,6 +479,8 @@ class Replacer
       }
     }
 
+    Log::addDebug('Source', $this->source_metadata);
+    Log::addDebug('Target', $this->target_metadata);
     /* If on the other hand, some sizes are available in source, but not in target, try to replace them with something closeby.  */
     foreach($search_urls as $size => $url)
     {
@@ -459,7 +507,7 @@ class Replacer
     */
     foreach($search_urls as $size => $url)
     {
-        $replace_url = $replace_urls[$size];
+        $replace_url = isset($replace_urls[$size]) ? $replace_urls[$size] : false;
         if ($url == $replace_url) // if source and target as the same, no need for replacing.
         {
           unset($search_urls[$size]);
@@ -477,7 +525,7 @@ class Replacer
     }
 
     Log::addDebug('Doing meta search and replace -', array($search_urls, $replace_urls) );
-    Log::addDebug('Searching with BaseuRL' . $current_base_url);
+    Log::addDebug('Searching with BaseuRL ' . $current_base_url);
 
     /* Search and replace in WP_POSTS */
     // Removed $wpdb->remove_placeholder_escape from here, not compatible with WP 4.8
@@ -557,6 +605,7 @@ class Replacer
     {
       Log::addDebug('Found JSON Content');
       $content = json_decode($content);
+
     }
 
     if (is_string($content))  // let's check the normal one first.
@@ -588,7 +637,7 @@ class Replacer
     {
       Log::addDebug('Value was found to be JSON, encoding');
       // wp-slash -> WP does stripslashes_deep which destroys JSON
-      $content = wp_slash(json_encode($content, JSON_UNESCAPED_SLASHES));
+      $content = (json_encode($content, JSON_UNESCAPED_SLASHES));
       Log::addDebug('Content returning', array($content));
     }
 
@@ -662,7 +711,12 @@ class Replacer
   */
   private function findNearestSize($sizeName)
   {
+     Log::addDebug('Find Nearest: '. $sizeName);
 
+      if (! isset($this->source_metadata['sizes'][$sizeName]) || ! isset($this->target_metadata['width'])) // This can happen with non-image files like PDF.
+      {
+        return false;
+      }
       $old_width = $this->source_metadata['sizes'][$sizeName]['width']; // the width from size not in new image
       $new_width = $this->target_metadata['width']; // default check - the width of the main image
 

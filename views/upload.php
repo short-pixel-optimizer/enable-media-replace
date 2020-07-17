@@ -10,8 +10,6 @@ use EnableMediaReplace\Notices\NoticeController as Notices;
 if (!current_user_can('upload_files'))
 	wp_die( esc_html__('You do not have permission to upload files.', 'enable-media-replace') );
 
-
-
 /*require_once('classes/replacer.php');
 require_once('classes/file.php'); */
 

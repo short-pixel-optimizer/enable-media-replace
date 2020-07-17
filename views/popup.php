@@ -88,18 +88,18 @@ $url = $uiHelper->getFormUrl($attachment_id);
     <div class='image_previews'>
               <?php if (wp_attachment_is('image', $attachment_id) || $source_mime == 'application/pdf')
               {
-                  echo $uiHelper->getPreviewImage($attachment_id);
-                  echo $uiHelper->getPreviewImage(-1);
+                  echo $uiHelper->getPreviewImage($attachment_id, $file);
+                  echo $uiHelper->getPreviewImage(-1, $file);
               }
               else {
                     if (strlen($filepath) == 0) // check if image in error state.
                     {
                         echo $uiHelper->getPreviewError(-1);
-                        echo $uiHelper->getPreviewImage(-1);
+                        echo $uiHelper->getPreviewImage(-1, $file);
                     }
                     else {
-                        echo $uiHelper->getPreviewFile($attachment_id);
-                        echo $uiHelper->getPreviewFile(-1);
+                        echo $uiHelper->getPreviewFile($attachment_id, $file);
+                        echo $uiHelper->getPreviewFile(-1, $file);
                     }
 
               }
