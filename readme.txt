@@ -3,7 +3,7 @@ Contributors: ShortPixel
 Donate link: https://www.paypal.me/resizeImage
 Tags: replace, attachment, media, files, replace image, replace jpg, change media, replace media, image, file
 Requires at least: 4.9.7
-Tested up to: 5.4.2
+Tested up to: 5.5
 Requires PHP: 5.6
 Stable tag: 3.4.2
 
@@ -52,6 +52,8 @@ If you want more control over the format used to display the time, you can use t
 
 * Fix - Replacing image with pdf file would cause notices
 * Fix - Compensation for faulty WordPress installation that return empty error string on wp_upload_dir and falsely return relative paths and urls on WP core functions.
+* Fix - When choosing 'replace file and update names' and then uploading a file with identical name as source, it would postfix the duplicate name. This is no longer the case.
+* Fix - If source image doesn't exist or in error state, replacement would be prevented by Javascript issue.
 
 = 3.4.1 =
 

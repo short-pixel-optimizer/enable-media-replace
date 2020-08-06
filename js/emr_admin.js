@@ -38,6 +38,9 @@
         source_type = $(source).data('filetype').trim();
         this.debug('detected type - ' + source_type);
       }
+      else
+        source_type = ''; // error state
+
       if (source.hasClass('is_image'))
       {
           source_is_image = true;

@@ -92,6 +92,7 @@ $url = $uiHelper->getFormUrl($attachment_id);
                   echo $uiHelper->getPreviewImage(-1, $file);
               }
               else {
+
                     if (strlen($filepath) == 0) // check if image in error state.
                     {
                         echo $uiHelper->getPreviewError(-1);

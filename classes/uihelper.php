@@ -144,7 +144,10 @@ class UIHelper
             'is_image' => false,
             'is_document' => $is_document,
             'icon' => $icon,
+            'mime_type' => null,
         );
+
+      
 
         // failed, it might be this server doens't support PDF thumbnails. Fallback to File preview.
         if ($mime_type == 'application/pdf')

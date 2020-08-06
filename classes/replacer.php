@@ -102,9 +102,7 @@ class Replacer
   public function replaceWith($file, $fileName)
   {
       global $wpdb;
-      //$this->targetFile = new File($file);
       $this->targetName = $fileName;
-      //$this->targetFile = new File($file); // this will point to /tmp!
 
       $targetFile = $this->getTargetFile();
 
@@ -141,7 +139,6 @@ class Replacer
         Log::addWarn('Setting permissions failed');
       }
 
-      Log::addTemp('Updating Attached File to ' . $this->targetFile->getFullFilePath());
       // update the file attached. This is required for wp_get_attachment_url to work.
       $updated = update_attached_file($this->post_id, $this->targetFile->getFullFilePath() );
       if (! $updated)
@@ -168,8 +165,7 @@ class Replacer
       wp_update_attachment_metadata( $this->post_id, $metadata );
       $this->target_metadata = $metadata;
 
-Log::addTemp('Target URL', $this->target_url);
-Log::addTemp('Target', $this->targetFile);
+
       /** If author is different from replacer, note this */
       $author_id = get_post_meta($this->post_id, '_emr_replace_author', true);
 
@@ -195,8 +191,7 @@ Log::addTemp('Target', $this->targetFile);
          $update_ar['post_mime_type'] = $this->targetFile->getFileMime();
          $post_id = \wp_update_post($update_ar, true);
 
-        Log::addTemp('UpdateAR', $update_ar);
-        Log::addTemp('Result', $post_id);
+
          // update post doesn't update GUID on updates.
          $wpdb->update( $wpdb->posts, array( 'guid' =>  $this->target_url), array('ID' => $this->post_id) );
          //enable-media-replace-upload-done
@@ -309,8 +304,19 @@ Log::addTemp('Target', $this->targetFile);
            }
            $path = $this->target_location; // if all went well.
         }
-        $unique = wp_unique_filename($path, $this->targetName);
+        //if ($this->sourceFile->getFileName() == $this->targetName)
+        $targetpath = $path . $this->targetName;
 
+        // If the source and target path AND filename are identical, user has wrong mode, just overwrite the sourceFile.
+        if ($targetpath == $this->sourceFile->getFullFilePath())
+        {
+            $unique = $this->sourceFile->getFileName();
+            $this->replaceMode == self::MODE_REPLACE;
+        }
+        else
+        {
+            $unique = wp_unique_filename($path, $this->targetName);
+        }
         $new_filename = apply_filters( 'emr_unique_filename', $unique, $path, $this->post_id );
         $targetFile = trailingslashit($path) . $new_filename;
     }
@@ -331,7 +337,6 @@ Log::addTemp('Target', $this->targetFile);
           return null;
         }
     }
-    Log::addTemp("targetFile", $targetFile);
     return $targetFile;
   }
 
@@ -341,7 +346,6 @@ Log::addTemp('Target', $this->targetFile);
     //$uploads['baseurl']
     $url = wp_get_attachment_url($this->post_id);
     $url_basename = basename($url);
-    Log::addTemp('BaseName URL', $url_basename);
 
     // Seems all worked as normal.
     if (strpos($url, '://') >= 0 && $this->targetFile->getFileName() == $url_basename)
@@ -359,7 +363,6 @@ Log::addTemp('Target', $this->targetFile);
         $url = str_replace($url_basename, $this->targetFile->getFileName(), $url);
     }
 
-    Log::addTemp('New TargetURL', $url);
     return $url;
     //$this->targetFile
 
