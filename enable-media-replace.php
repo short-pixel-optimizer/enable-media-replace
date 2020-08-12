@@ -45,15 +45,17 @@ if(!defined("SHORTPIXEL_AFFILIATE_CODE")) {
 	define("SHORTPIXEL_AFFILIATE_CODE", 'VKG6LYN28044');
 }
 
-require_once('build/shortpixel/autoload.php');
-require_once('classes/compat.php');
-require_once('classes/functions.php');
-require_once('classes/replacer.php');
-require_once('classes/uihelper.php');
-require_once('classes/file.php');
-require_once('classes/cache.php');
-require_once('classes/emr-plugin.php');
-require_once('classes/externals.php');
-require_once('thumbnail_updater.php');
+$plugin_path = plugin_dir_path(EMR_ROOT_FILE);
+
+require_once($plugin_path . 'build/shortpixel/autoload.php');
+require_once($plugin_path . 'classes/compat.php');
+require_once($plugin_path . 'classes/functions.php');
+require_once($plugin_path . 'classes/replacer.php');
+require_once($plugin_path . 'classes/uihelper.php');
+require_once($plugin_path . 'classes/file.php');
+require_once($plugin_path . 'classes/cache.php');
+require_once($plugin_path . 'classes/emr-plugin.php');
+require_once($plugin_path . 'classes/externals.php');
+require_once($plugin_path . 'thumbnail_updater.php');
 
 $emr_plugin = EnableMediaReplacePlugin::get();
