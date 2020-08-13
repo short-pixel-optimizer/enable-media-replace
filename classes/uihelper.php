@@ -98,7 +98,7 @@ class UIHelper
   public function setSourceSizes($attach_id)
   {
     $data = $this->getImageSizes($attach_id, 'full');  // wp_get_attachment_image_src($attach_id, 'full');
-    $file = get_attached_file($attach_id);
+  //  $file = get_attached_file($attach_id);
 
     if (is_array($data))
     {
@@ -147,7 +147,7 @@ class UIHelper
             'mime_type' => null,
         );
 
-      
+
 
         // failed, it might be this server doens't support PDF thumbnails. Fallback to File preview.
         if ($mime_type == 'application/pdf')
@@ -182,6 +182,7 @@ class UIHelper
         'height' => $height,
         'image' => $image,
         'mime_type' => $mime_type,
+        'file_size' => $file->getFileSize(),
       );
 
       $output = $this->getPlaceHolder($args);
@@ -252,6 +253,7 @@ class UIHelper
       'is_document' => true,
       'layer' => $filename,
       'mime_type' => $mime_type,
+      'file_size' => $file->getFileSize(),
     );
     $output = $this->getPlaceHolder($args);
     return $output;
@@ -290,9 +292,11 @@ class UIHelper
         'is_image' => true,
         'is_document' => false,
         'mime_type' => false,
+        'file_size' => false,
     );
 
     $args = wp_parse_args($args, $defaults);
+
     $w = $args['width'];
     $h = $args['height'];
 
@@ -322,14 +326,24 @@ class UIHelper
       $filetype = 'data-filetype="' . $args['mime_type'] . '"';
     }
 
+    $filesize = ($args['file_size']) ? $args['file_size'] : '';
+
 
     $output = "<div class='image_placeholder $placeholder_class' $filetype style='width:" . $w . "px; height:". $h ."px'> ";
     $output .= $args['image'];
     $output .= "<div class='dashicons $icon'>&nbsp;</div>";
     $output .= "<span class='textlayer'>" . $args['layer'] . "</span>";
+    $output .= "<div class='image_size'>" . $this->convertFileSize($filesize). "</div>";
     $output .= "</div>";
 
+
+
     return $output;
+  }
+
+  private function convertFileSize($filesize)
+  {
+     return size_format($filesize);
   }
 
     /**
