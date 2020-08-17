@@ -50,9 +50,13 @@ If you want more control over the format used to display the time, you can use t
 
 = 3.4.2 =
 
-* Fix - Replacing image with pdf file would cause notices
-* Fix - Compensation for faulty WordPress installation that return empty error string on wp_upload_dir and falsely return relative paths and urls on WP core functions.
-* Fix - When choosing 'replace file and update names' and then uploading a file with identical name as source, it would postfix the duplicate name. This is no longer the case.
+Release date: August 17th 2020
+* New - Also display files size in the replacement windows;
+* Fix - Replacing image with pdf file would cause noticesi;
+* Fix - Compensation for faulty WordPress installation that return empty error string on wp_upload_dir and falsely return relative paths and urls on WP core functions;
+* Fix - When choosing 'replace file and update names' and then uploading a file with identical name as source, it would postfix the duplicate name. This is no longer the case;
+* Fix - Wording clarification for the situation when the filename is changed, which will lead to broken links from external sites;
+* Fix - Added hard paths to require_once satements in order to prevent WP-CLI errrors;
 * Fix - If source image doesn't exist or in error state, replacement would be prevented by Javascript issue.
 
 = 3.4.1 =
