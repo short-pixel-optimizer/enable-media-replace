@@ -530,31 +530,19 @@ class Replacer
     Log::addDebug('Doing meta search and replace -', array($search_urls, $replace_urls) );
     Log::addDebug('Searching with BaseuRL ' . $current_base_url);
 
+    do_action('emr/replace_urls', $search_urls, $replace_urls);
+
     /* Search and replace in WP_POSTS */
     // Removed $wpdb->remove_placeholder_escape from here, not compatible with WP 4.8
  		$posts_sql = $wpdb->prepare(
  			"SELECT ID, post_content FROM $wpdb->posts WHERE post_status = 'publish' AND post_content LIKE %s;",
  			'%' . $current_base_url . '%');
 
-    // json encodes it all differently. Catch json-like encoded urls
-    //$json_url = str_replace('/', '\/', ltrim($current_base_url, '/') );
-
-    $postmeta_sql = 'SELECT meta_id, post_id, meta_key, meta_value FROM ' . $wpdb->postmeta . '
-        WHERE post_id in (SELECT ID from '. $wpdb->posts . ' where post_status = "publish") AND meta_value like %s';
-    $postmeta_sql = $wpdb->prepare($postmeta_sql, '%' . $current_base_url . '%');
-
-    // This is a desparate solution. Can't find anyway for wpdb->prepare not the add extra slashes to the query, which messes up the query.
-//    $postmeta_sql = str_replace('[JSON_URL]', $json_url, $postmeta_sql);
-
-    $rsmeta = $wpdb->get_results($postmeta_sql, ARRAY_A);
-
  		$rs = $wpdb->get_results( $posts_sql, ARRAY_A );
-
  		$number_of_updates = 0;
 
-    Log::addDebug('Queries', array($postmeta_sql, $posts_sql));
-    Log::addDebug('Queries found '  . count($rs) . ' post rows and ' . count($rsmeta) . ' meta rows');
-
+//    Log::addDebug('Queries', array($postmeta_sql, $posts_sql));
+//    Log::addDebug('Queries found '  . count($rs) . ' post rows and ' . count($rsmeta) . ' meta rows');
 
  		if ( ! empty( $rs ) ) {
  			foreach ( $rs AS $rows ) {
@@ -569,6 +557,8 @@ class Replacer
 
         if ($post_ar['post_content'] !== $post_content)
         {
+          Log::addDebug('POST CONTENT TO SAVE', $post_content);
+
           $result = wp_update_post($post_ar);
           if (is_wp_error($result))
           {
@@ -579,24 +569,62 @@ class Replacer
 
  			}
     }
-    if (! empty($rsmeta))
-    {
-      foreach ($rsmeta as $row)
-      {
-        $number_of_updates++;
-        $content = $row['meta_value'];
-        $meta_key = $row['meta_key'];
-        $post_id = $row['post_id'];
-        $content = $this->replaceContent($content, $search_urls, $replace_urls); //str_replace($search_urls, $replace_urls, $content);
 
-        update_post_meta($post_id, $meta_key, $content);
-    //    $sql = $wpdb->prepare('UPDATE ' . $wpdb->postmeta . ' SET meta_value = %s WHERE meta_id = %d', $content, $row['meta_id'] );
-    //    $wpdb->query($sql);
-      }
-    }
-
+    $this->handleMetaData($current_base_url, $search_urls, $replace_urls);
 
   } // doSearchReplace
+
+  private function handleMetaData($url, $search_urls, $replace_urls)
+  {
+    global $wpdb;
+
+    $meta_options = apply_filters('emr/metadata_tables', array('post'));
+    $number_of_updates = 0;
+
+    foreach($meta_options as $type)
+    {
+
+        switch($type)
+        {
+          case "post": // special case.
+              $sql = 'SELECT meta_id, post_id as object_id, meta_key, meta_value FROM ' . $wpdb->postmeta . '
+                WHERE post_id in (SELECT ID from '. $wpdb->posts . ' where post_status = "publish") AND meta_value like %s';
+              $type = 'post';
+          break;
+          default:
+              $table = $wpdb->{$type . 'meta'};  // termmeta, commentmeta etc
+              $id = $type . "_id";
+              $sql = 'SELECT meta_id, ' . $id . ' as object_id, meta_key, meta_value FROM ' . $table . '
+                WHERE meta_value like %s';
+          break;
+        }
+
+
+        $sql = $wpdb->prepare($sql, '%' . $url . '%');
+        Log::addTemp("metadata sql ", $sql);
+        // This is a desparate solution. Can't find anyway for wpdb->prepare not the add extra slashes to the query, which messes up the query.
+    //    $postmeta_sql = str_replace('[JSON_URL]', $json_url, $postmeta_sql);
+        $rsmeta = $wpdb->get_results($sql, ARRAY_A);
+
+        if (! empty($rsmeta))
+        {
+          foreach ($rsmeta as $row)
+          {
+            $number_of_updates++;
+            $content = $row['meta_value'];
+            $meta_key = $row['meta_key'];
+            $object_id = $row['object_id'];
+          //  $type = $row['type'];
+            $content = $this->replaceContent($content, $search_urls, $replace_urls); //str_replace($search_urls, $replace_urls, $content);
+
+            update_metadata($type, $object_id, $meta_key, $content);
+
+          }
+        }
+    } // foreach
+
+    return $number_of_updates;
+  } // function
 
   private function replaceContent($content, $search, $replace)
   {
@@ -640,7 +668,7 @@ class Replacer
     {
       Log::addDebug('Value was found to be JSON, encoding');
       // wp-slash -> WP does stripslashes_deep which destroys JSON
-      $content = (json_encode($content, JSON_UNESCAPED_SLASHES));
+      $content = wp_slash(json_encode($content, JSON_UNESCAPED_SLASHES));
       Log::addDebug('Content returning', array($content));
     }
 

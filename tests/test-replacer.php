@@ -120,10 +120,87 @@ class ReplacerTest extends WP_UnitTestCase
     $replacerFunc = $replaceRefl->getMethod('isJSON');
     $replacerFunc->setAccessible(true);
 
-    
     $bool = $replacerFunc->invoke(self::$replacer, $content);
     $this->assertTrue($bool);
 
+    //TablesPress
+    $content = '[["Column A","Info Doc"],["Column B","<a href=\"' . $this->search . '\">PDF</a>\n<a href=\"' . $this->search .  '\">PDF</a>"]]';
+
+    $expected = '[["Column A","Info Doc"],["Column B","<a href=\"' . $this->replace . '\">PDF</a>\n<a href=\"' . $this->replace .  '\">PDF</a>"]]';
+
+    $result = self::$method->invoke(self::$replacer, $content, $this->search, $this->replace);
+    $this->assertEquals($expected, $result);
+
+    $bool = $replacerFunc->invoke(self::$replacer, $content);
+    $this->assertTrue($bool);
+
+    $post_id = $this->factory->post->create(array('name' => 'test1', 'status' => 'publish', 'post_content' => $content));
+    wp_update_post(array('ID' => $post_id, 'content' => $content));
+
+    $post = get_post($post_id);
+
+    $this->assertEquals($content, $post->post_content);
+
+
+  }
+
+  public function testMetaDataReplace()
+  {
+      $term_id = $this->factory->term->create(array('name' => 'test'));
+      add_term_meta($term_id, 'test', $this->search);
+
+      $post_id = $this->factory->post->create(array('name' => 'test1', 'status' => 'publish'));
+      add_post_meta($post_id, 'test', $this->search);
+
+      global $wpdb;
+
+      $search_urls = array($this->search);
+      $replace_urls = array($this->replace);
+
+      $replaceRefl = new ReflectionClass('\EnableMediaReplace\Replacer');
+      $replacerFunc = $replaceRefl->getMethod('handleMetaData');
+      $replacerFunc->setAccessible(true);
+
+      // Test without replacing ( empty hook )
+      add_filter('emr/metadata_tables', array($this, 'filterNoResults'));
+      $result = $replacerFunc->invoke(self::$replacer, $this->search, $search_urls, $replace_urls);
+      remove_filter('emr/metadata_tables', array($this, 'filterNoResults'));
+
+      $this->assertEquals(0, $result);
+
+      // Test both term and post at once.
+      add_filter('emr/metadata_tables', array($this, 'filterPostAndTerm'));
+
+      $result = $replacerFunc->invoke(self::$replacer, $this->search, $search_urls, $replace_urls);
+
+      $this->assertEquals(2, $result);
+
+      $termtest = get_term_meta($term_id, 'test', true);
+      $posttest = get_post_meta($post_id, 'test', true);
+
+      $this->assertEquals($this->replace, $termtest);
+      $this->assertEquals($this->replace, $posttest);
+
+  }
+
+  public function filterNoResults()
+  { return array();  }
+
+  public function filterPostAndTerm()
+  {
+     return array('post', 'term');
+  }
+
+  public function testProblematicExamples()
+  {
+
+      $content = ' <!-- wp:uagb/table-of-contents {"block_id":"0739b4c9","classMigrate":true,"headerLinks":"[{\u0022tag\u0022:3,\u0022text\u0022:\u0022Pores\u0022,\u0022link\u0022:\u0022pores\u0022,\u0022content\u0022:\u0022Pores\u0022,\u0022level\u0022:0},{\u0022tag\u0022:2,\u0022text\u0022:\u0022Pores 4\u0022,\u0022link\u0022:\u0022pores-4\u0022,\u0022content\u0022:\u0022Pores 4\u0022,\u0022level\u0022:0}]"} -->
+<div class="wp-block-uagb-table-of-contents uagb-toc__align-left uagb-toc__columns-undefined uagb-block-0739b4c9" data-scroll="true" data-offset="30" data-delay="800"><div class="uagb-toc__wrap"><div class="uagb-toc__title-wrap"><div class="uagb-toc__title">Table Of Contents</div></div><div class="uagb-toc__list-wrap"><ul class="uagb-toc__list"><li><a href="#pores">Pores</a></li></ul></div></div></div>
+<!-- /wp:uagb/table-of-contents -->';
+
+      $result = self::$method->invoke(self::$replacer, $content, $this->search, $this->replace);
+
+      $this->assertEquals($content, $result);
 
   }
 
