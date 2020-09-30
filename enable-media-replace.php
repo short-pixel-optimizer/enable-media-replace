@@ -18,7 +18,7 @@ http://www.gnu.org/licenses/gpl.html
  * Set action hooks and add shortcode
  *
  * @author      ShortPixel  <https://shortpixel.com>
- * @copyright   ShortPixel 2018-2019
+ * @copyright   ShortPixel 2018-2020
  * @package     wordpress
  * @subpackage  enable-media-replace
  *
