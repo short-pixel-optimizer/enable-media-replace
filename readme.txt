@@ -5,7 +5,7 @@ Tags: replace, attachment, media, files, replace image, replace jpg, change medi
 Requires at least: 4.9.7
 Tested up to: 5.5
 Requires PHP: 5.6
-Stable tag: 3.4.2
+Stable tag: 3.5
 
 Easily replace any attached image/file by simply uploading a new file in the Media Library edit view - a real time saver!
 
@@ -47,6 +47,13 @@ If you want more control over the format used to display the time, you can use t
 
 == Changelog ==
 
+= 3.5 =
+
+* Now works with Elementor
+* Fixes for JSON and slashes - EMR now uses queries instead of WordPress functions
+* EMR now replaces across all meta tables
+* EMR remembers last used settings.
+* Manual Logging will no longer work if user is not logged as administrator
 
 = 3.4.2 =
 

@@ -552,15 +552,20 @@ class Replacer
  				//$post_content = str_replace( $search_urls, $replace_urls, $post_content );
 
         $post_id = $rows['ID'];
-        $post_ar = array('ID' => $post_id);
-        $post_ar['post_content'] = $this->replaceContent($post_content, $search_urls, $replace_urls);
+        //$post_ar = array('ID' => $post_id);
+        $replaced_content = $this->replaceContent($post_content, $search_urls, $replace_urls);
 
-        if ($post_ar['post_content'] !== $post_content)
+        if ($replaced_content !== $post_content)
         {
-          Log::addDebug('POST CONTENT TO SAVE', $post_content);
+          Log::addDebug('POST CONTENT TO SAVE', $replaced_content);
 
-          $result = wp_update_post($post_ar);
-          if (is_wp_error($result))
+        //  $result = wp_update_post($post_ar);
+          $sql = 'UPDATE ' . $wpdb->posts . ' SET post_content = %s WHERE ID = %d';
+          $sql = $wpdb->prepare($sql, $replaced_content, $post_id);
+
+          $result = $wpdb->query($sql);
+
+          if ($result === false)
           {
             Notice::addError('Something went wrong while replacing' .  $result->get_error_message() );
             Log::addError('WP-Error during post update', $result);
@@ -578,7 +583,7 @@ class Replacer
   {
     global $wpdb;
 
-    $meta_options = apply_filters('emr/metadata_tables', array('post'));
+    $meta_options = apply_filters('emr/metadata_tables', array('post', 'comment', 'term', 'user'));
     $number_of_updates = 0;
 
     foreach($meta_options as $type)
@@ -587,21 +592,23 @@ class Replacer
         switch($type)
         {
           case "post": // special case.
-              $sql = 'SELECT meta_id, post_id as object_id, meta_key, meta_value FROM ' . $wpdb->postmeta . '
+              $sql = 'SELECT meta_id as id, meta_value FROM ' . $wpdb->postmeta . '
                 WHERE post_id in (SELECT ID from '. $wpdb->posts . ' where post_status = "publish") AND meta_value like %s';
               $type = 'post';
+              $update_sql = ' UPDATE ' . $wpdb->postmeta . ' SET meta_value = %s WHERE meta_id = %d';
           break;
           default:
               $table = $wpdb->{$type . 'meta'};  // termmeta, commentmeta etc
               $id = $type . "_id";
-              $sql = 'SELECT meta_id, ' . $id . ' as object_id, meta_key, meta_value FROM ' . $table . '
+              $sql = 'SELECT meta_id as id, meta_value FROM ' . $table . '
                 WHERE meta_value like %s';
+
+              $update_sql = " UPDATE $table set meta_value = %s WHERE meta_id = %d ";
           break;
         }
 
-
         $sql = $wpdb->prepare($sql, '%' . $url . '%');
-        Log::addTemp("metadata sql ", $sql);
+        
         // This is a desparate solution. Can't find anyway for wpdb->prepare not the add extra slashes to the query, which messes up the query.
     //    $postmeta_sql = str_replace('[JSON_URL]', $json_url, $postmeta_sql);
         $rsmeta = $wpdb->get_results($sql, ARRAY_A);
@@ -612,12 +619,16 @@ class Replacer
           {
             $number_of_updates++;
             $content = $row['meta_value'];
-            $meta_key = $row['meta_key'];
-            $object_id = $row['object_id'];
+            //$meta_key = $row['meta_key'];
+            //$object_id = $row['object_id'];
+            $id = $row['id'];
           //  $type = $row['type'];
             $content = $this->replaceContent($content, $search_urls, $replace_urls); //str_replace($search_urls, $replace_urls, $content);
 
-            update_metadata($type, $object_id, $meta_key, $content);
+           //  update_metadata($type, $object_id, $meta_key, $content);
+           $update_sql = $wpdb->prepare($update_sql, $content, $id);
+           Log::addDebug('Update Meta SQl' . $update_sql);
+           $result = $wpdb->query($update_sql);
 
           }
         }
@@ -668,7 +679,7 @@ class Replacer
     {
       Log::addDebug('Value was found to be JSON, encoding');
       // wp-slash -> WP does stripslashes_deep which destroys JSON
-      $content = wp_slash(json_encode($content, JSON_UNESCAPED_SLASHES));
+      $content = json_encode($content, JSON_UNESCAPED_SLASHES);
       Log::addDebug('Content returning', array($content));
     }
 

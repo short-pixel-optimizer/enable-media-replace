@@ -108,6 +108,8 @@ class ReplacerTest extends WP_UnitTestCase
 
   public function testJson()
   {
+    global $wpdb;
+
     $content = '[["<img src=\"http://shortpixel.weblogmechanic.com/wp-content/uploads/2020/01/' . $this->search . '\" alt=\"\" width=\"640\" height=\"426\" class=\"alignnone size-large wp-image-1448\" />","","","",""],["<img src=\"http://shortpixel.weblogmechanic.com/wp-content/uploads/2019/07/'. $this->search . '\" alt=\"\" width=\"640\" height=\"853\" class=\"alignnone size-large wp-image-621\" />","","","",""],["","","","",""],["","","","",""],["","","","",""]]';
 
     $expected = '[["<img src=\"http://shortpixel.weblogmechanic.com/wp-content/uploads/2020/01/' . $this->replace . '\" alt=\"\" width=\"640\" height=\"426\" class=\"alignnone size-large wp-image-1448\" />","","","",""],["<img src=\"http://shortpixel.weblogmechanic.com/wp-content/uploads/2019/07/' . $this->replace . '\" alt=\"\" width=\"640\" height=\"853\" class=\"alignnone size-large wp-image-621\" />","","","",""],["","","","",""],["","","","",""],["","","","",""]]';
@@ -134,12 +136,17 @@ class ReplacerTest extends WP_UnitTestCase
     $bool = $replacerFunc->invoke(self::$replacer, $content);
     $this->assertTrue($bool);
 
-    $post_id = $this->factory->post->create(array('name' => 'test1', 'status' => 'publish', 'post_content' => $content));
-    wp_update_post(array('ID' => $post_id, 'content' => $content));
+    $post_id = $this->factory->post->create(array('name' => 'test1', 'status' => 'publish', 'post_content' => $result));
+    //wp_update_post(array('ID' => $post_id, 'post_content' => $result ));
+    $sql = 'UPDATE ' . $wpdb->posts . ' SET post_content = %s WHERE ID = %d';
+    $sql = $wpdb->prepare($sql, $result, $post_id);
+    $q = $wpdb->query($sql);
+    $post = get_post($post_id); // somehow get_post still fucks with the content
 
-    $post = get_post($post_id);
+    $sql = 'SELECT * FROM '  . $wpdb->posts . ' where ID = ' . $post_id;
+    $sqlresult = $wpdb->get_results($sql);
 
-    $this->assertEquals($content, $post->post_content);
+    $this->assertEquals($result, $sqlresult[0]->post_content);
 
 
   }
