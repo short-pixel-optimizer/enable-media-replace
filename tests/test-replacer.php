@@ -44,7 +44,7 @@ class ReplacerTest extends WP_UnitTestCase
      $result = self::$method->invoke(self::$replacer, $content, $this->search, $this->replace);
 
      // WP Error should just return error.
-     $this->assertEquals($content, $result);
+     $this->assertEquals(serialize($content), $result);
 
   }
 
@@ -55,7 +55,8 @@ class ReplacerTest extends WP_UnitTestCase
     $content->image = $this->search;
     $content->last = 'other';
 
-    $result = self::$method->invoke(self::$replacer, $content, $this->search, $this->replace);
+    $result_serialized = self::$method->invoke(self::$replacer, $content, $this->search, $this->replace);
+    $result = unserialize($result_serialized);
 
     $this->assertEquals($this->replace, $result->image);
     $this->assertEquals($content->first, $result->first);
@@ -66,7 +67,8 @@ class ReplacerTest extends WP_UnitTestCase
   {
     $content = array('first'=> 'random', 'content' => $this->search, 'last' => 'other');
 
-    $result = self::$method->invoke(self::$replacer, $content, $this->search, $this->replace);
+    $result_serialized = self::$method->invoke(self::$replacer, $content, $this->search, $this->replace);
+    $result = unserialize($result_serialized);
 
     $this->assertEquals($this->replace, $result['content']);
     $this->assertEquals($content['first'], $result['first']);
@@ -82,7 +84,8 @@ class ReplacerTest extends WP_UnitTestCase
 
     $correct = array('string '. $this->replace . ' string');
 
-    $result = self::$method->invoke(self::$replacer, $content, $this->search, $this->replace);
+    $result_serialized = self::$method->invoke(self::$replacer, $content, $this->search, $this->replace);
+    $result = unserialize($result_serialized);
 
     $this->assertEquals($content->first, $result->first);
     $this->assertIsString($result->first);
@@ -101,8 +104,12 @@ class ReplacerTest extends WP_UnitTestCase
     $content = serialize(array('img' => '<img class="alignnone size-large wp-image-1358" src="' . $this->search . '" alt="" width="640" height="427" />'));
     $expected = array('img' => '<img class="alignnone size-large wp-image-1358" src="' . $this->replace. '" alt="" width="640" height="427" />');
 
-    $result = self::$method->invoke(self::$replacer, $content, $this->search, $this->replace);
+    $expected_ser =  serialize(array('img' => '<img class="alignnone size-large wp-image-1358" src="' . $this->replace . '" alt="" width="640" height="427" />'));
 
+    $result_serialized = self::$method->invoke(self::$replacer, $content, $this->search, $this->replace);
+    $result = unserialize($result_serialized);
+
+    $this->assertEquals($expected_ser, $result_serialized);
     $this->assertEquals($expected, $result);
   }
 
@@ -115,6 +122,7 @@ class ReplacerTest extends WP_UnitTestCase
     $expected = '[["<img src=\"http://shortpixel.weblogmechanic.com/wp-content/uploads/2020/01/' . $this->replace . '\" alt=\"\" width=\"640\" height=\"426\" class=\"alignnone size-large wp-image-1448\" />","","","",""],["<img src=\"http://shortpixel.weblogmechanic.com/wp-content/uploads/2019/07/' . $this->replace . '\" alt=\"\" width=\"640\" height=\"853\" class=\"alignnone size-large wp-image-621\" />","","","",""],["","","","",""],["","","","",""],["","","","",""]]';
 
     $result = self::$method->invoke(self::$replacer, $content, $this->search, $this->replace);
+  //  $result = json_decode($result_serialized);
 
     $this->assertEquals($expected, $result);
 
@@ -130,7 +138,9 @@ class ReplacerTest extends WP_UnitTestCase
 
     $expected = '[["Column A","Info Doc"],["Column B","<a href=\"' . $this->replace . '\">PDF</a>\n<a href=\"' . $this->replace .  '\">PDF</a>"]]';
 
-    $result = self::$method->invoke(self::$replacer, $content, $this->search, $this->replace);
+    $result_serialized = self::$method->invoke(self::$replacer, $content, $this->search, $this->replace);
+    $result = $result_serialized;
+
     $this->assertEquals($expected, $result);
 
     $bool = $replacerFunc->invoke(self::$replacer, $content);
@@ -177,8 +187,8 @@ class ReplacerTest extends WP_UnitTestCase
 
       // Test both term and post at once.
       add_filter('emr/metadata_tables', array($this, 'filterPostAndTerm'));
-
       $result = $replacerFunc->invoke(self::$replacer, $this->search, $search_urls, $replace_urls);
+      remove_filter('emr/metadata_tables', array($this, 'filterPostAndTerm'));
 
       $this->assertEquals(2, $result);
 
@@ -187,6 +197,39 @@ class ReplacerTest extends WP_UnitTestCase
 
       $this->assertEquals($this->replace, $termtest);
       $this->assertEquals($this->replace, $posttest);
+
+  }
+
+  /** Seem in the wild - Amazon S3 Cache*/
+  public function testArrayWithURLasKey()
+  {
+    //echo strlen('//s3-eu-central-1.amazonaws.com/shortpixel-bas/2019/12/' . $this->search);
+    //echo strlen('//s3-eu-central-1.amazonaws.com/shortpixel-bas/2019/12/' . $this->replace);
+
+    $content = unserialize('a:6:{s:74:"//shortpixel.weblogmechanic.com/wp-content/uploads/2019/12/WUydTfaP3t4.jpg";i:1347;s:83:"//shortpixel.weblogmechanic.com/wp-content/uploads/2019/12/WUydTfaP3t4-1024x683.jpg";i:1347;s:67:"//s3-eu-central-1.amazonaws.com/shortpixel-bas/2019/12/' . $this->search . '";i:1347;s:79:"//s3-eu-central-1.amazonaws.com/shortpixel-bas/2019/12/WUydTfaP3t4-1024x683.jpg";i:1347;s:73:"//shortpixel.weblogmechanic.com/wp-content/uploads/2019/12/ea18dobBfA.jpg";a:1:{s:9:"timestamp";i:1579010684;}s:83:"//shortpixel.weblogmechanic.com/wp-content/uploads/2019/12/ea18dobBfA-1024x1024.jpg";a:1:{s:9:"timestamp";i:1579010684;}} ');
+
+    $expected = unserialize('a:6:{s:74:"//shortpixel.weblogmechanic.com/wp-content/uploads/2019/12/WUydTfaP3t4.jpg";i:1347;s:83:"//shortpixel.weblogmechanic.com/wp-content/uploads/2019/12/WUydTfaP3t4-1024x683.jpg";i:1347;s:71:"//s3-eu-central-1.amazonaws.com/shortpixel-bas/2019/12/' . $this->replace . '";i:1347;s:79:"//s3-eu-central-1.amazonaws.com/shortpixel-bas/2019/12/WUydTfaP3t4-1024x683.jpg";i:1347;s:73:"//shortpixel.weblogmechanic.com/wp-content/uploads/2019/12/ea18dobBfA.jpg";a:1:{s:9:"timestamp";i:1579010684;}s:83:"//shortpixel.weblogmechanic.com/wp-content/uploads/2019/12/ea18dobBfA-1024x1024.jpg";a:1:{s:9:"timestamp";i:1579010684;}} ');
+
+    $post_id = $this->factory->post->create(array('name' => 'test1', 'status' => 'publish'));
+    add_post_meta($post_id, 'test_array', $content);
+
+    $search_urls = array($this->search);
+    $replace_urls = array($this->replace);
+
+    $replaceRefl = new ReflectionClass('\EnableMediaReplace\Replacer');
+    $replacerFunc = $replaceRefl->getMethod('handleMetaData');
+    $replacerFunc->setAccessible(true);
+
+    $count = $replacerFunc->invoke(self::$replacer, $this->search, $search_urls, $replace_urls);
+
+    $this->assertEquals(1, $count);
+
+//var_dump($post_id);
+//var_dump(get_post_meta($post_id));
+    $postmeta = get_post_meta($post_id, 'test_array', true);
+var_dump($postmeta);
+    $this->assertEquals($expected, $postmeta);
+
 
   }
 

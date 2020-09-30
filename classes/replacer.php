@@ -235,7 +235,7 @@ class Replacer
       $cache = new emrCache();
       $cache->flushCache($cache_args);
 
-      do_action("enable-media-replace-upload-done", $this->target_url, $this->source_url, $this->post_id);
+      do_action("enable-media-replace-upload-done", $this->target_url, $this->source_url);
 
       return true;
   }
@@ -535,7 +535,7 @@ class Replacer
     /* Search and replace in WP_POSTS */
     // Removed $wpdb->remove_placeholder_escape from here, not compatible with WP 4.8
  		$posts_sql = $wpdb->prepare(
- 			"SELECT ID, post_content FROM $wpdb->posts WHERE post_status = 'publish' AND post_content LIKE %s;",
+ 			"SELECT ID, post_content FROM $wpdb->posts WHERE post_status = 'publish' AND post_content LIKE %s",
  			'%' . $current_base_url . '%');
 
  		$rs = $wpdb->get_results( $posts_sql, ARRAY_A );
@@ -548,11 +548,9 @@ class Replacer
  			foreach ( $rs AS $rows ) {
  				$number_of_updates = $number_of_updates + 1;
  				// replace old URLs with new URLs.
- 				$post_content = $rows["post_content"];
- 				//$post_content = str_replace( $search_urls, $replace_urls, $post_content );
 
+ 				$post_content = $rows["post_content"];
         $post_id = $rows['ID'];
-        //$post_ar = array('ID' => $post_id);
         $replaced_content = $this->replaceContent($post_content, $search_urls, $replace_urls);
 
         if ($replaced_content !== $post_content)
@@ -563,6 +561,7 @@ class Replacer
           $sql = 'UPDATE ' . $wpdb->posts . ' SET post_content = %s WHERE ID = %d';
           $sql = $wpdb->prepare($sql, $replaced_content, $post_id);
 
+Log::addDebug("POSt update query " . $sql);
           $result = $wpdb->query($sql);
 
           if ($result === false)
@@ -599,16 +598,20 @@ class Replacer
           break;
           default:
               $table = $wpdb->{$type . 'meta'};  // termmeta, commentmeta etc
-              $id = $type . "_id";
-              $sql = 'SELECT meta_id as id, meta_value FROM ' . $table . '
+
+              $meta_id = 'meta_id';
+              if ($type == 'user')
+                $meta_id = 'umeta_id';
+
+              $sql = 'SELECT ' . $meta_id . ' as id, meta_value FROM ' . $table . '
                 WHERE meta_value like %s';
 
-              $update_sql = " UPDATE $table set meta_value = %s WHERE meta_id = %d ";
+              $update_sql = " UPDATE $table set meta_value = %s WHERE $meta_id  = %d ";
           break;
         }
 
         $sql = $wpdb->prepare($sql, '%' . $url . '%');
-        
+
         // This is a desparate solution. Can't find anyway for wpdb->prepare not the add extra slashes to the query, which messes up the query.
     //    $postmeta_sql = str_replace('[JSON_URL]', $json_url, $postmeta_sql);
         $rsmeta = $wpdb->get_results($sql, ARRAY_A);
@@ -626,9 +629,10 @@ class Replacer
             $content = $this->replaceContent($content, $search_urls, $replace_urls); //str_replace($search_urls, $replace_urls, $content);
 
            //  update_metadata($type, $object_id, $meta_key, $content);
-           $update_sql = $wpdb->prepare($update_sql, $content, $id);
-           Log::addDebug('Update Meta SQl' . $update_sql);
-           $result = $wpdb->query($update_sql);
+           $prepared_sql = $wpdb->prepare($update_sql, $content, $id);
+
+           Log::addDebug('Update Meta SQl' . $prepared_sql);
+           $result = $wpdb->query($prepared_sql);
 
           }
         }
@@ -637,7 +641,14 @@ class Replacer
     return $number_of_updates;
   } // function
 
-  private function replaceContent($content, $search, $replace)
+  /**
+  * Replaces Content across several levels of possible data
+  * @param $content String The Content to replace
+  * @param $search String Search string
+  * @param $replace String Replacement String
+  * @param $in_deep Boolean.  This is use to prevent serialization of sublevels. Only pass back serialized from top.
+  */
+  private function replaceContent($content, $search, $replace, $in_deep = false)
   {
     //$is_serial = false;
     $content = maybe_unserialize($content);
@@ -662,28 +673,46 @@ class Replacer
     {
       foreach($content as $index => $value)
       {
-        $content[$index] = $this->replaceContent($value, $search, $replace); //str_replace($value, $search, $replace);
+        $content[$index] = $this->replaceContent($value, $search, $replace, true); //str_replace($value, $search, $replace);
+        if (is_string($index)) // If the key is the URL (sigh)
+        {
+           $index_replaced = $this->replaceContent($index, $search,$replace, true);
+           if ($index_replaced !== $index)
+             $content = $this->change_key($content, array($index => $index_replaced));
+        }
       }
-      //return $content;
     }
     elseif(is_object($content)) // metadata objects, they exist.
     {
       foreach($content as $key => $value)
       {
-        $content->{$key} = $this->replaceContent($value, $search, $replace); //str_replace($value, $search, $replace);
+        $content->{$key} = $this->replaceContent($value, $search, $replace, true); //str_replace($value, $search, $replace);
       }
-      //return $content;
     }
 
-    if ($isJson) // convert back to JSON, if this was JSON. Different than serialize which does WP automatically.
+    if ($isJson && $in_deep === false) // convert back to JSON, if this was JSON. Different than serialize which does WP automatically.
     {
       Log::addDebug('Value was found to be JSON, encoding');
       // wp-slash -> WP does stripslashes_deep which destroys JSON
       $content = json_encode($content, JSON_UNESCAPED_SLASHES);
       Log::addDebug('Content returning', array($content));
     }
+    elseif($in_deep === false && (is_array($content) || is_object($content)))
+      $content = maybe_serialize($content);
 
     return $content;
+  }
+
+  private function change_key($arr, $set) {
+        if (is_array($arr) && is_array($set)) {
+    		$newArr = array();
+    		foreach ($arr as $k => $v) {
+    		    $key = array_key_exists( $k, $set) ? $set[$k] : $k;
+    		    $newArr[$key] = is_array($v) ? $this->change_key($v, $set) : $v;
+    		}
+    		return $newArr;
+    	}
+    	return $arr;
   }
 
   private function getFilesFromMetadata($meta)
