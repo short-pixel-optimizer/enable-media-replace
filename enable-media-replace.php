@@ -3,7 +3,7 @@
 Plugin Name: Enable Media Replace
 Plugin URI: https://wordpress.org/plugins/enable-media-replace/
 Description: Enable replacing media files by uploading a new file in the "Edit Media" section of the WordPress Media Library
-Version: 3.5
+Version: 3.5-DEV01
 Author: ShortPixel
 Author URI: https://shortpixel.com
 Text Domain: enable-media-replace
@@ -18,7 +18,7 @@ http://www.gnu.org/licenses/gpl.html
  * Set action hooks and add shortcode
  *
  * @author      ShortPixel  <https://shortpixel.com>
- * @copyright   ShortPixel 2018-2020
+ * @copyright   ShortPixel 2018-2019
  * @package     wordpress
  * @subpackage  enable-media-replace
  *
@@ -26,7 +26,7 @@ http://www.gnu.org/licenses/gpl.html
 
 namespace EnableMediaReplace;
 
-define('EMR_VERSION', '3.5');
+define('EMR_VERSION', '3.5-DEV01');
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit; // Exit if accessed directly.
