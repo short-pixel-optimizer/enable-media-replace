@@ -1,24 +1,25 @@
 <?php
-/*
-Plugin Name: Enable Media Replace
-Plugin URI: https://wordpress.org/plugins/enable-media-replace/
-Description: Enable replacing media files by uploading a new file in the "Edit Media" section of the WordPress Media Library
-Version: 3.5-DEV01
-Author: ShortPixel
-Author URI: https://shortpixel.com
-Text Domain: enable-media-replace
-Domain Path: /languages
-Dual licensed under the MIT and GPL licenses:
-http://www.opensource.org/licenses/mit-license.php
-http://www.gnu.org/licenses/gpl.html
-*/
+/**
+ * Plugin Name: Enable Media Replace
+ * Plugin URI: https://wordpress.org/plugins/enable-media-replace/
+ * Description: Enable replacing media files by uploading a new file in the "Edit Media" section of the WordPress Media Library
+ * Version: 3.5-DEV01
+ * Author: ShortPixel
+ * Author URI: https://shortpixel.com
+ * GitHub Plugin URI: https://github.com/short-pixel-optimizer/enable-media-replace
+ * Text Domain: enable-media-replace
+ * Domain Path: /languages
+ * Dual licensed under the MIT and GPL licenses:
+ * License URI: http://www.opensource.org/licenses/mit-license.php
+ * License URI: http://www.gnu.org/licenses/gpl.html
+ */
 
 /**
  * Main Plugin file
  * Set action hooks and add shortcode
  *
  * @author      ShortPixel  <https://shortpixel.com>
- * @copyright   ShortPixel 2018-2019
+ * @copyright   ShortPixel 2018-2020
  * @package     wordpress
  * @subpackage  enable-media-replace
  *
