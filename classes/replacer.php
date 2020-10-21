@@ -382,6 +382,14 @@ class Replacer
     $file = $this->sourceFile->getFullFilePath();
     $result = \wp_delete_attachment_files($this->post_id, $meta, $backup_sizes, $file );
 
+    // If Attached file is not the same path as file, this indicates a -scaled images is in play.
+    $attached_file = get_attached_file($this->post_id);
+    if ($file !== $attached_file && file_exists($attached_file))
+    {
+       @unlink($attached_file);
+    }
+
+
   }
 
   /** Handle new dates for the replacement */
