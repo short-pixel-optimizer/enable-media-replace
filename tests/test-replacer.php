@@ -3,6 +3,8 @@
 use EnableMediaReplace\emrFile as File;
 use EnableMediaReplace\Replacer as Replacer;
 
+use EnableMediaReplace\Externals\Elementor as Elementor;
+
 class ReplacerTest extends WP_UnitTestCase
 {
 
@@ -227,7 +229,7 @@ class ReplacerTest extends WP_UnitTestCase
 //var_dump($post_id);
 //var_dump(get_post_meta($post_id));
     $postmeta = get_post_meta($post_id, 'test_array', true);
-var_dump($postmeta);
+//var_dump($postmeta);
     $this->assertEquals($expected, $postmeta);
 
 
@@ -253,6 +255,9 @@ var_dump($postmeta);
       $this->assertEquals($content, $result);
 
   }
+
+
+
 
 
 

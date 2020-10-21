@@ -4,6 +4,8 @@ use \EnableMediaReplace\emrFile as File;
 use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
 use EnableMediaReplace\Notices\NoticeController as Notices;
 
+use EnableMediaReplace\Externals\Elementor as Elementor; // like Skeletor.
+
 class Replacer
 {
   protected $post_id;
@@ -417,37 +419,26 @@ class Replacer
 
     $args = wp_parse_args($args, $defaults);
 
-    global $wpdb;
-
      // Search-and-replace filename in post database
      // @todo Check this with scaled images.
- 		$current_base_url = parse_url($this->source_url, PHP_URL_PATH);// emr_get_match_url( $this->source_url);
-    $current_base_url = str_replace('.' . pathinfo($current_base_url, PATHINFO_EXTENSION), '', $current_base_url);
+ 		$base_url = parse_url($this->source_url, PHP_URL_PATH);// emr_get_match_url( $this->source_url);
+    $base_url = str_replace('.' . pathinfo($base_url, PATHINFO_EXTENSION), '', $base_url);
 
 
     /** Fail-safe if base_url is a whole directory, don't go search/replace */
-    if (is_dir($current_base_url))
+    if (is_dir($base_url))
     {
-      Log::addError('Search Replace tried to replace to directory - ' . $current_base_url);
+      Log::addError('Search Replace tried to replace to directory - ' . $base_url);
       Notices::addError(__('Fail Safe :: Source Location seems to be a directory.', 'enable-media-replace'));
       return;
     }
 
-    if (strlen(trim($current_base_url)) == 0)
+    if (strlen(trim($base_url)) == 0)
     {
-      Log::addError('Current Base URL emtpy - ' . $current_base_url);
+      Log::addError('Current Base URL emtpy - ' . $base_url);
       Notices::addError(__('Fail Safe :: Source Location returned empty string. Not replacing content','enable-media-replace'));
       return;
     }
-
-
-    //$search_files = $this->getFilesFromMetadata($this->source_metadata);
-    //$replace_files = $this->getFilesFromMetadata($this->target_metadata);
-  //  $arr = $this->getRelativeURLS();
-
-    /*$search_urls  = emr_get_file_urls( $this->source_url, $this->source_metadata );
-    $replace_urls = emr_get_file_urls( $this->target_url, $this->target_metadata );
-    $replace_urls = array_values(emr_normalize_file_urls( $search_urls, $replace_urls ));*/
 
     // get relurls of both source and target.
     $urls = $this->getRelativeURLS();
@@ -482,8 +473,8 @@ class Replacer
       }
     }
 
-    Log::addDebug('Source', $this->source_metadata);
-    Log::addDebug('Target', $this->target_metadata);
+  //  Log::addDebug('Source', $this->source_metadata);
+  //  Log::addDebug('Target', $this->target_metadata);
     /* If on the other hand, some sizes are available in source, but not in target, try to replace them with something closeby.  */
     foreach($search_urls as $size => $url)
     {
@@ -521,35 +512,51 @@ class Replacer
     // If the two sides are disbalanced, the str_replace part will cause everything that has an empty replace counterpart to replace it with empty. Unwanted.
     if (count($search_urls) !== count($replace_urls))
     {
-
       Log::addError('Unbalanced Replace Arrays, aborting', array($search_urls, $replace_urls, count($search_urls), count($replace_urls) ));
       Notices::addError(__('There was an issue with updating your image URLS: Search and replace have different amount of values. Aborting updating thumbnails', 'enable-media-replace'));
       return;
     }
 
     Log::addDebug('Doing meta search and replace -', array($search_urls, $replace_urls) );
-    Log::addDebug('Searching with BaseuRL ' . $current_base_url);
+    Log::addDebug('Searching with BaseuRL ' . $base_url);
 
     do_action('emr/replace_urls', $search_urls, $replace_urls);
+    $updated = 0;
 
+    $updated += $this->doReplaceQuery($base_url, $search_urls, $replace_urls);
+
+    $replaceRuns = apply_filters('emr/replacer/custom_replace_query', array(), $base_url, $search_urls, $replace_urls);
+    Log::addDebug("REPLACE RUNS", $replaceRuns);
+    foreach($replaceRuns as $component => $run)
+    {
+       Log::addDebug('Running additional replace for : '. $component, $run);
+       $updated += $this->doReplaceQuery($run['base_url'], $run['search_urls'], $run['replace_urls']);
+    }
+    //do_action('')
+
+    Log::addDebug("Updated Records : " . $updated);
+    return $updated;
+  } // doSearchReplace
+
+
+  private function doReplaceQuery($base_url, $search_urls, $replace_urls)
+  {
+    global $wpdb;
     /* Search and replace in WP_POSTS */
     // Removed $wpdb->remove_placeholder_escape from here, not compatible with WP 4.8
- 		$posts_sql = $wpdb->prepare(
- 			"SELECT ID, post_content FROM $wpdb->posts WHERE post_status = 'publish' AND post_content LIKE %s",
- 			'%' . $current_base_url . '%');
+    $posts_sql = $wpdb->prepare(
+      "SELECT ID, post_content FROM $wpdb->posts WHERE post_status = 'publish' AND post_content LIKE %s",
+      '%' . $base_url . '%');
 
- 		$rs = $wpdb->get_results( $posts_sql, ARRAY_A );
- 		$number_of_updates = 0;
+    $rs = $wpdb->get_results( $posts_sql, ARRAY_A );
+    $number_of_updates = 0;
 
-//    Log::addDebug('Queries', array($postmeta_sql, $posts_sql));
-//    Log::addDebug('Queries found '  . count($rs) . ' post rows and ' . count($rsmeta) . ' meta rows');
+    if ( ! empty( $rs ) ) {
+      foreach ( $rs AS $rows ) {
+        $number_of_updates = $number_of_updates + 1;
+        // replace old URLs with new URLs.
 
- 		if ( ! empty( $rs ) ) {
- 			foreach ( $rs AS $rows ) {
- 				$number_of_updates = $number_of_updates + 1;
- 				// replace old URLs with new URLs.
-
- 				$post_content = $rows["post_content"];
+        $post_content = $rows["post_content"];
         $post_id = $rows['ID'];
         $replaced_content = $this->replaceContent($post_content, $search_urls, $replace_urls);
 
@@ -561,7 +568,7 @@ class Replacer
           $sql = 'UPDATE ' . $wpdb->posts . ' SET post_content = %s WHERE ID = %d';
           $sql = $wpdb->prepare($sql, $replaced_content, $post_id);
 
-Log::addDebug("POSt update query " . $sql);
+  Log::addDebug("POSt update query " . $sql);
           $result = $wpdb->query($sql);
 
           if ($result === false)
@@ -571,12 +578,12 @@ Log::addDebug("POSt update query " . $sql);
           }
         }
 
- 			}
+      }
     }
 
-    $this->handleMetaData($current_base_url, $search_urls, $replace_urls);
-
-  } // doSearchReplace
+    $number_of_updates += $this->handleMetaData($base_url, $search_urls, $replace_urls);
+    return $number_of_updates;
+  }
 
   private function handleMetaData($url, $search_urls, $replace_urls)
   {
@@ -587,13 +594,13 @@ Log::addDebug("POSt update query " . $sql);
 
     foreach($meta_options as $type)
     {
-
         switch($type)
         {
           case "post": // special case.
-              $sql = 'SELECT meta_id as id, meta_value FROM ' . $wpdb->postmeta . '
+              $sql = 'SELECT meta_id as id, meta_key, meta_value FROM ' . $wpdb->postmeta . '
                 WHERE post_id in (SELECT ID from '. $wpdb->posts . ' where post_status = "publish") AND meta_value like %s';
               $type = 'post';
+
               $update_sql = ' UPDATE ' . $wpdb->postmeta . ' SET meta_value = %s WHERE meta_id = %d';
           break;
           default:
@@ -622,13 +629,12 @@ Log::addDebug("POSt update query " . $sql);
           {
             $number_of_updates++;
             $content = $row['meta_value'];
-            //$meta_key = $row['meta_key'];
-            //$object_id = $row['object_id'];
-            $id = $row['id'];
-          //  $type = $row['type'];
-            $content = $this->replaceContent($content, $search_urls, $replace_urls); //str_replace($search_urls, $replace_urls, $content);
 
-           //  update_metadata($type, $object_id, $meta_key, $content);
+
+            $id = $row['id'];
+
+           $content = $this->replaceContent($content, $search_urls, $replace_urls); //str_replace($search_urls, $replace_urls, $content);
+
            $prepared_sql = $wpdb->prepare($update_sql, $content, $id);
 
            Log::addDebug('Update Meta SQl' . $prepared_sql);
@@ -640,6 +646,8 @@ Log::addDebug("POSt update query " . $sql);
 
     return $number_of_updates;
   } // function
+
+
 
   /**
   * Replaces Content across several levels of possible data
@@ -658,11 +666,14 @@ Log::addDebug("POSt update query " . $sql);
     {
       Log::addDebug('Found JSON Content');
       $content = json_decode($content);
+      Log::addDebug('J/Son Content', $content);
 
     }
 
     if (is_string($content))  // let's check the normal one first.
     {
+      $content = apply_filters('emr/replace/content', $content, $search, $replace);
+
       $content = str_replace($search, $replace, $content);
     }
     elseif (is_wp_error($content)) // seen this.
