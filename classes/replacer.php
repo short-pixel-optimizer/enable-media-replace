@@ -237,7 +237,7 @@ class Replacer
       $cache = new emrCache();
       $cache->flushCache($cache_args);
 
-      do_action("enable-media-replace-upload-done", $this->target_url, $this->source_url);
+      do_action("enable-media-replace-upload-done", $this->target_url, $this->source_url, $this->post_id);
 
       return true;
   }
