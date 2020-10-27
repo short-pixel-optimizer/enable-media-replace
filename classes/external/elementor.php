@@ -20,6 +20,7 @@ class Elementor
       if ($this->elementor_is_active())   // elementor is active
       {
         add_filter('emr/replacer/custom_replace_query', array($this, 'addElementor'), 10, 4); // custom query for elementor \ // problem
+        add_action('enable-media-replace-upload-done', array($this, 'removeCache') );
       }
     }
 
@@ -50,6 +51,10 @@ class Elementor
           $bool = true;
 
         return apply_filters('emr/externals/elementor_is_active', $bool); // manual override
+    }
 
+    public function removeCache()
+    {
+       \Elementor\Plugin::$instance->files_manager->clear_cache();
     }
 }

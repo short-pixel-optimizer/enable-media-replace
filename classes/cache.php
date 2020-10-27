@@ -89,6 +89,7 @@ class emrCache
         if ($this->has_litespeed)
             $this->litespeedReset($post_id);
 
+        do_action('emr/cache/flush', $post_id);
     }
 
     protected function removeSuperCache()
