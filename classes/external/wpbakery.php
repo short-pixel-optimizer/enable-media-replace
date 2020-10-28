@@ -1,6 +1,8 @@
 <?php
 namespace EnableMediaReplace\Externals;
 
+
+// Note! This class doubles as integration for both Visual Composer *and* WP Bakery. They both need URLENCODE.
 class WpBakery
 {
     private static $instance;
@@ -41,7 +43,8 @@ class WpBakery
     {
        $bool = false;
 
-       if (did_action('vc_plugins_loaded'))
+       // did_action -> wpbakery , VCV_version -> detect Visual Composer
+       if (did_action('vc_plugins_loaded') || defined('VCV_VERSION'))
           $bool = true;
 
         return apply_filters('emr/externals/urlencode_is_active', $bool); // manual override
