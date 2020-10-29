@@ -59,7 +59,6 @@ require_once($plugin_path . 'classes/emr-plugin.php');
 require_once($plugin_path . 'classes/externals.php');
 require_once($plugin_path . 'classes/external/elementor.php');
 require_once($plugin_path . 'classes/external/wpbakery.php');
-require_once($plugin_path . 'classes/external/visualcomposer.php'); 
 require_once($plugin_path . 'thumbnail_updater.php');
 
 $emr_plugin = EnableMediaReplacePlugin::get();
