@@ -101,7 +101,7 @@
 
         var status = this.checkUpload(file);
         this.debug('check upload status ' + status);
-        this.debug(file.size);
+        this.debug('file size:' + file.size);
 
         if (status)
         {
