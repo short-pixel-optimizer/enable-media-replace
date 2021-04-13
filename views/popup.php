@@ -190,7 +190,7 @@ $url = $uiHelper->getFormUrl($attachment_id);
                $subdir = $settings['new_location_dir'];
           ?>
          <div class='location_option'>
-           <label><input type="checkbox" name="new_location" value="1" <?php checked($settings['new_location'], 1); ?>  /> <?php _e('Put new Upload in Updated Folder: ', ‘enable-media-replace’); ?></label>
+           <label><input type="checkbox" name="new_location" value="1" <?php checked($settings['new_location'], 1); ?>  /> <?php _e('Put new Upload in Updated Folder: ', 'enable-media-replace'); ?></label>
             <input type="text" name="location_dir" value="<?php echo $subdir ?>" />
           </div>
         <?php endif; ?>
