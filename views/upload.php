@@ -173,7 +173,7 @@ if (is_uploaded_file($_FILES["userfile"]["tmp_name"])) {
 	exit();
 }
 
-Notices::addSuccess(__('File successfully replaced'));
+Notices::addSuccess(__('File successfully replaced','enable-media-replace'));
 
 // Allow developers to override $returnurl
 //$returnurl = apply_filters('emr_returnurl', $returnurl);
