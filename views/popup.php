@@ -69,7 +69,7 @@ $url = $uiHelper->getFormUrl($attachment_id);
 
 <div class='editor-wrapper'>
     <section class='image_chooser wrapper'>
-      <div class='section-header'> <?php _e('Choose Replacement Media', 'enable-replace-media'); ?></div>
+      <div class='section-header'> <?php _e('Choose Replacement Media', 'enable-media-replace'); ?></div>
 
 		<div id="message" class=""><strong><?php printf( esc_html__('NOTE: You are about to replace the media file "%s". There is no undo. Think about it!', "enable-media-replace"), $filename ); ?></strong></div>
 
@@ -118,7 +118,7 @@ $url = $uiHelper->getFormUrl($attachment_id);
 
 <div class='option-flex-wrapper'>
   <section class='replace_type wrapper'>
-    <div class='section-header'> <?php _e('Replacement Options', 'enable-replace-media'); ?></div>
+    <div class='section-header'> <?php _e('Replacement Options', 'enable-media-replace'); ?></div>
 
   		<?php
       // these are also used in externals, for checks.
@@ -190,7 +190,7 @@ $url = $uiHelper->getFormUrl($attachment_id);
                $subdir = $settings['new_location_dir'];
           ?>
          <div class='location_option'>
-           <label><input type="checkbox" name="new_location" value="1" <?php checked($settings['new_location'], 1); ?>  /> <?php _e('Put new Upload in Updated Folder: '); ?></label>
+           <label><input type="checkbox" name="new_location" value="1" <?php checked($settings['new_location'], 1); ?>  /> <?php _e('Put new Upload in Updated Folder: ', 'enable-media-replace'); ?></label>
             <input type="text" name="location_dir" value="<?php echo $subdir ?>" />
           </div>
         <?php endif; ?>
