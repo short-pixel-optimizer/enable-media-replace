@@ -176,7 +176,7 @@
         this.debug(target_type + ' not ' + source_type);
         var falsePositive = this.checkFalsePositiveType(source_type, target_type);
         if (! falsePositive)
-          this.warningFileType();
+          this.warningFileType(source_type, target_type);
       }
 
       if (! is_empty && emr_options.allowed_mime.indexOf(target_type) == -1)
@@ -271,8 +271,10 @@
       $('.form-error.filesize').find('.fn').text(fileItem.name);
       $('.form-error.filesize').fadeIn();
     }
-    this.warningFileType = function(fileItem)
+    this.warningFileType = function(source_type, target_type)
     {
+      $('.form-warning.filetype').find('.source_type').text(source_type);
+      $('.form-warning.filetype').find('.target_type').text(target_type);
       $('.form-warning.filetype').fadeIn();
     }
     this.warningMimeType = function(fileItem)

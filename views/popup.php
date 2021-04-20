@@ -24,10 +24,15 @@ if (!current_user_can('upload_files'))
 
 global $wpdb;
 
-$table_name = $wpdb->prefix . "posts";
+$emr = EnableMediaReplacePlugin::get();
 
+$table_name = $wpdb->prefix . "posts";
 $attachment_id = intval($_GET['attachment_id']);
 $attachment = get_post($attachment_id);
+
+if (! $emr->checkImagePermission($attachment->post_author))
+  wp_die( esc_html__('You do not have permission to upload files for this author.', 'enable-media-replace') );
+
 $replacer = new Replacer($attachment_id);
 
 $file = $replacer->getSourceFile();
@@ -40,7 +45,7 @@ $uiHelper = new UIHelper();
 $uiHelper->setPreviewSizes();
 $uiHelper->setSourceSizes($attachment_id);
 
-$emr = EnableMediaReplacePlugin::get();
+
 
 $defaults = array(
   'replace_type' => 'replace',
@@ -80,7 +85,9 @@ $url = $uiHelper->getFormUrl($attachment_id);
     <div class='form-error filesize'><p><?php printf(__('%s f %s exceeds the maximum upload size for this site.', 'enable-media-replace'), '<span class="fn">', '</span>'); ?></p>
     </div>
 
-    <div class='form-warning filetype'><p><?php printf(__('Replacement file is not the same filetype. This might cause unexpected issues')); ?></p></div>
+    <div class='form-warning filetype'><p><?php printf(__('Replacement file is not the same filetype. This might cause unexpected issues ( %s )', 'enable-media-replace'), '<span class="source_type"></span> - <span class="target_type"></span>'); ?>
+
+    </p></div>
 
     <div class='form-warning mimetype'><p><?php printf(__('Replacement file type doesn\'t seem to be allowed by WordPress. This might cause unexpected issues')); ?></p></div>
 

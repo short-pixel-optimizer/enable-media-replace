@@ -47,6 +47,11 @@ If you want more control over the format used to display the time, you can use t
 
 == Changelog ==
 
+= 3.5.1 =
+
+* Fix : EMR with ALLOW_UNFILTERED_UPLOADS enabled (and allowed role) will not limit non-allowed uploads.
+* New : Constant EMR_CAPABILITY can define extra user roles to allow and deny replacements
+
 = 3.5.0 =
 
 Release date: October 29th 2020

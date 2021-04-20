@@ -22,9 +22,15 @@ $postmeta_table_name = $wpdb->prefix . "postmeta";
 
 // Starts processing.
 $uihelper = new UIHelper();
+$emr = EnableMediaReplacePlugin::get();
 
 // Get old guid and filetype from DB
 $post_id = intval($_POST['ID']); // sanitize, post_id.
+$attachment = get_post($post_id);
+
+if (! $emr->checkImagePermission($attachment->post_author))
+  wp_die( esc_html__('You do not have permission to upload files for this author.', 'enable-media-replace') );
+
 $replacer = new Replacer($post_id);
 
 // Massage a bunch of vars
@@ -42,7 +48,7 @@ $settings = array(); // save settings and show last loaded.
 $settings['replace_type'] = $replace_type;
 $settings['timestamp_replace'] = $timestamp_replace;
 $settings['new_location'] = $do_new_location;
-$settings['new_location_dir'] = $new_location_dir; 
+$settings['new_location_dir'] = $new_location_dir;
 
 switch($timestamp_replace)
 {
@@ -122,7 +128,7 @@ if (is_uploaded_file($_FILES["userfile"]["tmp_name"])) {
 	}
 
 
-	if ($filedata["ext"] == false) {
+	if ($filedata["ext"] == false && ! current_user_can( 'unfiltered_upload' )) {
 
 		Notices::addError(esc_html__("File type does not meet security guidelines. Try another.", 'enable-media-replace') );
 		wp_safe_redirect($redirect_error);
