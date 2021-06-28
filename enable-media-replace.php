@@ -78,7 +78,7 @@ require_once($plugin_path . 'thumbnail_updater.php');
 
 $emr_plugin = EnableMediaReplacePlugin::get();
 
-register_uninstall_hook(__FILE__, 'emr_uninstall');
+register_uninstall_hook(__FILE__, '\EnableMediaReplace\emr_uninstall');
 
 function emr_uninstall()
 {
