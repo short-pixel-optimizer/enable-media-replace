@@ -40,7 +40,6 @@ class EnableMediaReplacePlugin
      elseif (! current_user_can('upload_files'))
         return;
 
-
      $this->plugin_actions(); // init
   }
 
@@ -74,7 +73,7 @@ class EnableMediaReplacePlugin
     // content filters
     add_filter('media_row_actions', array($this,'add_media_action'), 10, 2);
     add_action('attachment_submitbox_misc_actions', array($this,'admin_date_replaced_media_on_edit_media_screen'), 91 );
-    add_filter('upload_mimes', array($this,'add_mime_types'), 1, 1);
+    //add_filter('upload_mimes', array($this,'add_mime_types'), 1, 1);
 
     // notices
     add_action('admin_notices', array($this,'display_notices'));
@@ -355,12 +354,13 @@ class EnableMediaReplacePlugin
    * @param array $mime_types
    * @return array
    */
+	 /* Off, no clue why this is here. 
   public function add_mime_types($mime_types)
   {
     $mime_types['dat'] = 'text/plain';     // Adding .dat extension
     return $mime_types;
   }
-
+*/
   /**
    * Function called by filter 'media_row_actions'
    * Enables linking to EMR straight from the media library

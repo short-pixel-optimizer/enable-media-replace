@@ -481,8 +481,8 @@ class Replacer
       }
     }
 
-  //  Log::addDebug('Source', $this->source_metadata);
-  //  Log::addDebug('Target', $this->target_metadata);
+    Log::addDebug('Source', $this->source_metadata);
+    Log::addDebug('Target', $this->target_metadata);
     /* If on the other hand, some sizes are available in source, but not in target, try to replace them with something closeby.  */
     foreach($search_urls as $size => $url)
     {
@@ -805,6 +805,14 @@ class Replacer
 
       if (! isset($this->source_metadata['sizes'][$sizeName]) || ! isset($this->target_metadata['width'])) // This can happen with non-image files like PDF.
       {
+				 // Check if metadata-less item is a svg file. Just the main file to replace all thumbnails since SVG's don't need thumbnails.
+				 if (strpos($this->target_url, '.svg') !== false)
+				 {
+				 	$baseurl = parse_url($this->target_url, PHP_URL_PATH);
+				 	return $baseurl;  // this is the relpath of the mainfile.
+				 }
+
+
         return false;
       }
       $old_width = $this->source_metadata['sizes'][$sizeName]['width']; // the width from size not in new image
@@ -833,12 +841,7 @@ class Replacer
       if(empty($closest_file)) return false;
 
       return $closest_file;
-      //$oldFile = $oldData['file'];
-      //if(is_array($oldFile)) { $oldFile = $oldFile[0];} // HelpScout case 709692915
-      /*if(empty($oldFile)) {
-          return false; //make sure we don't replace in this case as we will break the URLs for all the images in the folder.
-      } */
-    //  $this->convertArray[] = array('imageFrom' => $this->relPath .  $oldFile, 'imageTo' => $this->relPath . $closest_file);
+
 
   }
 

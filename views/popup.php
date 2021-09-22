@@ -31,7 +31,9 @@ $attachment_id = intval($_GET['attachment_id']);
 $attachment = get_post($attachment_id);
 
 if (! $emr->checkImagePermission($attachment->post_author))
+{
   wp_die( esc_html__('You do not have permission to upload files for this author.', 'enable-media-replace') );
+}
 
 $replacer = new Replacer($attachment_id);
 
@@ -168,7 +170,10 @@ $url = $uiHelper->getFormUrl($attachment_id);
         <?php
           $attachment_current_date = date_i18n('d/M/Y H:i', strtotime($attachment->post_date) );
           $time = current_time('mysql');
-          $date = new \dateTime($time);
+          $date = $nowDate = new \dateTime($time); // default to now.
+				//	var_dump(strtotime($attachment->post_date));
+				//	exit();
+					$attachmentDate = new \dateTime($attachment->post_date);
 
           if ($settings['timestamp_replace'] == \EnableMediaReplace\Replacer::TIME_CUSTOM)
           {
@@ -190,6 +195,12 @@ $url = $uiHelper->getFormUrl($attachment_id);
            @ <input type='text' name="custom_hour" class='emr_hour' value="<?php echo $date->format('H') ?>" /> &nbsp;
             <input type="text" name="custom_minute" class='emr_minute' value="<?php echo $date->format('i'); ?>" />
             <input type="hidden" name="custom_date_formatted" value="<?php echo $date->format('Y-m-d'); ?>" />
+
+						<?php
+						printf('<a class="replace_custom_date" data-date="%s" data-hour="%s" data-min="%s" data-format="%s">%s</a>', $nowDate->format(get_option('date_format')), $nowDate->format('H'), $nowDate->format('i'), $nowDate->format('Y-m-d'), __('Now', 'enable-media-replace'));
+						echo " ";
+						printf('<a class="replace_custom_date" data-date="%s" data-hour="%s" data-min="%s" data-format="%s">%s</a>', $attachmentDate->format(get_option('date_format')), $attachmentDate->format('H'), $attachmentDate->format('i'), $attachmentDate->format('Y-m-d'), __('Original', 'enable-media-replace'));
+						?>
          </div>
          <?php if ($subdir = $uiHelper->getRelPathNow()):
 

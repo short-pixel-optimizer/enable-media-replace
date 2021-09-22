@@ -25,7 +25,11 @@ $uihelper = new UIHelper();
 $emr = EnableMediaReplacePlugin::get();
 
 // Get old guid and filetype from DB
-$post_id = intval($_POST['ID']); // sanitize, post_id.
+$post_id = isset($_POST['ID']) ? intval($_POST['ID']) : null; // sanitize, post_id.
+if (is_null($post_id))
+{
+	wp_die( esc_html__('Error in request. Please try again', 'enable-media-replace') );
+}
 $attachment = get_post($post_id);
 
 if (! $emr->checkImagePermission($attachment->post_author))

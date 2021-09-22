@@ -3,7 +3,7 @@ Contributors: ShortPixel
 Donate link: https://www.paypal.me/resizeImage
 Tags: replace, attachment, media, files, replace image, replace jpg, change media, replace media, image, file
 Requires at least: 4.9.7
-Tested up to: 5.5.1
+Tested up to: 5.8.1
 Requires PHP: 5.6
 Stable tag: 3.5.0
 
@@ -51,6 +51,8 @@ If you want more control over the format used to display the time, you can use t
 
 * Fix : EMR with ALLOW_UNFILTERED_UPLOADS enabled (and allowed role) will not limit non-allowed uploads.
 * New : Constant EMR_CAPABILITY can define extra user roles to allow and deny replacements
+* New : Replacing an usual image with an SVG file will not just replace all thumbnails by the main file.
+* Tweak: Added Now and Original options to Custom Date for usability.
 
 = 3.5.0 =
 
