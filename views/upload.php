@@ -32,7 +32,7 @@ if (is_null($post_id))
 }
 $attachment = get_post($post_id);
 
-if (! $emr->checkImagePermission($attachment->post_author))
+if (! $emr->checkImagePermission($attachment->post_author, $attachment->ID))
   wp_die( esc_html__('You do not have permission to upload files for this author.', 'enable-media-replace') );
 
 $replacer = new Replacer($post_id);

@@ -1159,6 +1159,10 @@
 .emr_upload_form .options.wrapper .replace_custom_date {
   margin-left: 5px;
 }
+.emr_upload_form .options.wrapper .replace_custom_date:hover {
+  text-decoration: underline;
+  cursor: pointer;
+}
 .emr_upload_form .options.wrapper ul li input {
   margin-right: 8px;
 }
@@ -1273,6 +1277,17 @@
 @media (max-width: 960px) {
   .emr_upload_form .upsell-wrapper {
     display: none;
+  }
+}
+@media (max-width: 450px) {
+  .emr_upload_form .replace_custom_date_wrapper {
+    display: block;
+    margin-top: 15px;
+    font-size: 16px;
+  }
+  .emr_upload_form .location_option label {
+    margin: 25px 0;
+    display: inline-block;
   }
 }
 

@@ -30,7 +30,7 @@ $table_name = $wpdb->prefix . "posts";
 $attachment_id = intval($_GET['attachment_id']);
 $attachment = get_post($attachment_id);
 
-if (! $emr->checkImagePermission($attachment->post_author))
+if (! $emr->checkImagePermission($attachment->post_author, $attachment_id))
 {
   wp_die( esc_html__('You do not have permission to upload files for this author.', 'enable-media-replace') );
 }
@@ -169,6 +169,7 @@ $url = $uiHelper->getFormUrl($attachment_id);
       <div class='option timestamp'>
         <?php
           $attachment_current_date = date_i18n('d/M/Y H:i', strtotime($attachment->post_date) );
+					$attachment_now_date = date_i18n('d/M/Y H:i', time() );
           $time = current_time('mysql');
           $date = $nowDate = new \dateTime($time); // default to now.
 				//	var_dump(strtotime($attachment->post_date));
@@ -182,7 +183,7 @@ $url = $uiHelper->getFormUrl($attachment_id);
         ?>
           <p><?php _e('When replacing the media, do you want to:', 'enable-media-replace'); ?></p>
           <ul>
-            <li><label><input type='radio' <?php checked('1', $settings['timestamp_replace']) ?> name='timestamp_replace' value='1' /><?php _e('Replace the date', 'enable-media-replace'); ?></label></li>
+            <li><label><input type='radio' <?php checked('1', $settings['timestamp_replace']) ?> name='timestamp_replace' value='1' /><?php printf(__('Replace the date with current date %s(%s)%s', 'enable-media-replace'), "<span class='small'>", $attachment_now_date, "</span>") ; ?></label></li>
             <li><label><input type='radio' <?php checked('2', $settings['timestamp_replace']) ?> name='timestamp_replace' value='2'  /><?php printf(__('Keep the date %s(%s)%s', 'enable-media-replace'), "<span class='small'>", $attachment_current_date, "</span>"); ?></label></li>
             <li><label><input type='radio' <?php checked('3', $settings['timestamp_replace']) ?> name='timestamp_replace' value='3' /><?php _e('Set a Custom Date', 'enable-media-replace'); ?></label></li>
           </ul>
@@ -196,11 +197,13 @@ $url = $uiHelper->getFormUrl($attachment_id);
             <input type="text" name="custom_minute" class='emr_minute' value="<?php echo $date->format('i'); ?>" />
             <input type="hidden" name="custom_date_formatted" value="<?php echo $date->format('Y-m-d'); ?>" />
 
+						<span class="replace_custom_date_wrapper">
 						<?php
 						printf('<a class="replace_custom_date" data-date="%s" data-hour="%s" data-min="%s" data-format="%s">%s</a>', $nowDate->format(get_option('date_format')), $nowDate->format('H'), $nowDate->format('i'), $nowDate->format('Y-m-d'), __('Now', 'enable-media-replace'));
 						echo " ";
 						printf('<a class="replace_custom_date" data-date="%s" data-hour="%s" data-min="%s" data-format="%s">%s</a>', $attachmentDate->format(get_option('date_format')), $attachmentDate->format('H'), $attachmentDate->format('i'), $attachmentDate->format('Y-m-d'), __('Original', 'enable-media-replace'));
 						?>
+					</span>
          </div>
          <?php if ($subdir = $uiHelper->getRelPathNow()):
 

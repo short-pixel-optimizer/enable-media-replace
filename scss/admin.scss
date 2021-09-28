@@ -222,6 +222,10 @@
 		.replace_custom_date
 		{
 				margin-left: 5px;
+				&:hover {
+					text-decoration: underline;
+					cursor: pointer
+				}
 		}
     ul
     {
@@ -360,4 +364,20 @@
   {
     .upsell-wrapper { display: none; }
   }
+	@media (max-width: 450px )
+	{
+			.replace_custom_date_wrapper {
+				 display: block;
+				 margin-top: 15px;
+				 font-size: 16px;
+				 
+			}
+			.location_option {
+				 label {
+					 	margin: 25px 0;
+						display: inline-block;
+				}
+
+			}
+	}
 } // emr_upload_form

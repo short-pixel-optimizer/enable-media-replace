@@ -224,10 +224,13 @@ class EnableMediaReplacePlugin
       }
   }
 
-  public function checkImagePermission(int $author_id)
+  public function checkImagePermission($author_id, $post_id)
   {
       if ($this->general_cap === false && $this->user_cap === false)
-          return current_user_can('upload_files');
+			{
+          if ( current_user_can('edit_post', $post_id)  === true)
+							return true;
+			}
       elseif (current_user_can($this->general_cap))
         return true;
       elseif (current_user_can($this->user_cap) && $author_id == get_current_user_id())
@@ -255,7 +258,7 @@ class EnableMediaReplacePlugin
 
   public function add_meta_boxes($post_type, $post)
   {
-      if (! $this->checkImagePermission($post->post_author))
+      if (! $this->checkImagePermission($post->post_author, $post->ID))
       {  return;  }
 
       add_meta_box('emr-replace-box', __('Replace Media', 'enable-media-replace'), array($this, 'replace_meta_box'), 'attachment', 'side', 'low');
@@ -287,7 +290,7 @@ class EnableMediaReplacePlugin
 
   public function show_thumbs_box($post)
   {
-    if (! $this->checkImagePermission($post->post_author))
+    if (! $this->checkImagePermission($post->post_author, $post->ID))
     {  return;  }
 
     wp_enqueue_style('emr_edit-attachment');
@@ -325,7 +328,7 @@ class EnableMediaReplacePlugin
   {
       $screen = null;
 
-      if (! $this->checkImagePermission($post->post_author))
+      if (! $this->checkImagePermission($post->post_author, $post->ID))
       {  return $form_fields;  }
 
       if (function_exists('get_current_screen'))
@@ -354,7 +357,7 @@ class EnableMediaReplacePlugin
    * @param array $mime_types
    * @return array
    */
-	 /* Off, no clue why this is here. 
+	 /* Off, no clue why this is here.
   public function add_mime_types($mime_types)
   {
     $mime_types['dat'] = 'text/plain';     // Adding .dat extension
@@ -368,7 +371,7 @@ class EnableMediaReplacePlugin
   public function add_media_action( $actions, $post) {
 
 
-    if (! $this->checkImagePermission($post->post_author))
+    if (! $this->checkImagePermission($post->post_author, $post->ID))
     {  return $actions;  }
 
   	$url = $this->getMediaReplaceURL($post->ID);
