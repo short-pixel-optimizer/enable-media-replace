@@ -163,22 +163,28 @@ class Replacer
         Log::addInfo('WP_Handle_upload filter returned different file', $filtered);
       }
 
+			// Check and update post mimetype, otherwise badly coded plugins cry.
+		  $post_mime = get_post_mime_type($this->post_id);
+			// update DB post mime type, if somebody decided to mess it up.
+
+			if ($this->targetFile->getFileMime() !== $post_mime)
+			{
+				  \wp_update_post(array('post_mime_type' => $this->targetFile->getFileMime(), 'ID' => $this->post_id));
+			}
+
       $metadata = wp_generate_attachment_metadata( $this->post_id, $this->targetFile->getFullFilePath() );
       wp_update_attachment_metadata( $this->post_id, $metadata );
       $this->target_metadata = $metadata;
-
 
       /** If author is different from replacer, note this */
       $author_id = get_post_meta($this->post_id, '_emr_replace_author', true);
 
       if ( intval($this->source_post->post_author) !== get_current_user_id())
       {
-
          update_post_meta($this->post_id, '_emr_replace_author', get_current_user_id());
       }
       elseif ($author_id)
       {
-
         delete_post_meta($this->post_id, '_emr_replace_author');
       }
 
@@ -195,11 +201,9 @@ class Replacer
 				 		$update_ar['post_excerpt'] = $excerpt;
 				 }
          $update_ar['guid'] = $this->target_url; //wp_get_attachment_url($this->post_id);
-         $update_ar['post_mime_type'] = $this->targetFile->getFileMime();
+    //     $update_ar['post_mime_type'] = $this->targetFile->getFileMime();
 
          $post_id = \wp_update_post($update_ar, true);
-
-
 
          // update post doesn't update GUID on updates.
          $wpdb->update( $wpdb->posts, array( 'guid' =>  $this->target_url), array('ID' => $this->post_id) );
@@ -215,18 +219,6 @@ class Replacer
          }
 
       }  // SEARCH REPLACE MODE
-			else
-			{
-				  $post = get_post($this->post_id);
-					$post_mime = $post->post_mime_type;
-					// update DB post mime type, if somebody decided to mess it up.
-					if ($this->targetFile->getFileMime() !== $post_mime)
-					{
-						  $post->post_mime_type = $this->targetFile->getFileMime();
-						  \wp_update_post($post);
-					}
-
-			}
 
       $args = array(
           'thumbnails_only' => ($this->replaceMode == self::MODE_SEARCHREPLACE) ? false : true,

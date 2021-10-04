@@ -212,6 +212,7 @@ class UIHelper
       return $data;
 
     $xml = simplexml_load_file($file);
+		//Log::addDebug('XML LOAD FILE', $xml);
     if ($xml)
     { // stolen from SVG Upload plugin
       $attr = $xml->attributes();
