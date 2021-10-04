@@ -145,6 +145,9 @@ $url = $uiHelper->getFormUrl($attachment_id);
             <?php printf( esc_html__("Note: This option requires you to upload a file of the same type (%s) as the one you are replacing. The name of the attachment will stay the same (%s) no matter what the file you upload is called.", "enable-media-replace"), $filetype, $filename ); ?>
         </p>
 
+				<p class='form-warning filetype'><?php _e('If you replace the file with a different filetype, this file might become unreadable and / or cause unexpected issues', 'enable-media-replace'); ?>
+				</p>
+
         <?php do_action('emr_after_search_type_options'); ?>
       </div>
 

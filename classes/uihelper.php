@@ -193,7 +193,9 @@ class UIHelper
   {
     $data = wp_get_attachment_image_src($attach_id, $size);
     $width = $data[1];
-    $mime_type = get_post_mime_type($attach_id);
+    //$mime_type = get_post_mime_type($attach_id);
+    $file = get_attached_file($attach_id);
+		$mime_type = wp_get_image_mime($file);
 
     if (strpos($mime_type, 'svg') !== false && $width <= 5)
     {

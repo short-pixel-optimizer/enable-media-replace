@@ -186,12 +186,19 @@ class Replacer
       {
          // Write new image title.
          $title = $this->getNewTitle();
+				 $excerpt = $this->getNewExcerpt();
          $update_ar = array('ID' => $this->post_id);
          $update_ar['post_title'] = $title;
          $update_ar['post_name'] = sanitize_title($title);
+				 if ($excerpt !== false)
+				 {
+				 		$update_ar['post_excerpt'] = $excerpt;
+				 }
          $update_ar['guid'] = $this->target_url; //wp_get_attachment_url($this->post_id);
          $update_ar['post_mime_type'] = $this->targetFile->getFileMime();
+
          $post_id = \wp_update_post($update_ar, true);
+
 
 
          // update post doesn't update GUID on updates.
@@ -208,6 +215,18 @@ class Replacer
          }
 
       }  // SEARCH REPLACE MODE
+			else
+			{
+				  $post = get_post($this->post_id);
+					$post_mime = $post->post_mime_type;
+					// update DB post mime type, if somebody decided to mess it up.
+					if ($this->targetFile->getFileMime() !== $post_mime)
+					{
+						  $post->post_mime_type = $this->targetFile->getFileMime();
+						  \wp_update_post($post);
+					}
+
+			}
 
       $args = array(
           'thumbnails_only' => ($this->replaceMode == self::MODE_SEARCHREPLACE) ? false : true,
@@ -223,6 +242,7 @@ class Replacer
         if (false === $result)
           Log::addWarn('Thumbnail Updater returned false');
       }*/
+
 
       // if all set and done, update the date.
       // This must be done after wp_update_posts
@@ -263,6 +283,25 @@ class Replacer
     $title = apply_filters( 'enable_media_replace_title', $title );
 
     return $title;
+  }
+
+  protected function getNewExcerpt()
+  {
+	    $meta = $this->target_metadata;
+			$excerpt = false;
+
+	    if (isset($meta['image_meta']))
+	    {
+	      if (isset($meta['image_meta']['caption']))
+	      {
+	          if (strlen($meta['image_meta']['caption']) > 0)
+	          {
+	             $excerpt = $meta['image_meta']['caption'];
+	          }
+	      }
+	    }
+
+		return $excerpt;
   }
 
   /** Gets the source file after processing. Returns a file */
@@ -808,8 +847,8 @@ class Replacer
 				 // Check if metadata-less item is a svg file. Just the main file to replace all thumbnails since SVG's don't need thumbnails.
 				 if (strpos($this->target_url, '.svg') !== false)
 				 {
-				 	$baseurl = parse_url($this->target_url, PHP_URL_PATH);
-				 	return $baseurl;  // this is the relpath of the mainfile.
+				 	$svg_file = wp_basename($this->target_url);
+				 	return $svg_file;  // this is the relpath of the mainfile.
 				 }
 
 

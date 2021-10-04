@@ -49,9 +49,11 @@ If you want more control over the format used to display the time, you can use t
 
 = 3.5.1 =
 
+* Fix : EMR now respects edit_other_posts permissions using default permissions.
 * Fix : EMR with ALLOW_UNFILTERED_UPLOADS enabled (and allowed role) will not limit non-allowed uploads.
 * New : Constant EMR_CAPABILITY can define extra user roles to allow and deny replacements
-* New : Replacing an usual image with an SVG file will not just replace all thumbnails by the main file.
+* New : Replacing an usual image with an SVG file will just replace all thumbnails by the main file.
+* New : Also replaces caption when set in Exif data (when updating all links)
 * Tweak: Added Now and Original options to Custom Date for usability.
 
 = 3.5.0 =
