@@ -96,7 +96,7 @@ $url = $uiHelper->getFormUrl($attachment_id);
     <div class='emr_drop_area'>
       <div class='drop-wrapper'>
 
-  		  <p><input type="file" name="userfile" id="userfile" /></p>
+            <p><input type="file" name="userfile" id="userfile" /></p>
         <h1><?php _e('Drop File Here', 'enable-media-replace'); ?></h1>
       </div>
 
@@ -129,19 +129,19 @@ $url = $uiHelper->getFormUrl($attachment_id);
   <section class='replace_type wrapper'>
     <div class='section-header'> <?php _e('Replacement Options', 'enable-media-replace'); ?></div>
 
-  		<?php
+          <?php
       // these are also used in externals, for checks.
       do_action( 'emr_before_replace_type_options' ); ?>
 
 
-  	<?php $enabled_search = apply_filters( 'emr_display_replace_type_options', true );
+     <?php $enabled_search = apply_filters( 'emr_display_replace_type_options', true );
        $search_disabled = (! $enabled_search) ? 'disabled' : '';
     ?>
       <div class='option replace <?php echo $search_disabled ?>'>
-    		<label for="replace_type_1"  ><input <?php checked('replace', $settings['replace_type']) ?> id="replace_type_1" type="radio" name="replace_type" value="replace" <?php echo $search_disabled ?> > <?php echo esc_html__("Just replace the file", "enable-media-replace"); ?>
+          <label for="replace_type_1"  ><input <?php checked('replace', $settings['replace_type']) ?> id="replace_type_1" type="radio" name="replace_type" value="replace" <?php echo $search_disabled ?> > <?php echo esc_html__("Just replace the file", "enable-media-replace"); ?>
         </label>
 
-    		<p class="howto">
+          <p class="howto">
             <?php printf( esc_html__("Note: This option requires you to upload a file of the same type (%s) as the one you are replacing. The name of the attachment will stay the same (%s) no matter what the file you upload is called.", "enable-media-replace"), $filetype, $filename ); ?>
         </p>
 
@@ -151,17 +151,17 @@ $url = $uiHelper->getFormUrl($attachment_id);
         <?php do_action('emr_after_search_type_options'); ?>
       </div>
 
-  		<?php $enabled_replacesearch = apply_filters( 'emr_enable_replace_and_search', true );
+          <?php $enabled_replacesearch = apply_filters( 'emr_enable_replace_and_search', true );
         $searchreplace_disabled = (! $enabled_replacesearch) ? 'disabled' : '';
       ?>
 
       <div class="option searchreplace <?php echo $searchreplace_disabled ?>">
-  		<label for="replace_type_2"><input id="replace_type_2" <?php checked('replace_and_search', $settings['replace_type']) ?> type="radio" name="replace_type" value="replace_and_search" <?php echo $searchreplace_disabled ?> > <?php echo __("Replace the file, use new file name and update all links", "enable-media-replace"); ?>
+          <label for="replace_type_2"><input id="replace_type_2" <?php checked('replace_and_search', $settings['replace_type']) ?> type="radio" name="replace_type" value="replace_and_search" <?php echo $searchreplace_disabled ?> > <?php echo __("Replace the file, use new file name and update all links", "enable-media-replace"); ?>
       </label>
 
-  		<p class="howto"><?php printf( esc_html__("Note: If you check this option, the name and type of the file you are about to upload will replace the old file. All links pointing to the current file (%s) will be updated to point to the new file name. (If any other websites link to the file directly, those links will no longer work. Be careful.)", "enable-media-replace"), $filename ); ?></p>
+          <p class="howto"><?php printf( esc_html__("Note: If you check this option, the name and type of the file you are about to upload will replace the old file. All links pointing to the current file (%s) will be updated to point to the new file name. (If any other websites link to the file directly, those links will no longer work. Be careful.)", "enable-media-replace"), $filename ); ?></p>
 
-  	<!--	<p class="howto"><?php echo esc_html__("Please note that if you upload a new image, only embeds/links of the original size image will be replaced in your posts.", "enable-media-replace"); ?></p> -->
+     <!-- <p class="howto"><?php echo esc_html__("Please note that if you upload a new image, only embeds/links of the original size image will be replaced in your posts.", "enable-media-replace"); ?></p> -->
 
       <?php do_action('emr_after_replace_type_options'); ?>
       </div>
@@ -266,6 +266,111 @@ $url = $uiHelper->getFormUrl($attachment_id);
        <?php printf(__('ALLOW ShortPixel %s SPECIALISTS TO %s FIND THE %s SOLUTION FOR YOU.', 'enable-media-replace'), '<br>','<br>','<br>'); ?></h3>
       <p class='button-wrapper'><a href='https://wso.shortpixel.com/?utm_source=EMR' target="_blank"><?php _e('FIND OUT MORE', 'enable-media-replace') ?></a></p>
     </div>
-  </section>
+     <div class='envira-shortpixel-install shortpixel-offer'>
+		<?php $installed_plugins = get_plugins(); ?>
+	<p class='img-wrapper'><img src="<?php echo $emr->getPluginURL('img/envira-logo.png'); ?>" alt='Envira Gallery'></p>
+	<p><?php esc_html_e('Create beautiful, fast-loading photo & video galleries for your site in minutes.', 'enable-media-replace' ); ?></p>
+		<?php if ( ! isset( $installed_plugins[ 'envira-gallery-lite/envira-gallery-lite.php' ] ) )  { ?>
+	   <p class='button-wrapper envira-emr-button-wrap'><a class="button button-envira-emr emr-install-envira" href='#'><?php _e('Install now', 'enable-media-replace') ?></a></p>
+		<?php } else {
+				if ( is_plugin_active( 'envira-gallery-lite/envira-gallery-lite.php' ) ) {
+			?>
+				<p class='button-wrapper envira-emr-button-wrap'><a class="button button-envira-emr" href='https://enviragallery.com/pricing' target="_blank"><?php _e('Get Pro', 'enable-media-replace') ?></a></p>
+
+				<?php } else { ?>
+					<p class='button-wrapper envira-emr-button-wrap'><a class="button button-envira-emr emr-activate-envira" href='#'><?php _e('Activate', 'enable-media-replace') ?></a></p>
+
+				<?php }
+			} ?>
+    </div>
+    <style>
+	    .envira-emr-button-wrap {
+		text-align: center;
+	}
+	.button-envira-emr {
+		background-color: #7cc048 !important;
+		border: none !important;
+		color: rgb(255,255,255) !important;
+		font-size: 21px !important;
+	}
+	.button-envira-emr:hover {
+		background-color: #95dc5e !important;
+	}
+    </style>
+    <script>
+(function($) {
+	$(function() {
+
+
+		$('.envira-shortpixel-install').on('click', '.emr-activate-envira', function(e){
+			e.preventDefault();
+			var $this = $(this);
+			var button = $(this);
+			var enr_eg_opts = {
+				url: '<?php echo admin_url( 'admin-ajax.php' ); ?>',
+				type: 'post',
+				async: true,
+				cache: false,
+				dataType: 'json',
+				data: {
+					action: 'envira_emr_activate',
+					nonce: '<?php echo wp_create_nonce( 'envira-emr-activate' ); ?>',
+					plugin: 'envira-gallery-lite/envira-gallery-lite.php',
+				},
+				success: function(response) {
+					$(button).fadeOut('slow');
+					$('.emr_upload_form').before('<div class="updated notice is-dismissible envira-emr-notice"><p><?php esc_html_e( 'Envira Gallery Activated', 'enable-media-replace'); ?></p><button type="button" class="notice-dismiss envira-emr-dismiss"><span class="screen-reader-text"><?php esc_html_e( 'Dismiss this notice.', 'enable-media-replace'); ?></span></button></div>');
+
+				},
+				error: function(xhr, textStatus, e) {
+				},
+			};
+			$.ajax(enr_eg_opts);
+		});
+
+		$('.envira-shortpixel-install').on('click', '.emr-install-envira', function(e){
+			e.preventDefault();
+			var $this = $(this);
+			var button = $(this);
+			var enr_eg_opts = {
+				url: '<?php echo admin_url( 'admin-ajax.php' ); ?>',
+				type: 'post',
+				async: true,
+				cache: false,
+				dataType: 'json',
+				data: {
+					action: 'envira_emr_install',
+					nonce: '<?php echo wp_create_nonce( 'envira-emr-install' ); ?>',
+					plugin: 'https://downloads.wordpress.org/plugin/envira-gallery-lite.zip',
+				},
+				success: function(response) {
+					$(button)
+							.html(
+								'<i class="envira-toggle-on"></i> ' +
+									'Activate',
+							)
+							.removeClass('emr-install-envira')
+							.addClass('emr-activate-envira');
+							$('.emr_upload_form').before('<div class="updated notice is-dismissible envira-emr-notice"><p><?php esc_html_e( 'Envira Gallery Installed', 'enable-media-replace'); ?></p><button type="button" class="notice-dismiss envira-emr-dismiss"><span class="screen-reader-text"><?php esc_html_e( 'Dismiss this notice.', 'enable-media-replace'); ?></span></button></div>');
+
+
+				},
+				error: function(xhr, textStatus, e) {
+				},
+			};
+			$.ajax(enr_eg_opts);
+		});
+
+		$(document).on('click', '.envira-emr-dismiss', function(e){
+			e.preventDefault();
+			$(this).parent().fadeOut('slow');
+		});
+
+	});
+})(jQuery);
+
+	</script>
+
+</section>
 	</form>
 </div>
