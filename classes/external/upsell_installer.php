@@ -1,16 +1,31 @@
 <?php
 
-add_action( 'wp_ajax_envira_emr_install', 'emr_envira_install' );
+add_action( 'wp_ajax_emr_plugin_install', 'emr_plugin_install' );
 
-function emr_envira_install() {
+function emr_plugin_install() {
 
 	// Run a security check first.
-	check_admin_referer( 'envira-emr-install', 'nonce' );
+	check_admin_referer( 'emr-plugin-install', 'nonce' );
+
+	$plugin = isset($_POST['plugin']) ? sanitize_text_field($_POST['plugin']) : null;
+
+	switch($plugin)
+	{
+		 case "envira":
+		    $download_url = 'https://downloads.wordpress.org/plugin/envira-gallery-lite.zip';
+		 break;
+		 case 'spio':
+		 		$download_url = 'https://downloads.wordpress.org/plugin/shortpixel-image-optimiser.zip';
+		 break;
+		 case 'spai':
+		 	 $download_url = 'https://downloads.wordpress.org/plugin/shortpixel-adaptive-images.zip';
+		 break;
+	}
 
 	// Install the addon.
-	if ( isset( $_POST['plugin'] ) ) {
+	if ( ! is_null($download_url ) ) {
 
-		$download_url = esc_url_raw( wp_unslash( $_POST['plugin'] ) );
+		//$download_url = esc_url_raw( wp_unslash( $_POST['plugin'] ) );
 		global $hook_suffix;
 
 		// Set the current screen to avoid undefined notices.
@@ -20,7 +35,7 @@ function emr_envira_install() {
 		$method = '';
 		$url    = add_query_arg(
 			array(
-				'page' => 'envira-gallery-settings',
+			//	'page' => 'envira-gallery-settings',
 			),
 			admin_url( 'admin.php' )
 		);
@@ -45,8 +60,8 @@ function emr_envira_install() {
 		}
 
 		// We do not need any extra credentials if we have gotten this far, so let's install the plugin.
-		require_once ABSPATH . 'wp-admin/includes/class-wp-upgrader.php';
-		require_once plugin_dir_path( EMR_ROOT_FILE ) . 'classes/external/upgrader_skin.php';
+		require_once (ABSPATH . 'wp-admin/includes/class-wp-upgrader.php');
+		require_once (plugin_dir_path( EMR_ROOT_FILE ) . 'classes/external/upgrader_skin.php');
 
 		// Create the plugin upgrader with our custom skin.
 		$skin      = new EMR_Envira_Gallery_Skin();
@@ -59,6 +74,9 @@ function emr_envira_install() {
 		if ( $installer->plugin_info() ) {
 			$plugin_basename = $installer->plugin_info();
 
+		ob_clean();
+
+
 			wp_send_json_success( array( 'plugin' => $plugin_basename ) );
 
 			die();
@@ -66,26 +84,41 @@ function emr_envira_install() {
 	}
 
 	// Send back a response.
-	echo wp_json_encode( true );
+	wp_send_json(array('result'=> false));
 	die;
 
 }
 
-add_action( 'wp_ajax_envira_emr_activate', 'envira_emr_activate' );
+add_action( 'wp_ajax_emr_plugin_activate', 'emr_activate' );
 
 /**
  * Activates an Envira addon.
  *
  * @since 1.0.0
  */
-function envira_emr_activate() {
+function emr_activate() {
 
 	// Run a security check first.
-	check_admin_referer( 'envira-emr-activate', 'nonce' );
+	check_admin_referer( 'emr-plugin-activate', 'nonce' );
+
+$plugin = isset($_POST['plugin']) ? sanitize_text_field($_POST['plugin']) : null;
+
+switch($plugin)
+{
+	 case "envira":
+			$plugin = 'envira-gallery-lite/envira-gallery-lite.php';
+	 break;
+	 case 'spio':
+			$plugin = 'shortpixel-image-optimiser/wp-shortpixel.php';
+	 break;
+	 case 'spai':
+		 $plugin = 'shortpixel-adaptive-images/short-pixel-ai.php';
+	 break;
+}
 
 	// Activate the addon.
-	if ( isset( $_POST['plugin'] ) ) {
-	    $activate = activate_plugin( $_POST['plugin'] );
+	if ( ! is_null($plugin)  ) {
+	    $activate = activate_plugin( $plugin );
 	    if ( is_wp_error( $activate ) ) {
 		   echo json_encode( array( 'error' => $activate->get_error_message() ) );
 		   die;

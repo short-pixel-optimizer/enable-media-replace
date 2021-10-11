@@ -150,6 +150,7 @@ class EnableMediaReplacePlugin
             // @todo Later this should be move to it's own controller, and built view from there.
             if ( $action == 'media_replace' ) {
               if ( array_key_exists("attachment_id", $_GET) && intval($_GET["attachment_id"]) > 0) {
+								wp_enqueue_script('emr_upsell');
                 require_once($this->plugin_path . "views/popup.php"); // warning variables like $action be overwritten here.
               }
             }
@@ -193,15 +194,20 @@ class EnableMediaReplacePlugin
         'dateFormat' => $this->convertdate(get_option( 'date_format' )),
         'maxfilesize' => wp_max_upload_size(),
         'allowed_mime' => $mimes,
-
     );
 
+		wp_register_script('emr_upsell', plugins_url('js/upsell.js', EMR_ROOT_FILE), array('jquery'), EMR_VERSION, true );
+
+		wp_localize_script('emr_upsell', 'emr_upsell', array(
+				'ajax' => admin_url('admin-ajax.php'),
+				'installing' => __('Installing ...', 'enable-media-replace'),
+
+		));
 
     if (Log::debugIsActive())
         $emr_options['is_debug'] = true;
 
     wp_localize_script('emr_admin', 'emr_options', $emr_options);
-
   }
 
   /** Utility function for the Jquery UI Datepicker */

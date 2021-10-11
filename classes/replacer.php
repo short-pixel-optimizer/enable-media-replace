@@ -601,13 +601,13 @@ class Replacer
 
         if ($replaced_content !== $post_content)
         {
-          Log::addDebug('POST CONTENT TO SAVE', $replaced_content);
+          //Log::addDebug('POST CONTENT TO SAVE', $replaced_content);
 
         //  $result = wp_update_post($post_ar);
           $sql = 'UPDATE ' . $wpdb->posts . ' SET post_content = %s WHERE ID = %d';
           $sql = $wpdb->prepare($sql, $replaced_content, $post_id);
 
-  Log::addDebug("POSt update query " . $sql);
+  //Log::addTemp("POSt update query " . $sql);
           $result = $wpdb->query($sql);
 
           if ($result === false)
