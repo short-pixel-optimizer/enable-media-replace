@@ -20,8 +20,6 @@ use EnableMediaReplace\Notices\NoticeController as Notices;
 	$envira_pro_active = is_plugin_active('envira-gallery/envira-gallery.php');
 
 
-
-
 ?>
 
 	<input type="hidden" id='upsell-nonce' value="<?php echo wp_create_nonce( 'emr-plugin-install' ); ?>" />
@@ -33,7 +31,7 @@ use EnableMediaReplace\Notices\NoticeController as Notices;
 
     <div class='shortpixel-offer spio'>
       <div class='img-wrapper'>
-          <img width="100" height="100" src="<?php echo $emr->getPluginURL('img/sp-logo-regular.svg') ?>" alt="ShortPixel">
+          <img width="50" height="50" src="<?php echo $emr->getPluginURL('img/sp-logo-regular.svg') ?>" alt="ShortPixel">
       </div>
 			<h4 class="grey">
 		     <?php echo esc_html__("ShortPixel Image Optimization", "enable-media-replace"); ?>
@@ -66,7 +64,7 @@ use EnableMediaReplace\Notices\NoticeController as Notices;
 
     <div class='shortpixel-offer spai'>
       <div class='img-wrapper'>
-          <img width="100" height="100" src="<?php echo $emr->getPluginURL('img/spai-logo.svg') ?>" alt="ShortPixel">
+          <img width="50" height="50" src="<?php echo $emr->getPluginURL('img/spai-logo.svg') ?>" alt="ShortPixel">
       </div>
 			<h4 class="grey">
 		     <?php echo esc_html__("ShortPixel Adaptive Images", "enable-media-replace"); ?>
@@ -97,7 +95,7 @@ use EnableMediaReplace\Notices\NoticeController as Notices;
 
 	<!--- WPSO -->
     <div class='shortpixel-offer site-speed'>
-      <p class='img-wrapper'><img width="100" height="100" src="<?php echo $emr->getPluginURL('img/sp-logo-wink.svg'); ?>" alt='ShortPixel'></p>
+      <p class='img-wrapper'><img width="50" height="50" src="<?php echo $emr->getPluginURL('img/sp-logo-wink.svg'); ?>" alt='ShortPixel'></p>
       <h3><?php printf(__('GET AN ASSESSMENT FOR %s YOUR WEBSITE %s AND %s %s FIND OUT HOW TO MAKE IT FASTER %s', 'enable-media-replace'),'<br>', '<br>','<br>', '<span class="red">','</span>'); ?><br><br>
        <?php printf(__('ALLOW ShortPixel %s SPECIALISTS TO %s FIND THE %s SOLUTION FOR YOU.', 'enable-media-replace'), '<br>','<br>','<br>'); ?></h3>
       <p class='button-wrapper'><a href='https://wso.shortpixel.com/?utm_source=EMR' target="_blank"><?php _e('FIND OUT MORE', 'enable-media-replace') ?></a></p>
