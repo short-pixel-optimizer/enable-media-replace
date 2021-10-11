@@ -34,7 +34,7 @@ use EnableMediaReplace\Notices\NoticeController as Notices;
           <img width="40" height="40" src="<?php echo $emr->getPluginURL('img/sp-logo-regular.svg') ?>" alt="ShortPixel">
       </div>
 			<h4 class="grey">
-		     <?php echo esc_html__("ShortPixel Image Optimization", "enable-media-replace"); ?>
+		     <?php echo esc_html__("ShortPixel Image Optimizer", "enable-media-replace"); ?>
 			 </h4>
 			<h3 class="red ucase"><?php _e('Is your website slow?', 'enable-media-replace'); ?></h3>
 			<br>
