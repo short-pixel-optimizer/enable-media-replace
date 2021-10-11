@@ -1278,6 +1278,9 @@
   max-height: 140px;
   margin: 0;
 }
+.emr_upload_form .shortpixel-offer.envira-shortpixel-install {
+  background: #fff;
+}
 @media (max-width: 1200px) {
   .emr_upload_form .image_previews {
     text-align: center;

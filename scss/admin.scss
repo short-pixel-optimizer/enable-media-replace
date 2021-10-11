@@ -359,10 +359,11 @@
 		}
     &.site-speed // Site speed
     {
-
-
-
     }
+		&.envira-shortpixel-install // envira
+		{
+				background: #fff;
+		}
   }
 
   @media( max-width: 1200px)
