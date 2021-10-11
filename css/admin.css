@@ -1220,15 +1220,15 @@
   width: 250px;
   min-height: 270px;
   border: 1px solid #ccc;
-  padding: 15px;
-  margin-bottom: 25px;
+  padding: 10px;
+  margin-bottom: 10px;
   float: right;
   clear: both;
   background-color: #dcfdff;
 }
 .emr_upload_form .shortpixel-offer h3 {
   color: #00d0e5;
-  font-size: 20px;
+  font-size: 18px;
   text-align: center;
   margin: 0;
   line-height: 1.3em;
