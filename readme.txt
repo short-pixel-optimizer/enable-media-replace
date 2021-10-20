@@ -47,6 +47,10 @@ If you want more control over the format used to display the time, you can use t
 
 == Changelog ==
 
+= 3.6.1 =
+
+* Fixed broken image in notice 
+
 = 3.6.0 =
 
 Release date: October 11th, 2021
