@@ -40,11 +40,11 @@ class emrFile
      // Note: this function will work on non-existing file, but not on existing files containing wrong mime in file.
      $this->fileMime = (isset($filedata['type']) && strlen($filedata['type'] > 0)) ? $filedata['type'] : false;
 
-     if ($this->fileMime == false && strlen($this->file) > 0 && function_exists('mime_content_type'))
+     if ($this->fileMime == false && strlen($this->file) > 0 && function_exists('mime_content_type') && $this->exists)
 		 {
 			  // If it's not a registered mimetype
         $this->fileMime = mime_content_type($this->file);
-		 } 
+		 }
 
   }
 
