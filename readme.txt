@@ -5,7 +5,7 @@ Tags: replace, attachment, media, files, replace image, replace jpg, change medi
 Requires at least: 4.9.7
 Tested up to: 5.8.1
 Requires PHP: 5.6
-Stable tag: 3.6.0
+Stable tag: 3.6.1
 
 Easily replace any attached image/file by simply uploading a new file in the Media Library edit view - a real time saver!
 
@@ -48,8 +48,10 @@ If you want more control over the format used to display the time, you can use t
 == Changelog ==
 
 = 3.6.1 =
-
-* Fixed broken image in notice 
+Release date: October 27th, 2021
+* Fix: there was a broken image in one of the plugin notices;
+* Fix: added a check for the function `mime_content_type`, which doesn't seem to always be available on various hosts;
+* Fix: the plugin checks if the current user has rights to install/activate plugins and only then displays the 1-click installers and also a filter is available now;
 
 = 3.6.0 =
 
