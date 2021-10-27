@@ -5,6 +5,11 @@ namespace EnableMediaReplace;
 use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
 use EnableMediaReplace\Notices\NoticeController as Notices;
 
+if (! apply_filters('emr/upsell', current_user_can('install_plugins')))
+{
+	 return;
+}
+
 	#wp_nonce_field('enable-media-replace');
   $plugins = get_plugins();
 
