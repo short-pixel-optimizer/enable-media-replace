@@ -47,6 +47,11 @@ If you want more control over the format used to display the time, you can use t
 
 == Changelog ==
 
+= 3.6.2 =
+
+* Fix: Issue in file.php with checking mime-type
+* Fix: If target mime type returns empty, don't store that.
+
 = 3.6.1 =
 Release date: October 27th, 2021
 * Fix: there was a broken image in one of the plugin notices;

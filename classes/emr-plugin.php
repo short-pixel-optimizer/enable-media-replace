@@ -399,14 +399,14 @@ class EnableMediaReplacePlugin
   	$current_screen = get_current_screen();
 
   	$crtScreen = function_exists("get_current_screen") ? get_current_screen() : (object)array("base" => false);
-
+/*
   	if(current_user_can( 'activate_plugins' ) && !get_option( 'emr_news') && !is_plugin_active('shortpixel-image-optimiser/wp-shortpixel.php')
   	   && ($crtScreen->base == "upload" || $crtScreen->base == "plugins")
           //for network installed plugins, don't display the message on subsites.
          && !(function_exists('is_multisite') && is_multisite() && is_plugin_active_for_network('enable-media-replace/enable-media-replace.php') && !is_main_site()))
   	{
   		require_once($this->plugin_path . '/views/notice.php');
-  	}
+  	} */
   }
 
   public function display_network_notices() {
