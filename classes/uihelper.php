@@ -192,7 +192,7 @@ class UIHelper
   protected function getImageSizes($attach_id, $size = 'thumbnail')
   {
     $data = wp_get_attachment_image_src($attach_id, $size);
-    $width = $data[1];
+    $width = isset($data[1]) ? $data[1] : 0;
     //$mime_type = get_post_mime_type($attach_id);
     $file = get_attached_file($attach_id);
 		$mime_type = wp_get_image_mime($file);

@@ -144,7 +144,7 @@ class Replacer
       // update the file attached. This is required for wp_get_attachment_url to work.
       $updated = update_attached_file($this->post_id, $this->targetFile->getFullFilePath() );
       if (! $updated)
-        Log::addError('Update Attached File reports as not updated');
+        Log::addError('Update Attached File reports as not updated or same value');
 
       $this->target_url = $this->getTargetURL(); //wp_get_attachment_url($this->post_id);
 
@@ -165,10 +165,12 @@ class Replacer
 
 			// Check and update post mimetype, otherwise badly coded plugins cry.
 		  $post_mime = get_post_mime_type($this->post_id);
-			// update DB post mime type, if somebody decided to mess it up.
+			$target_mime = $this->targetFile->getFileMime();
 
-			if ($this->targetFile->getFileMime() !== $post_mime)
+			// update DB post mime type, if somebody decided to mess it up, and the target one is not empty.
+			if ($target_mime !== $post_mime && strlen($target_mime) > 0)
 			{
+
 				  \wp_update_post(array('post_mime_type' => $this->targetFile->getFileMime(), 'ID' => $this->post_id));
 			}
 

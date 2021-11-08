@@ -3,9 +3,9 @@ Contributors: ShortPixel
 Donate link: https://www.paypal.me/resizeImage
 Tags: replace, attachment, media, files, replace image, replace jpg, change media, replace media, image, file
 Requires at least: 4.9.7
-Tested up to: 5.8.1
+Tested up to: 5.8
 Requires PHP: 5.6
-Stable tag: 3.6.1
+Stable tag: 3.6.2
 
 Easily replace any attached image/file by simply uploading a new file in the Media Library edit view - a real time saver!
 
@@ -47,7 +47,15 @@ If you want more control over the format used to display the time, you can use t
 
 == Changelog ==
 
+= 3.6.2 =
+
+Release date: November 8th, 2021
+* Fix: there was an issue in file.php with checking mime-type, resulting in weird mime-type values in certain cases (thanks @dougaxe1 for the PR);
+* Fix: if target mime type returns empty, don't store that;
+* Tweak: removed old notification about SPIO.
+
 = 3.6.1 =
+
 Release date: October 27th, 2021
 * Fix: there was a broken image in one of the plugin notices;
 * Fix: added a check for the function `mime_content_type`, which doesn't seem to always be available on various hosts;
