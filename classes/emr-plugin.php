@@ -269,6 +269,10 @@ class EnableMediaReplacePlugin
 
   public function add_meta_boxes($post_type, $post)
   {
+			// Because some plugins don't like to play by the rules.
+		  if (is_null($post_type) || is_null($post))
+			 	return false;
+
       if (! $this->checkImagePermission($post->post_author, $post->ID))
       {  return;  }
 
