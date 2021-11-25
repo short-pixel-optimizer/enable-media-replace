@@ -107,7 +107,7 @@ if (! apply_filters('emr/upsell', current_user_can('install_plugins')))
     </div>
 	<!--- // WPSO -->
 
-		<!--- ENVIRA -->
+		<!--- ENVIRA temprary deactivated
 		<?php if (! $envira_pro_active): ?>
   <div class='envira-shortpixel-install shortpixel-offer'>
 
@@ -154,4 +154,6 @@ if (! apply_filters('emr/upsell', current_user_can('install_plugins')))
 	}
     </style>
 	<?php endif; // envira ?>
+-->
+
 </section>
