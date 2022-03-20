@@ -3,7 +3,7 @@ Contributors: ShortPixel
 Donate link: https://www.paypal.me/resizeImage
 Tags: replace, attachment, media, files, replace image, replace jpg, change media, replace media, image, file
 Requires at least: 4.9.7
-Tested up to: 5.8
+Tested up to: 5.9
 Requires PHP: 5.6
 Stable tag: 3.6.3
 
@@ -39,11 +39,22 @@ So `[file_modified id=870]` would display the last time the file with ID 870 was
 If you want more control over the format used to display the time, you can use the format option, so `[file_modified id=870 format=Y-m-d]` would display the file modification date but not the time. The format string uses [standard PHP date() formatting tags](http://php.net/manual/en/function.date.php).
 
 
-#### Compatible and recommended Plugins =
+**Other plugins by [ShortPixel](https://shortpixel.com):**
 
-* [ShortPixel Image Optimization](https://wordpress.org/plugins/shortpixel-image-optimiser/) - Enable Media Replace is fully compatible with this plugin. Once enabled, ShortPixel will automatically optimize the images you replace using Enable Media Replace.
-* [Resize Image After Upload plugin](https://wordpress.org/plugins/resize-image-after-upload/) - automatically resize images upon upload to save traffic & disk space. Good for SEO and compatible with EMR.
-* [Regenerate Thumbnails Advanced](https://wordpress.org/plugins/regenerate-thumbnails-advanced/) - Fast, free and simple to use plugin to regenerate the thumbnails for your site after changing a theme (for example). Supported & maintained by [ShortPixel](https://ShortPixel.com)
+* [ShortPixel Image Optimizer](https://wordpress.org/plugins/shortpixel-image-optimiser/) - Image optimization & compression for all the images on your website, including WebP & AVIF delivery
+* [ShortPixel Adaptive Images](https://wordpress.org/plugins/shortpixel-adaptive-images/) - On-the-fly image optimization & CDN delivery
+* [Resize Image After Upload](https://wordpress.org/plugins/resize-image-after-upload/) - Automatically resize each uploaded image
+* [Enable Media Replace](https://wordpress.org/plugins/enable-media-replace/) - Easily replace images or files in Media Library
+* [reGenerate Thumbnails Advanced](https://wordpress.org/plugins/regenerate-thumbnails-advanced/) - Easily regenerate thumbnails
+* [WP SVG Images](https://wordpress.org/plugins/wp-svg-images/) - Secure upload of SVG files to Media Library
+
+
+**Get in touch!**
+
+* Email <a href="https://shortpixel.com/contact" target="_blank">https://shortpixel.com/contact</a>
+* Twitter <a href="https://twitter.com/shortpixel" target="_blank">https://twitter.com/shortpixel</a>
+* Facebook <a href="https://www.facebook.com/ShortPixel" target="_blank">https://www.facebook.com/ShortPixel</a>
+* LinkedIn <a href="https://www.linkedin.com/company/shortpixel" target="_blank">https://www.linkedin.com/company/shortpixel</a>
 
 == Changelog ==
 
