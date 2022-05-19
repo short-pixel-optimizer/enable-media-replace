@@ -63,8 +63,7 @@ class Api {
 			'headers' => $this->headers,
 			'body'    => json_encode( $data ),
 		);
-var_dump($request);
-die;
+
 		try {
 			$result          = new stdClass;
 			$result->success = false;
