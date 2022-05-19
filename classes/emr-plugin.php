@@ -2,6 +2,7 @@
 namespace EnableMediaReplace;
 use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
 use EnableMediaReplace\Notices\NoticeController as Notices;
+use EnableMediaReplace\Ajax;
 
 // Does what a plugin does.
 class EnableMediaReplacePlugin
@@ -113,6 +114,7 @@ class EnableMediaReplacePlugin
   {
   	/* add_submenu_page(null, esc_html__("Replace media", "enable-media-replace"), esc_html__("Replace media", "enable-media-replace"), 'upload_files', 'enable-media-replace/enable-media-replace', array($this, 'route'));  */
     add_submenu_page(null, esc_html__("Replace media", "enable-media-replace"), esc_html__("Replace media", "enable-media-replace"), 'upload_files', 'enable-media-replace/enable-media-replace', array($this, 'route'));
+    add_submenu_page(null, esc_html__("Replace Media Upload", "enable-media-replace"), esc_html__("Remove the media Background", "enable-media-replace"), 'upload_files', 'emr-remove-background', array($this, 'route'));
   }
 
   /**
@@ -132,6 +134,7 @@ class EnableMediaReplacePlugin
     add_action('admin_footer', array($notices, 'admin_notices')); // fresh notices between init - end
 
     new Externals();
+    new Ajax();
   }
 
   /** Load EMR views based on request */
@@ -165,8 +168,16 @@ class EnableMediaReplacePlugin
             else {
               exit('Something went wrong loading page, please try again');
             }
-
         break;
+        case 'emr-remove-background':
+			$action = isset($_GET['action']) ? sanitize_text_field($_GET['action']) : '';
+			if( 'prepare_remove' === $action && check_admin_referer($action, '_wpnonce') ){
+				wp_enqueue_script('emr_remove_bg');
+				wp_enqueue_style('emr_style');
+				wp_enqueue_script('emr_upsell');
+				require_once($this->plugin_path . "views/prepare-remove.php");
+			}
+		break;
     }
 
   }
@@ -208,7 +219,7 @@ class EnableMediaReplacePlugin
 				'installing' => __('Installing ...', 'enable-media-replace'),
 
 		));
-
+        wp_register_script('emr_remove_bg',plugins_url('js/remove_bg.js', EMR_ROOT_FILE));
     if (Log::debugIsActive())
         $emr_options['is_debug'] = true;
 
@@ -260,6 +271,19 @@ class EnableMediaReplacePlugin
     $url = add_query_arg(array(
         'page' => 'enable-media-replace/enable-media-replace.php',
         'action' => 'media_replace',
+        'attachment_id' => $attach_id,
+    ), $url);
+
+    return $url;
+
+  }
+
+  protected function getRemoveBgURL($attach_id)
+  {
+    $url = admin_url( "upload.php");
+    $url = add_query_arg(array(
+        'page' => 'emr-remove-background',
+        'action' => 'prepare_remove',
         'attachment_id' => $attach_id,
     ), $url);
 
@@ -390,16 +414,21 @@ class EnableMediaReplacePlugin
     {  return $actions;  }
 
   	$url = $this->getMediaReplaceURL($post->ID);
-  	$action = "media_replace";
-    	$editurl = wp_nonce_url( $url, $action );
+  	$media_replace_action = "media_replace";
+    $media_replace_editurl = wp_nonce_url( $url, $media_replace_action );
+	  $url = $this->getRemoveBgURL($post->ID);
+  	$background_remove_action = "prepare_remove";
+    $background_remove_editurl = wp_nonce_url( $url, $background_remove_action );
 
     /* See above, not needed.
   	if (FORCE_SSL_ADMIN) {
   		$editurl = str_replace("http:", "https:", $editurl);
   	} */
-  	$link = "href=\"$editurl\"";
+  	$media_replace_link = "href=\"$media_replace_editurl\"";
+  	$background_remove_link = "href=\"$background_remove_editurl\"";
 
-  	$newaction['adddata'] = '<a ' . $link . ' aria-label="' . esc_attr__("Replace media", "enable-media-replace") . '" rel="permalink">' . esc_html__("Replace media", "enable-media-replace") . '</a>';
+  	$newaction['media_replace'] = '<a ' . $media_replace_link . ' aria-label="' . esc_attr__("Replace media", "enable-media-replace") . '" rel="permalink">' . esc_html__("Replace media", "enable-media-replace") . '</a>';
+  	$newaction['remove_background'] = '<a ' . $background_remove_link . ' aria-label="' . esc_attr__("Remove  background", "enable-media-replace") . '" rel="permalink">' . esc_html__("Remove  background", "enable-media-replace") . '</a>';
   	return array_merge($actions,$newaction);
   }
 
