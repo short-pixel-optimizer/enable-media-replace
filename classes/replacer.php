@@ -309,6 +309,13 @@ class Replacer
       $uploadDir = wp_upload_dir();
       $newPath = trailingslashit($uploadDir['basedir']) . $new_rel_location;
 
+      // Detect traversal by making sure the canonical path starts with uploads' basedir.
+      if (($newPath = realpath($newPath)) && strpos($newPath, $uploadDir['basedir']) !== 0)
+	  {
+        Notices::addError(__('Specificed directory is outside the upload directory. This is not allowed for security reasons', 'enable-media-replace'));
+        return false;
+      }
+
       if (! is_dir($newPath))
       {
         Notices::addError(__('Specificed new directory does not exist. Path must be a relative path from the upload directory and exist', 'enable-media-replace'));
