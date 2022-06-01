@@ -55,6 +55,7 @@ class Api {
 			'key'            => '4quMx3AjWuFa4H6v0C0t',
 			'bg_remove'      => $bg_remove,
 			'urllist'        => array( urlencode( $posted_data['image'] ) ),
+			'lossy'          => '1',
 		);
 
 		$request = array(

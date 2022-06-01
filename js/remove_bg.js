@@ -1,78 +1,82 @@
 jQuery(document).ready(function ($) {
-	$('#removed_image').height($('#base_container').height());
-	$('#remove_bacground_button').on('click', () => {
-		const bgType = $('input[type=radio][name=background_type]:checked').val();
-		let background = {
-			type: "transparent"
-		}
-		if (bgType === 'solid') {
-			background = {
-				type: "solid",
-				color: $('#bg_color').val(),
-				transparency: $('#bg_transparency').val()
-			}
-		}
-		const method = 'POST'
-		const url = $('#ajax_url').val();
-		const image = $('#base_url').val();
-		const nonce = $('#nonce').val();
-		const action = 'emr_remove_backround';
-		$.ajax({
-			method,
-			url,
-			data: {
-				action,
-				nonce,
-				image,
-				background
-			},
-			beforeSend: function () {
-				$('html, body').animate({
-					scrollTop: $(".emr_upload_form").offset().top
-				}, 1000);
-				$('input[type=radio][name=background_type]').attr('disabled', 'disabled')
-				$('#remove_bacground_button').attr('disabled', 'disabled')
-				$('#overlay').css('visibility', 'visible');
-				$('#preview-area').hide();
 
-			},
-			success: function (response) {
-				if (response.success) {
-					const height = $('#base_container').height()
-					const width = $('#base_container').width()
-					$('#removed_image').html(`
+  $('#removed_image').height($('#base_container').height());
+  // Remove bg click
+  $('#remove_bacground_button').on('click', () => {
+    const method = 'POST'
+    const url = emrObject.ajax_url;
+    const image = emrObject.base_url;
+    const nonce = emrObject.nonce;
+    const action = 'emr_remove_backround';
+    const bgType = $('input[type=radio][name=background_type]:checked').val();
+    let background = {
+      type: "transparent"
+    }
+    if (bgType === 'solid') {
+      background = {
+        type: "solid",
+        color: $('#bg_color').val(),
+        transparency: $('#bg_transparency').val()
+      }
+    }
+    $.ajax({
+      method,
+      url,
+      data: {
+        action,
+        nonce,
+        image,
+        background
+      },
+      beforeSend: function () {
+        $('html, body').animate({
+          scrollTop: $(".emr_upload_form").offset().top
+        }, 1000);
+        $('input[type=radio][name=background_type]').attr('disabled', 'disabled')
+        $('#remove_bacground_button').attr('disabled', 'disabled')
+        $('#overlay').css('visibility', 'visible');
+        $('#preview-area').hide();
+      },
+      success: function (response) {
+        if (response.success) {
+          $('#remove_bacground_button').hide();
+          $('#replace_image_button').show();
+          const height = $('#base_container').height()
+          const width = $('#base_container').width()
+          $('#removed_image').html(`
 						<div class="img-comp-container">
   						<div class="img-comp-img">
 								<img src="${image}"  width="${width}" height="${height}" />
   						</div>
   						<div class="img-comp-img img-comp-overlay">
 								<img src="${response.image}" width="${width}" height="${height}" />
+                <input type="hidden" name="removed_image" id="removed_image" value="${response.image}">
   						</div>
 						</div>
 					`);
-					initComparisons();
-				}
-			}
-		})
-	});
+          initComparisons();
+        }
+      }
+    })
+  });
 
-	$('input[type=radio][name=background_type]').change(function () {
-		const bgInputs = $('#solid_selecter')
-		if ($(this).val() === 'solid') {
-			bgInputs.show()
-		} else {
-			bgInputs.hide()
-		}
-	})
+  $('input[type=radio][name=background_type]').change(function () {
+    const bgInputs = $('#solid_selecter')
+    if ($(this).val() === 'solid') {
+      bgInputs.show()
+    } else {
+      bgInputs.hide()
+    }
+  })
 
-	$('#bg_display_picker').on('input', function () {
-		$('#color_range').html($(this).val());
-		$('#bg_color').val($(this).val());
-	});
+  $('#bg_display_picker').on('input', function () {
+    $('#color_range').html($(this).val());
+    $('#bg_color').val($(this).val());
+  });
 
-	$('#bg_transparency').on('input', function () {
-		$('#transparency_range').html($(this).val());
-	});
+  $('#bg_transparency').on('input', function () {
+    $('#transparency_range').html($(this).val());
+  });
 
 });
 
@@ -106,7 +110,7 @@ function initComparisons() {
     window.addEventListener("mouseup", slideFinish);
     /* Or touched (for touch screens: */
     slider.addEventListener("touchstart", slideReady);
-     /* And released (for touch screens: */
+    /* And released (for touch screens: */
     window.addEventListener("touchend", slideFinish);
     function slideReady(e) {
       /* Prevent any other actions that may occur when moving over the image: */
