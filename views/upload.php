@@ -47,6 +47,17 @@ $timestamp_replace = intval($_POST['timestamp_replace']);
 
 $redirect_error = $uihelper->getFailedRedirect($post_id);
 $redirect_success = $uihelper->getSuccesRedirect($post_id);
+if ( isset( $_POST['remove_after_progress'] ) ) {
+    $url = admin_url("upload.php");
+    $url = add_query_arg(array(
+    'page' => 'emr-remove-background',
+    'action' => 'emr_prepare_remove',
+    'attachment_id' => $_POST['remove_after_progress'],
+    '_wpnonce' => wp_create_nonce('emr_prepare_remove')
+    ), $url);
+
+    $redirect_success = $url;
+  }
 
 $do_new_location  = isset($_POST['new_location']) ? sanitize_text_field($_POST['new_location']) : false;
 $new_location_dir = isset($_POST['location_dir']) ? sanitize_text_field($_POST['location_dir']) : null;

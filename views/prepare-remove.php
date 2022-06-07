@@ -68,6 +68,36 @@ $uiHelper = new UIHelper();
 						</div>
 					</div>
 				</section>
+				<section class="options wrapper">
+					<div class="section-header">  image compression </div>
+						<div class="option replace">
+							<label for="lossy">
+								<input checked="checked" id="lossy" type="radio" name="compression_level" value="1">
+								Lossy compression
+							</label>
+							<p class="howto">
+								Lossy has a better compression rate than lossless compression. The resulting image is not 100% identical with the original. Works well for photos taken with your camera.
+							</p>
+						</div>          
+						<div class="option searchreplace">
+							<label for="glossy">
+								<input id="glossy" type="radio" name="compression_level" value="2">
+								Glossy compression
+							</label>
+							<p class="howto">
+								Creates images that are almost pixel-perfect identical to the originals. Best option for photographers and other professionals that use very high quality images on their sites and want best compression while keeping the quality untouched.
+							</p>
+						</div>
+						<div class="option searchreplace">
+							<label for="lossless">
+								<input id="lossless" type="radio" name="compression_level" value="0">
+								Lossless compression
+							</label>
+							<p class="howto">
+								The shrunk image will be identical with the original and smaller in size. Use this when you do not want to loose any of the original image's details. Works best for technical drawings, clip art and comics.
+							</p>
+						</div>
+				</section>
 			</div>
 			<button type="button" class="button button-primary" id="remove_bacground_button">Preview</button>
 			<button type="submit" style="display:none;" class="button button-primary" id="replace_image_button">Replace</button>

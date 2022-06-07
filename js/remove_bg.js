@@ -1,6 +1,9 @@
 jQuery(document).ready(function ($) {
 
-  $('#removed_image').height($('#base_container').height());
+  setInterval(() => {
+    $('#removed_image').height($('#base_container').height());
+  },1000)
+ 
   // Remove bg click
   $('#remove_bacground_button').on('click', () => {
     const method = 'POST'
@@ -9,6 +12,7 @@ jQuery(document).ready(function ($) {
     const nonce = emrObject.nonce;
     const action = 'emr_remove_backround';
     const bgType = $('input[type=radio][name=background_type]:checked').val();
+    const cLvl = $('input[type=radio][name=compression_level]:checked').val();
     let background = {
       type: "transparent"
     }
@@ -26,13 +30,15 @@ jQuery(document).ready(function ($) {
         action,
         nonce,
         image,
-        background
+        background,
+        compression_level : cLvl
       },
       beforeSend: function () {
         $('html, body').animate({
           scrollTop: $(".emr_upload_form").offset().top
         }, 1000);
         $('input[type=radio][name=background_type]').attr('disabled', 'disabled')
+        $('input[type=radio][name=compression_level]').attr('disabled', 'disabled')
         $('#remove_bacground_button').attr('disabled', 'disabled')
         $('#overlay').css('visibility', 'visible');
         $('#preview-area').hide();
@@ -55,6 +61,13 @@ jQuery(document).ready(function ($) {
 						</div>
 					`);
           initComparisons();
+        }else{
+          $('#preview-area').html(`<h1>${response.message}</h1>`);
+          $('#remove_bacground_button').attr('disabled', false)
+          $('input[type=radio][name=background_type]').attr('disabled', false)
+          $('input[type=radio][name=compression_level]').attr('disabled', false)
+          $('#overlay').css('visibility', 'hidden');
+          $('#preview-area').show();
         }
       }
     })

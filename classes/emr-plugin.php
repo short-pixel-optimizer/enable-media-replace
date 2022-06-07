@@ -170,8 +170,7 @@ class EnableMediaReplacePlugin
                 if ('emr_prepare_remove' === $action && check_admin_referer($action, '_wpnonce')) {
                     $attachment_id = intval($_GET['attachment_id']);
                     $attachment    = get_post($attachment_id);
-                    $base_url      = 'https://www.seekpng.com/png/detail/854-8548805_no-png-cartoon-man-saying-no.png';
-                    //$base_url = $attachment->guid;
+                    $base_url = $attachment->guid;
                     $ajax_url = admin_url('admin-ajax.php');
                     wp_enqueue_script('emr_remove_bg');
                     wp_localize_script('emr_remove_bg', 'emrObject', array(

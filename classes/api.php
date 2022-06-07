@@ -11,6 +11,12 @@ use stdClass;
  */
 class Api {
 
+	/**
+	 * Request Counter
+	 *
+	 * @var int $counter
+	 */
+	private $counter = 0;
 
 	/**
 	 * ShortPixel api url
@@ -38,6 +44,7 @@ class Api {
 	 */
 	public function request( array $posted_data ) {
 		$bg_remove = '1';
+		$compression_level = $posted_data['compression_level'];
 
 		if ( 'solid' === $posted_data['background']['type'] ) {
 			$bg_remove = str_replace( '#', '', $posted_data['background']['color'] );
@@ -55,7 +62,7 @@ class Api {
 			'key'            => '4quMx3AjWuFa4H6v0C0t',
 			'bg_remove'      => $bg_remove,
 			'urllist'        => array( urlencode( $posted_data['image'] ) ),
-			'lossy'          => '1',
+			'lossy'          => $compression_level
 		);
 
 		$request = array(
@@ -65,26 +72,38 @@ class Api {
 			'body'    => json_encode( $data ),
 		);
 
-		try {
-			$result          = new stdClass;
-			$result->success = false;
-			$response        = wp_remote_post( $this->url, $request );
+		$this->counter++;
 
-			if ( is_wp_error( $response ) ) {
-				$result->message = $response->get_error_message();
-			} else {
-				$json = json_decode( $response['body'], false, 512, JSON_THROW_ON_ERROR );
-				if ( is_array( $json ) && '2' === $json[0]->Status->Code ) {
-					$result->success = true;
-					$result->image   = $json[0]->LosslessURL;
+		$result          = new stdClass;
+		$result->success = false;
+
+		if ( $this->counter < 10 ) {
+			try {
+
+				$response = wp_remote_post( $this->url, $request );
+
+				if ( is_wp_error( $response ) ) {
+					$result->message = $response->get_error_message();
 				} else {
-					$this->request( $posted_data );
+					$json = json_decode( $response['body'], false, 512, JSON_THROW_ON_ERROR );
+					if ( is_array( $json ) && '2' === $json[0]->Status->Code ) {
+						$result->success = true;
+						if ( '1' === $compression_level ||  '2' === $compression_level ) {
+							$result->image   = $json[0]->LossyURL;
+						} else {
+							$result->image   = $json[0]->LosslessURL;
+						}
+					} else {
+						$this->request( $posted_data );
+					}
 				}
+			} catch ( Exception $e ) {
+				$result->message = $e->getMessage();
 			}
-		} catch ( Exception $e ) {
-			$result->message = $e->getMessage();
+		} else {
+			$result->message = __( 'Server is bussy please try again later.', 'enable-media-replace' );
 		}
-
+		
 		return $result;
 	}
 }
