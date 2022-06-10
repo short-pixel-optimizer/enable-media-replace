@@ -423,8 +423,10 @@ class Replacer
     $result = \wp_delete_attachment_files($this->post_id, $meta, $backup_sizes, $file );
 
     // If Attached file is not the same path as file, this indicates a -scaled images is in play.
+	  // Also plugins like Polylang tend to block delete image while there is translation / duplicate item somewhere
+		// 10/06/22 : Added a hard delete if file still exists.  Be gone, hard way.
     $attached_file = get_attached_file($this->post_id);
-    if ($file !== $attached_file && file_exists($attached_file))
+    if (file_exists($attached_file))
     {
        @unlink($attached_file);
     }
