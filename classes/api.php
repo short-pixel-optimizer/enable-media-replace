@@ -93,8 +93,10 @@ class Api {
 						} else {
 							$result->image   = $json[0]->LosslessURL;
 						}
-					} else {
+					} elseif ( is_array( $json ) && '1' === $json[0]->Status->Code ) {
 						$this->request( $posted_data );
+					} else {
+						$result->message = $json[0]->Status->Message;
 					}
 				}
 			} catch ( Exception $e ) {
