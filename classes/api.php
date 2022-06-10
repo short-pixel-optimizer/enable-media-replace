@@ -86,6 +86,8 @@ class Api {
 					$result->message = $response->get_error_message();
 				} else {
 					$json = json_decode( $response['body'], false, 512, JSON_THROW_ON_ERROR );
+					// var_dump( $json );
+					// die;
 					if ( is_array( $json ) && '2' === $json[0]->Status->Code ) {
 						$result->success = true;
 						if ( '1' === $compression_level ||  '2' === $compression_level ) {
