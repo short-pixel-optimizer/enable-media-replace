@@ -96,7 +96,7 @@ class Api {
 							$result->image   = $json[0]->LosslessURL;
 						}
 					} elseif ( is_array( $json ) && '1' === $json[0]->Status->Code ) {
-						$this->request( $posted_data );
+						return $this->request( $posted_data );
 					} else {
 						$result->message = $json[0]->Status->Message;
 					}
