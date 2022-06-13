@@ -43,7 +43,7 @@ class Api {
 	 * @return stdClass $result
 	 */
 	public function request( array $posted_data ) {
-		$bg_remove = '1';
+		$bg_remove         = '1';
 		$compression_level = $posted_data['compression_level'];
 
 		if ( 'solid' === $posted_data['background']['type'] ) {
@@ -62,7 +62,7 @@ class Api {
 			'key'            => '4quMx3AjWuFa4H6v0C0t',
 			'bg_remove'      => $bg_remove,
 			'urllist'        => array( urlencode( $posted_data['image'] ) ),
-			'lossy'          => $compression_level
+			'lossy'          => $compression_level,
 		);
 
 		$request = array(
@@ -90,10 +90,10 @@ class Api {
 					// die;
 					if ( is_array( $json ) && '2' === $json[0]->Status->Code ) {
 						$result->success = true;
-						if ( '1' === $compression_level ||  '2' === $compression_level ) {
-							$result->image   = $json[0]->LossyURL;
+						if ( '1' === $compression_level || '2' === $compression_level ) {
+							$result->image = $json[0]->LossyURL;
 						} else {
-							$result->image   = $json[0]->LosslessURL;
+							$result->image = $json[0]->LosslessURL;
 						}
 					} elseif ( is_array( $json ) && '1' === $json[0]->Status->Code ) {
 						return $this->request( $posted_data );
@@ -107,7 +107,7 @@ class Api {
 		} else {
 			$result->message = __( 'Server is bussy please try again later.', 'enable-media-replace' );
 		}
-		
+
 		return $result;
 	}
 }

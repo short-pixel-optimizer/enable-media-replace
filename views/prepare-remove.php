@@ -2,28 +2,28 @@
 
 use EnableMediaReplace\EnableMediaReplacePlugin;
 use EnableMediaReplace\UIHelper;
-$emr = EnableMediaReplacePlugin::get();
-$date = new \dateTime();
+$emr      = EnableMediaReplacePlugin::get();
+$date     = new \dateTime();
 $uiHelper = new UIHelper();
 ?>
 <div class="wrap emr_upload_form">
 	<h1><?php echo esc_html__( 'Remove Media Background', 'enable-media-replace' ); ?></h1>
-	<form style="display:flex;" id="emr_replace_form" enctype="multipart/form-data" method="POST" action="<?php echo wp_nonce_url(admin_url('/upload.php?page=emr-remove-background&action=emr_replace_media'),'emr_replace_media'); ?>" >
+	<form style="display:flex;" id="emr_replace_form" enctype="multipart/form-data" method="POST" action="<?php echo wp_nonce_url( admin_url( '/upload.php?page=emr-remove-background&action=emr_replace_media' ), 'emr_replace_media' ); ?>" >
 		<div class="editor-wrapper" >
 			<section class='image_chooser wrapper' style="min-height: 0;">
 				<div class='image_previews'>
 					<div class="image_placeholder is_image" data-filetype="image/jpeg" style="border:none; width:45%; height:auto">
 						<img src="<?php echo $base_url; ?>" class="image" id="base_container" style="object-fit:cover; max-width:100%;">
-						<input type="hidden" name="ID" value="<?php echo $attachment_id ?>" />
+						<input type="hidden" name="ID" value="<?php echo $attachment_id; ?>" />
 						<input type="hidden" name="replace_type" value="replace" />
-						<input type="hidden" name="custom_date" value="<?php echo $date->format(get_option('date_format')); ?>" />
-						<input type="hidden" name="custom_hour" value="<?php echo $date->format('H') ?>" />
-						<input type="hidden" name="custom_minute" value="<?php echo $date->format('i'); ?>" />
-						<input type="hidden" name="custom_date_formatted" value="<?php echo $date->format('Y-m-d'); ?>" />
+						<input type="hidden" name="custom_date" value="<?php echo $date->format( get_option( 'date_format' ) ); ?>" />
+						<input type="hidden" name="custom_hour" value="<?php echo $date->format( 'H' ); ?>" />
+						<input type="hidden" name="custom_minute" value="<?php echo $date->format( 'i' ); ?>" />
+						<input type="hidden" name="custom_date_formatted" value="<?php echo $date->format( 'Y-m-d' ); ?>" />
 						<input type="hidden" name="location_dir" value="<?php echo $uiHelper->getRelPathNow(); ?>" />
 						<input type="hidden" name="remove_bg" value="1" />
 					</div>
-					<div class="image_placeholder is_image" id="removed_image" data-filetype="image/jpeg" style="width:45%; height:auto">
+					<div class="image_placeholder is_image" id="removed_image" data-filetype="image/jpeg" style="width:45%; height:auto; max-height:inherit;">
 						<div class="preview-area" id="preview-area">
 							<h1>Preview Area</h1>
 						</div>
