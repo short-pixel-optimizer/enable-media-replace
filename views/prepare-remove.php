@@ -62,7 +62,7 @@ $uiHelper = new UIHelper();
 							</label>
 							<hr>
 							<label for="bg_transparency">
-								<p>Transparency: <strong><span id="transparency_range">100</span>%</strong></p>
+								<p>Opacity: <strong><span id="transparency_range">100</span>%</strong></p>
 								<input type="range" min="1" max="100" value="100" id="bg_transparency" />
 							</label>
 						</div>

@@ -112,9 +112,8 @@ class EnableMediaReplacePlugin
    */
     public function menu()
     {
-      /* add_submenu_page(null, esc_html__("Replace media", "enable-media-replace"), esc_html__("Replace media", "enable-media-replace"), 'upload_files', 'enable-media-replace/enable-media-replace', array($this, 'route'));  */
         add_submenu_page(null, esc_html__("Replace media", "enable-media-replace"), esc_html__("Replace media", "enable-media-replace"), 'upload_files', 'enable-media-replace/enable-media-replace', array($this, 'route'));
-        add_submenu_page(null, esc_html__("Replace Media Upload", "enable-media-replace"), esc_html__("Remove the media Background", "enable-media-replace"), 'upload_files', 'emr-remove-background', array($this, 'route'));
+        add_submenu_page(null, esc_html__("Remove background", "enable-media-replace"), esc_html__("Remove the media Background", "enable-media-replace"), 'upload_files', 'emr-remove-background', array($this, 'route'));
     }
 
   /**
@@ -170,7 +169,9 @@ class EnableMediaReplacePlugin
                 if ('emr_prepare_remove' === $action && check_admin_referer($action, '_wpnonce')) {
                     $attachment_id = intval($_GET['attachment_id']);
                     $attachment    = get_post($attachment_id);
-                    $base_url = $attachment->guid;
+                    //We're adding a timestamp to the image URL for cache busting
+                    $ts = time();
+                    $base_url = $attachment->guid . "?ver=" . $ts;
                     $ajax_url = admin_url('admin-ajax.php');
                     wp_enqueue_script('emr_remove_bg');
                     wp_localize_script('emr_remove_bg', 'emrObject', array(
@@ -323,19 +324,24 @@ class EnableMediaReplacePlugin
     public function replace_meta_box($post)
     {
 
-        $url = $this->getMediaReplaceURL($post->ID);
+        //Replace media button
+        $replace_url = $this->getMediaReplaceURL($post->ID);
 
-        $action = "media_replace";
-        $editurl = wp_nonce_url($url, $action);
+        $replace_action = "media_replace";
+        $replace_editurl = wp_nonce_url($replace_url, $replace_action);
 
-      /* Unneeded - admin_url already checks for force_ssl_admin ( in set_scheme function )
-      if (FORCE_SSL_ADMIN) {
-        $editurl = str_replace("http:", "https:", $editurl);
-      } */
-        $link = "href=\"$editurl\"";
+        $replace_link = "href=\"$replace_editurl\"";
 
+        echo "<p><a class='button-secondary' $replace_link>" . esc_html__("Upload a new file", "enable-media-replace") . "</a></p><p>" . esc_html__("To replace the current file, click the link and upload a replacement.", "enable-media-replace") . "</p>";
+        //Remove background button
+        $removeBg_url = $this->getRemoveBgURL($post->ID);
 
-        echo "<p><a class='button-secondary' $link>" . esc_html__("Upload a new file", "enable-media-replace") . "</a></p><p>" . esc_html__("To replace the current file, click the link and upload a replacement.", "enable-media-replace") . "</p>";
+        $removeBg_action = "emr_prepare_remove";
+        $removeBg_editurl = wp_nonce_url($removeBg_url, $removeBg_action);
+
+        $removeBg_link = "href=\"$removeBg_editurl\"";
+
+        echo "<p><a class='button-secondary' $removeBg_link>" . esc_html__("Remove background", "enable-media-replace") . "</a></p><p>" . esc_html__("To remove the background, click the link and choose the options.", "enable-media-replace") . "</p>";
     }
 
     public function show_thumbs_box($post)

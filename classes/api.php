@@ -23,7 +23,7 @@ class Api {
 	 *
 	 * @var string $url
 	 */
-	private $url = 'http://api.shortpixel.com/v2/reducer.php';
+	private $url = 'http://api.shortpixel.com/v2/free-reducer.php';
 
 	/**
 	 * ShortPixel api request headers
@@ -47,7 +47,7 @@ class Api {
 		$compression_level = $posted_data['compression_level'];
 
 		if ( 'solid' === $posted_data['background']['type'] ) {
-			$bg_remove = str_replace( '#', '', $posted_data['background']['color'] );
+			$bg_remove = $posted_data['background']['color']; 
 			if ( '100' === $posted_data['background']['transparency'] ) {
 				$bg_remove .= '99';
 			} elseif ( '10' > $posted_data['background']['transparency'] ) {
@@ -58,8 +58,7 @@ class Api {
 		}
 
 		$data = array(
-			'plugin_version' => 'v0.1',
-			'key'            => '4quMx3AjWuFa4H6v0C0t',
+			'plugin_version' => 'EMR_3.7.0',
 			'bg_remove'      => $bg_remove,
 			'urllist'        => array( urlencode( $posted_data['image'] ) ),
 			'lossy'          => $compression_level,
@@ -67,12 +66,14 @@ class Api {
 
 		$request = array(
 			'method'  => 'POST',
-			'timeout' => 30,
+			'timeout' => 60,
 			'headers' => $this->headers,
 			'body'    => json_encode( $data ),
 		);
 
 		$this->counter++;
+		//we need to wait a bit until we try to check if the image is ready
+		sleep( $this->counter + 3 );
 
 		$result          = new stdClass;
 		$result->success = false;
@@ -86,8 +87,6 @@ class Api {
 					$result->message = $response->get_error_message();
 				} else {
 					$json = json_decode( $response['body'], false, 512, JSON_THROW_ON_ERROR );
-					// var_dump( $json );
-					// die;
 					if ( is_array( $json ) && '2' === $json[0]->Status->Code ) {
 						$result->success = true;
 						if ( '1' === $compression_level || '2' === $compression_level ) {
