@@ -89,7 +89,7 @@ switch ($timestamp_replace) {
             if (isset($errors['errors'])) {
                 $error = implode(',', $errors['errors']);
             }
-            Notices::addError(sprintf(__('Invalid Custom Date. Please custom date values (%s)', 'enable-media-replace'), $error));
+            Notices::addError(sprintf(__('Invalid Custom Date. Please check the custom date values: (%s)', 'enable-media-replace'), $error));
 
             exit();
         }

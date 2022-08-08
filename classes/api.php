@@ -58,7 +58,7 @@ class Api {
 		}
 
 		$data = array(
-			'plugin_version' => 'EMR_3.7.0',
+			'plugin_version' => EMR_VERSION,
 			'bg_remove'      => $bg_remove,
 			'urllist'        => array( urlencode( $posted_data['image'] ) ),
 			'lossy'          => $compression_level,
@@ -104,7 +104,7 @@ class Api {
 				$result->message = $e->getMessage();
 			}
 		} else {
-			$result->message = __( 'Server is bussy please try again later.', 'enable-media-replace' );
+			$result->message = __( 'The background could not be removed in a reasonable amount of time. The file might be too big, or the API could be busy. Please try again later!', 'enable-media-replace' );
 		}
 
 		return $result;

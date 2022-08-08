@@ -69,10 +69,10 @@ $uiHelper = new UIHelper();
 					</div>
 				</section>
 				<section class="options wrapper">
-					<div class="section-header">  image compression </div>
+					<div class="section-header">Image Compression</div>
 						<div class="option replace">
 							<label for="lossy">
-								<input checked="checked" id="lossy" type="radio" name="compression_level" value="1">
+								<input id="lossy" type="radio" name="compression_level" value="1">
 								Lossy compression
 							</label>
 							<p class="howto">
@@ -90,7 +90,7 @@ $uiHelper = new UIHelper();
 						</div>
 						<div class="option searchreplace">
 							<label for="lossless">
-								<input id="lossless" type="radio" name="compression_level" value="0">
+								<input checked="checked" id="lossless" type="radio" name="compression_level" value="0">
 								Lossless compression
 							</label>
 							<p class="howto">
