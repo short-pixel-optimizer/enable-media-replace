@@ -101,7 +101,7 @@ class Replacer
   * @param $fileName String The fileName of the uploaded file. This will be used if sourcefile is not to be overwritten.
   * @throws RunTimeException  Can throw exception if something went wrong with the files.
   */
-  public function replaceWith($file, $fileName)
+  public function replaceWith($file, $fileName, $bg_remove = false)
   {
       global $wpdb;
       $this->targetName = $fileName;
@@ -122,15 +122,19 @@ class Replacer
 
 
       $this->removeCurrent(); // tries to remove the current files.
-
       /* @todo See if wp_handle_sideload / wp_handle_upload can be more securely used for this */
-      $result_moved = move_uploaded_file($file,$targetFile);
+      if($bg_remove){
+        file_put_contents($targetFile,file_get_contents($file));
+      }else{
+        $result_moved = move_uploaded_file($file,$targetFile);
 
-      if (false === $result_moved)
-      {
-        $ex = sprintf( esc_html__('The uploaded file could not be moved to %1$s. This is most likely an issue with permissions, or upload failed.', "enable-media-replace"), $targetFile );
-        throw new \RuntimeException($ex);
+        if (false === $result_moved)
+        {
+          $ex = sprintf( esc_html__('The uploaded file could not be moved to %1$s. This is most likely an issue with permissions, or upload failed.', "enable-media-replace"), $targetFile );
+          throw new \RuntimeException($ex);
+        }
       }
+
 
       // init targetFile.
       $this->targetFile = new File($targetFile);

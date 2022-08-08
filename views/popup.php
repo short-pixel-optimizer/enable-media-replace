@@ -122,6 +122,23 @@ $url = $uiHelper->getFormUrl($attachment_id);
               }
               ?>
       </div>
+      <?php
+        $url = admin_url("upload.php");
+        $url = add_query_arg(array(
+        'page' => 'emr-remove-background',
+        'action' => 'emr_prepare_remove',
+        'attachment_id' => $attachment_id,
+        ), $url);
+      ?>
+                  <div style="width:100%">
+                  <center>
+                    <a href="<?php echo wp_nonce_url( $url , 'emr_prepare_remove' ); ?>">New! Click here to remove the background of this image!</a>
+                    <br>
+                    <br>
+                    <input type="checkbox" id="remove_after_progress" name="remove_after_progress" value="<?php echo $attachment_id;?>">
+                    <label for="remove_after_progress"> Remove after replace !</label>
+                  </center>
+                  </div>
 
 </section>
 
