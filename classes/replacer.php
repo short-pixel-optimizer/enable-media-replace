@@ -128,6 +128,7 @@ class Replacer
       if ($result === false)
         Log::addError('Directory creation for targetFile failed');
 
+			$permissions = $this->sourceFile->getPermissions();
 
       $this->removeCurrent(); // tries to remove the current files.
       /* @todo See if wp_handle_sideload / wp_handle_upload can be more securely used for this */
@@ -147,8 +148,8 @@ class Replacer
       // init targetFile.
       $this->targetFile = $fs->getFile($targetFile);
 
-      if ($this->sourceFile->getPermissions() > 0)
-        chmod( $targetFile, $this->sourceFile->getPermissions() ); // restore permissions
+      if ($permissions > 0)
+        chmod( $targetFile, $permissions ); // restore permissions
       else {
         Log::addWarn('Setting permissions failed');
       }
@@ -493,8 +494,10 @@ class Replacer
     $base_url = str_replace('.' . pathinfo($base_url, PATHINFO_EXTENSION), '', $base_url);
 
 
+		$abspath = $this->fs()->getWPAbsPath();
+Log::addTemp('Search Replace baseURL' . $base_url, $abspath );
     /** Fail-safe if base_url is a whole directory, don't go search/replace */
-    if (is_dir($base_url))
+    if (strpos($abspath, $base_url) === 0 && is_dir($base_url))
     {
       Log::addError('Search Replace tried to replace to directory - ' . $base_url);
       Notices::addError(__('Fail Safe :: Source Location seems to be a directory.', 'enable-media-replace'));
