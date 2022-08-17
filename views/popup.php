@@ -130,15 +130,16 @@ $url = $uiHelper->getFormUrl($attachment_id);
         'attachment_id' => $attachment_id,
         ), $url);
       ?>
-                  <div style="width:100%">
-                  <center>
+
+			<p>&nbsp;</p>
+								  <div>
+
                     <a href="<?php echo wp_nonce_url( $url , 'emr_prepare_remove' ); ?>">
 											<?php _e('New! Click here to remove the background of this image!', 'enable-media-replace'); ?></a>
                     <br>
                     <br>
                     <input type="checkbox" id="remove_after_progress" name="remove_after_progress" value="<?php echo $attachment_id;?>">
                     <label for="remove_after_progress"><?php _e('Remove after replace!' ,'enable-media-replace'); ?> </label>
-                  </center>
                   </div>
 
 </section>
