@@ -81,7 +81,7 @@ class TargetFileTest extends WP_UnitTestCase
     $this->assertNotEquals($targetFile, $attached_file);
     $this->assertFileNotExists($targetFile);
     $this->assertEquals($tfile->getFilePath(), $sfile->getFilePath() );
-    $this->assertEquals($tfile->getFileMime(), $sfile->getFileMime());
+    $this->assertEquals($tfile->getMime(), $sfile->getMime());
 
     $method = self::getMethod('removeCurrent');
     $result = $method->invoke($replacer);

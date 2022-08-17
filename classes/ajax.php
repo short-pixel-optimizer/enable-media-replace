@@ -1,23 +1,28 @@
 <?php
-
 namespace EnableMediaReplace;
-use EnableMediaReplace\Api;
+
+use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
+use EnableMediaReplace\Api as Api;
 
 class Ajax {
 	public function __construct() {
 		$endpoints = array(
-			'remove_backround',
+			'remove_background',
+
 		);
 		foreach ( $endpoints as $action ) {
 			add_action( "wp_ajax_emr_{$action}", array( $this, $action ) );
 		}
 	}
 
-	public function remove_backround() {
+	public function remove_background() {
 		if ( $this->check_nonce() ) {
 			$api = new Api;
 			$response = $api->request( $_POST );
             wp_send_json($response);
+		}
+		else {
+				die('Wrong nonce');
 		}
 	}
 

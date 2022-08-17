@@ -62,7 +62,7 @@ class Replacer
       }
 
       Log::addDebug('SourceFile ' . $source_file);
-      $this->sourceFile = new File($source_file);
+      $this->sourceFile = $this->fs()->getFile($source_file);
 
       $this->source_post = get_post($post_id);
       $this->source_is_image = wp_attachment_is('image', $this->source_post);
@@ -81,6 +81,11 @@ class Replacer
     //  $this->ThumbnailUpdater = new \ThumbnailUpdater($post_id);
       //$this->ThumbnailUpdater->setOldMetadata($this->source_metadata);
   }
+
+	private function fs()
+	{
+		return emr()->filesystem();
+	}
 
   public function setMode($mode)
   {
@@ -101,12 +106,13 @@ class Replacer
   * @param $fileName String The fileName of the uploaded file. This will be used if sourcefile is not to be overwritten.
   * @throws RunTimeException  Can throw exception if something went wrong with the files.
   */
-  public function replaceWith($file, $fileName, $bg_remove = false)
+  public function replaceWith($file, $fileName)
   {
       global $wpdb;
       $this->targetName = $fileName;
 
       $targetFile = $this->getTargetFile();
+			$fs = $this->fs();
 
       if (is_null($targetFile))
       {
@@ -115,29 +121,31 @@ class Replacer
       //  throw new \RuntimeException($ex);
       }
 
-      $targetFileObj = new File($targetFile);
-      $result = $targetFileObj->checkAndCreateFolder();
+      $targetFileObj = $fs->getFile($targetFile);
+      $directoryObj = $targetFileObj->getFileDir();
+			$result = $directoryObj->check();
+
       if ($result === false)
         Log::addError('Directory creation for targetFile failed');
 
 
       $this->removeCurrent(); // tries to remove the current files.
       /* @todo See if wp_handle_sideload / wp_handle_upload can be more securely used for this */
-      if($bg_remove){
-        file_put_contents($targetFile,file_get_contents($file));
-      }else{
-        $result_moved = move_uploaded_file($file,$targetFile);
+				// @todo Use FS / File copy for this.
+
+				$fileObj = $fs->getFile($file);
+        $result_moved = $fileObj->move($targetFileObj);
 
         if (false === $result_moved)
         {
           $ex = sprintf( esc_html__('The uploaded file could not be moved to %1$s. This is most likely an issue with permissions, or upload failed.', "enable-media-replace"), $targetFile );
           throw new \RuntimeException($ex);
         }
-      }
+
 
 
       // init targetFile.
-      $this->targetFile = new File($targetFile);
+      $this->targetFile = $fs->getFile($targetFile);
 
       if ($this->sourceFile->getPermissions() > 0)
         chmod( $targetFile, $this->sourceFile->getPermissions() ); // restore permissions
@@ -146,7 +154,7 @@ class Replacer
       }
 
       // update the file attached. This is required for wp_get_attachment_url to work.
-      $updated = update_attached_file($this->post_id, $this->targetFile->getFullFilePath() );
+      $updated = update_attached_file($this->post_id, $this->targetFile->getFullPath() );
       if (! $updated)
         Log::addError('Update Attached File reports as not updated or same value');
 
@@ -154,31 +162,31 @@ class Replacer
 
       // Run the filter, so other plugins can hook if needed.
       $filtered = apply_filters( 'wp_handle_upload', array(
-          'file' => $this->targetFile->getFullFilePath(),
+          'file' => $this->targetFile->getFullPath(),
           'url'  => $this->target_url,
-          'type' => $this->targetFile->getFileMime(),
+          'type' => $this->targetFile->getMime(),
       ), 'sideload');
 
       // check if file changed during filter. Set changed to attached file meta properly.
-      if (isset($filtered['file']) && $filtered['file'] != $this->targetFile->getFullFilePath() )
+      if (isset($filtered['file']) && $filtered['file'] != $this->targetFile->getFullPath() )
       {
         update_attached_file($this->post_id, $filtered['file'] );
-        $this->targetFile = new File($filtered['file']);  // handle as a new file
+        $this->targetFile = $this->fs()->getFile($filtered['file']);  // handle as a new file
         Log::addInfo('WP_Handle_upload filter returned different file', $filtered);
       }
 
 			// Check and update post mimetype, otherwise badly coded plugins cry.
 		  $post_mime = get_post_mime_type($this->post_id);
-			$target_mime = $this->targetFile->getFileMime();
+			$target_mime = $this->targetFile->getMime();
 
 			// update DB post mime type, if somebody decided to mess it up, and the target one is not empty.
 			if ($target_mime !== $post_mime && strlen($target_mime) > 0)
 			{
 
-				  \wp_update_post(array('post_mime_type' => $this->targetFile->getFileMime(), 'ID' => $this->post_id));
+				  \wp_update_post(array('post_mime_type' => $this->targetFile->getMime(), 'ID' => $this->post_id));
 			}
 
-      $metadata = wp_generate_attachment_metadata( $this->post_id, $this->targetFile->getFullFilePath() );
+      $metadata = wp_generate_attachment_metadata( $this->post_id, $this->targetFile->getFullPath() );
       wp_update_attachment_metadata( $this->post_id, $metadata );
       $this->target_metadata = $metadata;
 
@@ -263,7 +271,7 @@ class Replacer
   protected function getNewTitle()
   {
     // get basename without extension
-    $title = basename($this->targetFile->getFileName(), '.' . $this->targetFile->getFileExtension());
+    $title = basename($this->targetFile->getFileName(), '.' . $this->targetFile->getExtension());
     $meta = $this->target_metadata;
 
     if (isset($meta['image_meta']))
@@ -308,6 +316,12 @@ class Replacer
      return $this->sourceFile;
   }
 
+
+	public function getSourceUrl()
+	{
+		  return $this->source_url;
+	}
+
   public function setNewTargetLocation($new_rel_location)
   {
       $uploadDir = wp_upload_dir();
@@ -335,14 +349,14 @@ class Replacer
     $targetPath = null;
     if ($this->replaceMode == self::MODE_REPLACE)
     {
-      $targetFile = $this->sourceFile->getFullFilePath(); // overwrite source
+      $targetFile = $this->sourceFile->getFullPath(); // overwrite source
     }
     elseif ($this->replaceMode == self::MODE_SEARCHREPLACE)
     {
-        $path = $this->sourceFile->getFilePath();
+        $path = (string) $this->sourceFile->getFileDir();
         if ($this->target_location) // Replace to another path.
         {
-           $otherTarget = new File($this->target_location . $this->targetName);
+           $otherTarget = $this->fs()->getFile($this->target_location . $this->targetName);
            if ($otherTarget->exists())
            {
               Notices::addError(__('In specificied directory there is already a file with the same name. Can\'t replace.', 'enable-media-replace'));
@@ -354,7 +368,7 @@ class Replacer
         $targetpath = $path . $this->targetName;
 
         // If the source and target path AND filename are identical, user has wrong mode, just overwrite the sourceFile.
-        if ($targetpath == $this->sourceFile->getFullFilePath())
+        if ($targetpath == $this->sourceFile->getFullPath())
         {
             $unique = $this->sourceFile->getFileName();
             $this->replaceMode == self::MODE_REPLACE;
@@ -401,7 +415,7 @@ class Replacer
     if (strpos($url, '://') === false)
     {
         $uploads = wp_get_upload_dir();
-        $url = str_replace($uploads['basedir'], $uploads['baseurl'], $this->targetFile->getFullFilePath());
+        $url = str_replace($uploads['basedir'], $uploads['baseurl'], $this->targetFile->getFullPath());
     }
     // This can happen when WordPress is not taking from attached file, but wrong /old GUID. Try to replace it to the new one.
     elseif ($this->targetFile->getFileName() != $url_basename)
@@ -423,7 +437,7 @@ class Replacer
     $backup_sizes = get_post_meta( $this->post_id, '_wp_attachment_backup_sizes', true );
 
     // this must be -scaled if that exists, since wp_delete_attachment_files checks for original_files but doesn't recheck if scaled is included since that the one 'that exists' in WP . $this->source_file replaces original image, not the -scaled one.
-    $file = $this->sourceFile->getFullFilePath();
+    $file = $this->sourceFile->getFullPath();
     $result = \wp_delete_attachment_files($this->post_id, $meta, $backup_sizes, $file );
 
     // If Attached file is not the same path as file, this indicates a -scaled images is in play.

@@ -21,6 +21,8 @@ class NoticeModel //extends ShortPixelModel
 
   public static $icons = array();
 
+  private static $jsDismissLoaded;
+
   const NOTICE_NORMAL = 1;
   const NOTICE_ERROR = 2;
   const NOTICE_SUCCESS = 3;
@@ -142,7 +144,7 @@ class NoticeModel //extends ShortPixelModel
   public function getForDisplay()
   {
     $this->viewed = true;
-    $class = 'shortpixel notice ';
+    $class = 'shortpixel shortpixel-notice ';
 
     $icon = '';
 
@@ -217,10 +219,31 @@ class NoticeModel //extends ShortPixelModel
       $output .= "<div class='detail-content-wrapper'><p class='detail-content'>" . $this->parseDetails() . "</p></div>";
       $output .= '<label for="check-' . $id . '" class="hide-details"><span>' . __('Hide Details', 'shortpixel-image-optimiser') . '</span></label>';
 
-      $output .= '</div>'; // detail rapper
+      $output .= '</div>'; // detail wrapper
 
     }
-    $output .= "</span></div>";
+    $output .= "</span>";
+
+    if ($this->is_removable)
+    {
+			      $output .= '<button type="button" id="button-' . $id . '" class="notice-dismiss" data-dismiss="' . $this->suppress_period . '" ><span class="screen-reader-text">' . __('Dismiss this notice', 'shortpixel-image-optimiser') . '</span></button>';
+
+       if (! $this->is_persistent)
+       {
+                $output .= "<script type='text/javascript'>\n
+                                document.getElementById('button-$id').onclick = function()
+                                {
+                                  var el = document.getElementById('$id');
+                           				$(el).fadeTo(100,0,function() {
+                               		$(el).slideUp(100, 0, function () {
+                                  $(el).remove();
+                               })
+                           });
+                         } </script>";
+       }
+    }
+
+    $output .= "</div>";
 
     if ($this->is_persistent && $this->is_removable)
     {
@@ -245,20 +268,37 @@ class NoticeModel //extends ShortPixelModel
 
   private function getDismissJS()
   {
-     $url = wp_json_encode(admin_url('admin-ajax.php'));
-    // $action = 'dismiss';
-    $nonce = wp_create_nonce('dismiss');
 
-    $data = wp_json_encode(array('action' => $this->notice_action, 'plugin_action' => 'dismiss', 'nonce' => $nonce, 'id' => $this->id, 'time' => $this->suppress_period));
+      $js = '';
+      if (is_null(self::$jsDismissLoaded))
+      {
+          $nonce = wp_create_nonce('dismiss');
+          $url = wp_json_encode(admin_url('admin-ajax.php'));
+          $js = "function shortpixel_notice_dismiss(event) {
+                    event.preventDefault();
+                    var ev = event.detail;
+                    var target = event.target;
+                    var parent = target.parentElement;
+                    console.log(ev);
+                    var data = {
+                      'plugin_action': 'dismiss',
+                      'action' : '$this->notice_action',
+                      'nonce' : '$nonce',
+                    }
+                    data.time = target.getAttribute('data-dismiss');
+                    data.id = parent.getAttribute('id');
+                    jQuery.post($url,data);
 
-  //  $data_string = "{action:'$this->notice_action'}";
+                    $(parent).fadeTo(100,0,function() {
+                        $(parent).slideUp(100, 0, function () {
+                            $(parent).remove();
+                        })
+                    });
+          }";
+      }
 
-      $js = "jQuery(document).on('click','#$this->id button.notice-dismiss',
-         function() {
-           var data = $data;
-           var url = $url;
-           jQuery.post(url, data); }
-      );";
+      $js .=  ' jQuery("#' . $this->id . '").find(".notice-dismiss").on("click", shortpixel_notice_dismiss); ';
+
       return "\n jQuery(document).ready(function(){ \n" . $js . "\n});";
   }
 

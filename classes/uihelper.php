@@ -10,8 +10,8 @@ class UIHelper
   protected $preview_width = 0;
   protected $preview_height = 0;
 
-  protected $preview_max_height = 500;
-  protected $preview_max_width = 400;
+	protected $preview_max_width = 500;
+  protected $preview_max_height = 600;
 
   protected $full_width = 0;
   protected $full_height = 0;
@@ -21,13 +21,16 @@ class UIHelper
 
   }
 
-  public function getFormUrl($attach_id)
+	// @todo Add nonce URL to this url as well, in popup / prepare-remove-background
+  public function getFormUrl($attach_id, $action = null)
   {
+		  $action = (! is_null($action)) ? $action : 'media_replace_upload';
+
       $url = admin_url('upload.php');
       $url = add_query_arg(array(
           'page' => 'enable-media-replace/enable-media-replace.php',
           'noheader' => true,
-          'action' => 'media_replace_upload',
+          'action' => $action,
           'attachment_id' => $attach_id,
       ));
 
@@ -109,7 +112,7 @@ class UIHelper
   }
 
   // Returns Preview Image HTML Output.
-  public function getPreviewImage($attach_id,$file)
+  public function getPreviewImage($attach_id,$file, $args = array())
   {
       $data = false;
 
@@ -126,7 +129,7 @@ class UIHelper
           $file = $uploads['basedir'] . "/$file";
         }
         */
-        Log::addDebug('Attached File '  . $file->getFullFilePath(), $data);
+        Log::addDebug('Attached File '  . $file->getFullPath(), $data);
       }
 
       $mime_type = get_post_mime_type($attach_id);
@@ -137,7 +140,7 @@ class UIHelper
         $icon = ($attach_id < 0) ? '' : 'dashicons-no';
         $is_document = false;
 
-        $args = array(
+        $defaults = array(
             'width' => $this->preview_width,
             'height' => $this->preview_height,
             'is_image' => false,
@@ -146,6 +149,7 @@ class UIHelper
             'mime_type' => null,
         );
 
+				$args = wp_parse_args($args, $defaults);
 
 
         // failed, it might be this server doens't support PDF thumbnails. Fallback to File preview.
@@ -176,13 +180,15 @@ class UIHelper
 
       $image = "<img src='$url' width='$width' height='$height' class='image' style='max-width:100%; max-height: 100%;' />";
 
-      $args = array(
+      $defaults = array(
         'width' => $width,
         'height' => $height,
         'image' => $image,
         'mime_type' => $mime_type,
         'file_size' => $file->getFileSize(),
       );
+
+			$args = wp_parse_args($args, $defaults);
 
       $output = $this->getPlaceHolder($args);
       return $output;
@@ -193,7 +199,11 @@ class UIHelper
     $data = wp_get_attachment_image_src($attach_id, $size);
     $width = isset($data[1]) ? $data[1] : 0;
     //$mime_type = get_post_mime_type($attach_id);
-    $file = get_attached_file($attach_id);
+
+    $file = get_attached_file($attach_id, true);
+		if (! file_exists($file))
+			return $data;
+
 		$mime_type = wp_get_image_mime($file);
 
     if (strpos($mime_type, 'svg') !== false && $width <= 5)
@@ -246,7 +256,7 @@ class UIHelper
       $filename = false;
     }
 
-    $mime_type = $file->getFileMime();
+    $mime_type = $file->getMime();
 
     $args = array(
       'width' => 300,
@@ -295,6 +305,8 @@ class UIHelper
         'is_document' => false,
         'mime_type' => false,
         'file_size' => false,
+				'remove_bg_ui' => false, // In process icons et al when removing background, for preview pane.
+
     );
 
     $args = wp_parse_args($args, $defaults);
@@ -330,11 +342,13 @@ class UIHelper
 
     $filesize = ($args['file_size']) ? $args['file_size'] : '';
 
+		$background_remove_ui = (isset($args['remove_bg_ui']) && $args['remove_bg_ui'] == true) ? $this->getBgremoveUI() : '';
 
     $output = "<div class='image_placeholder $placeholder_class' $filetype style='width:" . $w . "px; height:". $h ."px'> ";
     $output .= $args['image'];
     $output .= "<div class='dashicons $icon'>&nbsp;</div>";
     $output .= "<span class='textlayer'>" . $args['layer'] . "</span>";
+		$output .= $background_remove_ui;
     $output .= "<div class='image_size'>" . $this->convertFileSize($filesize). "</div>";
     $output .= "</div>";
 
@@ -342,6 +356,17 @@ class UIHelper
 
     return $output;
   }
+
+	private function getBgremoveUI()
+	{
+		$output = '<div class="overlay" id="overlay">
+										<div class="lds-spinner"><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div></div>';
+
+		$output .=	'<h3>'  .  esc_html__('Removing background...', 'enable-media-replace') . '</h3>';
+		$output .= '</div>';
+
+		return $output;
+	}
 
   private function convertFileSize($filesize)
   {

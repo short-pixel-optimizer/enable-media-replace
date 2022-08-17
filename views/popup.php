@@ -24,13 +24,13 @@ if (!current_user_can('upload_files'))
 
 global $wpdb;
 
-$emr = EnableMediaReplacePlugin::get();
+//$emr = EnableMediaReplacePlugin::get();
 
 $table_name = $wpdb->prefix . "posts";
 $attachment_id = intval($_GET['attachment_id']);
 $attachment = get_post($attachment_id);
 
-if (! $emr->checkImagePermission($attachment->post_author, $attachment_id))
+if (! emr()->checkImagePermission($attachment->post_author, $attachment_id))
 {
   wp_die( esc_html__('You do not have permission to upload files for this author.', 'enable-media-replace') );
 }
@@ -38,9 +38,9 @@ if (! $emr->checkImagePermission($attachment->post_author, $attachment_id))
 $replacer = new Replacer($attachment_id);
 
 $file = $replacer->getSourceFile();
-$filepath = $file->getFullFilePath();
+$filepath = $file->getFullPath();
 $filename = $file->getFileName();
-$filetype = $file->getFileExtension();
+$filetype = $file->getExtension();
 $source_mime = get_post_mime_type($attachment_id);
 
 $uiHelper = new UIHelper();
@@ -125,18 +125,19 @@ $url = $uiHelper->getFormUrl($attachment_id);
       <?php
         $url = admin_url("upload.php");
         $url = add_query_arg(array(
-        'page' => 'emr-remove-background',
+        'page' => 'enable-media-replace/enable-media-replace.php',
         'action' => 'emr_prepare_remove',
         'attachment_id' => $attachment_id,
         ), $url);
       ?>
                   <div style="width:100%">
                   <center>
-                    <a href="<?php echo wp_nonce_url( $url , 'emr_prepare_remove' ); ?>">New! Click here to remove the background of this image!</a>
+                    <a href="<?php echo wp_nonce_url( $url , 'emr_prepare_remove' ); ?>">
+											<?php _e('New! Click here to remove the background of this image!', 'enable-media-replace'); ?></a>
                     <br>
                     <br>
                     <input type="checkbox" id="remove_after_progress" name="remove_after_progress" value="<?php echo $attachment_id;?>">
-                    <label for="remove_after_progress"> Remove after replace !</label>
+                    <label for="remove_after_progress"><?php _e('Remove after replace!' ,'enable-media-replace'); ?> </label>
                   </center>
                   </div>
 

@@ -29,16 +29,16 @@ class FileTest extends  WP_UnitTestCase
       $file = new File($filename);
 
       $this->assertTrue($file->exists());
-      $this->assertEquals($file->getFilePath(), $filedir);
+      $this->assertEquals($file->getFileDir(), $filedir);
       //$this->assertEquals($file->getFileMime(), 'image/jpg'); // can't work since images don't really exist.
-      $this->assertEquals($file->getFullFilePath(), $filename);
-      $this->assertEquals($file->getFileExtension(), 'jpg');
+      $this->assertEquals($file->getFileDir(), $filename);
+      $this->assertEquals($file->getExtension(), 'jpg');
 
       $filename2 = $this->root->url() . '/not-existing.png';
       $file2  = new File($filename2);
 
       $this->assertFalse($file2->exists());
-      $this->assertEquals($file2->getFullFilePath(), $filename2);
+      $this->assertEquals($file2->getFullPath(), $filename2);
     //  $this->assertFalse($file2->getFileMime()); function will return mime on non-existing files.
 
   }
@@ -49,12 +49,12 @@ class FileTest extends  WP_UnitTestCase
 
       $file = new File($filename);
 
-      $this->assertDirectoryNotExists($file->getFullFilePath());
+      $this->assertDirectoryNotExists($file->getFullPath());
 
       $return = $file->checkAndCreateFolder();
 
-      $this->assertTrue($return, $file->getFilePath() );
-      $this->assertDirectoryExists($file->getFilePath());
+      $this->assertTrue($return, $file->getFileDir() );
+      $this->assertDirectoryExists($file->getFileDir());
 
   }
 

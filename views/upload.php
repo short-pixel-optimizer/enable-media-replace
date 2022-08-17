@@ -1,22 +1,17 @@
 <?php
 namespace EnableMediaReplace;
 
-
 if (! defined('ABSPATH')) {
     exit; // Exit if accessed directly.
 }
 
 use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
 use EnableMediaReplace\Notices\NoticeController as Notices;
+use \EnableMediaReplace\Replacer as Replacer;
 
 if (!current_user_can('upload_files')) {
     wp_die(esc_html__('You do not have permission to upload files.', 'enable-media-replace'));
 }
-
-/*require_once('classes/replacer.php');
-require_once('classes/file.php'); */
-
-use \EnableMediaReplace\Replacer as Replacer;
 
 // Define DB table names
 global $wpdb;
@@ -25,7 +20,7 @@ $postmeta_table_name = $wpdb->prefix . "postmeta";
 
 // Starts processing.
 $uihelper = new UIHelper();
-$emr = EnableMediaReplacePlugin::get();
+//$emr = EnableMediaReplacePlugin::get();
 
 // Get old guid and filetype from DB
 $post_id = isset($_POST['ID']) ? intval($_POST['ID']) : null; // sanitize, post_id.
@@ -34,7 +29,7 @@ if (is_null($post_id)) {
 }
 $attachment = get_post($post_id);
 
-if (! $emr->checkImagePermission($attachment->post_author, $attachment->ID)) {
+if (! emr()->checkImagePermission($attachment->post_author, $attachment->ID)) {
     wp_die(esc_html__('You do not have permission to upload files for this author.', 'enable-media-replace'));
 }
 
@@ -43,16 +38,16 @@ $replacer = new Replacer($post_id);
 // Massage a bunch of vars
 $ID = intval($_POST["ID"]); // legacy
 $replace_type = isset($_POST["replace_type"]) ? sanitize_text_field($_POST["replace_type"]) : false;
-$timestamp_replace = intval($_POST['timestamp_replace']);
+$timestamp_replace = isset($_POST['timestamp_replace']) ? intval($_POST['timestamp_replace']) : Replacer::TIME_UPDATEMODIFIED;
 
 $redirect_error = $uihelper->getFailedRedirect($post_id);
 $redirect_success = $uihelper->getSuccesRedirect($post_id);
 if ( isset( $_POST['remove_after_progress'] ) ) {
     $url = admin_url("upload.php");
     $url = add_query_arg(array(
-    'page' => 'emr-remove-background',
+    'page' => 'enable-media-replace/enable-media-replace.php',
     'action' => 'emr_prepare_remove',
-    'attachment_id' => $_POST['remove_after_progress'],
+    'attachment_id' => $ID,
     '_wpnonce' => wp_create_nonce('emr_prepare_remove')
     ), $url);
 
@@ -120,6 +115,7 @@ if ($replace_type == 'replace') {
 $replacer->setTimeMode($timestamp_replace, $datetime);
 
 /** Check if file is uploaded properly **/
+// @todo Post remove Bg should be removed.
 if (is_uploaded_file($_FILES["userfile"]["tmp_name"]) || isset($_POST["remove_bg"])) {
     Log::addDebug($_FILES['userfile']);
 

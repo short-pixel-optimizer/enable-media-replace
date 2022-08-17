@@ -2,8 +2,10 @@
 /**
  * This page contains api class.
  */
-
 namespace EnableMediaReplace;
+
+use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
+
 use Exception;
 use stdClass;
 /**
@@ -35,7 +37,14 @@ class Api {
 		'Accept: application/json',
 	);
 
+	private $refresh = true; // only first request should be fresh
 
+
+
+	public function __construct()
+	{
+
+	}
 	/**
 	 * Create ShortPixel api request
 	 *
@@ -44,24 +53,55 @@ class Api {
 	 */
 	public function request( array $posted_data ) {
 		$bg_remove         = '1';
-		$compression_level = $posted_data['compression_level'];
+		$compression_level = 0; //  intval($posted_data['compression_level']); // off for now.
+
+		$attachment_id = isset($_POST['attachment_id']) ? intval($_POST['attachment_id']) : null;
+
+		if (is_null($attachment_id))
+		{
+			 $result = $this->getResponseObject();
+			 $result->success = false;
+			 $result->message = __('No attachment ID given', 'enable-media-replace');
+			 return $result;
+
+		}
+
+		$replacer = new Replacer($attachment_id);
+		$url = $replacer->getSourceUrl();
 
 		if ( 'solid' === $posted_data['background']['type'] ) {
-			$bg_remove = $posted_data['background']['color']; 
-			if ( '100' === $posted_data['background']['transparency'] ) {
+			$bg_remove = $posted_data['background']['color'];
+
+			Log::addTemp('Transp', $posted_data['background']['transparency']);
+			$transparency = isset($posted_data['background']['transparency']) ? intval($posted_data['background']['transparency']) : -1;
+			// if transparancy without acceptable boundaries, add it to color ( as rgba I presume )
+			if ($transparency >= 0 && $transparency < 100)
+			{
+				if ($transparency == 100)
+					$transparency = 'FF';
+//				Log::addTemp('bgRemove1 - ' . str_pad(50, 2, '0', STR_PAD_LEFT) . ' ' . str_pad($transparency, 2, '0', STR_PAD_LEFT) , $bg_remove);
+
+			  // Strpad for lower than 10 should add 09, 08 etc.
+				 $bg_remove .= str_pad($transparency, 2, '0', STR_PAD_LEFT);
+	//			 Log::addTemp('bgRemove2', $bg_remove);
+			}
+
+	Log::addTemp('PostedData', $posted_data);
+	/*		if ( '100' === $posted_data['background']['transparency'] ) {
 				$bg_remove .= '99';
 			} elseif ( '10' > $posted_data['background']['transparency'] ) {
 				$bg_remove .= "0{$posted_data['background']['transparency']}";
 			} else {
 				$bg_remove .= $posted_data['background']['transparency'];
-			}
+			} */
 		}
 
 		$data = array(
 			'plugin_version' => EMR_VERSION,
 			'bg_remove'      => $bg_remove,
-			'urllist'        => array( urlencode( $posted_data['image'] ) ),
+			'urllist'        => array( urlencode( esc_url($url) ) ),
 			'lossy'          => $compression_level,
+			'refresh'				 => $this->refresh,
 		);
 
 		$request = array(
@@ -69,35 +109,56 @@ class Api {
 			'timeout' => 60,
 			'headers' => $this->headers,
 			'body'    => json_encode( $data ),
+
 		);
 
-		$this->counter++;
-		//we need to wait a bit until we try to check if the image is ready
-		sleep( $this->counter + 3 );
 
-		$result          = new stdClass;
-		$result->success = false;
+		//we need to wait a bit until we try to check if the image is ready
+		if ($this->counter > 0)
+			sleep( $this->counter + 3 );
+
+		$this->counter++;
+
+		$result = $this->getResponseObject();
 
 		if ( $this->counter < 10 ) {
 			try {
 
+				Log::addDebug('Sending request', $request);
 				$response = wp_remote_post( $this->url, $request );
+
+				$this->refresh = false;
 
 				if ( is_wp_error( $response ) ) {
 					$result->message = $response->get_error_message();
 				} else {
-					$json = json_decode( $response['body'], false, 512, JSON_THROW_ON_ERROR );
+
+					$json = json_decode( $response['body'] );
+					Log::addDebug('Response Json', $json);
 					if ( is_array( $json ) && '2' === $json[0]->Status->Code ) {
 						$result->success = true;
+
 						if ( '1' === $compression_level || '2' === $compression_level ) {
 							$result->image = $json[0]->LossyURL;
 						} else {
 							$result->image = $json[0]->LosslessURL;
 						}
+
+						$key = $this->handleSuccess($result);
+						$result->key = $key;
+
+//						$this->handleSuccess($result);
 					} elseif ( is_array( $json ) && '1' === $json[0]->Status->Code ) {
 						return $this->request( $posted_data );
 					} else {
-						$result->message = $json[0]->Status->Message;
+						if (is_array($json))
+						{
+							$result->message = $json[0]->Status->Message;
+						}
+						elseif (is_object($json) && property_exists($json, 'Status'))
+						{
+							 $result->message = $json->Status->Message;
+						}
 					}
 				}
 			} catch ( Exception $e ) {
@@ -109,4 +170,54 @@ class Api {
 
 		return $result;
 	}
+
+	public function handleSuccess($result)
+	{
+		 // $fs = emr()->filesystem();
+		//	$result = $fs->downloadFile($result->image, wp_tempnam($result->image));
+		$nonce = isset($_POST['nonce']) ? sanitize_text_field($_POST['nonce']) : wp_create_nonce();
+		$key = wp_hash($nonce . $result->image, 'logged_in');
+
+		set_transient('emr_' . $key, $result->image, 30 * MINUTE_IN_SECONDS);
+		return $key;
+	}
+
+	public function handleDownload($key)
+	{
+		$url = get_transient('emr_' . $key);
+		$result = $this->getResponseObject();
+Log::addTemp('Transient Key '. $key, $url);
+
+		if ($url === false)
+		{
+			 	$result->message = __('This file seems not available anymore. Please try again', 'enable-media-replace');
+				return $result;
+		}
+
+		$fs = emr()->filesystem();
+		$target = wp_tempnam($url);
+
+		$bool = $fs->downloadFile($url, $target);
+
+		if ($bool === false)
+		 {
+			  $result->message = __('Download failed', 'enable-media-replace');
+		 }
+		else {
+			$result->success = true;
+			$result->image = $target;
+		}
+		return $result;
+	}
+
+	protected function  getResponseObject()
+	{
+		$result          = new stdClass;
+		$result->success = false;
+		$result->image = null;
+		$result->message = null;
+
+		return $result;
+	}
+
 }

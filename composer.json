@@ -13,7 +13,8 @@
     ],
     "require": {
         "shortpixel/notices":"@dev",
-        "shortpixel/build" : "@dev"
+        "shortpixel/build" : "@dev",
+				"shortpixel/filesystem" : "@dev"
     },
     "require-dev": {
 	"phpunit/phpunit": "^9",

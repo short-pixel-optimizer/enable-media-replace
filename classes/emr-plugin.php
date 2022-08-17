@@ -3,6 +3,7 @@ namespace EnableMediaReplace;
 
 use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
 use EnableMediaReplace\Notices\NoticeController as Notices;
+use EnableMediaReplace\FileSystem\Controller\FileSystemController as FileSystem;
 use EnableMediaReplace\Ajax;
 
 // Does what a plugin does.
@@ -44,6 +45,11 @@ class EnableMediaReplacePlugin
 
         $this->plugin_actions(); // init
     }
+
+		public function filesystem()
+		{
+			 return new FileSystem();
+		}
 
     public static function get()
     {
@@ -113,7 +119,7 @@ class EnableMediaReplacePlugin
     public function menu()
     {
         add_submenu_page(null, esc_html__("Replace media", "enable-media-replace"), esc_html__("Replace media", "enable-media-replace"), 'upload_files', 'enable-media-replace/enable-media-replace', array($this, 'route'));
-        add_submenu_page(null, esc_html__("Remove background", "enable-media-replace"), esc_html__("Remove the media Background", "enable-media-replace"), 'upload_files', 'emr-remove-background', array($this, 'route'));
+       /* add_submenu_page(null, esc_html__("Remove background", "enable-media-replace"), esc_html__("Remove the media Background", "enable-media-replace"), 'upload_files', 'emr-remove-background', array($this, 'route')); */
     }
 
   /**
@@ -158,39 +164,27 @@ class EnableMediaReplacePlugin
                                 wp_enqueue_script('emr_upsell');
                         require_once($this->plugin_path . "views/popup.php"); // warning variables like $action be overwritten here.
                     }
-                } elseif ($action == 'media_replace_upload') {
-                    require_once($this->plugin_path . 'views/upload.php');
-                } else {
-                    exit('Something went wrong loading page, please try again');
                 }
-                break;
-            case 'emr-remove-background':
-                $action = isset($_GET['action']) ? sanitize_text_field($_GET['action']) : '';
-                if ('emr_prepare_remove' === $action && check_admin_referer($action, '_wpnonce')) {
-                    $attachment_id = intval($_GET['attachment_id']);
-                    $attachment    = get_post($attachment_id);
-                    //We're adding a timestamp to the image URL for cache busting
-                    $ts = time();
-                    $base_url = $attachment->guid . "?ver=" . $ts;
-                    $ajax_url = admin_url('admin-ajax.php');
-                    wp_enqueue_script('emr_remove_bg');
-                    wp_localize_script('emr_remove_bg', 'emrObject', array(
-                    	'base_url' => $base_url,
-                    	'ajax_url' => $ajax_url,
-                    	'nonce'    => wp_create_nonce('emr_remove_backround')
-                    ));
-                    wp_enqueue_style('emr_style');
-                    wp_enqueue_script('emr_upsell');
-                    require_once($this->plugin_path . "views/prepare-remove.php");
-                } elseif ('emr_replace_media' === $action && check_admin_referer($action, '_wpnonce')) {
-		
-                    $_FILES['userfile'] = array(
-                    	'tmp_name' => $_POST['removed_image'],
-						'name' => 'logo.png',
-						'type' => 'image/png'                    	
-                    );
-                    
-					require_once($this->plugin_path . 'views/upload.php');
+								elseif ($action == 'media_replace_upload') {
+                    require_once($this->plugin_path . 'views/upload.php');
+								}
+								elseif ('emr_prepare_remove' === $action) {
+										$attachment_id = intval($_GET['attachment_id']);
+										$attachment    = get_post($attachment_id);
+										//We're adding a timestamp to the image URL for cache busting
+
+										wp_enqueue_script('emr_remove_bg');
+
+										wp_enqueue_style('emr_style');
+										wp_enqueue_style('emr-remove-background');
+										wp_enqueue_script('emr_upsell');
+										require_once($this->plugin_path . "views/prepare-remove-background.php");
+
+								} elseif ('do_background_replace' === $action && check_admin_referer($action, '_wpnonce')) {
+										require_once($this->plugin_path . 'views/do-replace-background.php');
+								}
+                else {
+                    exit('Something went wrong loading page, please try again');
                 }
                 break;
         }
@@ -215,6 +209,8 @@ class EnableMediaReplacePlugin
 
         wp_register_style('emr_edit-attachment', plugins_url('css/edit_attachment.css', EMR_ROOT_FILE));
 
+				wp_register_style('emr-remove-background', plugins_url('css/remove_background.css', EMR_ROOT_FILE));
+
         $mimes = array_values(get_allowed_mime_types());
 
         wp_register_script('emr_admin', plugins_url('js/emr_admin.js', EMR_ROOT_FILE), array('jquery'), EMR_VERSION, true);
@@ -231,7 +227,18 @@ class EnableMediaReplacePlugin
                 'installing' => __('Installing ...', 'enable-media-replace'),
 
         ));
-        wp_register_script('emr_remove_bg', plugins_url('js/remove_bg.js', EMR_ROOT_FILE));
+
+				$ts = time();
+				$ajax_url = admin_url('admin-ajax.php');
+
+
+        wp_register_script('emr_remove_bg', plugins_url('js/remove_bg.js', EMR_ROOT_FILE), array('jquery'), EMR_VERSION, true);
+				wp_localize_script('emr_remove_bg', 'emrObject', array(
+					'ajax_url' => $ajax_url,
+					'nonce'    => wp_create_nonce('emr_remove_background')
+				));
+
+
         if (Log::debugIsActive()) {
             $emr_options['is_debug'] = true;
         }
@@ -295,7 +302,7 @@ class EnableMediaReplacePlugin
     {
         $url = admin_url("upload.php");
         $url = add_query_arg(array(
-        'page' => 'emr-remove-background',
+        'page' => 'enable-media-replace/enable-media-replace.php',
         'action' => 'emr_prepare_remove',
         'attachment_id' => $attach_id,
         ), $url);

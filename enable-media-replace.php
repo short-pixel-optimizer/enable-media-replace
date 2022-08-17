@@ -69,7 +69,7 @@ require_once( $plugin_path . 'classes/compat.php' );
 require_once( $plugin_path . 'classes/functions.php' );
 require_once( $plugin_path . 'classes/replacer.php' );
 require_once( $plugin_path . 'classes/uihelper.php' );
-require_once( $plugin_path . 'classes/file.php' );
+//require_once( $plugin_path . 'classes/file.php' );
 require_once( $plugin_path . 'classes/cache.php' );
 require_once( $plugin_path . 'classes/api.php' );
 require_once( $plugin_path . 'classes/ajax.php' );
@@ -80,12 +80,16 @@ require_once( $plugin_path . 'classes/external/wpbakery.php' );
 require_once( $plugin_path . 'classes/external/upsell_installer.php' );
 require_once( $plugin_path . 'thumbnail_updater.php' );
 
-$emr_plugin = EnableMediaReplacePlugin::get();
+function emr()
+{
+	return EnableMediaReplacePlugin::get();
+}
+emr(); // runtime.
 
 register_uninstall_hook( __FILE__, '\EnableMediaReplace\emr_uninstall' );
 
 function emr_uninstall() {
 	delete_option( 'enable_media_replace' );
 	delete_option( 'emr_news' );
+	delete_option( 'emr_url_cache');
 }
-
