@@ -16,6 +16,8 @@ class UIHelper
   protected $full_width = 0;
   protected $full_height = 0;
 
+	const NOTICE_NEW_FEATURE = 'EMR001';
+
   public function __construct()
   {
 
@@ -409,5 +411,15 @@ class UIHelper
       else
         return false;
   }
+
+	public function featureNotice()
+	{
+		 	// @todo Remove in 2023.
+			$message = sprintf(__('%s New Feature! %s %s It is now possible to remove the background with EMR . %s  ', 'enable-media-replace' ), '<h3>', '</h3>',
+				'<p>', '</p>');
+
+		  $notice = Notices::addNormal($message, true);
+			Notices::makePersistent($notice, self::NOTICE_NEW_FEATURE, 2 * YEAR_IN_SECONDS);
+	}
 
 } // class

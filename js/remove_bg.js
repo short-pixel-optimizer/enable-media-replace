@@ -76,6 +76,14 @@ jQuery(document).ready(function ($) {
          $('input[type=radio][name=compression_level]').attr('disabled', false);
          $('#remove_background_button').attr('disabled', false);
 
+				 var badBg = document.getElementById('bad-background-link');
+				 var href = badBg.dataset.link;
+				 href = href.replace('{url}', response.url);
+				 href = href.replace('{settings}', response.settings);
+
+				 badBg.setAttribute('href', href);
+
+				 badBg.style.visibility = 'visible';
          /* $('#removed_image').html(`
 						<div class="img-comp-container">
   						<div class="img-comp-img">

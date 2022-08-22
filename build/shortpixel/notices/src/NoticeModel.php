@@ -279,7 +279,7 @@ class NoticeModel //extends ShortPixelModel
                     var ev = event.detail;
                     var target = event.target;
                     var parent = target.parentElement;
-                    console.log(ev);
+
                     var data = {
                       'plugin_action': 'dismiss',
                       'action' : '$this->notice_action',
@@ -289,9 +289,9 @@ class NoticeModel //extends ShortPixelModel
                     data.id = parent.getAttribute('id');
                     jQuery.post($url,data);
 
-                    $(parent).fadeTo(100,0,function() {
-                        $(parent).slideUp(100, 0, function () {
-                            $(parent).remove();
+                    jQuery(parent).fadeTo(100,0,function() {
+                        jQuery(parent).slideUp(100, 0, function () {
+                            jQuery(parent).remove();
                         })
                     });
           }";

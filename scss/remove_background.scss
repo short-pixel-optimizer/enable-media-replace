@@ -12,15 +12,18 @@
 				border:none;
 				width:45%;
 				height:auto;
+				.textlayer, .image_size {
+					 display: none;
+				}
 		}
-		#base_container {
-				object-fit:cover;
-				max-width:100%;
-		}
-		#removed_image {
-			width:45%;
-			height:auto;
-			max-height:inherit;
+
+		.bad-button
+		{
+			 text-align: right;
+			 margin-right: 25px;
+			 a {
+			 	visibility: hidden;
+		 		}
 		}
 
 		.overlay{

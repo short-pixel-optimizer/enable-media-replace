@@ -74,6 +74,8 @@ require_once( $plugin_path . 'classes/cache.php' );
 require_once( $plugin_path . 'classes/api.php' );
 require_once( $plugin_path . 'classes/ajax.php' );
 require_once( $plugin_path . 'classes/emr-plugin.php' );
+require_once( $plugin_path . 'classes/installHelper.php' );
+
 require_once( $plugin_path . 'classes/externals.php' );
 require_once( $plugin_path . 'classes/external/elementor.php' );
 require_once( $plugin_path . 'classes/external/wpbakery.php' );
@@ -86,10 +88,6 @@ function emr()
 }
 emr(); // runtime.
 
-register_uninstall_hook( __FILE__, '\EnableMediaReplace\emr_uninstall' );
-
-function emr_uninstall() {
-	delete_option( 'enable_media_replace' );
-	delete_option( 'emr_news' );
-	delete_option( 'emr_url_cache');
-}
+//register_uninstall_hook( __FILE__, '\EnableMediaReplace\emr_uninstall' );
+register_deactivation_hook( __FILE__,  array('\EnableMediaReplace\InstallHelper','deactivatePlugin') );
+register_uninstall_hook(__FILE__,  array('\EnableMediaReplace\InstallHelper','uninstallPlugin') );

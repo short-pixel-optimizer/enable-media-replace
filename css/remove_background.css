@@ -9,14 +9,15 @@
   width: 45%;
   height: auto;
 }
-#remove-background-form #base_container {
-  object-fit: cover;
-  max-width: 100%;
+#remove-background-form .image_placeholder.is_image .textlayer, #remove-background-form .image_placeholder.is_image .image_size {
+  display: none;
 }
-#remove-background-form #removed_image {
-  width: 45%;
-  height: auto;
-  max-height: inherit;
+#remove-background-form .bad-button {
+  text-align: right;
+  margin-right: 25px;
+}
+#remove-background-form .bad-button a {
+  visibility: hidden;
 }
 #remove-background-form .overlay {
   visibility: hidden;

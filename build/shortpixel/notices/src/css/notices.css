@@ -4,7 +4,8 @@
   border: 1px solid #c3c4c7;
   border-left-width: 4px;
   box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
-  margin: 15px 2px;
+  margin: 5px 15px 2px;
+  position: relative;
 }
 .shortpixel.shortpixel-notice img {
   display: inline-block;

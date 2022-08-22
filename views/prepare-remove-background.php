@@ -27,6 +27,11 @@ $replace_image = $uiHelper->getPreviewImage(-1, $file, array('remove_bg_ui' => t
 $formurl = $uiHelper->getFormUrl($attachment_id, 'do_background_replace');
 $formurl = wp_nonce_url( $formurl, "do_background_replace" );
 
+$linebreak = '%0D%0A';
+$linebreak_double = $linebreak . $linebreak;
+$email_subject = __('Bad remove of background report', 'enable-media-replace');
+$email_body = sprintf(__('Hello! %s This is a report of a background removal that did not go well %s Url: {url} %s Settings : {settings} %s Thank you! %s', 'enable-media-replace'), $linebreak_double, $linebreak_double, $linebreak, $linebreak_double, $linebreak_double);
+
 ?>
 <div class="wrap emr_upload_form" id="remove-background-form">
 
@@ -41,17 +46,13 @@ $formurl = wp_nonce_url( $formurl, "do_background_replace" );
 				<div class='image_previews'>
 						<?php echo $base_image; ?>
 						<?php echo $replace_image ?>
+
 				</div>
 
-				<!--	<div class="image_placeholder is_image" id="removed_image" data-filetype="image/jpeg">
-						<div class="preview-area" id="preview-area">
-							<h1><?php esc_html_e('Preview Area','enable-media-replace'); ?></h1>
-						</div>
-			 			<div class="overlay" id="overlay">
-								<div class="lds-spinner"><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div></div>
-								<h3><?php esc_html_e('Removing background...', 'enable-media-replace'); ?></h3>
-						</div>
-					</div>  -->
+				<div class='bad-button'>
+						<a href="" data-link="mailto:support@shortpixel.com?subject=<?php echo esc_attr($email_subject) ?>&body=<?php echo esc_attr($email_body) ?>" id="bad-background-link" class="button"><?php esc_html_e('Report bad background removal','enable-media-replace'); ?></a>
+
+				</div>
 
 			</section>
 			<div class="option-flex-wrapper">

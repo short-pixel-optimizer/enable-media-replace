@@ -79,6 +79,7 @@ class EnableMediaReplacePlugin
         $this->plugin_path = plugin_dir_path(EMR_ROOT_FILE);
         $this->plugin_url = plugin_dir_url(EMR_ROOT_FILE);
 
+
       // init plugin
         add_action('admin_menu', array($this,'menu'));
         add_action('admin_init', array($this,'init'));
@@ -131,13 +132,14 @@ class EnableMediaReplacePlugin
         load_plugin_textdomain('enable-media-replace', false, basename(dirname(EMR_ROOT_FILE)) . '/languages');
 
       // Load Submodules
+			global $plugin_page;
+			if ( 'enable-media-replace/enable-media-replace.php' == $plugin_page)
+			{
+				$notices = Notices::getInstance();
 
-        $notices = Notices::getInstance();
-
-      // Enqueue notices
-        add_action('admin_notices', array($notices, 'admin_notices')); // previous page / init time
-        add_action('admin_footer', array($notices, 'admin_notices')); // fresh notices between init - end
-
+		// Enqueue notices
+				add_action('admin_notices', array($notices, 'admin_notices')); // previous page / init time
+			}
         new Externals();
         new Ajax();
     }
@@ -153,6 +155,12 @@ class EnableMediaReplacePlugin
                 wp_enqueue_script('jquery-ui-datepicker');
                 wp_enqueue_style('jquery-ui-datepicker');
                 wp_enqueue_script('emr_admin');
+
+								$uiHelper = new uiHelper();
+								$uiHelper->featureNotice();
+
+
+
 
                 if (! check_admin_referer($action, '_wpnonce')) {
                     die('Invalid Nonce');

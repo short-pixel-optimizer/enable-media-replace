@@ -63,7 +63,6 @@ class Api {
 			 $result->success = false;
 			 $result->message = __('No attachment ID given', 'enable-media-replace');
 			 return $result;
-
 		}
 
 		$replacer = new Replacer($attachment_id);
@@ -79,21 +78,13 @@ class Api {
 			{
 				if ($transparency == 100)
 					$transparency = 'FF';
-//				Log::addTemp('bgRemove1 - ' . str_pad(50, 2, '0', STR_PAD_LEFT) . ' ' . str_pad($transparency, 2, '0', STR_PAD_LEFT) , $bg_remove);
 
 			  // Strpad for lower than 10 should add 09, 08 etc.
 				 $bg_remove .= str_pad($transparency, 2, '0', STR_PAD_LEFT);
-	//			 Log::addTemp('bgRemove2', $bg_remove);
 			}
 
 	Log::addTemp('PostedData', $posted_data);
-	/*		if ( '100' === $posted_data['background']['transparency'] ) {
-				$bg_remove .= '99';
-			} elseif ( '10' > $posted_data['background']['transparency'] ) {
-				$bg_remove .= "0{$posted_data['background']['transparency']}";
-			} else {
-				$bg_remove .= $posted_data['background']['transparency'];
-			} */
+
 		}
 
 		$data = array(
@@ -111,6 +102,18 @@ class Api {
 			'body'    => json_encode( $data ),
 
 		);
+
+		$settingsData = '';
+		//unset($settingsData['url']);
+
+		foreach($data as $key => $val)
+		{
+			 if ($key == 'urllist' || $key == 'refresh')
+			 {
+			 	continue;
+			 }
+			 $settingsData .= " $key:$val ";
+		}
 
 
 		//we need to wait a bit until we try to check if the image is ready
@@ -134,6 +137,7 @@ class Api {
 				} else {
 
 					$json = json_decode( $response['body'] );
+
 					Log::addDebug('Response Json', $json);
 					if ( is_array( $json ) && '2' === $json[0]->Status->Code ) {
 						$result->success = true;
@@ -146,6 +150,9 @@ class Api {
 
 						$key = $this->handleSuccess($result);
 						$result->key = $key;
+						$result->url = $url;
+
+						$result->settings = $settingsData;
 
 //						$this->handleSuccess($result);
 					} elseif ( is_array( $json ) && '1' === $json[0]->Status->Code ) {
