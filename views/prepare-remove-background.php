@@ -64,7 +64,7 @@ $email_body = sprintf(__('Hello! %s This is a report of a background removal tha
 							<?php esc_html_e('Transparent background', 'enable-media-replace'); ?>
 						</label>
 						<p class="howto">
-							<?php esc_html_e('If you select this option, your image will be converted to a PNG with transparent background that will be optimized by Shortpixel.', 'enable-media-replace'); ?>
+							<?php esc_html_e('Will return transparent background if images is PNG, or white if image is JPG.', 'enable-media-replace'); ?>
 						</p>
 					</div>
 					<div class="option searchreplace">
@@ -89,8 +89,11 @@ $email_body = sprintf(__('Hello! %s This is a report of a background removal tha
 						</div>
 					</div>
 				</section>
-				<!--
+
+			<!--
 				<section class="options wrapper">
+
+
 					<div class="section-header"><?php esc_html_e('Image Compression', 'enable-media-replace'); ?></div>
 						<div class="option replace">
 							<label for="lossy">

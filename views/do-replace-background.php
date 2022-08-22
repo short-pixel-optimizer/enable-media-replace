@@ -40,6 +40,10 @@ $uiHelper = new UIHelper();
 $replacer = new Replacer($post_id);
 $replacer->setMode(\EnableMediaReplace\Replacer::MODE_REPLACE);
 
+$datetime = current_time('mysql');
+$replacer->setTimeMode( \EnableMediaReplace\Replacer::TIME_UPDATEMODIFIED, $datetime);
+
+
 $api = new Api();
 $result = $api->handleDownload($key);
 

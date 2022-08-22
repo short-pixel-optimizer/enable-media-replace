@@ -10,7 +10,7 @@ class UIHelper
   protected $preview_width = 0;
   protected $preview_height = 0;
 
-	protected $preview_max_width = 500;
+	protected $preview_max_width = 600;
   protected $preview_max_height = 600;
 
   protected $full_width = 0;
@@ -96,6 +96,7 @@ class UIHelper
 
   public function setPreviewSizes()
   {
+
     list($this->preview_size, $this->preview_width, $this->preview_height) = $this->findImageSizeByMax($this->preview_max_width);
   }
 
@@ -131,7 +132,7 @@ class UIHelper
           $file = $uploads['basedir'] . "/$file";
         }
         */
-        Log::addDebug('Attached File '  . $file->getFullPath(), $data);
+        Log::addDebug('Attached File '  . $file->getFullPath() . ' ' . $this->preview_size, $data);
       }
 
       $mime_type = get_post_mime_type($attach_id);
@@ -275,7 +276,8 @@ class UIHelper
 
   public function findImageSizeByMax($maxwidth)
   {
-      $image_sizes = $this->get_image_sizes();
+      $image_sizes = $this->wp_get_image_sizes();
+
 
       $match_width = 0;
       $match_height = 0;
@@ -292,6 +294,7 @@ class UIHelper
             $match_height = $sizeItem['height'];
           }
       }
+			Log::addTemp('Matching' . $match . ' ' . $match_width . ' ' . $match_height);
       return array($match, $match_width, $match_height);
   }
 
@@ -382,7 +385,7 @@ class UIHelper
   * @uses   get_intermediate_image_sizes()
   * @return array $sizes Data for all currently-registered image sizes.
   */
-  private function get_image_sizes() {
+  private function wp_get_image_sizes() {
    global $_wp_additional_image_sizes;
 
    $sizes = array();

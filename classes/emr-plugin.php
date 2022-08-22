@@ -83,6 +83,7 @@ class EnableMediaReplacePlugin
       // init plugin
         add_action('admin_menu', array($this,'menu'));
         add_action('admin_init', array($this,'init'));
+				add_action( 'current_screen', array($this, 'setScreen') ); // annoying workaround for notices in edit-attachment screen
         add_action('admin_enqueue_scripts', array($this,'admin_scripts'));
 
 
@@ -132,17 +133,25 @@ class EnableMediaReplacePlugin
         load_plugin_textdomain('enable-media-replace', false, basename(dirname(EMR_ROOT_FILE)) . '/languages');
 
       // Load Submodules
-			global $plugin_page;
-			if ( 'enable-media-replace/enable-media-replace.php' == $plugin_page)
-			{
-				$notices = Notices::getInstance();
 
-		// Enqueue notices
-				add_action('admin_notices', array($notices, 'admin_notices')); // previous page / init time
-			}
+
         new Externals();
         new Ajax();
     }
+
+		public function setScreen()
+		{
+			 $screen = get_current_screen();
+
+
+			 if ($screen->id = 'attachment' || $screen->id == 'media_page_enable-media-replace/enable-media-replace')
+			 {
+			 	 $notices = Notices::getInstance();
+				 add_action('admin_notices', array($notices, 'admin_notices')); // previous page / init time
+
+			 }
+			// var_dump($screen);
+		}
 
   /** Load EMR views based on request */
     public function route()

@@ -990,6 +990,9 @@
 .emr_upload_form form .upsell-wrapper {
   margin-left: 10px;
 }
+.emr_upload_form .editor-wrapper {
+  width: 100%;
+}
 .emr_upload_form .wrapper {
   padding: 18px;
   border: 1px solid #ccc;
