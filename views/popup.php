@@ -76,7 +76,7 @@ $url = $uiHelper->getFormUrl($attachment_id);
 
 <div class='editor-wrapper'>
     <section class='image_chooser wrapper'>
-      <div class='section-header'> <?php _e('Choose Replacement Media', 'enable-media-replace'); ?></div>
+      <div class='section-header'> <?php _e('Select Replacement Media', 'enable-media-replace'); ?></div>
 
 		<div id="message" class=""><strong><?php printf( esc_html__('NOTE: You are about to replace the media file "%s". There is no undo. Think about it!', "enable-media-replace"), $filename ); ?></strong></div>
 
@@ -87,11 +87,11 @@ $url = $uiHelper->getFormUrl($attachment_id);
     <div class='form-error filesize'><p><?php printf(__('%s f %s exceeds the maximum upload size for this site.', 'enable-media-replace'), '<span class="fn">', '</span>'); ?></p>
     </div>
 
-    <div class='form-warning filetype'><p><?php printf(__('Replacement file is not the same filetype. This might cause unexpected issues ( %s )', 'enable-media-replace'), '<span class="source_type"></span> - <span class="target_type"></span>'); ?>
+    <div class='form-warning filetype'><p><?php printf(__('The replacement file does not have the same file type. This can lead to unexpected issues ( %s )', 'enable-media-replace'), '<span class="source_type"></span> - <span class="target_type"></span>'); ?>
 
     </p></div>
 
-    <div class='form-warning mimetype'><p><?php printf(__('Replacement file type doesn\'t seem to be allowed by WordPress. This might cause unexpected issues')); ?></p></div>
+    <div class='form-warning mimetype'><p><?php printf(__('The replacement file type does not seem to be allowed by WordPress. This can lead to unexpected issues')); ?></p></div>
 
     <div class='emr_drop_area'>
       <div class='drop-wrapper'>
@@ -146,7 +146,7 @@ $url = $uiHelper->getFormUrl($attachment_id);
 
 <div class='option-flex-wrapper'>
   <section class='replace_type wrapper'>
-    <div class='section-header'> <?php _e('Replacement Options', 'enable-media-replace'); ?></div>
+    <div class='section-header'> <?php _e('Replace Options', 'enable-media-replace'); ?></div>
 
           <?php
       // these are also used in externals, for checks.
@@ -161,7 +161,7 @@ $url = $uiHelper->getFormUrl($attachment_id);
         </label>
 
           <p class="howto">
-            <?php printf( esc_html__("Note: This option requires you to upload a file of the same type (%s) as the one you are replacing. The name of the attachment will stay the same (%s) no matter what the file you upload is called.", "enable-media-replace"), $filetype, $filename ); ?>
+            <?php printf( esc_html__("Note: This option requires you to upload a file of the same type (%s) as the file you want to replace. The attachment name will remain the same (%s) regardless of what the file you upload is called.", "enable-media-replace"), $filetype, $filename ); ?>
         </p>
 
 				<p class='form-warning filetype'><?php _e('If you replace the file with a different filetype, this file might become unreadable and / or cause unexpected issues', 'enable-media-replace'); ?>
@@ -175,12 +175,12 @@ $url = $uiHelper->getFormUrl($attachment_id);
       ?>
 
       <div class="option searchreplace <?php echo $searchreplace_disabled ?>">
-          <label for="replace_type_2"><input id="replace_type_2" <?php checked('replace_and_search', $settings['replace_type']) ?> type="radio" name="replace_type" value="replace_and_search" <?php echo $searchreplace_disabled ?> > <?php echo __("Replace the file, use new file name and update all links", "enable-media-replace"); ?>
+          <label for="replace_type_2"><input id="replace_type_2" <?php checked('replace_and_search', $settings['replace_type']) ?> type="radio" name="replace_type" value="replace_and_search" <?php echo $searchreplace_disabled ?> > <?php echo __("Replace the file, use the new file name, and update all links", "enable-media-replace"); ?>
       </label>
 
-          <p class="howto"><?php printf( esc_html__("Note: If you check this option, the name and type of the file you are about to upload will replace the old file. All links pointing to the current file (%s) will be updated to point to the new file name. (If any other websites link to the file directly, those links will no longer work. Be careful.)", "enable-media-replace"), $filename ); ?></p>
+          <p class="howto"><?php printf( esc_html__("Note: If you enable this option, the name and type of the file you are uploading will replace the old file. All links pointing to the current file (%s) will be updated to point to the new file name. (If other websites link directly to the file, those links will no longer work. Be careful!)", "enable-media-replace"), $filename ); ?></p>
 
-     <!-- <p class="howto"><?php echo esc_html__("Please note that if you upload a new image, only embeds/links of the original size image will be replaced in your posts.", "enable-media-replace"); ?></p> -->
+     <!-- <p class="howto"><?php echo esc_html__("Please note that if you upload a new image, only the embeds/links of the original size image will be replaced in your posts.", "enable-media-replace"); ?></p> -->
 
       <?php do_action('emr_after_replace_type_options'); ?>
       </div>
@@ -194,8 +194,6 @@ $url = $uiHelper->getFormUrl($attachment_id);
 					$attachment_now_date = date_i18n('d/M/Y H:i', time() );
           $time = current_time('mysql');
           $date = $nowDate = new \dateTime($time); // default to now.
-				//	var_dump(strtotime($attachment->post_date));
-				//	exit();
 					$attachmentDate = new \dateTime($attachment->post_date);
 
           if ($settings['timestamp_replace'] == \EnableMediaReplace\Replacer::TIME_CUSTOM)
@@ -205,7 +203,7 @@ $url = $uiHelper->getFormUrl($attachment_id);
         ?>
           <p><?php _e('When replacing the media, do you want to:', 'enable-media-replace'); ?></p>
           <ul>
-            <li><label><input type='radio' <?php checked('1', $settings['timestamp_replace']) ?> name='timestamp_replace' value='1' /><?php printf(__('Replace the date with current date %s(%s)%s', 'enable-media-replace'), "<span class='small'>", $attachment_now_date, "</span>") ; ?></label></li>
+            <li><label><input type='radio' <?php checked('1', $settings['timestamp_replace']) ?> name='timestamp_replace' value='1' /><?php printf(__('Replace the date with the current date %s(%s)%s', 'enable-media-replace'), "<span class='small'>", $attachment_now_date, "</span>") ; ?></label></li>
             <li><label><input type='radio' <?php checked('2', $settings['timestamp_replace']) ?> name='timestamp_replace' value='2'  /><?php printf(__('Keep the date %s(%s)%s', 'enable-media-replace'), "<span class='small'>", $attachment_current_date, "</span>"); ?></label></li>
             <li><label><input type='radio' <?php checked('3', $settings['timestamp_replace']) ?> name='timestamp_replace' value='3' /><?php _e('Set a Custom Date', 'enable-media-replace'); ?></label></li>
           </ul>
@@ -233,7 +231,7 @@ $url = $uiHelper->getFormUrl($attachment_id);
                $subdir = $settings['new_location_dir'];
           ?>
          <div class='location_option'>
-           <label><input type="checkbox" name="new_location" value="1" <?php checked($settings['new_location'], 1); ?>  /> <?php _e('Put new Upload in Updated Folder: ', 'enable-media-replace'); ?></label>
+           <label><input type="checkbox" name="new_location" value="1" <?php checked($settings['new_location'], 1); ?>  /> <?php _e('Place the newly uploaded file in this folder: ', 'enable-media-replace'); ?></label>
             <input type="text" name="location_dir" value="<?php echo $subdir ?>" />
           </div>
         <?php endif; ?>

@@ -57,14 +57,14 @@ $email_body = sprintf(__('Hello! %s This is a report of a background removal tha
 			</section>
 			<div class="option-flex-wrapper">
 				<section class="replace_type wrapper">
-					<div class="section-header"><?php esc_html_e('Background Options'); ?></div>
+					<div class="section-header"><?php esc_html_e('Background Removal Options'); ?></div>
 					<div class="option replace ">
 						<label for="transparent_background">
 							<input checked="checked" id="transparent_background" type="radio" name="background_type" value="transparent">
-							<?php esc_html_e('Transparent background', 'enable-media-replace'); ?>
+							<?php esc_html_e('Transparent/white background', 'enable-media-replace'); ?>
 						</label>
 						<p class="howto">
-							<?php esc_html_e('Will return transparent background if images is PNG, or white if image is JPG.', 'enable-media-replace'); ?>
+							<?php esc_html_e('Returns a transparent background if it is a PNG image, or a white one if it is a JPG image.', 'enable-media-replace'); ?>
 						</p>
 					</div>
 					<div class="option searchreplace">
@@ -73,7 +73,7 @@ $email_body = sprintf(__('Hello! %s This is a report of a background removal tha
 							<?php esc_html_e('Solid background', 'enable-media-replace'); ?>
 						</label>
 						<p class="howto">
-							<?php esc_html_e('If you select this option, the image will have a solid background and you can add the color code in the box below', 'enable-media-replace'); ?>
+							<?php esc_html_e('If you select this option, the image will have a solid color background and you can choose the color code from the color picker below.', 'enable-media-replace'); ?>
 						</p>
 						<div id="solid_selecter" style="display:none;">
 							<label for="bg_display_picker">

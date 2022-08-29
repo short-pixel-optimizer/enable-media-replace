@@ -356,7 +356,7 @@ class EnableMediaReplacePlugin
 
         $replace_link = "href=\"$replace_editurl\"";
 
-        echo "<p><a class='button-secondary' $replace_link>" . esc_html__("Upload a new file", "enable-media-replace") . "</a></p><p>" . esc_html__("To replace the current file, click the link and upload a replacement.", "enable-media-replace") . "</p>";
+        echo "<p><a class='button-secondary' $replace_link>" . esc_html__("Upload a new file", "enable-media-replace") . "</a></p><p>" . esc_html__("To replace the current file, click the link and upload a replacement file.", "enable-media-replace") . "</p>";
         //Remove background button
         $removeBg_url = $this->getRemoveBgURL($post->ID);
 
@@ -365,7 +365,7 @@ class EnableMediaReplacePlugin
 
         $removeBg_link = "href=\"$removeBg_editurl\"";
 
-        echo "<p><a class='button-secondary' $removeBg_link>" . esc_html__("Remove background", "enable-media-replace") . "</a></p><p>" . esc_html__("To remove the background, click the link and choose the options.", "enable-media-replace") . "</p>";
+        echo "<p><a class='button-secondary' $removeBg_link>" . esc_html__("Remove background", "enable-media-replace") . "</a></p><p>" . esc_html__("To remove the background, click the link and select the options.", "enable-media-replace") . "</p>";
     }
 
     public function show_thumbs_box($post)
@@ -425,7 +425,7 @@ class EnableMediaReplacePlugin
         $form_fields["enable-media-replace"] = array(
               "label" => esc_html__("Replace media", "enable-media-replace"),
               "input" => "html",
-              "html" => "<a class='button-secondary' $link>" . esc_html__("Upload a new file", "enable-media-replace") . "</a>", "helps" => esc_html__("To replace the current file, click the link and upload a replacement.", "enable-media-replace")
+              "html" => "<a class='button-secondary' $link>" . esc_html__("Upload a new file", "enable-media-replace") . "</a>", "helps" => esc_html__("To replace the current file, click the link and upload a replacement file.", "enable-media-replace")
             );
 
         return $form_fields;
