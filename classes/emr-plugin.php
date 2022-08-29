@@ -84,6 +84,8 @@ class EnableMediaReplacePlugin
         $this->plugin_path = plugin_dir_path(EMR_ROOT_FILE);
         $this->plugin_url = plugin_dir_url(EMR_ROOT_FILE);
 
+				// loads the dismiss hook.
+				$notices = Notices::getInstance();
 
       // init plugin
         add_action('admin_menu', array($this,'menu'));
@@ -148,9 +150,10 @@ class EnableMediaReplacePlugin
 		{
 			 $screen = get_current_screen();
 
-
-			 if ($screen->id = 'attachment' || $screen->id == 'media_page_enable-media-replace/enable-media-replace')
+			 $notice_pages = array('attachment',  'media_page_enable-media-replace/enable-media-replace', 'upload' );
+			 if ( in_array($screen->id, $notice_pages) )
 			 {
+
 			 	 $notices = Notices::getInstance();
 				 add_action('admin_notices', array($notices, 'admin_notices')); // previous page / init time
 
