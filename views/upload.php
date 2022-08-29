@@ -178,7 +178,10 @@ if (is_uploaded_file($_FILES["userfile"]["tmp_name"]) || isset($_POST["remove_bg
     exit();
 }
 
-Notices::addSuccess(__('File successfully replaced', 'enable-media-replace'));
+$noticeController = Notices::getInstance();
+$notice = Notices::addSuccess('<p>' . __('File successfully replaced', 'enable-media-replace') . '</p>');
+$notice->is_removable = false;
+$noticeController->update();
 
 // Allow developers to override $returnurl
 //$returnurl = apply_filters('emr_returnurl', $returnurl);

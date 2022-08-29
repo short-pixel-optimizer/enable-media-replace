@@ -77,6 +77,10 @@ if (is_null($result)) {
 		 exit();
 }
 
-Notices::addSuccess(__('File successfully replaced', 'enable-media-replace'));
+$noticeController = Notices::getInstance();
+$notice = Notices::addSuccess('<p>' . __('File successfully replaced', 'enable-media-replace') . '</p>');
+$notice->is_removable = false;
+$noticeController->update();
+
 wp_redirect($redirect_success);
 exit();
