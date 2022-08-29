@@ -19,7 +19,7 @@ $table_name = $wpdb->prefix . "posts";
 $postmeta_table_name = $wpdb->prefix . "postmeta";
 
 // Starts processing.
-$uihelper = new UIHelper();
+$uihelper = emr()->uiHelper();
 //$emr = EnableMediaReplacePlugin::get();
 
 // Get old guid and filetype from DB

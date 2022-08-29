@@ -495,7 +495,6 @@ class Replacer
 
 
 		$abspath = $this->fs()->getWPAbsPath();
-Log::addTemp('Search Replace baseURL' . $base_url, $abspath );
     /** Fail-safe if base_url is a whole directory, don't go search/replace */
     if (strpos($abspath, $base_url) === 0 && is_dir($base_url))
     {
@@ -639,7 +638,6 @@ Log::addTemp('Search Replace baseURL' . $base_url, $abspath );
           $sql = 'UPDATE ' . $wpdb->posts . ' SET post_content = %s WHERE ID = %d';
           $sql = $wpdb->prepare($sql, $replaced_content, $post_id);
 
-  //Log::addTemp("POSt update query " . $sql);
           $result = $wpdb->query($sql);
 
           if ($result === false)

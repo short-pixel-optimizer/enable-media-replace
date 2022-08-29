@@ -9,7 +9,7 @@ if (! defined('ABSPATH')) {
 }
 
 $date     = new \dateTime();
-$uiHelper = new UIHelper();
+$uiHelper = emr()->uiHelper();
 
 $attachment_id = intval($_GET['attachment_id']);
 $attachment = get_post($attachment_id);

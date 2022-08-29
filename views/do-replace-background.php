@@ -15,7 +15,6 @@ if (! check_admin_referer('do_background_replace'))
 	wp_die(esc_html__('Nonce in form failed. Go back, refresh and try again.', 'enable-media-replace'));
 }
 
-Log::addTemp("POST", $_POST);
 $key = isset($_POST['key']) ? sanitize_text_field($_POST['key']) : null;
 
 if (is_null($key) || strlen($key) == 0)
@@ -34,7 +33,7 @@ if (! emr()->checkImagePermission($attachment->post_author, $attachment->ID)) {
     wp_die(esc_html__('You do not have permission to upload files for this author.', 'enable-media-replace'));
 }
 
-$uiHelper = new UIHelper();
+$uiHelper = emr()->uiHelper();
 
 
 $replacer = new Replacer($post_id);
@@ -51,8 +50,6 @@ if (! $result->success)
 {
 	 die($result->message);
 }
-
-Log::addTemp('Download Result', $result);
 
 // When are 1-1 replacing.
 $source = $replacer->getSourceFile();

@@ -16,12 +16,24 @@ class UIHelper
   protected $full_width = 0;
   protected $full_height = 0;
 
+	private static $instance;
+
 	const NOTICE_NEW_FEATURE = 'EMR001';
 
   public function __construct()
   {
 
   }
+
+	public static function getInstance()
+	{
+		 if (is_null(self::$instance))
+		 {
+			  self::$instance = new UiHelper();
+		 }
+
+		 return self::$instance;
+	}
 
 	// @todo Add nonce URL to this url as well, in popup / prepare-remove-background
   public function getFormUrl($attach_id, $action = null)
@@ -294,7 +306,6 @@ class UIHelper
             $match_height = $sizeItem['height'];
           }
       }
-			Log::addTemp('Matching' . $match . ' ' . $match_width . ' ' . $match_height);
       return array($match, $match_width, $match_height);
   }
 
@@ -361,6 +372,24 @@ class UIHelper
 
     return $output;
   }
+
+	public function isBackgroundRemovable($post)
+	{
+		  if (false === wp_attachment_is_image($post))
+				return false;
+
+			$extensions = array('jpg', 'png','jpeg');
+
+			$mime = get_post_mime_type($post);
+			foreach($extensions as $extension)
+			{
+				  if (strpos($mime, $extension) !== false )
+						return true;
+			}
+
+			return false;
+
+	}
 
 	private function getBgremoveUI()
 	{

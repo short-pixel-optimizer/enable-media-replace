@@ -51,6 +51,11 @@ class EnableMediaReplacePlugin
 			 return new FileSystem();
 		}
 
+		public function uiHelper()
+		{
+			 return Uihelper::getInstance();
+		}
+
     public static function get()
     {
         if (is_null(self::$instance)) {
@@ -165,8 +170,7 @@ class EnableMediaReplacePlugin
                 wp_enqueue_style('jquery-ui-datepicker');
                 wp_enqueue_script('emr_admin');
 
-								$uiHelper = new uiHelper();
-								$uiHelper->featureNotice();
+								$this->uiHelper()->featureNotice();
 
 
 
@@ -365,7 +369,10 @@ class EnableMediaReplacePlugin
 
         $removeBg_link = "href=\"$removeBg_editurl\"";
 
-        echo "<p><a class='button-secondary' $removeBg_link>" . esc_html__("Remove background", "enable-media-replace") . "</a></p><p>" . esc_html__("To remove the background, click the link and select the options.", "enable-media-replace") . "</p>";
+				if ($this->uiHelper()->isBackgroundRemovable($post))
+				{
+        	echo "<p><a class='button-secondary' $removeBg_link>" . esc_html__("Remove background", "enable-media-replace") . "</a></p><p>" . esc_html__("To remove the background, click the link and select the options.", "enable-media-replace") . "</p>";
+				}
     }
 
     public function show_thumbs_box($post)
@@ -449,7 +456,6 @@ class EnableMediaReplacePlugin
     public function add_media_action($actions, $post)
     {
 
-
         if (! $this->checkImagePermission($post->post_author, $post->ID)) {
             return $actions;
         }
@@ -469,8 +475,13 @@ class EnableMediaReplacePlugin
         $background_remove_link = "href=\"$background_remove_editurl\"";
 
         $newaction['media_replace'] = '<a ' . $media_replace_link . ' aria-label="' . esc_attr__("Replace media", "enable-media-replace") . '" rel="permalink">' . esc_html__("Replace media", "enable-media-replace") . '</a>';
-        $newaction['remove_background'] = '<a ' . $background_remove_link . ' aria-label="' . esc_attr__("Remove  background", "enable-media-replace") . '" rel="permalink">' . esc_html__("Remove  background", "enable-media-replace") . '</a>';
-        return array_merge($actions, $newaction);
+
+				if ($this->uiHelper()->isBackgroundRemovable($post))
+				{
+	        $newaction['remove_background'] = '<a ' . $background_remove_link . ' aria-label="' . esc_attr__("Remove  background", "enable-media-replace") . '" rel="permalink">' . esc_html__("Remove  background", "enable-media-replace") . '</a>';
+
+				}
+				return array_merge($actions, $newaction);
     }
 
 

@@ -43,7 +43,7 @@ $filename = $file->getFileName();
 $filetype = $file->getExtension();
 $source_mime = get_post_mime_type($attachment_id);
 
-$uiHelper = new UIHelper();
+$uiHelper = emr()->uiHelper();
 $uiHelper->setPreviewSizes();
 $uiHelper->setSourceSizes($attachment_id);
 
@@ -132,6 +132,7 @@ $url = $uiHelper->getFormUrl($attachment_id);
       ?>
 
 			<p>&nbsp;</p>
+			<?php if ($uiHelper->isBackgroundRemovable($attachment)): ?>
 								  <div>
 
                     <a href="<?php echo wp_nonce_url( $url , 'emr_prepare_remove' ); ?>">
@@ -141,7 +142,7 @@ $url = $uiHelper->getFormUrl($attachment_id);
                     <input type="checkbox" id="remove_after_progress" name="remove_after_progress" value="<?php echo $attachment_id;?>">
                     <label for="remove_after_progress"><?php _e('Remove after replace!' ,'enable-media-replace'); ?> </label>
                   </div>
-
+			 <?php endif; ?>
 </section>
 
 <div class='option-flex-wrapper'>

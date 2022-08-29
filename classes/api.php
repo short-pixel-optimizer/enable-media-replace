@@ -71,7 +71,6 @@ class Api {
 		if ( 'solid' === $posted_data['background']['type'] ) {
 			$bg_remove = $posted_data['background']['color'];
 
-			Log::addTemp('Transp', $posted_data['background']['transparency']);
 			$transparency = isset($posted_data['background']['transparency']) ? intval($posted_data['background']['transparency']) : -1;
 			// if transparancy without acceptable boundaries, add it to color ( as rgba I presume )
 			if ($transparency >= 0 && $transparency < 100)
@@ -83,7 +82,6 @@ class Api {
 				 $bg_remove .= str_pad($transparency, 2, '0', STR_PAD_LEFT);
 			}
 
-	Log::addTemp('PostedData', $posted_data);
 
 		}
 
@@ -193,7 +191,6 @@ class Api {
 	{
 		$url = get_transient('emr_' . $key);
 		$result = $this->getResponseObject();
-Log::addTemp('Transient Key '. $key, $url);
 
 		if ($url === false)
 		{
