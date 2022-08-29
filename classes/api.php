@@ -149,6 +149,7 @@ class Api {
 						$key = $this->handleSuccess($result);
 						$result->key = $key;
 						$result->url = $url;
+						$result->image = add_query_arg('ts', time(), $result->image);
 
 						$result->settings = $settingsData;
 
