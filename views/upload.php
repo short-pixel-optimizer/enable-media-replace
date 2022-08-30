@@ -57,7 +57,7 @@ if ( isset( $_POST['remove_after_progress'] ) ) {
 $do_new_location  = isset($_POST['new_location']) ? sanitize_text_field($_POST['new_location']) : false;
 $new_location_dir = isset($_POST['location_dir']) ? sanitize_text_field($_POST['location_dir']) : null;
 
-$settings = array(); // save settings and show last loaded.
+$settings = get_option('enable_media_replace', array()); // save settings and show last loaded.
 $settings['replace_type'] = $replace_type;
 $settings['timestamp_replace'] = $timestamp_replace;
 $settings['new_location'] = $do_new_location;

@@ -632,9 +632,6 @@ class Replacer
 
         if ($replaced_content !== $post_content)
         {
-          //Log::addDebug('POST CONTENT TO SAVE', $replaced_content);
-
-        //  $result = wp_update_post($post_ar);
           $sql = 'UPDATE ' . $wpdb->posts . ' SET post_content = %s WHERE ID = %d';
           $sql = $wpdb->prepare($sql, $replaced_content, $post_id);
 
@@ -658,7 +655,7 @@ class Replacer
   {
     global $wpdb;
 
-    $meta_options = apply_filters('emr/metadata_tables', array('post', 'comment', 'term', 'user'));
+    $meta_options = apply_filters('emr/metadata_tables', array('post', 'comment', 'term', 'user', 'options'));
     $number_of_updates = 0;
 
     foreach($meta_options as $type)
@@ -672,12 +669,20 @@ class Replacer
 
               $update_sql = ' UPDATE ' . $wpdb->postmeta . ' SET meta_value = %s WHERE meta_id = %d';
           break;
+					case "options": // basked case (for guten widgets).
+							$sql = 'SELECT option_id as id, option_name, option_value as meta_value FROM ' . $wpdb->options . '
+								WHERE option_value like %s';
+							$type = 'option';
+
+							$update_sql = ' UPDATE ' . $wpdb->options . ' SET option_value = %s WHERE option_id = %d';
+					break;
           default:
               $table = $wpdb->{$type . 'meta'};  // termmeta, commentmeta etc
 
               $meta_id = 'meta_id';
               if ($type == 'user')
                 $meta_id = 'umeta_id';
+
 
               $sql = 'SELECT ' . $meta_id . ' as id, meta_value FROM ' . $table . '
                 WHERE meta_value like %s';
@@ -687,6 +692,10 @@ class Replacer
         }
 
         $sql = $wpdb->prepare($sql, '%' . $url . '%');
+				Log::addTemp('Handle MEta SQL ' . $sql);
+
+				if ($wpdb->last_error)
+					Log::addWarn('Error' . $wpdb->last_error, $wpdb->last_query);
 
         // This is a desparate solution. Can't find anyway for wpdb->prepare not the add extra slashes to the query, which messes up the query.
     //    $postmeta_sql = str_replace('[JSON_URL]', $json_url, $postmeta_sql);
@@ -708,6 +717,9 @@ class Replacer
 
            Log::addDebug('Update Meta SQl' . $prepared_sql);
            $result = $wpdb->query($prepared_sql);
+
+					 if ($wpdb->last_error)
+	 					Log::addWarn('Error' . $wpdb->last_error, $wpdb->last_query);
 
           }
         }

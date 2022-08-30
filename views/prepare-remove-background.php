@@ -32,6 +32,20 @@ $linebreak_double = $linebreak . $linebreak;
 $email_subject = __('Bad remove of background report', 'enable-media-replace');
 $email_body = sprintf(__('Hello! %s This is a report of a background removal that did not go well %s Url: {url} %s Settings : {settings} %s Thank you! %s', 'enable-media-replace'), $linebreak_double, $linebreak_double, $linebreak, $linebreak_double, $linebreak_double);
 
+
+$replace_url = add_query_arg(array(
+'page' => 'enable-media-replace/enable-media-replace.php',
+'action' => 'media_replace',
+'attachment_id' => $attachment_id,
+), admin_url("upload.php"));
+
+$defaults = array(
+	'bg_type' => 'transparent',
+	'bg_color' => '#ffffff',
+	'bg_transparency' => 100,
+);
+$settings = get_option('enable_media_replace', $defaults);
+
 ?>
 <div class="wrap emr_upload_form" id="remove-background-form">
 
@@ -55,12 +69,14 @@ $email_body = sprintf(__('Hello! %s This is a report of a background removal tha
 				</div>
 
 			</section>
+
+			<p><a href="<?php echo esc_attr(wp_nonce_url($replace_url, 'media_replace')); ?>">Replace this image with another one instead!</a></p>
 			<div class="option-flex-wrapper">
 				<section class="replace_type wrapper">
 					<div class="section-header"><?php esc_html_e('Background Removal Options'); ?></div>
 					<div class="option replace ">
 						<label for="transparent_background">
-							<input checked="checked" id="transparent_background" type="radio" name="background_type" value="transparent">
+							<input id="transparent_background" type="radio" name="background_type" value="transparent" <?php checked('transparent', $settings['bg_type']); ?> >
 							<?php esc_html_e('Transparent/white background', 'enable-media-replace'); ?>
 						</label>
 						<p class="howto">
@@ -69,7 +85,7 @@ $email_body = sprintf(__('Hello! %s This is a report of a background removal tha
 					</div>
 					<div class="option searchreplace">
 						<label for="solid_background">
-							<input id="solid_background" type="radio" name="background_type" value="solid">
+							<input id="solid_background" type="radio" name="background_type" value="solid" <?php checked('solid', $settings['bg_type']); ?>>
 							<?php esc_html_e('Solid background', 'enable-media-replace'); ?>
 						</label>
 						<p class="howto">
@@ -78,13 +94,13 @@ $email_body = sprintf(__('Hello! %s This is a report of a background removal tha
 						<div id="solid_selecter" style="display:none;">
 							<label for="bg_display_picker">
 								<p><?php esc_html_e('Background Color:','enable-media-replace'); ?> <strong><span style="text-transform: uppercase;" id="color_range">#ffffff</span></strong></p>
-								<input type="color" value="#ffffff" name="bg_display_picker" id="bg_display_picker" />
-								<input type="hidden"  value="#ffffff" name="bg_color" id="bg_color" />
+								<input type="color" value="<?php echo esc_attr($settings['bg_color']); ?>" name="bg_display_picker" id="bg_display_picker" />
+								<input type="hidden"  value="<?php echo esc_attr($settings['bg_color']); ?>" name="bg_color" id="bg_color" />
 							</label>
 							<hr>
 							<label for="bg_transparency">
-								<p><?php esc_html_e('Opacity:', 'enable-media-replace'); ?> <strong><span id="transparency_range">100</span>%</strong></p>
-								<input type="range" min="0" max="100" value="100" id="bg_transparency" />
+								<p><?php esc_html_e('Opacity:', 'enable-media-replace'); ?> <strong><span id="transparency_range"><?php echo esc_attr($settings['bg_transparency']); ?></span>%</strong></p>
+								<input type="range" min="0" max="100" value="<?php echo esc_attr($settings['bg_transparency']); ?>" id="bg_transparency" />
 							</label>
 						</div>
 					</div>
@@ -125,7 +141,7 @@ $email_body = sprintf(__('Hello! %s This is a report of a background removal tha
 				</section> -->
 			</div>
 			<button type="button" class="button button-primary" id="remove_background_button"><?php esc_html_e('Preview', 'enable-media-replace'); ?></button>
-			<button type="submit" style="display:none;" class="button button-primary" id="replace_image_button"><?php esc_html_e('Replace', 'enable-media-replace'); ?></button>
+			<button type="submit" class="button button-primary" id="replace_image_button" disabled><?php esc_html_e('Replace', 'enable-media-replace'); ?></button>
 			<a class="button" href="javascript:history.back()"><?php esc_html_e('Cancel', 'enable-media-replace'); ?></a>
 		</div> <!--- editor wrapper -->
 		<?php include_once( 'upsell.php' ); ?>

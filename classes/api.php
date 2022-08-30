@@ -68,6 +68,14 @@ class Api {
 		$replacer = new Replacer($attachment_id);
 		$url = $replacer->getSourceUrl();
 
+		$settings = get_option('enable_media_replace', array()); // save settings and show last loaded.
+		$settings['bg_type'] = isset($_POST['background']['type']) ? sanitize_text_field($_POST['background']['type']) : false;
+		$settings['bg_color'] = isset($_POST['background']['color']) ? sanitize_text_field($_POST['background']['color']) : false;
+		$settings['bg_transparency'] = isset($_POST['background']['transparency']) ? sanitize_text_field($_POST['background']['transparency']) : false;
+
+		update_option('enable_media_replace', $settings, false);
+
+
 		if ( 'solid' === $posted_data['background']['type'] ) {
 			$bg_remove = $posted_data['background']['color'];
 
@@ -81,9 +89,9 @@ class Api {
 			  // Strpad for lower than 10 should add 09, 08 etc.
 				 $bg_remove .= str_pad($transparency, 2, '0', STR_PAD_LEFT);
 			}
-
-
 		}
+
+
 
 		$data = array(
 			'plugin_version' => EMR_VERSION,

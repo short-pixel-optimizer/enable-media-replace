@@ -89,6 +89,7 @@ class EnableMediaReplacePlugin
 
       // init plugin
         add_action('admin_menu', array($this,'menu'));
+				add_action('submenu_file', array($this, 'hide_sub_menu'));
         add_action('admin_init', array($this,'init'));
 				add_action( 'current_screen', array($this, 'setScreen') ); // annoying workaround for notices in edit-attachment screen
         add_action('admin_enqueue_scripts', array($this,'admin_scripts'));
@@ -127,9 +128,28 @@ class EnableMediaReplacePlugin
    */
     public function menu()
     {
-        add_submenu_page(null, esc_html__("Replace media", "enable-media-replace"), esc_html__("Replace media", "enable-media-replace"), 'upload_files', 'enable-media-replace/enable-media-replace', array($this, 'route'));
+			$title =  esc_html__("Replace media", "enable-media-replace");
+			$title = (isset($_REQUEST['action']) && ($_REQUEST['action'] === 'emr_prepare_remove')) ? esc_html__("Remove background", "enable-media-replace") : $title;
+        add_submenu_page('upload.php',$title, $title, 'upload_files', 'enable-media-replace/enable-media-replace.php', array($this, 'route'));
        /* add_submenu_page(null, esc_html__("Remove background", "enable-media-replace"), esc_html__("Remove the media Background", "enable-media-replace"), 'upload_files', 'emr-remove-background', array($this, 'route')); */
+
+
     }
+
+		public function hide_sub_menu($submenu_file)
+		{
+			 global $plugin_page;
+				// Select another submenu item to highlight (optional).
+				if ( $plugin_page && $plugin_page == 'enable-media-replace/enable-media-replace.php' ) {
+						$submenu_file = 'upload.php';
+				}
+
+				// Hide the submenu.
+
+				remove_submenu_page( 'upload.php', 'enable-media-replace/enable-media-replace.php' );
+
+				return $submenu_file;
+		}
 
   /**
    * Initialize this plugin. Called by 'admin_init' hook.
@@ -438,6 +458,16 @@ class EnableMediaReplacePlugin
               "html" => "<a class='button-secondary' $link>" . esc_html__("Upload a new file", "enable-media-replace") . "</a>", "helps" => esc_html__("To replace the current file, click the link and upload a replacement file.", "enable-media-replace")
             );
 
+				if ($this->uiHelper()->isBackgroundRemovable($post))
+				{
+					$link = $this->getRemoveBgURL($post->ID);
+					$link = "href='" . wp_nonce_url($link, 'emr_prepare_remove') . "'";
+					$form_fields["emr-remove-background"] = array(
+	              "label" => esc_html__("Remove background", "enable-media-replace"),
+	              "input" => "html",
+	              "html" => "<a class='button-secondary' $link>" . esc_html__("Remove background", "enable-media-replace") . "</a>", "helps" => esc_html__("To remove the background, click the link.", "enable-media-replace")
+	            );
+				}
         return $form_fields;
     }
 

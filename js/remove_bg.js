@@ -7,6 +7,10 @@ jQuery(document).ready(function ($) {
 	backgroundInputs(); // init initial
 	transparancyOptions();
 
+ $('.replace_type.wrapper input').on('change', function () {
+	 	 $('#replace_image_button').prop('disabled', 'disabled');
+ });
+
   // Remove bg click
   $('#remove_background_button').on('click', () => {
     const method = 'POST'
@@ -20,13 +24,13 @@ jQuery(document).ready(function ($) {
     let background = {
       type: "transparent"
     }
-    if (bgType === 'solid') {
-      background = {
-        type: "solid",
-        color: $('#bg_color').val(),
-        transparency: $('#bg_transparency').val()
-      }
+
+    background = {
+      type: bgType,
+      color: $('#bg_color').val(),
+      transparency: $('#bg_transparency').val()
     }
+
     $.ajax({
       method,
       url,
@@ -59,10 +63,8 @@ jQuery(document).ready(function ($) {
 					preview.find('img').remove();
 		      preview.removeClass('is_image not_image is_document');
 
-         // $('#remove_bacground_button').hide();
-          $('#replace_image_button').show();
-          //const height = $('#base_container').height();
-         // const width = $('#base_container').width();
+          $('#replace_image_button').prop('disabled', false);
+
 				 var img = new Image();
          img.src = response.image;
 				 img.setAttribute('style', 'max-width:100%; max-height: 100%;');
