@@ -447,7 +447,7 @@ class UIHelper
 	public function featureNotice()
 	{
 		 	// @todo Remove in 2023.
-			$message = sprintf(__('%s New Feature! %s %s It is now possible to remove the background with EMR . %s  ', 'enable-media-replace' ), '<h3>', '</h3>',
+			$message = sprintf(__('%s New Beta Feature! %s %s Enable Media Replace now gives you the ability to remove the background of any image. Try it out in the Media Library: hover over an image and click on Remove Background. Or just click on Remove background from the image editing window! %s  ', 'enable-media-replace' ), '<h3>', '</h3>',
 				'<p>', '</p>');
 
 		  $notice = Notices::addNormal($message, true);
