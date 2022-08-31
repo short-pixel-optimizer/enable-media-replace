@@ -162,7 +162,7 @@ $url = $uiHelper->getFormUrl($attachment_id);
         </label>
 
           <p class="howto">
-            <?php printf( esc_html__("Note: This option requires you to upload a file of the same type (%s) as the file you want to replace. The attachment name will remain the same (%s) regardless of what the file you upload is called.", "enable-media-replace"), $filetype, $filename ); ?>
+            <?php printf( esc_html__("Note: This option requires you to upload a file of the same type (%s) as the file you want to replace. The attachment name will remain the same (%s) regardless of what the file you upload is called. If a CDN is used, remember to clear the cache for this image!", "enable-media-replace"), $filetype, $filename ); ?>
         </p>
 
 				<p class='form-warning filetype'><?php _e('If you replace the file with a different filetype, this file might become unreadable and / or cause unexpected issues', 'enable-media-replace'); ?>

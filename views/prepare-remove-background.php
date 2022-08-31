@@ -75,6 +75,9 @@ $settings = get_option('enable_media_replace', $defaults);
 				<section class="replace_type wrapper">
 					<div class="section-header"><?php esc_html_e('Background Removal Options'); ?></div>
 					<div class="option replace ">
+						<p>
+							<?php esc_html_e('If a CDN is used, remember to clear the cache for this image!', 'enable-media-replace'); ?>
+						</p>
 						<label for="transparent_background">
 							<input id="transparent_background" type="radio" name="background_type" value="transparent" <?php checked('transparent', $settings['bg_type']); ?> >
 							<?php esc_html_e('Transparent/white background', 'enable-media-replace'); ?>
