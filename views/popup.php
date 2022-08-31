@@ -140,7 +140,7 @@ $url = $uiHelper->getFormUrl($attachment_id);
                     <br>
                     <br>
                     <input type="checkbox" id="remove_after_progress" name="remove_after_progress" value="<?php echo $attachment_id;?>">
-                    <label for="remove_after_progress"><?php _e('Remove after replace!' ,'enable-media-replace'); ?> </label>
+                    <label for="remove_after_progress"><?php _e('Remove the background after replacing this image!' ,'enable-media-replace'); ?> </label>
                   </div>
 			 <?php endif; ?>
 </section>
