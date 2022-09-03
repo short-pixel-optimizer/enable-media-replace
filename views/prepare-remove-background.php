@@ -46,6 +46,7 @@ $defaults = array(
 );
 $settings = get_option('enable_media_replace', $defaults);
 
+$settings = array_merge($defaults, $settings); // might miss some
 ?>
 <div class="wrap emr_upload_form" id="remove-background-form">
 
@@ -96,7 +97,7 @@ $settings = get_option('enable_media_replace', $defaults);
 						</p>
 						<div id="solid_selecter" style="display:none;">
 							<label for="bg_display_picker">
-								<p><?php esc_html_e('Background Color:','enable-media-replace'); ?> <strong><span style="text-transform: uppercase;" id="color_range">#ffffff</span></strong></p>
+								<p><?php esc_html_e('Background Color:','enable-media-replace'); ?> <strong><span style="text-transform: uppercase;" id="color_range"><?php echo esc_attr($settings['bg_color']); ?></span></strong></p>
 								<input type="color" value="<?php echo esc_attr($settings['bg_color']); ?>" name="bg_display_picker" id="bg_display_picker" />
 								<input type="hidden"  value="<?php echo esc_attr($settings['bg_color']); ?>" name="bg_color" id="bg_color" />
 							</label>

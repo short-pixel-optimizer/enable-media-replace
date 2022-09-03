@@ -134,7 +134,8 @@ class UIHelper
       if ($attach_id > 0)
       {
         $data = $this->getImageSizes($attach_id, $this->preview_size); //wp_get_attachment_image_src($attach_id, $this->preview_size);
-        /*$file = get_attached_file($attach_id);
+				/*$file = get_attached_file($attach_id);
+
 
         // If the file is relative, prepend upload dir.
         if (! file_exists($file) && $file && 0 !== strpos( $file, '/' ) && ! preg_match( '|^.:\\\|', $file ) )
@@ -144,7 +145,6 @@ class UIHelper
           $file = $uploads['basedir'] . "/$file";
         }
         */
-        Log::addDebug('Attached File '  . $file->getFullPath() . ' ' . $this->preview_size, $data);
       }
 
       $mime_type = get_post_mime_type($attach_id);
@@ -166,7 +166,6 @@ class UIHelper
 
 				$args = wp_parse_args($args, $defaults);
 
-
         // failed, it might be this server doens't support PDF thumbnails. Fallback to File preview.
         if ($mime_type == 'application/pdf')
         {
@@ -176,23 +175,21 @@ class UIHelper
         return $this->getPlaceHolder($args);
       }
 
-
       $url = $data[0];
       $width = $data[1];
       $height = $data[2];
 
       // SVG's without any helpers return around 0 for width / height. Fix preview.
 
-      // preview width, if source if found, should be set to source.
-      $this->preview_width = $width;
-      $this->preview_height = $height;
-
-
       if ($width > $this->preview_max_width)
         $width = $this->preview_max_width;
       if ($height > $this->preview_max_height)
         $height = $this->preview_max_height;
 
+				// preview width, if source if found, should be set to source.
+	      $this->preview_width = $width;
+	      $this->preview_height = $height;
+				
       $image = "<img src='$url' width='$width' height='$height' class='image' style='max-width:100%; max-height: 100%;' />";
 
       $defaults = array(

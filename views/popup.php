@@ -58,6 +58,8 @@ $defaults = array(
 );
 $settings = get_option('enable_media_replace', $defaults);
 
+$settings = array_merge($defaults, $settings); // might miss some
+
 ?>
 
 <div class="wrap emr_upload_form">
@@ -192,10 +194,12 @@ $url = $uiHelper->getFormUrl($attachment_id);
       <div class='option timestamp'>
         <?php
           $attachment_current_date = date_i18n('d/M/Y H:i', strtotime($attachment->post_date) );
-					$attachment_now_date = date_i18n('d/M/Y H:i', time() );
+					$attachment_now_date = date_i18n('d/M/Y H:i' );
+
           $time = current_time('mysql');
           $date = $nowDate = new \dateTime($time); // default to now.
 					$attachmentDate = new \dateTime($attachment->post_date);
+
 
           if ($settings['timestamp_replace'] == \EnableMediaReplace\Replacer::TIME_CUSTOM)
           {
