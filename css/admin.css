@@ -990,6 +990,9 @@
 .emr_upload_form form .upsell-wrapper {
   margin-left: 10px;
 }
+.emr_upload_form .editor-wrapper {
+  width: 100%;
+}
 .emr_upload_form .wrapper {
   padding: 18px;
   border: 1px solid #ccc;
@@ -1052,7 +1055,6 @@
   margin-bottom: 10px;
   border: 1px solid #ddd;
   vertical-align: top;
-  max-height: 500px;
 }
 .emr_upload_form .image_chooser.wrapper .image_previews .image_placeholder .textlayer {
   font-size: 25px;

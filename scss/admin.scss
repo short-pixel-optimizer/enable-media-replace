@@ -11,7 +11,12 @@
     }
   }
 
-  .wrapper
+	.editor-wrapper
+	{
+		width: 100%;
+	}
+
+	.wrapper
   {
 //    margin: 15px 0;
     padding: 18px;
@@ -81,7 +86,7 @@
         margin-bottom: 10px;
         border: 1px solid #ddd;
         vertical-align: top;
-        max-height: 500px;
+      //  max-height: 500px;
         .textlayer
         {
           font-size: 25px;

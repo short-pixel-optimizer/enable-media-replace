@@ -50,6 +50,7 @@
       this.updateTextLayer(source, false);
       this.showReplaceOptions();
 
+
     }
     this.loadDatePicker = function()
     {

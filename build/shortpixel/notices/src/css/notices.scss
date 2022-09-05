@@ -1,9 +1,16 @@
 
-.shortpixel.notice
+.shortpixel.shortpixel-notice
 {
    //padding: 18px;
    //min-height: 50px;
    padding: 8px;
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	border-left-width: 4px;
+	box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
+	margin: 5px 15px 2px;
+	position: relative;
+
    img
    {
      display:inline-block;
@@ -12,8 +19,25 @@
    }
    .notice-dismiss
    {
-     margin-top: 10px;
+     margin-top: 6px;
    }
+
+	 &.notice-success
+	 {
+		 border-left-color: #00a32a;
+	 }
+	 &.notice-warning
+	 {
+		 border-left-color: #dba617;
+	 }
+	 &.notice-error
+	 {
+		 border-left-color: #ff0000;
+	 }
+	 &.notice-info
+	 {
+		  border-left-color: #72aee6;
+	 }
 }
 
 /* In-view notice ( not on top, between the options ) - styled after WP notice */

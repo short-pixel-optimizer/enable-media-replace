@@ -10,24 +10,41 @@ class UIHelper
   protected $preview_width = 0;
   protected $preview_height = 0;
 
-  protected $preview_max_height = 500;
-  protected $preview_max_width = 400;
+	protected $preview_max_width = 600;
+  protected $preview_max_height = 600;
 
   protected $full_width = 0;
   protected $full_height = 0;
+
+	private static $instance;
+
+	const NOTICE_NEW_FEATURE = 'EMR001';
 
   public function __construct()
   {
 
   }
 
-  public function getFormUrl($attach_id)
+	public static function getInstance()
+	{
+		 if (is_null(self::$instance))
+		 {
+			  self::$instance = new UiHelper();
+		 }
+
+		 return self::$instance;
+	}
+
+	// @todo Add nonce URL to this url as well, in popup / prepare-remove-background
+  public function getFormUrl($attach_id, $action = null)
   {
+		  $action = (! is_null($action)) ? $action : 'media_replace_upload';
+
       $url = admin_url('upload.php');
       $url = add_query_arg(array(
           'page' => 'enable-media-replace/enable-media-replace.php',
           'noheader' => true,
-          'action' => 'media_replace_upload',
+          'action' => $action,
           'attachment_id' => $attach_id,
       ));
 
@@ -91,6 +108,7 @@ class UIHelper
 
   public function setPreviewSizes()
   {
+
     list($this->preview_size, $this->preview_width, $this->preview_height) = $this->findImageSizeByMax($this->preview_max_width);
   }
 
@@ -109,14 +127,15 @@ class UIHelper
   }
 
   // Returns Preview Image HTML Output.
-  public function getPreviewImage($attach_id,$file)
+  public function getPreviewImage($attach_id,$file, $args = array())
   {
       $data = false;
 
       if ($attach_id > 0)
       {
         $data = $this->getImageSizes($attach_id, $this->preview_size); //wp_get_attachment_image_src($attach_id, $this->preview_size);
-        /*$file = get_attached_file($attach_id);
+				/*$file = get_attached_file($attach_id);
+
 
         // If the file is relative, prepend upload dir.
         if (! file_exists($file) && $file && 0 !== strpos( $file, '/' ) && ! preg_match( '|^.:\\\|', $file ) )
@@ -126,7 +145,6 @@ class UIHelper
           $file = $uploads['basedir'] . "/$file";
         }
         */
-        Log::addDebug('Attached File '  . $file->getFullFilePath(), $data);
       }
 
       $mime_type = get_post_mime_type($attach_id);
@@ -137,7 +155,7 @@ class UIHelper
         $icon = ($attach_id < 0) ? '' : 'dashicons-no';
         $is_document = false;
 
-        $args = array(
+        $defaults = array(
             'width' => $this->preview_width,
             'height' => $this->preview_height,
             'is_image' => false,
@@ -146,7 +164,7 @@ class UIHelper
             'mime_type' => null,
         );
 
-
+				$args = wp_parse_args($args, $defaults);
 
         // failed, it might be this server doens't support PDF thumbnails. Fallback to File preview.
         if ($mime_type == 'application/pdf')
@@ -157,26 +175,40 @@ class UIHelper
         return $this->getPlaceHolder($args);
       }
 
-
       $url = $data[0];
       $width = $data[1];
       $height = $data[2];
 
+			// width
+			$width_ratio = $height_ratio = 0;
+			if ($width > $this->preview_max_width)
+			{
+					$width_ratio = $width / $this->preview_max_width;
+			}
+			if ($height > $this->preview_max_height) // height
+			{
+					$height_ratio = $height / $this->preview_max_height;
+			}
+
+			$ratio = ($width_ratio > $height_ratio) ? $width_ratio : $height_ratio;
+
+			if ($ratio > 0)
+			{
+
+				$width  = floor($width / $ratio);
+				$height = floor($height / $ratio);
+			}
+
       // SVG's without any helpers return around 0 for width / height. Fix preview.
 
-      // preview width, if source if found, should be set to source.
-      $this->preview_width = $width;
-      $this->preview_height = $height;
 
-
-      if ($width > $this->preview_max_width)
-        $width = $this->preview_max_width;
-      if ($height > $this->preview_max_height)
-        $height = $this->preview_max_height;
+				// preview width, if source if found, should be set to source.
+	      $this->preview_width = $width;
+	      $this->preview_height = $height;
 
       $image = "<img src='$url' width='$width' height='$height' class='image' style='max-width:100%; max-height: 100%;' />";
 
-      $args = array(
+      $defaults = array(
         'width' => $width,
         'height' => $height,
         'image' => $image,
@@ -184,16 +216,44 @@ class UIHelper
         'file_size' => $file->getFileSize(),
       );
 
+			$args = wp_parse_args($args, $defaults);
+
       $output = $this->getPlaceHolder($args);
       return $output;
   }
 
   protected function getImageSizes($attach_id, $size = 'thumbnail')
   {
-    $data = wp_get_attachment_image_src($attach_id, $size);
-    $width = isset($data[1]) ? $data[1] : 0;
-    //$mime_type = get_post_mime_type($attach_id);
-    $file = get_attached_file($attach_id);
+		// We are not using this function, because depending on the theme, it can mess with the dimensions - https://wordpress.stackexchange.com/questions/167525/why-is-wp-get-attachment-image-src-returning-wrong-dimensions
+//    $data = wp_get_attachment_image_src($attach_id, $size);
+		$meta = wp_get_attachment_metadata($attach_id);
+
+		$data = false;
+
+		if (isset($meta['sizes']))
+		{
+				foreach($meta['sizes'] as $sizeName => $metaData)
+				{
+					  if ($sizeName == $size)
+						{
+							 $width = isset($metaData['width']) ? $metaData['width'] : 0;
+							 $height = isset($metaData['height']) ? $metaData['height'] : 0;
+							 $imgData = image_downsize($attach_id, $size); // return whole array w/ possible wrong dimensions.
+							 $data = array($imgData[0], $width, $height);
+						}
+				}
+		}
+
+		if ($data === false)
+		{
+			$data = wp_get_attachment_image_src($attach_id, $size);
+			$width = isset($data[1]) ? $data[1] : 0;
+		}
+
+    $file = get_attached_file($attach_id, true);
+		if (! file_exists($file))
+			return $data;
+
 		$mime_type = wp_get_image_mime($file);
 
     if (strpos($mime_type, 'svg') !== false && $width <= 5)
@@ -201,6 +261,7 @@ class UIHelper
         $file = get_attached_file($attach_id);
         $data = $this->fixSVGSize($data, $file);
     }
+
 
     return $data;
   }
@@ -246,7 +307,7 @@ class UIHelper
       $filename = false;
     }
 
-    $mime_type = $file->getFileMime();
+    $mime_type = $file->getMime();
 
     $args = array(
       'width' => 300,
@@ -263,7 +324,7 @@ class UIHelper
 
   public function findImageSizeByMax($maxwidth)
   {
-      $image_sizes = $this->get_image_sizes();
+      $image_sizes = $this->wp_get_image_sizes();
 
       $match_width = 0;
       $match_height = 0;
@@ -295,6 +356,8 @@ class UIHelper
         'is_document' => false,
         'mime_type' => false,
         'file_size' => false,
+				'remove_bg_ui' => false, // In process icons et al when removing background, for preview pane.
+
     );
 
     $args = wp_parse_args($args, $defaults);
@@ -330,11 +393,13 @@ class UIHelper
 
     $filesize = ($args['file_size']) ? $args['file_size'] : '';
 
+		$background_remove_ui = (isset($args['remove_bg_ui']) && $args['remove_bg_ui'] == true) ? $this->getBgremoveUI() : '';
 
     $output = "<div class='image_placeholder $placeholder_class' $filetype style='width:" . $w . "px; height:". $h ."px'> ";
     $output .= $args['image'];
     $output .= "<div class='dashicons $icon'>&nbsp;</div>";
     $output .= "<span class='textlayer'>" . $args['layer'] . "</span>";
+		$output .= $background_remove_ui;
     $output .= "<div class='image_size'>" . $this->convertFileSize($filesize). "</div>";
     $output .= "</div>";
 
@@ -342,6 +407,35 @@ class UIHelper
 
     return $output;
   }
+
+	public function isBackgroundRemovable($post)
+	{
+		  if (false === wp_attachment_is_image($post))
+				return false;
+
+			$extensions = array('jpg', 'png','jpeg');
+
+			$mime = get_post_mime_type($post);
+			foreach($extensions as $extension)
+			{
+				  if (strpos($mime, $extension) !== false )
+						return true;
+			}
+
+			return false;
+
+	}
+
+	private function getBgremoveUI()
+	{
+		$output = '<div class="overlay" id="overlay">
+										<div class="lds-spinner"><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div></div>';
+
+		$output .=	'<h3>'  .  esc_html__('Removing background...', 'enable-media-replace') . '</h3>';
+		$output .= '</div>';
+
+		return $output;
+	}
 
   private function convertFileSize($filesize)
   {
@@ -355,7 +449,7 @@ class UIHelper
   * @uses   get_intermediate_image_sizes()
   * @return array $sizes Data for all currently-registered image sizes.
   */
-  private function get_image_sizes() {
+  private function wp_get_image_sizes() {
    global $_wp_additional_image_sizes;
 
    $sizes = array();
@@ -384,5 +478,15 @@ class UIHelper
       else
         return false;
   }
+
+	public function featureNotice()
+	{
+		 	// @todo Remove in 2023.
+			$message = sprintf(__('%s New Beta Feature! %s %s Enable Media Replace now gives you the ability to remove the background of any image. Try it out in the Media Library: hover over an image and click on Remove Background. Or just click on Remove background from the image editing window! %s  ', 'enable-media-replace' ), '<h3>', '</h3>',
+				'<p>', '</p>');
+
+		  $notice = Notices::addNormal($message, true);
+			Notices::makePersistent($notice, self::NOTICE_NEW_FEATURE, 2 * YEAR_IN_SECONDS);
+	}
 
 } // class
