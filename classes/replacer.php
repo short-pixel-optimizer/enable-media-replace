@@ -671,7 +671,7 @@ class Replacer
           break;
 					case "options": // basked case (for guten widgets).
 							$sql = 'SELECT option_id as id, option_name, option_value as meta_value FROM ' . $wpdb->options . '
-								WHERE option_value like %s';
+								WHERE option_value like %s and option_name = "widget_block" ';
 							$type = 'option';
 
 							$update_sql = ' UPDATE ' . $wpdb->options . ' SET option_value = %s WHERE option_id = %d';
