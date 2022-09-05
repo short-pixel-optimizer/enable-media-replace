@@ -67,7 +67,7 @@ jQuery(document).ready(function ($) {
 
 				 var img = new Image();
          img.src = response.image;
-				 img.setAttribute('style', 'max-width:100%; max-height: 100%;');
+				 img.setAttribute('style', 'height: inherit;');
 
 				 preview.prepend(img);
 				// preview.removeClass('not_image');

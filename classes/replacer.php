@@ -774,10 +774,11 @@ class Replacer
         }
       }
     }
-    elseif(is_object($content)) // metadata objects, they exist.
+    elseif(is_object($content) && '__PHP_Incomplete_Class' !== get_class($content)) // metadata objects, they exist. prevent incomplete classes from deactivated plugins or whatever.  They crash.
     {
       foreach($content as $key => $value)
       {
+
         $content->{$key} = $this->replaceContent($value, $search, $replace, true); //str_replace($value, $search, $replace);
       }
     }

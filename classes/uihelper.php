@@ -179,17 +179,33 @@ class UIHelper
       $width = $data[1];
       $height = $data[2];
 
+			// width
+			$width_ratio = $height_ratio = 0;
+			if ($width > $this->preview_max_width)
+			{
+					$width_ratio = $width / $this->preview_max_width;
+			}
+			if ($height > $this->preview_max_height) // height
+			{
+					$height_ratio = $height / $this->preview_max_height;
+			}
+
+			$ratio = ($width_ratio > $height_ratio) ? $width_ratio : $height_ratio;
+
+			if ($ratio > 0)
+			{
+
+				$width  = floor($width / $ratio);
+				$height = floor($height / $ratio);
+			}
+
       // SVG's without any helpers return around 0 for width / height. Fix preview.
 
-      if ($width > $this->preview_max_width)
-        $width = $this->preview_max_width;
-      if ($height > $this->preview_max_height)
-        $height = $this->preview_max_height;
 
 				// preview width, if source if found, should be set to source.
 	      $this->preview_width = $width;
 	      $this->preview_height = $height;
-				
+
       $image = "<img src='$url' width='$width' height='$height' class='image' style='max-width:100%; max-height: 100%;' />";
 
       $defaults = array(
@@ -208,9 +224,31 @@ class UIHelper
 
   protected function getImageSizes($attach_id, $size = 'thumbnail')
   {
-    $data = wp_get_attachment_image_src($attach_id, $size);
-    $width = isset($data[1]) ? $data[1] : 0;
-    //$mime_type = get_post_mime_type($attach_id);
+		// We are not using this function, because depending on the theme, it can mess with the dimensions - https://wordpress.stackexchange.com/questions/167525/why-is-wp-get-attachment-image-src-returning-wrong-dimensions
+//    $data = wp_get_attachment_image_src($attach_id, $size);
+		$meta = wp_get_attachment_metadata($attach_id);
+
+		$data = false;
+
+		if (isset($meta['sizes']))
+		{
+				foreach($meta['sizes'] as $sizeName => $metaData)
+				{
+					  if ($sizeName == $size)
+						{
+							 $width = isset($metaData['width']) ? $metaData['width'] : 0;
+							 $height = isset($metaData['height']) ? $metaData['height'] : 0;
+							 $imgData = image_downsize($attach_id, $size); // return whole array w/ possible wrong dimensions.
+							 $data = array($imgData[0], $width, $height);
+						}
+				}
+		}
+
+		if ($data === false)
+		{
+			$data = wp_get_attachment_image_src($attach_id, $size);
+			$width = isset($data[1]) ? $data[1] : 0;
+		}
 
     $file = get_attached_file($attach_id, true);
 		if (! file_exists($file))
@@ -223,6 +261,7 @@ class UIHelper
         $file = get_attached_file($attach_id);
         $data = $this->fixSVGSize($data, $file);
     }
+
 
     return $data;
   }
@@ -286,7 +325,6 @@ class UIHelper
   public function findImageSizeByMax($maxwidth)
   {
       $image_sizes = $this->wp_get_image_sizes();
-
 
       $match_width = 0;
       $match_height = 0;
