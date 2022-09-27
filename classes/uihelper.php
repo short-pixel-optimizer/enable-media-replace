@@ -413,6 +413,9 @@ class UIHelper
 		  if (false === wp_attachment_is_image($post))
 				return false;
 
+			if (false === emr()->useFeature('background'))
+				return false;
+
 			$extensions = array('jpg', 'png','jpeg');
 
 			$mime = get_post_mime_type($post);
