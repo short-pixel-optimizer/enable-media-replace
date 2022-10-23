@@ -85,8 +85,11 @@ Class FileSystemController
       $filepath = $file->getFullPath();
       $directory = $file->getFileDir();
 
-			$is_multi_site = $this->env->is_multisite;
-			$is_main_site =  $this->env->is_mainsite;
+			$is_multi_site = (function_exists("is_multisite") && is_multisite()) ? true : false;
+	    $is_main_site = is_main_site();
+
+			//$is_multi_site = $this->env->is_multisite;
+			//$is_main_site =  $this->env->is_mainsite;
 
       // stolen from wp_get_attachment_url
       if ( ( $uploads = wp_get_upload_dir() ) && (false === $uploads['error'] || strlen(trim($uploads['error'])) == 0  )  ) {
@@ -113,6 +116,9 @@ Class FileSystemController
 
             } elseif ( false !== strpos( $filepath, 'wp-content/uploads' ) ) {
                 // Get the directory name relative to the basedir (back compat for pre-2.7 uploads)
+								//$relativePath = $this->getFile(_wp_get_attachment_relative_path( $filepath ) );
+								//$basename = wp_basename($relativePath->getFullPath());
+
                 $url = trailingslashit( $uploads['baseurl'] . '/' . _wp_get_attachment_relative_path( $filepath ) ) . wp_basename( $filepath );
             } else {
                 // It's a newly-uploaded file, therefore $file is relative to the basedir.

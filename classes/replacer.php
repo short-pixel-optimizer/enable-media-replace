@@ -143,8 +143,6 @@ class Replacer
           throw new \RuntimeException($ex);
         }
 
-
-
       // init targetFile.
       $this->targetFile = $fs->getFile($targetFile);
 
@@ -154,8 +152,10 @@ class Replacer
         Log::addWarn('Setting permissions failed');
       }
 
+
       // update the file attached. This is required for wp_get_attachment_url to work.
-      $updated = update_attached_file($this->post_id, $this->targetFile->getFullPath() );
+			// Using RawFullPath because FullPath does normalize path, which update_attached_file doesn't so in case of windows / strange Apspaths it fails. 
+      $updated = update_attached_file($this->post_id, $this->targetFile->getRawFullPath() );
       if (! $updated)
         Log::addError('Update Attached File reports as not updated or same value');
 

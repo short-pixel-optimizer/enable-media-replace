@@ -158,7 +158,6 @@ if (is_uploaded_file($_FILES["userfile"]["tmp_name"]) || isset($_POST["remove_bg
         var_dump($e->getMessage());
         die;
         Log::addError($e->getMessage());
-    //  exit($e->getMessage());
     }
 
     if (is_null($result)) {
