@@ -5,7 +5,7 @@ Tags: replace, attachment, media, files, replace image, remove background, repla
 Requires at least: 4.9.7
 Tested up to: 6.0
 Requires PHP: 5.6
-Stable tag: 3.6.3
+Stable tag: 4.0.0
 
 Easily replace any attached image/file by simply uploading a new file in the Media Library edit view - a real time saver!
 
@@ -43,7 +43,6 @@ So `[file_modified id=870]` would show the last time the file with ID 870 was up
 
 If you want more control over the format in which the time is shown, you can use the format option. So `[file_modified id=870 format=Y-m-d]` would show the date the file was modified but not the time. The format string uses [the standard PHP date() formatting tags](http://php.net/manual/en/function.date.php).
 
-
 **Other plugins by [ShortPixel](https://shortpixel.com):**
 
 * [ShortPixel Image Optimizer](https://wordpress.org/plugins/shortpixel-image-optimiser/) - Image optimization & compression for all the images on your website, including WebP & AVIF delivery
@@ -53,7 +52,6 @@ If you want more control over the format in which the time is shown, you can use
 * [WP SVG Images](https://wordpress.org/plugins/wp-svg-images/) - Secure upload of SVG files to Media Library
 * [ShortPixel Critical CSS](https://wordpress.org/plugins/shortpixel-critical-css/) - Automatically generate above-the-fold CSS for fatster loading times and better SEO scores
 
-
 **Get in touch!**
 
 * Email <a href="https://shortpixel.com/contact" target="_blank">https://shortpixel.com/contact</a>
@@ -62,6 +60,20 @@ If you want more control over the format in which the time is shown, you can use
 * LinkedIn <a href="https://www.linkedin.com/company/shortpixel" target="_blank">https://www.linkedin.com/company/shortpixel</a>
 
 == Changelog ==
+
+= 4.0.0 =
+
+Release date: September 5th, 2022
+* New: added the functionality to remove the background for any image;
+* Fix: images added to the new block-style widgets were not replaced;
+* Fix: the original file was not removed after replacement if a multilingual plugin was installed;
+* Fix: additional checks were added to the new upload path for replacements, to avoid possible vulnerabilities, kudos to @soulseekah;
+* Fix: an object cache flush was added after an image was replaced to prevent the content from still being cached in the post editor;
+* Fix: if there was no `_wp_attached_file` in the postmeta table a fatal error was thrown;
+* Fix: the time zone was not displayed correctly on the Replace Media screen;
+* Fix: added some additional checks for file path to avoid `open_basedir` restrictions;
+* Fix: added titles for the Replace Media and Remove Background screens;
+* Fix: various small CSS/JS fixes, wording updates and code cleanups;
 
 = 3.6.3 =
 
