@@ -443,7 +443,7 @@ class FileModel
     if ($path === false) // don't process further
       return false;
 
-    $path = wp_normalize_path($path);
+    //$path = wp_normalize_path($path);
 		$abspath = $fs->getWPAbsPath();
 
     if ( is_file($path) && ! is_dir($path) ) // if path and file exist, all should be okish.

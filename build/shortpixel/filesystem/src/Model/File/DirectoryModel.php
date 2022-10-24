@@ -32,7 +32,7 @@ class DirectoryModel
   */
   public function __construct($path)
   {
-      $path = wp_normalize_path($path);
+   //   $path = wp_normalize_path($path);
       $fs = $this->getFS();
 
       if ($fs->pathIsUrl($path))

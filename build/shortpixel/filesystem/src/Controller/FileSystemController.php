@@ -75,6 +75,18 @@ Class FileSystemController
         return $this->getDirectory($abspath);
     }
 
+		public function getFullPathForWP(FileModel $file)
+		{
+				$fullpath = $file->getFullPath();
+				$abspath = $this->getWPAbsPath();
+
+				if (! strpos($abspath, $fullpath))
+				{
+
+				}
+
+		}
+
 
     /** Utility function that tries to convert a file-path to a webURL.
     *
@@ -136,7 +148,7 @@ Class FileSystemController
 		  // (2) ** Also a real life fix when a path is /wwwroot/assets/sites/2/ etc, in get site url, the home URL is the site URL, without appending the sites stuff. Fails on original image.
 		    if ($is_multi_site && ! $is_main_site)
 				{
-					$wp_home_path = wp_normalize_path(trailingslashit($uploads['basedir']));
+					$wp_home_path = trailingslashit($uploads['basedir']);
 					$home_url = trailingslashit($uploads['baseurl']);
 				}
 				else
