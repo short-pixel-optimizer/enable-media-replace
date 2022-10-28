@@ -20,7 +20,8 @@ class EnableMediaReplacePlugin
 
     public function __construct()
     {
-        add_action('plugins_loaded', array($this, 'runtime'));
+        add_action('plugins_loaded', array($this, 'runtime')); //lowInit, before theme setup!
+				add_action('admin_init', array($this, 'adminInit')); // adminInit, after functions.php
     }
 
     public function runtime()
@@ -45,11 +46,16 @@ class EnableMediaReplacePlugin
             return;
         }
 
-				$this->features['replace']  = true; // does nothing just for completeness
-				$this->features['background'] = apply_filters('emr/feature/background', true);
+
 
         $this->plugin_actions(); // init
     }
+
+		public function adminInit()
+		{
+			$this->features['replace']  = true; // does nothing just for completeness
+			$this->features['background'] = apply_filters('emr/feature/background', true);
+		}
 
 		public function filesystem()
 		{
