@@ -154,7 +154,7 @@ class Replacer
 
 
       // update the file attached. This is required for wp_get_attachment_url to work.
-			// Using RawFullPath because FullPath does normalize path, which update_attached_file doesn't so in case of windows / strange Apspaths it fails. 
+			// Using RawFullPath because FullPath does normalize path, which update_attached_file doesn't so in case of windows / strange Apspaths it fails.
       $updated = update_attached_file($this->post_id, $this->targetFile->getRawFullPath() );
       if (! $updated)
         Log::addError('Update Attached File reports as not updated or same value');
@@ -655,8 +655,18 @@ class Replacer
   {
     global $wpdb;
 
-    $meta_options = apply_filters('emr/metadata_tables', array('post', 'comment', 'term', 'user', 'options'));
+		$options = array('post', 'comment', 'term', 'user', 'options');
+    $meta_options = apply_filters('emr/metadata_tables', $options);
+
+
+		// fields in options to look for.
+		$option_fields = array('widget_block');
+		$option_fields = apply_filters('emr/replacer/option_fields', $option_fields);
+
+
+
     $number_of_updates = 0;
+		$prepare = array('%' . $url . '%');
 
     foreach($meta_options as $type)
     {
@@ -670,9 +680,14 @@ class Replacer
               $update_sql = ' UPDATE ' . $wpdb->postmeta . ' SET meta_value = %s WHERE meta_id = %d';
           break;
 					case "options": // basked case (for guten widgets).
+						 $in_str_arr = array_fill( 0, count( $option_fields ), '%s' );
+				 	 	 $in_str = join( ',', $in_str_arr );
+
 							$sql = 'SELECT option_id as id, option_name, option_value as meta_value FROM ' . $wpdb->options . '
-								WHERE option_value like %s and option_name = "widget_block" ';
+								WHERE option_value like %s and option_name in (' . $in_str . ')';
 							$type = 'option';
+
+							$prepare = array_merge($prepare, $option_fields);
 
 							$update_sql = ' UPDATE ' . $wpdb->options . ' SET option_value = %s WHERE option_id = %d';
 					break;
@@ -691,7 +706,7 @@ class Replacer
           break;
         }
 
-        $sql = $wpdb->prepare($sql, '%' . $url . '%');
+        $sql = $wpdb->prepare($sql, $prepare);
 				Log::addTemp('Handle MEta SQL ' . $sql);
 
 				if ($wpdb->last_error)

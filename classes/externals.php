@@ -5,6 +5,8 @@ use EnableMediaReplace\Notices\NoticeController as Notices;
 
 use EnableMediaReplace\Externals\Elementor as Elementor;
 use EnableMediaReplace\Externals\WpBakery as WpBakery;
+use EnableMediaReplace\Externals\SiteOrigin as SiteOrigin;
+
 
 class Externals
 {
@@ -25,6 +27,7 @@ class Externals
       // integrations
       $this->loadElementor();
       $this->loadBakery(); // in case of urlencoded issues, this class should be used probably.
+			$this->loadSiteOrigins();
   }
 
   protected function check() //  check if any of the options should be disabled due to conflicts
@@ -69,5 +72,10 @@ class Externals
   {
       WpBakery::getInstance();
   }
+
+	public function loadSiteOrigins()
+	{
+		 SiteOrigin::getInstance();
+	}
 
 } // class
