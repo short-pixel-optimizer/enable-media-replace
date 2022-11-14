@@ -335,8 +335,20 @@ class EnableMediaReplacePlugin
         }
     }
 
-    public function checkImagePermission($author_id, $post_id)
+    public function checkImagePermission(Object $post)
     {
+			$post_id = $post->ID;
+			$post_type = $post->post_type;
+			$author_id = $post->post_author;
+
+			if ($post_type !== 'attachment')
+				return false;
+
+			if (is_null($post_id) || intval($post_id) >! 0)
+			{
+				 return false;
+			}
+
         if ($this->general_cap === false && $this->user_cap === false) {
             if (current_user_can('edit_post', $post_id)  === true) {
                             return true;
@@ -385,7 +397,7 @@ class EnableMediaReplacePlugin
               return false;
         }
 
-        if (! $this->checkImagePermission($post->post_author, $post->ID)) {
+        if (! $this->checkImagePermission($post)) {
             return;
         }
 
@@ -424,7 +436,7 @@ class EnableMediaReplacePlugin
 
     public function show_thumbs_box($post)
     {
-        if (! $this->checkImagePermission($post->post_author, $post->ID)) {
+        if (! $this->checkImagePermission($post)) {
             return;
         }
 
@@ -459,7 +471,7 @@ class EnableMediaReplacePlugin
     {
         $screen = null;
 
-        if (! $this->checkImagePermission($post->post_author, $post->ID)) {
+        if (! $this->checkImagePermission($post)) {
             return $form_fields;
         }
 
@@ -513,7 +525,7 @@ class EnableMediaReplacePlugin
     public function add_media_action($actions, $post)
     {
 
-        if (! $this->checkImagePermission($post->post_author, $post->ID)) {
+        if (! $this->checkImagePermission($post)) {
             return $actions;
         }
 

@@ -30,7 +30,7 @@ $table_name = $wpdb->prefix . "posts";
 $attachment_id = intval($_GET['attachment_id']);
 $attachment = get_post($attachment_id);
 
-if (! emr()->checkImagePermission($attachment->post_author, $attachment_id))
+if (! emr()->checkImagePermission($attachment))
 {
   wp_die( esc_html__('You do not have permission to upload files for this author.', 'enable-media-replace') );
 }
