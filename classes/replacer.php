@@ -450,7 +450,7 @@ class Replacer
        @unlink($attached_file);
     }
 
-
+    do_action( 'emr_after_remove_current', $this->post_id, $meta, $backup_sizes, $file );
   }
 
   /** Handle new dates for the replacement */
