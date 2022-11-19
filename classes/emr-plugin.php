@@ -131,7 +131,7 @@ class EnableMediaReplacePlugin
         add_action('wp_ajax_emr_dismiss_notices', array($this,'dismiss_notices'));
 
       // editors
-        add_action('add_meta_boxes', array($this, 'add_meta_boxes'), 10, 2);
+        add_action('add_meta_boxes_attachment', array($this, 'add_meta_boxes'), 10, 2);
         add_filter('attachment_fields_to_edit', array($this, 'attachment_editor'), 10, 2);
 
       /** Just after an image is replaced, try to browser decache the images */
@@ -390,10 +390,10 @@ class EnableMediaReplacePlugin
         return $url;
     }
 
-    public function add_meta_boxes($post_type, $post)
+    public function add_meta_boxes($post)
     {
             // Because some plugins don't like to play by the rules.
-        if (is_null($post_type) || is_null($post)) {
+        if (is_null($post) || ! is_object($post) ) {
               return false;
         }
 
