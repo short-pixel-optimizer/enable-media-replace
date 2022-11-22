@@ -335,8 +335,12 @@ class EnableMediaReplacePlugin
         }
     }
 
-    public function checkImagePermission(Object $post)
+    public function checkImagePermission($post)
     {
+			 if (! is_object($post))
+			 {
+				 return false;
+			 }
 			$post_id = $post->ID;
 			$post_type = $post->post_type;
 			$author_id = $post->post_author;
