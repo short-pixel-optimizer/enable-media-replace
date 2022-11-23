@@ -67,18 +67,18 @@
               }
         },
       });
-    },
+    }
     this.checkCustomDate = function()
     {
       if ($('input[name="timestamp_replace"]:checked').val() == 3)
         this.showCustomDate();
       else
         this.hideCustomDate();
-    },
+    }
     this.showCustomDate = function()
     {
         $('.custom_date').css('visibility', 'visible').fadeTo(100, 1);
-    },
+    }
     this.hideCustomDate = function()
     {
       $('.custom_date').fadeTo(100,0,
@@ -113,7 +113,7 @@
           this.updatePreview(null);
         }
         this.checkSubmit();
-    },
+    }
     this.updatePreview = function(file)
     {
       var preview = $('.image_placeholder').last();
@@ -216,7 +216,7 @@
       //    textlayer.css('margin-left', '-' + (textlayer.width() / 2 ) + 'px');
         }
 
-    },
+    }
     this.updateFileSize = function(preview, file)
     {
       if (file === null)
@@ -255,12 +255,12 @@
         else {
           $('input[type="submit"]').prop('disabled', true);
         }
-    },
+    }
     this.toggleErrors = function(toggle)
     {
       $('.form-error').fadeOut();
       $('.form-warning').fadeOut();
-    },
+    }
     this.checkUpload = function(fileItem)
     {
       var maxsize = emr_options.maxfilesize;
@@ -280,7 +280,7 @@
           return false;
       }
       return true;
-    },
+    }
     this.errorFileSize = function(fileItem)
     {
       $('.form-error.filesize').find('.fn').text(fileItem.name);

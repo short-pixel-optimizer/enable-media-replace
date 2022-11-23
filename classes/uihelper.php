@@ -308,6 +308,10 @@ class UIHelper
     }
 
     $mime_type = $file->getMime();
+		if (false === $mime_type) // If server is not supporting this, go w/ the post mime type one.
+		{
+			$mime_type = get_post_mime_type($attach_id);
+		}
 
     $args = array(
       'width' => 300,
@@ -411,6 +415,9 @@ class UIHelper
 	public function isBackgroundRemovable($post)
 	{
 		  if (false === wp_attachment_is_image($post))
+				return false;
+
+			if (false === emr()->useFeature('background'))
 				return false;
 
 			$extensions = array('jpg', 'png','jpeg');

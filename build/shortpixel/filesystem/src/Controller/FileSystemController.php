@@ -75,6 +75,18 @@ Class FileSystemController
         return $this->getDirectory($abspath);
     }
 
+		public function getFullPathForWP(FileModel $file)
+		{
+				$fullpath = $file->getFullPath();
+				$abspath = $this->getWPAbsPath();
+
+				if (! strpos($abspath, $fullpath))
+				{
+
+				}
+
+		}
+
 
     /** Utility function that tries to convert a file-path to a webURL.
     *
@@ -85,8 +97,11 @@ Class FileSystemController
       $filepath = $file->getFullPath();
       $directory = $file->getFileDir();
 
-			$is_multi_site = $this->env->is_multisite;
-			$is_main_site =  $this->env->is_mainsite;
+			$is_multi_site = (function_exists("is_multisite") && is_multisite()) ? true : false;
+	    $is_main_site = is_main_site();
+
+			//$is_multi_site = $this->env->is_multisite;
+			//$is_main_site =  $this->env->is_mainsite;
 
       // stolen from wp_get_attachment_url
       if ( ( $uploads = wp_get_upload_dir() ) && (false === $uploads['error'] || strlen(trim($uploads['error'])) == 0  )  ) {
@@ -113,6 +128,9 @@ Class FileSystemController
 
             } elseif ( false !== strpos( $filepath, 'wp-content/uploads' ) ) {
                 // Get the directory name relative to the basedir (back compat for pre-2.7 uploads)
+								//$relativePath = $this->getFile(_wp_get_attachment_relative_path( $filepath ) );
+								//$basename = wp_basename($relativePath->getFullPath());
+
                 $url = trailingslashit( $uploads['baseurl'] . '/' . _wp_get_attachment_relative_path( $filepath ) ) . wp_basename( $filepath );
             } else {
                 // It's a newly-uploaded file, therefore $file is relative to the basedir.
@@ -130,7 +148,7 @@ Class FileSystemController
 		  // (2) ** Also a real life fix when a path is /wwwroot/assets/sites/2/ etc, in get site url, the home URL is the site URL, without appending the sites stuff. Fails on original image.
 		    if ($is_multi_site && ! $is_main_site)
 				{
-					$wp_home_path = wp_normalize_path(trailingslashit($uploads['basedir']));
+					$wp_home_path = trailingslashit($uploads['basedir']);
 					$home_url = trailingslashit($uploads['baseurl']);
 				}
 				else

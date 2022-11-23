@@ -16,9 +16,12 @@ class EnableMediaReplacePlugin
     private $user_cap = false;
     private $general_cap = false;
 
+		private $features = array();
+
     public function __construct()
     {
-        add_action('plugins_loaded', array($this, 'runtime'));
+        add_action('plugins_loaded', array($this, 'runtime')); //lowInit, before theme setup!
+				add_action('admin_init', array($this, 'adminInit')); // adminInit, after functions.php
     }
 
     public function runtime()
@@ -43,8 +46,16 @@ class EnableMediaReplacePlugin
             return;
         }
 
+
+
         $this->plugin_actions(); // init
     }
+
+		public function adminInit()
+		{
+			$this->features['replace']  = true; // does nothing just for completeness
+			$this->features['background'] = apply_filters('emr/feature/background', true);
+		}
 
 		public function filesystem()
 		{
@@ -54,6 +65,20 @@ class EnableMediaReplacePlugin
 		public function uiHelper()
 		{
 			 return Uihelper::getInstance();
+		}
+
+		public function useFeature($name)
+		{
+			  switch($name)
+				{
+					 case 'background':
+					 		$bool = $this->features['background'];
+					 break;
+					 default:
+					 		$bool = false;
+					 break;
+				}
+				return $bool;
 		}
 
     public static function get()
@@ -106,7 +131,7 @@ class EnableMediaReplacePlugin
         add_action('wp_ajax_emr_dismiss_notices', array($this,'dismiss_notices'));
 
       // editors
-        add_action('add_meta_boxes', array($this, 'add_meta_boxes'), 10, 2);
+        add_action('add_meta_boxes_attachment', array($this, 'add_meta_boxes'), 10, 2);
         add_filter('attachment_fields_to_edit', array($this, 'attachment_editor'), 10, 2);
 
       /** Just after an image is replaced, try to browser decache the images */
@@ -131,7 +156,6 @@ class EnableMediaReplacePlugin
 			$title =  esc_html__("Replace media", "enable-media-replace");
 			$title = (isset($_REQUEST['action']) && ($_REQUEST['action'] === 'emr_prepare_remove')) ? esc_html__("Remove background", "enable-media-replace") : $title;
         add_submenu_page('upload.php',$title, $title, 'upload_files', 'enable-media-replace/enable-media-replace.php', array($this, 'route'));
-       /* add_submenu_page(null, esc_html__("Remove background", "enable-media-replace"), esc_html__("Remove the media Background", "enable-media-replace"), 'upload_files', 'emr-remove-background', array($this, 'route')); */
 
 
     }
@@ -195,9 +219,6 @@ class EnableMediaReplacePlugin
 
 								$this->uiHelper()->featureNotice();
 
-
-
-
                 if (! check_admin_referer($action, '_wpnonce')) {
                     die('Invalid Nonce');
                 }
@@ -212,7 +233,7 @@ class EnableMediaReplacePlugin
 								elseif ($action == 'media_replace_upload') {
                     require_once($this->plugin_path . 'views/upload.php');
 								}
-								elseif ('emr_prepare_remove' === $action) {
+								elseif ('emr_prepare_remove' === $action && $this->useFeature('background')) {
 										$attachment_id = intval($_GET['attachment_id']);
 										$attachment    = get_post($attachment_id);
 										//We're adding a timestamp to the image URL for cache busting
@@ -224,7 +245,10 @@ class EnableMediaReplacePlugin
 										wp_enqueue_script('emr_upsell');
 										require_once($this->plugin_path . "views/prepare-remove-background.php");
 
-								} elseif ('do_background_replace' === $action && check_admin_referer($action, '_wpnonce')) {
+								} elseif ('do_background_replace' === $action &&
+												check_admin_referer($action, '_wpnonce') &&
+												$this->useFeature('background')
+											) {
 										require_once($this->plugin_path . 'views/do-replace-background.php');
 								}
                 else {
@@ -311,8 +335,24 @@ class EnableMediaReplacePlugin
         }
     }
 
-    public function checkImagePermission($author_id, $post_id)
+    public function checkImagePermission($post)
     {
+			 if (! is_object($post))
+			 {
+				 return false;
+			 }
+			$post_id = $post->ID;
+			$post_type = $post->post_type;
+			$author_id = $post->post_author;
+
+			if ($post_type !== 'attachment')
+				return false;
+
+			if (is_null($post_id) || intval($post_id) >! 0)
+			{
+				 return false;
+			}
+
         if ($this->general_cap === false && $this->user_cap === false) {
             if (current_user_can('edit_post', $post_id)  === true) {
                             return true;
@@ -354,14 +394,14 @@ class EnableMediaReplacePlugin
         return $url;
     }
 
-    public function add_meta_boxes($post_type, $post)
+    public function add_meta_boxes($post)
     {
             // Because some plugins don't like to play by the rules.
-        if (is_null($post_type) || is_null($post)) {
+        if (is_null($post) || ! is_object($post) ) {
               return false;
         }
 
-        if (! $this->checkImagePermission($post->post_author, $post->ID)) {
+        if (! $this->checkImagePermission($post)) {
             return;
         }
 
@@ -400,7 +440,7 @@ class EnableMediaReplacePlugin
 
     public function show_thumbs_box($post)
     {
-        if (! $this->checkImagePermission($post->post_author, $post->ID)) {
+        if (! $this->checkImagePermission($post)) {
             return;
         }
 
@@ -435,7 +475,7 @@ class EnableMediaReplacePlugin
     {
         $screen = null;
 
-        if (! $this->checkImagePermission($post->post_author, $post->ID)) {
+        if (! $this->checkImagePermission($post)) {
             return $form_fields;
         }
 
@@ -489,7 +529,7 @@ class EnableMediaReplacePlugin
     public function add_media_action($actions, $post)
     {
 
-        if (! $this->checkImagePermission($post->post_author, $post->ID)) {
+        if (! $this->checkImagePermission($post)) {
             return $actions;
         }
 

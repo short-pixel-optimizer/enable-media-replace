@@ -3,9 +3,9 @@ Contributors: ShortPixel
 Donate link: https://www.paypal.me/resizeImage
 Tags: replace, attachment, media, files, replace image, remove background, replace jpg, change media, replace media, image, file
 Requires at least: 4.9.7
-Tested up to: 6.0
+Tested up to: 6.1
 Requires PHP: 5.6
-Stable tag: 4.0.0
+Stable tag: 4.0.1
 
 Easily replace any attached image/file by simply uploading a new file in the Media Library edit view - a real time saver!
 
@@ -60,6 +60,17 @@ If you want more control over the format in which the time is shown, you can use
 * LinkedIn <a href="https://www.linkedin.com/company/shortpixel" target="_blank">https://www.linkedin.com/company/shortpixel</a>
 
 == Changelog ==
+
+= 4.0.1 =
+
+Release date: November 23, 2022
+* Fix: files are now replaced correctly in environments running on Windows/IIC servers;
+* Fix: the mime type is now correctly detected, so that a warning is no longer displayed when replacing PDFs;
+* Fix: the plugin no longer tries to load its code for post IDs that are not attachments, like comments;
+* Fix: some warnings were displayed when using the Members plugin;
+* Compat: added integration for SiteOrigin Page Builder to correctly replace files in its widgets;
+* Compat: added `emr_after_remove_current` action hook (thanks @luistar15);
+* Tweak: added filter to disable the background replace functionality.
 
 = 4.0.0 =
 

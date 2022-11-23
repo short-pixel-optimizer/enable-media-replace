@@ -29,7 +29,7 @@ if (is_null($post_id)) {
 }
 $attachment = get_post($post_id);
 
-if (! emr()->checkImagePermission($attachment->post_author, $attachment->ID)) {
+if (! emr()->checkImagePermission($attachment)) {
     wp_die(esc_html__('You do not have permission to upload files for this author.', 'enable-media-replace'));
 }
 
@@ -158,7 +158,6 @@ if (is_uploaded_file($_FILES["userfile"]["tmp_name"]) || isset($_POST["remove_bg
         var_dump($e->getMessage());
         die;
         Log::addError($e->getMessage());
-    //  exit($e->getMessage());
     }
 
     if (is_null($result)) {
