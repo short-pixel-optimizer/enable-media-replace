@@ -63,7 +63,7 @@ If you want more control over the format in which the time is shown, you can use
 
 = 4.0.1 =
 
-Release date: November 22, 2022
+Release date: November 23, 2022
 * Fix: files are now replaced correctly in environments running on Windows/IIC servers;
 * Fix: the mime type is now correctly detected, so that a warning is no longer displayed when replacing PDFs;
 * Fix: the plugin no longer tries to load its code for post IDs that are not attachments, like comments;
