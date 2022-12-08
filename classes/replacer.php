@@ -139,8 +139,15 @@ class Replacer
 
         if (false === $result_moved)
         {
-          $ex = sprintf( esc_html__('The uploaded file could not be moved to %1$s. This is most likely an issue with permissions, or upload failed.', "enable-media-replace"), $targetFile );
-          throw new \RuntimeException($ex);
+					if ($targetFileObj->exists())
+					{
+						 Log::addDebug('Could remove file from tmp directory?');
+					}
+					else {
+						$ex = sprintf( esc_html__('The uploaded file could not be moved to %1$s. This is most likely an issue with permissions, or upload failed.', "enable-media-replace"), $targetFile );
+	          throw new \RuntimeException($ex);
+					}
+
         }
 
       // init targetFile.
