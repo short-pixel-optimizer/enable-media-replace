@@ -45,11 +45,17 @@ class Replacer
       if (function_exists('wp_get_original_image_path')) // WP 5.3+
       {
           $source_file = wp_get_original_image_path($post_id);
+
           if ($source_file === false) // if it's not an image, returns false, use the old way.
+					{
             $source_file = trim(get_attached_file($post_id, apply_filters( 'emr_unfiltered_get_attached_file', true )));
+					}
+					else {
+						$this->source_is_scaled = true;
+					}
       }
       else
-        $source_file = trim(get_attached_file($post_id, apply_filters( 'emr_unfiltered_get_attached_file', true )));
+      	$source_file = trim(get_attached_file($post_id, apply_filters( 'emr_unfiltered_get_attached_file', true )));
 
       /* It happens that the SourceFile returns relative / incomplete when something messes up get_upload_dir with an error something.
          This case shoudl be detected here and create a non-relative path anyhow..
@@ -78,8 +84,7 @@ class Replacer
       }
       else
         $this->source_url = wp_get_attachment_url($post_id);
-    //  $this->ThumbnailUpdater = new \ThumbnailUpdater($post_id);
-      //$this->ThumbnailUpdater->setOldMetadata($this->source_metadata);
+
   }
 
 	private function fs()
@@ -520,10 +525,11 @@ class Replacer
     // get relurls of both source and target.
     $urls = $this->getRelativeURLS();
 
-
     if ($args['thumbnails_only'])
     {
-      foreach($urls as $side => $data)
+//			if (isset($urls['source']['file']) && $urls['source'])
+
+      /*foreach($urls as $side => $data)
       {
         if (isset($data['base']))
         {
@@ -533,7 +539,7 @@ class Replacer
         {
           unset($urls[$side]['file']);
         }
-      }
+      } */
     }
 
     $search_urls = $urls['source'];
@@ -550,8 +556,18 @@ class Replacer
       }
     }
 
-    Log::addDebug('Source', $this->source_metadata);
-    Log::addDebug('Target', $this->target_metadata);
+		// Original can be unbalanced
+		if (isset($search_urls['original']))
+		{
+			 if (! isset($replace_urls['original']))
+			 {
+				  $replace_urls['original'] = $replace_urls['file'];
+			 }
+		}
+
+
+    Log::addDebug('Source', $search_urls);
+    Log::addDebug('Target', $replace_urls);
     /* If on the other hand, some sizes are available in source, but not in target, try to replace them with something closeby.  */
     foreach($search_urls as $size => $url)
     {
@@ -570,6 +586,11 @@ class Replacer
              Log::addDebug('Unset size ' . $size . ' - no closest found in source');
            }
         }
+				elseif ($url === $replace_urls[$size]) { // identical
+						unset($replace_urls[$size]);
+						unset($search_urls[$size]);
+						Log::addDebug('Unset size '  . $size . ' - search and replace identical');
+				}
     }
 
     /* If source and target are the same, remove them from replace. This happens when replacing a file with same name, and +/- same dimensions generated.
@@ -835,6 +856,10 @@ class Replacer
         $fileArray = array();
         if (isset($meta['file']))
           $fileArray['file'] = $meta['file'];
+			  if (isset($meta['original_image']))
+				{
+					$fileArray['original'] = $meta['original_image'];
+				}
 
         if (isset($meta['sizes']))
         {
@@ -846,6 +871,8 @@ class Replacer
             }
           }
         }
+
+				// scaled
       return $fileArray;
   }
 
@@ -867,10 +894,8 @@ class Replacer
           'target' => array('url' => $this->target_url, 'metadata' => $this->getFilesFromMetadata($this->target_metadata) ),
       );
 
-    //  Log::addDebug('Source Metadata', $this->source_metadata);
-  //    Log::addDebug('Target Metadata', $this->target_metadata);
-
       $result = array();
+			Log::addTemp('DataArray', $dataArray);
 
       foreach($dataArray as $index => $item)
       {
@@ -887,7 +912,7 @@ class Replacer
           }
 
       }
-  //    Log::addDebug('Relative URLS', $result);
+     Log::addDebug('Relative URLS', $result);
       return $result;
   }
 
