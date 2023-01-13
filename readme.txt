@@ -5,7 +5,7 @@ Tags: replace, attachment, media, files, replace image, remove background, repla
 Requires at least: 4.9.7
 Tested up to: 6.1
 Requires PHP: 5.6
-Stable tag: 4.0.1
+Stable tag: 4.0.2
 
 Easily replace any attached image/file by simply uploading a new file in the Media Library edit view - a real time saver!
 
@@ -60,6 +60,14 @@ If you want more control over the format in which the time is shown, you can use
 * LinkedIn <a href="https://www.linkedin.com/company/shortpixel" target="_blank">https://www.linkedin.com/company/shortpixel</a>
 
 == Changelog ==
+
+= 4.0.2 =
+
+Release date: January 13, 2023
+* Fix: patched a security vulnerability that could allow loading an unauthorized file during the replace operation;
+* Fix: finish the replace operation even if the tmp file cannot be removed due to file permissions issues;
+* Fix: when replacing a scaled file with a non-scaled file, some links were broken;
+* Fix: under certain conditions a PHP warning about an undefined array key was displayed.
 
 = 4.0.1 =
 
