@@ -74,7 +74,6 @@ switch ($timestamp_replace) {
         $custom_minute = str_pad($_POST['custom_minute'], 2, 0, STR_PAD_LEFT);
 
         // create a mysql time representation from what we have.
-        Log::addDebug($_POST);
         Log::addDebug('Custom Date - ' . $custom_date . ' ' . $custom_hour . ':' . $custom_minute);
         $custom_date = \DateTime::createFromFormat('Y-m-d G:i', $custom_date . ' ' . $custom_hour . ':' . $custom_minute);
         if ($custom_date === false) {
@@ -115,8 +114,7 @@ if ($replace_type == 'replace') {
 $replacer->setTimeMode($timestamp_replace, $datetime);
 
 /** Check if file is uploaded properly **/
-// @todo Post remove Bg should be removed.
-if (is_uploaded_file($_FILES["userfile"]["tmp_name"]) || isset($_POST["remove_bg"])) {
+if (is_uploaded_file($_FILES["userfile"]["tmp_name"])) {
     Log::addDebug($_FILES['userfile']);
 
     // New method for validating that the uploaded file is allowed, using WP:s internal wp_check_filetype_and_ext() function.
@@ -131,7 +129,8 @@ if (is_uploaded_file($_FILES["userfile"]["tmp_name"]) || isset($_POST["remove_bg
     }
 
 
-    if ($filedata["ext"] == false && ! current_user_can('unfiltered_upload') && ! isset($_POST["remove_bg"])) {
+    if ($filedata["ext"] == false && ! current_user_can('unfiltered_upload')) {
+				Log::addWarn('Uploaded File type does not meet security guidelines, aborting');
         Notices::addError(esc_html__("File type does not meet security guidelines. Try another.", 'enable-media-replace'));
         wp_safe_redirect($redirect_error);
         exit();
@@ -139,7 +138,6 @@ if (is_uploaded_file($_FILES["userfile"]["tmp_name"]) || isset($_POST["remove_bg
 
     // Here we have the uploaded file
     $new_filename = $_FILES["userfile"]["name"];
-    //$new_filesize = $_FILES["userfile"]["size"]; // Seems not to be in use.
     $new_filetype = $filedata["type"] ? $filedata["type"] : $_FILES['userfile']['type'];
 
     // Gather all functions that both options do.
@@ -153,7 +151,7 @@ if (is_uploaded_file($_FILES["userfile"]["tmp_name"]) || isset($_POST["remove_bg
     }
 */
     try {
-        $result = $replacer->replaceWith($_FILES["userfile"]["tmp_name"], $new_filename , isset($_POST["remove_bg"]));
+        $result = $replacer->replaceWith($_FILES["userfile"]["tmp_name"], $new_filename);
     } catch (\RunTimeException $e) {
         var_dump($e->getMessage());
         die;
@@ -168,7 +166,7 @@ if (is_uploaded_file($_FILES["userfile"]["tmp_name"]) || isset($_POST["remove_bg
 
     // Execute hook actions - thanks rubious for the suggestion!
 } else {
-    //TODO Better error handling when no file is selected.
+    //@TODO Better error handling when no file is selected.
     //For now just go back to media management
     //$returnurl = admin_url("upload.php");
     Log::addInfo('Failed. Redirecting - '.  $redirect_error);

@@ -69,6 +69,12 @@ class EnableMediaReplacePlugin
 
 		public function useFeature($name)
 		{
+				// If for some obscure reason, it's called earlier or out of admin, still load the features.
+				if (count($this->features) === 0)
+				{
+					 $this->adminInit();
+				}
+
 			  switch($name)
 				{
 					 case 'background':
