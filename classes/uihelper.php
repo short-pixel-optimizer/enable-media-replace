@@ -82,7 +82,6 @@ class UIHelper
     }
 
     $url = apply_filters('emr_returnurl', $url);
-    Log::addDebug('Success URL- ' . $url);
 
     return $url;
 
@@ -100,7 +99,6 @@ class UIHelper
     );
 
     $url = apply_filters('emr_returnurl_failed', $url);
-    Log::addDebug('Failed URL- ' . $url);
     return $url;
   }
 

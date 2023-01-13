@@ -735,7 +735,6 @@ class Replacer
         }
 
         $sql = $wpdb->prepare($sql, $prepare);
-				Log::addTemp('Handle MEta SQL ' . $sql);
 
 				if ($wpdb->last_error)
 					Log::addWarn('Error' . $wpdb->last_error, $wpdb->last_query);
@@ -895,7 +894,6 @@ class Replacer
       );
 
       $result = array();
-			Log::addTemp('DataArray', $dataArray);
 
       foreach($dataArray as $index => $item)
       {
