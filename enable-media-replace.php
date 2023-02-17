@@ -27,7 +27,7 @@
 
 namespace EnableMediaReplace;
 
-define( 'EMR_VERSION', '4.0.2' );
+define( 'EMR_VERSION', '4.0.3-DEV01' );
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit; // Exit if accessed directly.
