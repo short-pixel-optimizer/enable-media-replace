@@ -113,7 +113,7 @@ class EnableMediaReplacePlugin
     public function plugin_actions()
     {
         $this->plugin_path = plugin_dir_path(EMR_ROOT_FILE);
-        $this->plugin_url = plugin_dir_url(EMR_ROOT_FILE);
+        //$this->plugin_url = plugin_dir_url(EMR_ROOT_FILE);
 
 				// loads the dismiss hook.
 				$notices = Notices::getInstance();
