@@ -31,13 +31,6 @@ if (! apply_filters('emr/upsell', current_user_can('install_plugins')))
 	<input type="hidden" id='upsell-nonce-activate' value="<?php echo wp_create_nonce( 'emr-plugin-activate' ); ?>" />
   <section class='upsell-wrapper'>
 
-  <!--- Shortpixel THEME -->
-	<div class='shortpixel-offer theme-offer'>
-		<p><a href="https://wordpress.org/themes/superb-pixels/" target="_blank"><img src="<?php echo emr()->getPluginURL('img/sp-banner-theme.jpg'); ?>" alt='ShortPixel Theme' ></a></p>
-
-	</div>
-	<!--- // Shortpixel THEME -->
-
 		<!--- SHORTPIXEL -->
     <?php if(! $spio_active): ?>
 
@@ -103,7 +96,14 @@ if (! apply_filters('emr/upsell', current_user_can('install_plugins')))
 
     </div>
 	<?php endif; ?>
-	<!--- // SHORTPIXEL -->
+	<!--- // SHORTPIXEL AI -->
+
+  <!--- Shortpixel THEME -->
+	<div class='shortpixel-offer theme-offer'>
+		<p><a href="https://wordpress.org/themes/superb-pixels/" target="_blank"><img src="<?php echo emr()->getPluginURL('img/sp-banner-theme.jpg'); ?>" alt='ShortPixel Theme' ></a></p>
+
+	</div>
+	<!--- // Shortpixel THEME -->
 
 	<!--- WPSO -->
 	<?php /*
