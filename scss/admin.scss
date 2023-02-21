@@ -304,6 +304,8 @@
   {
      padding: 12px;
   }
+
+	// *** UPSELL SNIPPET
   .shortpixel-offer
   {
     background: #fff;
@@ -359,6 +361,7 @@
       img { max-width: 140px; max-height: 140px; margin: 0; }
     }
 
+
 		&.spio  // shortpixel
 		{
 		}
@@ -368,6 +371,13 @@
 		&.envira-shortpixel-install // envira
 		{
 				background: #fff;
+		}
+		&.theme-offer
+		{
+			 background: #fff;
+			 img {
+				 max-width: 100%;
+			 }
 		}
   }
 

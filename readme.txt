@@ -3,9 +3,9 @@ Contributors: ShortPixel
 Donate link: https://www.paypal.me/resizeImage
 Tags: replace, attachment, media, files, replace image, remove background, replace jpg, change media, replace media, image, file
 Requires at least: 4.9.7
-Tested up to: 6.1
+Tested up to: 6.2
 Requires PHP: 5.6
-Stable tag: 4.0.2
+Stable tag: 4.0.3
 
 Easily replace any attached image/file by simply uploading a new file in the Media Library edit view - a real time saver!
 
@@ -60,6 +60,13 @@ If you want more control over the format in which the time is shown, you can use
 * LinkedIn <a href="https://www.linkedin.com/company/shortpixel" target="_blank">https://www.linkedin.com/company/shortpixel</a>
 
 == Changelog ==
+
+= 4.0.3 =
+
+Release date: February 21, 2023
+* Fix: background removal notification is no longer displayed when this feature is disabled with the filter;
+* Compat: improved compatibility with PHP 8.1 and 8.2
+* Tweak: updated the banners on the replace page.
 
 = 4.0.2 =
 

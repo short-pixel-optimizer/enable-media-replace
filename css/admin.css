@@ -1283,6 +1283,12 @@
 .emr_upload_form .shortpixel-offer.envira-shortpixel-install {
   background: #fff;
 }
+.emr_upload_form .shortpixel-offer.theme-offer {
+  background: #fff;
+}
+.emr_upload_form .shortpixel-offer.theme-offer img {
+  max-width: 100%;
+}
 @media (max-width: 1200px) {
   .emr_upload_form .image_previews {
     text-align: center;

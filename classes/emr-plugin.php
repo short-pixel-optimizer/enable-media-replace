@@ -113,7 +113,7 @@ class EnableMediaReplacePlugin
     public function plugin_actions()
     {
         $this->plugin_path = plugin_dir_path(EMR_ROOT_FILE);
-        $this->plugin_url = plugin_dir_url(EMR_ROOT_FILE);
+        //$this->plugin_url = plugin_dir_url(EMR_ROOT_FILE);
 
 				// loads the dismiss hook.
 				$notices = Notices::getInstance();
@@ -132,9 +132,6 @@ class EnableMediaReplacePlugin
       //add_filter('upload_mimes', array($this,'add_mime_types'), 1, 1);
 
       // notices
-        add_action('admin_notices', array($this,'display_notices'));
-        add_action('network_admin_notices', array($this,'display_network_notices'));
-        add_action('wp_ajax_emr_dismiss_notices', array($this,'dismiss_notices'));
 
       // editors
         add_action('add_meta_boxes_attachment', array($this, 'add_meta_boxes'), 10, 2);
@@ -162,7 +159,6 @@ class EnableMediaReplacePlugin
 			$title =  esc_html__("Replace media", "enable-media-replace");
 			$title = (isset($_REQUEST['action']) && ($_REQUEST['action'] === 'emr_prepare_remove')) ? esc_html__("Remove background", "enable-media-replace") : $title;
         add_submenu_page('upload.php',$title, $title, 'upload_files', 'enable-media-replace/enable-media-replace.php', array($this, 'route'));
-
 
     }
 
@@ -201,7 +197,7 @@ class EnableMediaReplacePlugin
 			 $screen = get_current_screen();
 
 			 $notice_pages = array('attachment',  'media_page_enable-media-replace/enable-media-replace', 'upload' );
-			 if ( in_array($screen->id, $notice_pages) )
+			 if ( in_array($screen->id, $notice_pages) &&	true === emr()->useFeature('background'))
 			 {
 
 			 	 $notices = Notices::getInstance();
@@ -564,34 +560,6 @@ class EnableMediaReplacePlugin
     }
 
 
-    public function display_notices()
-    {
-        $current_screen = get_current_screen();
-
-        $crtScreen = function_exists("get_current_screen") ? get_current_screen() : (object)array("base" => false);
-  /*
-      if(current_user_can( 'activate_plugins' ) && !get_option( 'emr_news') && !is_plugin_active('shortpixel-image-optimiser/wp-shortpixel.php')
-         && ($crtScreen->base == "upload" || $crtScreen->base == "plugins")
-          //for network installed plugins, don't display the message on subsites.
-         && !(function_exists('is_multisite') && is_multisite() && is_plugin_active_for_network('enable-media-replace/enable-media-replace.php') && !is_main_site()))
-      {
-        require_once($this->plugin_path . '/views/notice.php');
-      } */
-    }
-
-    public function display_network_notices()
-    {
-        if (current_user_can('activate_plugins') && !get_option('emr_news') && !is_plugin_active_for_network('shortpixel-image-optimiser/wp-shortpixel.php')) {
-            require_once(str_replace("enable-media-replace.php", "notice.php", __FILE__));
-        }
-    }
-
-  /* Ajax function to dismiss notice */
-    public function dismiss_notices()
-    {
-        update_option('emr_news', true);
-        exit(json_encode(array("Status" => 0)));
-    }
 
   /** Outputs the replaced date of the media on the edit_attachment screen
   *
