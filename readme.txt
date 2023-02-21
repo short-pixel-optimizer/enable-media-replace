@@ -34,6 +34,8 @@ This plugin is very powerful and a must-have for all major websites built with W
 Similar to replacing media, you can also remove the background of the images from the Media Library! The background removal feature sends the images to ShortPixel's API, removes the background and sends them back in a preview window. If everything looks good, just replace the image with the one that has the background removed! If the source image is a PNG file, you will get a transparent background, while the other images default to a solid white background. You also have the option to choose a different color with an embedded color picker.
 The background removal feature is still in beta and will be free of charge for a reasonable usage.
 
+If you don't want to utilize the background removal feature, add add_filter('emr/feature/background', '__return_false' ); to your functions.php
+
 #### Show file modification time
 
 There is a shortcode that takes the file modification date and displays it in a post or on a page. The code is:
