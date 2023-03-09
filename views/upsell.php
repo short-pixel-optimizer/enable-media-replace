@@ -96,7 +96,7 @@ if (! apply_filters('emr/upsell', current_user_can('install_plugins')))
 
     </div>
 	<?php endif; ?>
-	<!--- // SHORTPIXEL -->
+	<!--- // SHORTPIXEL AI -->
 
   <!--- Shortpixel THEME -->
 	<div class='shortpixel-offer theme-offer'>
