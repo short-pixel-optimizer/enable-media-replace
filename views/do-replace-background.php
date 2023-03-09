@@ -5,18 +5,11 @@ use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
 use EnableMediaReplace\Notices\NoticeController as Notices;
 use \EnableMediaReplace\Replacer as Replacer;
 
-
 if (! defined('ABSPATH')) {
     exit; // Exit if accessed directly.
 }
 
-if (! check_admin_referer('do_background_replace'))
-{
-	wp_die(esc_html__('Nonce in form failed. Go back, refresh and try again.', 'enable-media-replace'));
-}
-
 $key = isset($_POST['key']) ? sanitize_text_field($_POST['key']) : null;
-
 if (is_null($key) || strlen($key) == 0)
 {
 	wp_die(esc_html__('Error while sending form (no key). Please try again.', 'enable-media-replace'));
@@ -40,9 +33,6 @@ $replacer->setMode(\EnableMediaReplace\Replacer::MODE_REPLACE);
 
 $datetime = current_time('mysql');
 $replacer->setTimeMode( \EnableMediaReplace\Replacer::TIME_UPDATEMODIFIED, $datetime);
-
-
-
 
 $api = new Api();
 $result = $api->handleDownload($key);

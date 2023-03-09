@@ -1,6 +1,10 @@
 <?php
 namespace EnableMediaReplace;
 
+if (! defined('ABSPATH')) {
+    exit; // Exit if accessed directly.
+}
+
 //use \EnableMediaReplace\UIHelper;
 use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
 use EnableMediaReplace\Notices\NoticeController as Notices;
@@ -15,76 +19,52 @@ use EnableMediaReplace\Notices\NoticeController as Notices;
  * @subpackage  enable-media-replace
  *
  */
-
  if ( ! defined( 'ABSPATH' ) )
 	exit; // Exit if accessed directly.
 
 if (!current_user_can('upload_files'))
 	wp_die( esc_html__('You do not have permission to upload files.', 'enable-media-replace') );
 
-global $wpdb;
 
-//$emr = EnableMediaReplacePlugin::get();
-
-$table_name = $wpdb->prefix . "posts";
-$attachment_id = intval($_GET['attachment_id']);
-$attachment = get_post($attachment_id);
-
-if (! emr()->checkImagePermission($attachment))
-{
-  wp_die( esc_html__('You do not have permission to upload files for this author.', 'enable-media-replace') );
-}
-
-$replacer = new Replacer($attachment_id);
-
-$file = $replacer->getSourceFile();
-$filepath = $file->getFullPath();
-$filename = $file->getFileName();
-$filetype = $file->getExtension();
-$source_mime = get_post_mime_type($attachment_id);
+$attachment_id = $view->attachment->ID;
+$settings = $view->settings;
+$sourceFile = $view->sourceFile;
 
 $uiHelper = emr()->uiHelper();
-$uiHelper->setPreviewSizes();
-$uiHelper->setSourceSizes($attachment_id);
-
-
-
-$defaults = array(
-  'replace_type' => 'replace',
-  'timestamp_replace' => \EnableMediaReplace\Replacer::TIME_UPDATEMODIFIED,
-  'custom_date' => date("Y-m-d H:i:s"),
-  'new_location' => false,
-  'new_location_dir' => false,
-);
-$settings = get_option('enable_media_replace', $defaults);
-
-$settings = array_merge($defaults, $settings); // might miss some
 
 ?>
 
 <div class="wrap emr_upload_form">
+
+	<div class='emr_drop_area' id='emr-drop-area'><h3><?php _e('Drop File', 'enable-media-replace'); ?></h3></div>
+
 	<h1><?php echo esc_html__("Replace Media Upload", "enable-media-replace"); ?></h1>
 
 	<?php
 
-$url = $uiHelper->getFormUrl($attachment_id);
-  $formurl = wp_nonce_url( $url, "media_replace_upload" );
+	$formurl = $uiHelper->getFormUrl($attachment_id);
+  //$formurl = wp_nonce_url( $url, "media_replace_upload" );
+
 	if (FORCE_SSL_ADMIN) {
 			$formurl = str_replace("http:", "https:", $formurl);
 		}
 	?>
 
 	<form enctype="multipart/form-data" method="POST" action="<?php echo $formurl; ?>">
+		<?php wp_nonce_field('media_replace_upload', 'emr_nonce'); ?>
 
 <div class='editor-wrapper'>
     <section class='image_chooser wrapper'>
       <div class='section-header'> <?php _e('Select Replacement Media', 'enable-media-replace'); ?></div>
 
-		<div id="message" class=""><strong><?php printf( esc_html__('NOTE: You are about to replace the media file "%s". There is no undo. Think about it!', "enable-media-replace"), $filename ); ?></strong></div>
+<!--
+		<div id="message" class=""><strong><?php printf( esc_html__('NOTE: You are about to replace the media file "%s". There is no undo. Think about it!', "enable-media-replace"), $sourceFile->getFileName() ); ?></strong></div>
+-->
 
 		<input type="hidden" name="ID" value="<?php echo $attachment_id ?>" />
 
-		<p><?php echo esc_html__("Choose a file to upload from your computer", "enable-media-replace"); ?></p>
+		<p class='explainer'>You are about to replace <b><?php echo $sourceFile->getFileName() ?></b> in your media library. This will be <b>permanent</b> . <br>You can click on the new image panel and select a file from your computer.  You can also drag and drop a file into this window</p>
+
     <p><?php printf(__('Maximum file size: <strong>%s</strong>','enable-media-replace'), size_format(wp_max_upload_size() ) ) ?></p>
     <div class='form-error filesize'><p><?php printf(__('%s f %s exceeds the maximum upload size for this site.', 'enable-media-replace'), '<span class="fn">', '</span>'); ?></p>
     </div>
@@ -95,30 +75,24 @@ $url = $uiHelper->getFormUrl($attachment_id);
 
     <div class='form-warning mimetype'><p><?php printf(__('The replacement file type does not seem to be allowed by WordPress. This can lead to unexpected issues')); ?></p></div>
 
-    <div class='emr_drop_area'>
-      <div class='drop-wrapper'>
-
-            <p><input type="file" name="userfile" id="userfile" /></p>
-        <h1><?php _e('Drop File Here', 'enable-media-replace'); ?></h1>
-      </div>
-
-    </div>
     <div class='image_previews'>
-              <?php if (wp_attachment_is('image', $attachment_id) || $source_mime == 'application/pdf')
+
+              <?php
+							if (wp_attachment_is('image', $attachment_id) || $view->sourceMime == 'application/pdf')
               {
-                  echo $uiHelper->getPreviewImage($attachment_id, $file);
-                  echo $uiHelper->getPreviewImage(-1, $file);
+                  echo $uiHelper->getPreviewImage($attachment_id, $sourceFile);
+                  echo $uiHelper->getPreviewImage(-1, $sourceFile, array('is_upload' => true));
               }
               else {
 
-                    if (strlen($filepath) == 0) // check if image in error state.
+                    if (strlen($sourceFile->getFullPath()) == 0) // check if image in error state.
                     {
                         echo $uiHelper->getPreviewError(-1);
-                        echo $uiHelper->getPreviewImage(-1, $file);
+                        echo $uiHelper->getPreviewImage(-1, $sourceFile, array('is_upload' => true));
                     }
                     else {
-                        echo $uiHelper->getPreviewFile($attachment_id, $file);
-                        echo $uiHelper->getPreviewFile(-1, $file);
+                        echo $uiHelper->getPreviewFile($attachment_id, $sourceFile);
+                        echo $uiHelper->getPreviewFile(-1, $sourceFile, array('is_upload' => true));
                     }
 
               }
@@ -134,7 +108,7 @@ $url = $uiHelper->getFormUrl($attachment_id);
       ?>
 
 			<p>&nbsp;</p>
-			<?php if ($uiHelper->isBackgroundRemovable($attachment)): ?>
+			<?php if ($uiHelper->isBackgroundRemovable($view->attachment)): ?>
 								  <div>
 
                     <a href="<?php echo wp_nonce_url( $url , 'emr_prepare_remove' ); ?>">
@@ -164,7 +138,7 @@ $url = $uiHelper->getFormUrl($attachment_id);
         </label>
 
           <p class="howto">
-            <?php printf( esc_html__("Note: This option requires you to upload a file of the same type (%s) as the file you want to replace. The attachment name will remain the same (%s) regardless of what the file you upload is called. If a CDN is used, remember to clear the cache for this image!", "enable-media-replace"), $filetype, $filename ); ?>
+            <?php printf( esc_html__("Note: This option requires you to upload a file of the same type (%s) as the file you want to replace. The attachment name will remain the same (%s) regardless of what the file you upload is called. If a CDN is used, remember to clear the cache for this image!", "enable-media-replace"), $sourceFile->getExtension(), $sourceFile->getFileName() ); ?>
         </p>
 
 				<p class='form-warning filetype'><?php _e('If you replace the file with a different filetype, this file might become unreadable and / or cause unexpected issues', 'enable-media-replace'); ?>
@@ -181,7 +155,7 @@ $url = $uiHelper->getFormUrl($attachment_id);
           <label for="replace_type_2"><input id="replace_type_2" <?php checked('replace_and_search', $settings['replace_type']) ?> type="radio" name="replace_type" value="replace_and_search" <?php echo $searchreplace_disabled ?> > <?php echo __("Replace the file, use the new file name, and update all links", "enable-media-replace"); ?>
       </label>
 
-          <p class="howto"><?php printf( esc_html__("Note: If you enable this option, the name and type of the file you are uploading will replace the old file. All links pointing to the current file (%s) will be updated to point to the new file name. (If other websites link directly to the file, those links will no longer work. Be careful!)", "enable-media-replace"), $filename ); ?></p>
+          <p class="howto"><?php printf( esc_html__("Note: If you enable this option, the name and type of the file you are uploading will replace the old file. All links pointing to the current file (%s) will be updated to point to the new file name. (If other websites link directly to the file, those links will no longer work. Be careful!)", "enable-media-replace"), $sourceFile->getFileName() ); ?></p>
 
      <!-- <p class="howto"><?php echo esc_html__("Please note that if you upload a new image, only the embeds/links of the original size image will be replaced in your posts.", "enable-media-replace"); ?></p> -->
 
@@ -193,12 +167,12 @@ $url = $uiHelper->getFormUrl($attachment_id);
       <div class='section-header'> <?php _e('Date Options', 'enable-media-replace'); ?></div>
       <div class='option timestamp'>
         <?php
-          $attachment_current_date = date_i18n('d/M/Y H:i', strtotime($attachment->post_date) );
+          $attachment_current_date = date_i18n('d/M/Y H:i', strtotime($view->attachment->post_date) );
 					$attachment_now_date = date_i18n('d/M/Y H:i' );
 
           $time = current_time('mysql');
           $date = $nowDate = new \dateTime($time); // default to now.
-					$attachmentDate = new \dateTime($attachment->post_date);
+					$attachmentDate = new \dateTime($view->attachment->post_date);
 
 
           if ($settings['timestamp_replace'] == \EnableMediaReplace\Replacer::TIME_CUSTOM)

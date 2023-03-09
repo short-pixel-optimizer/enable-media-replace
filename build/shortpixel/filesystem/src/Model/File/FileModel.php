@@ -591,7 +591,7 @@ class FileModel
 	public function getPermissions()
   {
 		if (is_null($this->permissions))
-			$this->permissions = fileperms($this->fullpath) & 0777;
+			$this->permissions = fileperms($this->getFullPath()) & 0777;
 
     return $this->permissions;
   }

@@ -110,6 +110,7 @@ class EnableMediaReplacePlugin
         add_shortcode('file_modified', array($this, 'get_modified_date'));
     }
 
+
     public function plugin_actions()
     {
         $this->plugin_path = plugin_dir_path(EMR_ROOT_FILE);
@@ -204,7 +205,6 @@ class EnableMediaReplacePlugin
 				 add_action('admin_notices', array($notices, 'admin_notices')); // previous page / init time
 
 			 }
-			// var_dump($screen);
 		}
 
   /** Load EMR views based on request */
@@ -221,23 +221,24 @@ class EnableMediaReplacePlugin
 
 								$this->uiHelper()->featureNotice();
 
-                if (! check_admin_referer($action, '_wpnonce')) {
-                    die('Invalid Nonce');
-                }
-
-                // @todo Later this should be move to it's own controller, and built view from there.
                 if ($action == 'media_replace') {
                     if (array_key_exists("attachment_id", $_GET) && intval($_GET["attachment_id"]) > 0) {
                                 wp_enqueue_script('emr_upsell');
-                        require_once($this->plugin_path . "views/popup.php"); // warning variables like $action be overwritten here.
+
+											 $controller = \EnableMediaReplace\ViewController\ReplaceViewController::getInstance();
+											 $controller->load();
+//                       require_once($this->plugin_path . "views/popup.php"); // warning variables like $action be overwritten here.
                     }
                 }
 								elseif ($action == 'media_replace_upload') {
-                    require_once($this->plugin_path . 'views/upload.php');
+
+									  $controller = \EnableMediaReplace\ViewController\UploadViewController::getInstance();
+										$controller->load();
+                  //  require_once($this->plugin_path . 'views/upload.php');
 								}
 								elseif ('emr_prepare_remove' === $action && $this->useFeature('background')) {
-										$attachment_id = intval($_GET['attachment_id']);
-										$attachment    = get_post($attachment_id);
+//										$attachment_id = intval($_GET['attachment_id']);
+//										$attachment    = get_post($attachment_id);
 										//We're adding a timestamp to the image URL for cache busting
 
 										wp_enqueue_script('emr_remove_bg');
@@ -245,25 +246,41 @@ class EnableMediaReplacePlugin
 										wp_enqueue_style('emr_style');
 										wp_enqueue_style('emr-remove-background');
 										wp_enqueue_script('emr_upsell');
-										require_once($this->plugin_path . "views/prepare-remove-background.php");
+
+										$controller = \EnableMediaReplace\ViewController\RemoveBackgroundViewController::getInstance();
+										$controller->load();
+
+									//	require_once($this->plugin_path . "views/prepare-remove-background.php");
 
 								} elseif ('do_background_replace' === $action &&
-												check_admin_referer($action, '_wpnonce') &&
 												$this->useFeature('background')
 											) {
-										require_once($this->plugin_path . 'views/do-replace-background.php');
+												$controller = \EnableMediaReplace\ViewController\RemoveBackgroundViewController::getInstance();
+												$controller->loadPost();
+
+									//	require_once($this->plugin_path . 'views/do-replace-background.php');
 								}
                 else {
+
                     exit('Something went wrong loading page, please try again');
                 }
                 break;
-        }
+        } // Route
     }
 
     public function getPluginURL($path = '')
     {
         return plugins_url($path, EMR_ROOT_FILE);
     }
+
+		public function plugin_path($path = '')
+		{
+			$plugin_path = trailingslashit(plugin_dir_path(EMR_ROOT_FILE));
+			if ( strlen( $path ) > 0 ) {
+				$plugin_path .= $path;
+			}
+			 return $plugin_path;
+		}
 
   /** register styles and scripts
   *
@@ -314,6 +331,8 @@ class EnableMediaReplacePlugin
         }
 
         wp_localize_script('emr_admin', 'emr_options', $emr_options);
+
+				wp_register_script('emr_success', plugins_url('js/emr_success.js', EMR_ROOT_FILE), array(), EMR_VERSION, true);
     }
 
   /** Utility function for the Jquery UI Datepicker */
@@ -535,9 +554,9 @@ class EnableMediaReplacePlugin
             return $actions;
         }
 
-        $url = $this->getMediaReplaceURL($post->ID);
+        $media_replace_editurl = $this->getMediaReplaceURL($post->ID);
         $media_replace_action = "media_replace";
-        $media_replace_editurl = wp_nonce_url($url, $media_replace_action);
+     //   $media_replace_editurl = wp_nonce_url($url, $media_replace_action);
         $url = $this->getRemoveBgURL($post->ID);
         $background_remove_action = "emr_prepare_remove";
         $background_remove_editurl = wp_nonce_url($url, $background_remove_action);

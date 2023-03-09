@@ -19,8 +19,8 @@ jQuery(document).ready(function ($) {
     const nonce = emrObject.nonce;
 		const attachment_id = $('input[name="ID"]').val();
     const action = 'emr_remove_background';
-    const bgType = $('input[type=radio][name=background_type]:checked').val();
-    const cLvl = $('input[type=radio][name=compression_level]:checked').val();
+    const bgType = $('input[type=radio][name="background_type"]:checked').val();
+    const cLvl = $('input[type=radio][name="compression_level"]:checked').val();
     let background = {
       type: "transparent"
     }

@@ -220,7 +220,7 @@ class NoticeController //extends ShortPixelController
 
 					if (! is_null($id))
 					{
-						
+
           	$notice = $this->getNoticeByID($id);
 					}
 					else

@@ -14,9 +14,6 @@ if (!current_user_can('upload_files')) {
 }
 
 // Define DB table names
-global $wpdb;
-$table_name = $wpdb->prefix . "posts";
-$postmeta_table_name = $wpdb->prefix . "postmeta";
 
 // Starts processing.
 $uihelper = emr()->uiHelper();
@@ -143,13 +140,6 @@ if (is_uploaded_file($_FILES["userfile"]["tmp_name"])) {
     // Gather all functions that both options do.
     do_action('wp_handle_replace', array('post_id' => $post_id));
 
-
-/*  if ($mode = \EnableMediaReplace\Replacer::MODE_SEARCHREPLACE && $do_new_location && ! is_null($new_location_dir))
-    {
-        exit($new_filename);
-         $newdirfile = $replacer->newTargetLocation($new_location_dir);
-    }
-*/
     try {
         $result = $replacer->replaceWith($_FILES["userfile"]["tmp_name"], $new_filename);
     } catch (\RunTimeException $e) {
@@ -162,7 +152,6 @@ if (is_uploaded_file($_FILES["userfile"]["tmp_name"])) {
          wp_safe_redirect($redirect_error);
          exit();
     }
-//  $returnurl = admin_url("/post.php?post={$_POST["ID"]}&action=edit&message=1");
 
     // Execute hook actions - thanks rubious for the suggestion!
 } else {
