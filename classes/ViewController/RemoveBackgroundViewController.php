@@ -104,8 +104,8 @@ class RemoveBackGroundViewController extends \EnableMediaReplace\ViewController
 
 		$params = array(
 			 'post_id' => $post_id,
-			 'replace_type' => 'replace',
-			 'timestamp_replace' => $timestamp_replace,
+			 'replace_type' => ReplaceController::MODE_REPLACE,
+			 'timestamp_replace' => ReplaceController::TIME_UPDATEMODIFIED,
 			 'new_date' => $datetime,
 			 'is_custom_date' => false,
 			 'remove_background' => true,
