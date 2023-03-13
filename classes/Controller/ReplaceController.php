@@ -295,12 +295,11 @@ class ReplaceController
 					$targetpath = $path . $this->new_filename;
 					Log::addTemp('Search/Replace new location', $targetpath);
 
-
 					// If the source and target path AND filename are identical, user has wrong mode, just overwrite the sourceFile.
 					if ($targetpath == $this->sourceFile->getFullPath())
 					{
 							$unique = $this->sourceFile->getFileName();
-							$this->replaceMode == self::MODE_REPLACE;
+							$this->replaceType == self::MODE_REPLACE;
 					}
 					else
 					{

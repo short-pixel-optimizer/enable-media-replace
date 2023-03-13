@@ -119,12 +119,12 @@ class UploadViewController extends \EnableMediaReplace\ViewController
 		         Log::addDebug('Custom Date - ' . $custom_date . ' ' . $custom_hour . ':' . $custom_minute);
 		         $custom_date = \DateTime::createFromFormat('Y-m-d G:i', $custom_date . ' ' . $custom_hour . ':' . $custom_minute);
 		         if ($custom_date === false) {
-		             wp_safe_redirect($redirect_error);
+		             /*wp_safe_redirect($redirect_error);
 		             $errors = \DateTime::getLastErrors();
 		             $error = '';
 		             if (isset($errors['errors'])) {
 		                 $error = implode(',', $errors['errors']);
-		             }
+		             } */
 		             //Notices::addError(sprintf(__('Invalid Custom Date. Please check the custom date values: (%s)', 'enable-media-replace'), $error));
 								 $this->viewError(self::ERROR_TIME);
 		             //exit();
