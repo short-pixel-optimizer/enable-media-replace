@@ -25,8 +25,10 @@
 			$('.replace_custom_date').on('click', $.proxy(this.updateCustomDate, this));
 
       // DragDrop
-			$(document).on('dragover', $.proxy(this.dragOverArea, this));
-			$(document).on('dragleave', $.proxy(this.dragOutArea, this));
+			//$(document).on('dragover', $.proxy(this.dragOverArea, this));
+			//$(document).on('dragleave', $.proxy(this.dragOutArea, this));
+			document.addEventListener('dragover',  this.dragOverArea.bind(this), false );
+			document.addEventListener('dragleave',  this.dragOutArea.bind(this), false );
 
       $('.emr_drop_area').on('drop', $.proxy(this.fileDrop, this));
 			$('.upload-file-action').on('click', function () {
@@ -342,9 +344,17 @@
 
     this.dragOutArea = function(e)
     {
-      e.preventDefault();
-      e.stopPropagation();
 
+			// event is not passed on filedrop.  remove overlay then.
+			if (typeof e !== 'undefined')
+			{
+      	e.preventDefault();
+      	e.stopPropagation();
+
+				if (e.clientX != 0 || e.clientY != 0) {
+		        return false;
+		    }
+			}
 		var removeEl = document.getElementById('emr-drop-area-active');
 			if (removeEl !== null)
 				document.getElementById('emr-drop-area-active').remove();
@@ -354,7 +364,7 @@
     this.fileDrop = function (e)
     {
      // var ev = e.originalEvent;
-      this.dragOutArea(e);
+      this.dragOutArea();
      //ev.preventDefault();
 			e.stopPropagation();
       e.preventDefault();
