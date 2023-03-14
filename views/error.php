@@ -20,7 +20,6 @@ use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
 
 		<p>You can <a href='javascript:history.back()'>return to previous page</a> </p>
 
-		<PRE class='hide'><?php print_r(debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 10)); ?></PRE>
 	</div>
 </div> <!--- screen -->
 

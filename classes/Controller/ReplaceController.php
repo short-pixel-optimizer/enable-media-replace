@@ -99,6 +99,9 @@ class ReplaceController
 				Log::addError('Directory creation for targetFile failed');
 			}
 
+			Log::addTemp("SourceFile", $this->sourceFile);
+			$permissions = $this->sourceFile->getPermissions();
+
 			$this->removeCurrent(); // tries to remove the current files.
 
 			$fileObj = $this->fs()->getFile($this->tmpUploadPath);
@@ -121,7 +124,6 @@ class ReplaceController
 				 Log::addDebug('Temp file could not be removed. Permission issues?');
 			}
 
-			$permissions = $this->sourceFile->getPermissions();
 			$this->targetFile->resetStatus(); // reinit target file because it came into existence.
 
 			if ($permissions > 0)
@@ -159,6 +161,10 @@ class ReplaceController
 			// Check and update post mimetype, otherwise badly coded plugins cry.
 		  $post_mime = get_post_mime_type($this->post_id);
 			$target_mime = $this->targetFile->getMime();
+
+Log::addTemp('Post mime -- ' . $post_mime . ' Target: ' . $target_mime, $this->targetFile);
+Log::addTemp('Target Mime ',  wp_get_image_mime($this->targetFile->getFullPath()));
+Log::addTemp('Check EXT', wp_check_filetype_and_ext($this->targetFile->getFullPath(), $this->targetFile->getFileName()));
 
 			// update DB post mime type, if somebody decided to mess it up, and the target one is not empty.
 			if ($target_mime !== $post_mime && strlen($target_mime) > 0)
@@ -282,9 +288,10 @@ class ReplaceController
 					if (false === is_null($this->new_location)) // Replace to another path.
 					{
 						 $otherTarget = $this->fs()->getFile($targetLocation . $this->new_filename);
-						 if ($otherTarget->exists())
+						 // Halt if new target exists, but not if it's the same ( overwriting itself )
+						 if ($otherTarget->exists() && $otherTarget->getFullPath() !== $this->getSourceFile()->getFullPath() )
 						 {
-								Notices::addError(__('In specificied directory there is already a file with the same name. Can\'t replace.', 'enable-media-replace'));
+							//	Notices::addError(__('In specificied directory there is already a file with the same name. Can\'t replace.', 'enable-media-replace'));
 								$this->lastError = self::ERROR_TARGET_EXISTS;
 								return null;
 						 }
@@ -293,7 +300,6 @@ class ReplaceController
 					}
 					//if ($this->sourceFile->getFileName() == $this->targetName)
 					$targetpath = $path . $this->new_filename;
-					Log::addTemp('Search/Replace new location', $targetpath);
 
 					// If the source and target path AND filename are identical, user has wrong mode, just overwrite the sourceFile.
 					if ($targetpath == $this->sourceFile->getFullPath())
@@ -441,7 +447,8 @@ class ReplaceController
 		{
 			if (is_null($this->targetFile))
 			{
-				 Log::addTemp('TargetFile NULL', debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 10));
+				 Log::addError('TargetFile NULL ', debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 10));
+				 return false;
 			}
 			//$uploads['baseurl']
 			$url = wp_get_attachment_url($this->post_id);
