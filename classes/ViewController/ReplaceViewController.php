@@ -64,6 +64,12 @@ class ReplaceViewController extends \EnableMediaReplace\ViewController
 			$this->view->sourceMime = $source_mime;
 			$this->view->settings = array_merge($defaults, $settings); // might miss some
 
+			$uploadDir = wp_upload_dir();
+		 	$basedir = trailingslashit($uploadDir['basedir']);
+			
+			$this->view->custom_basedir = $basedir;
+
+
 			$this->loadView('screen');
 
 	 }

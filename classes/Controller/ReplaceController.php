@@ -26,6 +26,8 @@ class ReplaceController
 	const ERROR_DESTINATION_FAIL = 21;
 	const ERROR_COPY_FAILED = 22;
 	const ERROR_UPDATE_POST = 23;
+	const ERROR_DIRECTORY_SECURITY = 24;
+	const ERROR_DIRECTORY_NOTEXIST = 25;
 
 	protected $replaceType;
 	protected $new_location;
@@ -91,6 +93,7 @@ class ReplaceController
 			$Replacer->setSourceMeta(wp_get_attachment_metadata( $this->post_id ));
 
 			$targetFileObj = $this->fs()->getFile($this->targetFile);
+			var_dump($this->targetFile);
 			$directoryObj = $targetFileObj->getFileDir();
 			$result = $directoryObj->check();
 
@@ -162,10 +165,6 @@ class ReplaceController
 		  $post_mime = get_post_mime_type($this->post_id);
 			$target_mime = $this->targetFile->getMime();
 
-Log::addTemp('Post mime -- ' . $post_mime . ' Target: ' . $target_mime, $this->targetFile);
-Log::addTemp('Target Mime ',  wp_get_image_mime($this->targetFile->getFullPath()));
-Log::addTemp('Check EXT', wp_check_filetype_and_ext($this->targetFile->getFullPath(), $this->targetFile->getFileName()));
-
 			// update DB post mime type, if somebody decided to mess it up, and the target one is not empty.
 			if ($target_mime !== $post_mime && strlen($target_mime) > 0)
 			{
@@ -214,7 +213,7 @@ Log::addTemp('Check EXT', wp_check_filetype_and_ext($this->targetFile->getFullPa
          $wpdb->update( $wpdb->posts, array( 'guid' =>  $target_url), array('ID' => $this->post_id) );
          //enable-media-replace-upload-done
 
-         // @todo This error in general ever happens?  Replace this one with proper Notices:addError;
+         // @todo This error in general ever happens?
          if (is_wp_error($post_id))
          {
 					  $this->lastError = self::ERROR_UPDATE_POST;
@@ -285,13 +284,17 @@ Log::addTemp('Check EXT', wp_check_filetype_and_ext($this->targetFile->getFullPa
 			{
 					$path = (string) $this->getSourceFile()->getFileDir();
 					$targetLocation = $this->getNewTargetLocation();
+					if (false === $targetLocation)
+					{
+						return null;
+					}
+
 					if (false === is_null($this->new_location)) // Replace to another path.
 					{
 						 $otherTarget = $this->fs()->getFile($targetLocation . $this->new_filename);
 						 // Halt if new target exists, but not if it's the same ( overwriting itself )
 						 if ($otherTarget->exists() && $otherTarget->getFullPath() !== $this->getSourceFile()->getFullPath() )
 						 {
-							//	Notices::addError(__('In specificied directory there is already a file with the same name. Can\'t replace.', 'enable-media-replace'));
 								$this->lastError = self::ERROR_TARGET_EXISTS;
 								return null;
 						 }
@@ -323,13 +326,9 @@ Log::addTemp('Check EXT', wp_check_filetype_and_ext($this->targetFile->getFullPa
 						$targetFile = trailingslashit($upload_dir['path']) . wp_unique_filename($targetFile, $this->new_filename);
 					}
 					else {
-						//$err = __('EMR could not establish a proper destination for replacement', 'enable-media-replace');
-						//Notices::addError($err);
-						//Log::addError($err);
-						return self::ERROR_DESTINATION_FAIL;
-					//  throw new \RuntimeException($err);
-					//  exit($err); // fallback
-					//	return null;
+
+						$this->lastError = self::ERROR_DESTINATION_FAIL;
+					 	return null;
 					}
 			}
 			return $targetFile;
@@ -480,16 +479,18 @@ Log::addTemp('Check EXT', wp_check_filetype_and_ext($this->targetFile->getFullPa
 				$new_rel_location = $this->new_location;
 				$newPath = trailingslashit($uploadDir['basedir']) . $new_rel_location;
 
+				$realPath = realpath($newPath);
+
 				// Detect traversal by making sure the canonical path starts with uploads' basedir.
-				if (($newPath = realpath($newPath)) && strpos($newPath, $uploadDir['basedir']) !== 0)
-			{
-					Notices::addError(__('Specificed directory is outside the upload directory. This is not allowed for security reasons', 'enable-media-replace'));
+			 	if ( strpos($realPath, $uploadDir['basedir']) !== 0)
+			 	{
+					$this->lastError = self::ERROR_DIRECTORY_SECURITY;
 					return false;
 				}
 
 				if (! is_dir($newPath))
 				{
-					Notices::addError(__('Specificed new directory does not exist. Path must be a relative path from the upload directory and exist', 'enable-media-replace'));
+					$this->lastError = self::ERROR_DIRECTORY_NOTEXIST;
 					return false;
 				}
 				return trailingslashit($newPath);

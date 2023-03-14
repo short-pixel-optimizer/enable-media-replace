@@ -1,5 +1,4 @@
 <?php
-
 namespace EnableMediaReplace;
 
 if (! defined('ABSPATH')) {
@@ -13,7 +12,6 @@ use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
 abstract class ViewController
 {
 
-	  abstract static function getInstance();
 	  abstract function load();
 
 
@@ -30,6 +28,10 @@ abstract class ViewController
 	 // These synced with ReplaceController
 	 const ERROR_TARGET_EXISTS = 20;
 	 const ERROR_DESTINATION_FAIL = 21;
+	 const ERROR_COPY_FAILED = 22;
+	 const ERROR_UPDATE_POST = 23;
+	 const ERROR_DIRECTORY_SECURITY = 24;
+	 const ERROR_DIRECTORY_NOTEXIST = 25;
 
 	 // Remove Background
 	 const ERROR_DOWNLOAD_FAILED = 31;
@@ -38,6 +40,7 @@ abstract class ViewController
 
 		protected $view; // object to use in the view.
 	  protected $url; // if controller is home to a page, sets the URL here. For redirects and what not.
+
 
 		public function __construct()
 		{
@@ -73,7 +76,7 @@ abstract class ViewController
 
 		protected function viewError($errorCode)
 		{
-			 $message = false;
+			 $message = $description = false;
 			 switch($errorCode)
 			 {
 					case self::ERROR_UPLOAD_PERMISSION:
@@ -101,10 +104,24 @@ abstract class ViewController
 					 $message = __('The target file already exists in this directory. Please try another name / directory', 'enable-media-replace');
 					break;
 					case self::ERROR_DESTINATION_FAIL:
-					 $message = __('Something went wrong while writing the file', 'enable-media-replace');
+					 $message = __('Something went wrong while writing the file or directory', 'enable-media-replace');
 					break;
+					case self::ERROR_COPY_FAILED:
+					 $message = __('Copying replacement file to destination failed', 'enable-media-replace');
+					break;
+					case self::ERROR_UPDATE_POST:
+						$message = __('Error updating WordPress post in the database', 'enable-media-replace');
+					break;
+					case self::ERROR_DIRECTORY_SECURITY:
+						$message = __('Specificed directory is outside the upload directory. This is not allowed for security reasons', 'enable-media-replace');
+					break;
+					case self::ERROR_DIRECTORY_NOTEXIST:
+						$message = __('Specificed new directory does not exist. Path must be a relative path from the upload directory and exist', 'enable-media-replace');
+					break;
+
 					case self::ERROR_NONCE:
 					 $message = __('Fail to validate form nonce. Please try again', 'enable-media-replace');
+					 $description = __('This can happen when the window is open for a long time and/or there has been a timeout.  You can go back to previous screen and try again. If this happens each time when replacing, contact us', 'enable-media-replace');
 					break;
 
 					// Remove Background
@@ -120,6 +137,12 @@ abstract class ViewController
 			 if( false !== $message)
 			 	$this->view->errorMessage = $message;
 
+			 if (false !== $description)
+			 {
+				  $this->view->errorDescription = $description;
+			 }
+
+
 			 $this->loadView('error');
 			 exit();
 		}
@@ -131,6 +154,5 @@ abstract class ViewController
 			 $this->loadView('success');
 			 exit();
 		}
-
 
 }

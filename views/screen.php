@@ -211,7 +211,8 @@ $uiHelper = emr()->uiHelper();
           ?>
          <div class='location_option'>
            <label><input type="checkbox" name="new_location" value="1" <?php checked($settings['new_location'], 1); ?>  /> <?php _e('Place the newly uploaded file in this folder: ', 'enable-media-replace'); ?></label>
-            <input type="text" name="location_dir" value="<?php echo $subdir ?>" />
+					 <br>
+            <?php echo $view->custom_basedir ?> <input type="text" name="location_dir" value="<?php echo $subdir ?>" />
           </div>
         <?php endif; ?>
       </div>
