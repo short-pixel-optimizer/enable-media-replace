@@ -146,7 +146,6 @@ class ReplaceController
 			// Uspdate the file attached. This is required for wp_get_attachment_url to work.
 			// Using RawFullPath because FullPath does normalize path, which update_attached_file doesn't so in case of windows / strange Apspaths it fails.
 			$updated = update_attached_file($this->post_id, $this->targetFile->getRawFullPath() );
-			Log::addTemp('Update Attached File', $this->targetFile->getRawFullPath());
       if (! $updated)
 			{
         Log::addError('Update Attached File reports as not updated or same value');
@@ -180,7 +179,6 @@ class ReplaceController
 				  \wp_update_post(array('post_mime_type' => $this->targetFile->getMime(), 'ID' => $this->post_id));
 			}
 
-			Log::addTemp('Before generate metadata' . $this->targetFile->getFullPath());
 			do_action('emr/converter/prevent-offload', $this->post_id);
       $target_metadata = wp_generate_attachment_metadata( $this->post_id, $this->targetFile->getFullPath() );
 			do_action('emr/converter/prevent-offload-off', $this->post_id);
@@ -189,8 +187,6 @@ class ReplaceController
 
 			$Replacer->setTargetMeta($target_metadata);
 			//$this->target_metadata = $metadata;
-
-			Log::addTemp('Target Metadata generated', $target_metadata);
 
       /** If author is different from replacer, note this */
 			$post_author = get_post_field( 'post_author', $this->post_id );
@@ -267,18 +263,12 @@ class ReplaceController
 						$source_file = wp_get_original_image_path($this->post_id, apply_filters( 'emr_unfiltered_get_attached_file', true ));
 						// For offload et al to change path if wrong.
 						$source_file = apply_filters('emr/replace/original_image_path', $source_file, $this->post_id);
-						Log::addTemp('original path' . $source_file);
-			 }
-			 else {
-			 	 echo 'FUNCTION NOT EXIST';
 			 }
 
 			 if (false === $source_file)
 			 {
 				 $source_file = trim(get_attached_file($this->post_id, apply_filters( 'emr_unfiltered_get_attached_file', true )));
 			 }
-
-			 Log::addTemp('Source file initial result', $source_file);
 
 				$sourceFileObj = $this->fs()->getFile($source_file);
 				if ($sourceFileObj->is_virtual())

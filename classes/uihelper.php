@@ -271,6 +271,7 @@ class UIHelper
 			 $this->preview_height = $height;
 
 			$image = "<img src='$url' width='$width' height='$height' class='image' style='max-width:100%; max-height: 100%;' />";
+		//	$image = "<span class='the-image' style='background: url(\"" . $url . "\")';>&nbsp;</span>";
 
 			$defaults = array(
 				'width' => $width,

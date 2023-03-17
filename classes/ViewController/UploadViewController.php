@@ -179,7 +179,6 @@ class UploadViewController extends \EnableMediaReplace\ViewController
 		 {
 			  $settings['custom_date']  = $params['new_date'];
 		 }
-Log::addTemp('Saving settings', $settings);
 		 update_option('enable_media_replace', $settings, false);
 
 	 }

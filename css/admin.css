@@ -1089,6 +1089,9 @@
   box-sizing: border-box;
   background: #fff;
 }
+.emr_upload_form .image_chooser.wrapper .image_previews .image_placeholder img {
+  object-fit: contain;
+}
 .emr_upload_form .image_chooser.wrapper .image_previews .image_placeholder .upload-title {
   text-align: center;
   position: absolute;

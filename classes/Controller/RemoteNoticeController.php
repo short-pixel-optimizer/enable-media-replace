@@ -94,7 +94,6 @@ class RemoteNoticeController
 
 				if ( $notices === false  ) {
 						$notices_response = wp_safe_remote_request( $url );
-						//Log::addTemp('Remote REquest', $notices_response);
 
 						$content = false;
 						if (! is_wp_error( $notices_response ) )

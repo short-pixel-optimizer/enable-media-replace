@@ -88,7 +88,6 @@ class WPOffload
 						$itemHandler = $this->as3cf->get_item_handler($remove);
 
 						$result = $itemHandler->handle($a3cfItem, array( 'verify_exists_on_local' => false)); //handle it then.
-					//	Log::addTemp('Removed remote', $result);
 
 		}
 
@@ -97,7 +96,7 @@ class WPOffload
 		public function getLocalPathByURL($url)
 		{
 			 $source_id = $this->getSourceIDByURL($url);
-//Log::addTemp('Get Local Path SourceID', $source_id);
+
 			 if ($source_id == false)
 			 {
 				return false;
