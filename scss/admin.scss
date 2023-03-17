@@ -99,6 +99,7 @@
         vertical-align: top;
 				box-sizing: border-box;
 				background: #fff;
+				max-width: calc(50% - 25px);
 
 				img { object-fit: contain; }
 

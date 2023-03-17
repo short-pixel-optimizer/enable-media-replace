@@ -1088,6 +1088,7 @@
   vertical-align: top;
   box-sizing: border-box;
   background: #fff;
+  max-width: calc(50% - 25px);
 }
 .emr_upload_form .image_chooser.wrapper .image_previews .image_placeholder img {
   object-fit: contain;
