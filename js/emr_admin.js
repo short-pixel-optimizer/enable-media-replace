@@ -30,6 +30,8 @@
 			document.addEventListener('dragover',  this.dragOverArea.bind(this), false );
 			document.addEventListener('dragleave',  this.dragOutArea.bind(this), false );
 
+
+
       $('.emr_drop_area').on('drop', $.proxy(this.fileDrop, this));
 			$('.upload-file-action').on('click', function () {
 					var input = document.getElementById('upload-file').click();
@@ -57,6 +59,7 @@
 
 
     }
+
     this.loadDatePicker = function()
     {
       $('#emr_datepicker').datepicker({
@@ -73,6 +76,7 @@
         },
       });
     }
+
     this.checkCustomDate = function()
     {
       if ($('input[name="timestamp_replace"]:checked').val() == 3)
@@ -322,6 +326,7 @@
     {
       e.preventDefault();
       e.stopPropagation();
+			console.log(e);
 
       if (true == this.is_dragging)
         return;

@@ -42,7 +42,7 @@ class RemoveBackGroundViewController extends \EnableMediaReplace\ViewController
 	 $uiHelper->setSourceSizes($attachment_id);
 
 	 $replacer = new ReplaceController($attachment_id);
-	 $file = $replacer->getSourceFile();
+	 $file = $replacer->getSourceFile(true); // for display only
 
 	 $defaults = array(
 	 	'bg_type' => 'transparent',

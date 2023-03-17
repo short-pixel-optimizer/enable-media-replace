@@ -76,6 +76,7 @@ require_once( $plugin_path . 'classes/installHelper.php' );
 
 // @todo Needs replacing with PSR-4
 require_once( $plugin_path . 'classes/Controller/ReplaceController.php');
+require_once( $plugin_path . 'classes/Controller/RemoteNoticeController.php');
 
 require_once( $plugin_path . 'classes/ViewController.php');
 require_once( $plugin_path . 'classes/ViewController/UploadViewController.php');
@@ -87,6 +88,7 @@ require_once( $plugin_path . 'classes/external/elementor.php' );
 require_once( $plugin_path . 'classes/external/wpbakery.php' );
 require_once( $plugin_path . 'classes/external/upsell_installer.php' );
 require_once( $plugin_path . 'classes/external/siteorigin.php' );
+require_once( $plugin_path . 'classes/external/wp-offload.php' );
 
 require_once( $plugin_path . 'thumbnail_updater.php' );
 

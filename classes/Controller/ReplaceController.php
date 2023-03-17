@@ -13,6 +13,7 @@ class ReplaceController
 {
 	protected $post_id;
 	protected $sourceFile;
+	protected $sourceFileUntranslated;
 	protected $targetFile;
 
 	const MODE_REPLACE = 1;
@@ -46,14 +47,22 @@ class ReplaceController
 				$this->setupSource();
 		}
 
-		public function getSourceFile()
+		/* getSourceFile
+		*
+		* @param $untranslated boolean if file is offloaded, this indicates to return remote variant. Used for displaying preview
+		*/
+		public function getSourceFile($untranslated = false)
 		{
+
+				if (true === $untranslated && ! is_null($this->sourceFileUntranslated))
+				{
+					return $this->sourceFileUntranslated;
+				}
 				return $this->sourceFile;
 		}
 
 		public function setupParams($params)
 		{
-				Log::addTemp('Setup Params', $params);
 				$this->replaceType = ($params['replace_type'] === 'replace_and_search') ? self::MODE_SEARCHREPLACE : self::MODE_REPLACE;
 
 				if ($this->replaceType == self::MODE_SEARCHREPLACE && true === $params['new_location'] && ! is_null($params['location_dir']))
@@ -93,7 +102,7 @@ class ReplaceController
 			$Replacer->setSourceMeta(wp_get_attachment_metadata( $this->post_id ));
 
 			$targetFileObj = $this->fs()->getFile($this->targetFile);
-			var_dump($this->targetFile);
+
 			$directoryObj = $targetFileObj->getFileDir();
 			$result = $directoryObj->check();
 
@@ -102,8 +111,7 @@ class ReplaceController
 				Log::addError('Directory creation for targetFile failed');
 			}
 
-			Log::addTemp("SourceFile", $this->sourceFile);
-			$permissions = $this->sourceFile->getPermissions();
+			$permissions = ($this->sourceFile->exists() ) ? $this->sourceFile->getPermissions() : -1;
 
 			$this->removeCurrent(); // tries to remove the current files.
 
@@ -124,7 +132,7 @@ class ReplaceController
 			$deleted = $fileObj->delete();
 			if (false === $deleted)
 			{
-				 Log::addDebug('Temp file could not be removed. Permission issues?');
+				 Log::addWarn('Temp file could not be removed. Permission issues?');
 			}
 
 			$this->targetFile->resetStatus(); // reinit target file because it came into existence.
@@ -138,6 +146,7 @@ class ReplaceController
 			// Uspdate the file attached. This is required for wp_get_attachment_url to work.
 			// Using RawFullPath because FullPath does normalize path, which update_attached_file doesn't so in case of windows / strange Apspaths it fails.
 			$updated = update_attached_file($this->post_id, $this->targetFile->getRawFullPath() );
+			Log::addTemp('Update Attached File', $this->targetFile->getRawFullPath());
       if (! $updated)
 			{
         Log::addError('Update Attached File reports as not updated or same value');
@@ -171,12 +180,17 @@ class ReplaceController
 				  \wp_update_post(array('post_mime_type' => $this->targetFile->getMime(), 'ID' => $this->post_id));
 			}
 
+			Log::addTemp('Before generate metadata' . $this->targetFile->getFullPath());
+			do_action('emr/converter/prevent-offload', $this->post_id);
       $target_metadata = wp_generate_attachment_metadata( $this->post_id, $this->targetFile->getFullPath() );
+			do_action('emr/converter/prevent-offload-off', $this->post_id);
+
       wp_update_attachment_metadata( $this->post_id, $target_metadata );
 
 			$Replacer->setTargetMeta($target_metadata);
 			//$this->target_metadata = $metadata;
 
+			Log::addTemp('Target Metadata generated', $target_metadata);
 
       /** If author is different from replacer, note this */
 			$post_author = get_post_field( 'post_author', $this->post_id );
@@ -250,7 +264,13 @@ class ReplaceController
 				$source_file = false;
 				if (function_exists('wp_get_original_image_path')) // WP 5.3+
 				{
-						$source_file = wp_get_original_image_path($this->post_id);
+						$source_file = wp_get_original_image_path($this->post_id, apply_filters( 'emr_unfiltered_get_attached_file', true ));
+						// For offload et al to change path if wrong.
+						$source_file = apply_filters('emr/replace/original_image_path', $source_file, $this->post_id);
+						Log::addTemp('original path' . $source_file);
+			 }
+			 else {
+			 	 echo 'FUNCTION NOT EXIST';
 			 }
 
 			 if (false === $source_file)
@@ -258,9 +278,24 @@ class ReplaceController
 				 $source_file = trim(get_attached_file($this->post_id, apply_filters( 'emr_unfiltered_get_attached_file', true )));
 			 }
 
+			 Log::addTemp('Source file initial result', $source_file);
+
+				$sourceFileObj = $this->fs()->getFile($source_file);
+				if ($sourceFileObj->is_virtual())
+				{
+						$this->sourceFileUntranslated = $this->fs()->getFile($source_file);
+						$sourcePath = apply_filters('emr/file/virtual/translate', $sourceFileObj->getFullPath(), $sourceFileObj);
+
+						if ($sourceFileObj->getFullPath() !== $sourcePath)
+						{
+							 $sourceFileObj = $this->fs()->getFile($sourcePath);
+							 $source_file = $sourcePath;
+						}
+				}
 				/* It happens that the SourceFile returns relative / incomplete when something messes up get_upload_dir with an error something.
 					 This case shoudl be detected here and create a non-relative path anyhow..
 				*/
+
 				if (! file_exists($source_file) && $source_file && 0 !== strpos( $source_file, '/' ) && ! preg_match( '|^.:\\\|', $source_file ) )
 				{
 					$file = get_post_meta( $this->post_id, '_wp_attached_file', true );
@@ -438,7 +473,7 @@ class ReplaceController
 	       @unlink($attached_file);
 	    }
 
-	    do_action( 'emr_after_remove_current', $this->post_id, $meta, $backup_sizes, $file );
+	    do_action( 'emr_after_remove_current', $this->post_id, $meta, $backup_sizes, $this->sourceFile, $this->targetFile );
 	  }
 
 		/** Since WP functions also can't be trusted here in certain cases, create the URL by ourselves */

@@ -213,7 +213,7 @@ class UIHelper
 
 			$mime_type = get_post_mime_type($attach_id);
 
-			if (! is_array($data) || ! $file->exists() )
+			if (! is_array($data) || (! $file->exists() && ! $file->is_virtual()) )
 			{
 				// if attachid higher than zero ( exists ) but not the image, fail, that's an error state.
 				$icon = ($attach_id < 0) ? '' : 'dashicons-no';
@@ -228,7 +228,6 @@ class UIHelper
 						'icon' => $icon,
 						'mime_type' => null,
 				);
-
 			 $args = wp_parse_args($args, $defaults);
 
 				// failed, it might be this server doens't support PDF thumbnails. Fallback to File preview.

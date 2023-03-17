@@ -101,6 +101,7 @@ class UploadViewController extends \EnableMediaReplace\ViewController
 		 $remove_background = ( isset( $_POST['remove_after_progress'] ) ) ? true : false;
 
 		 $do_new_location  = isset($_POST['new_location']) ? true : false;
+		 $do_new_location = apply_filters('emr/replace/file_is_movable', true, $ID);
  		 $new_location_dir = isset($_POST['location_dir']) ? sanitize_text_field($_POST['location_dir']) : null;
 
 		 $is_custom_date = false;

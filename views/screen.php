@@ -63,7 +63,7 @@ $uiHelper = emr()->uiHelper();
 
 		<input type="hidden" name="ID" value="<?php echo $attachment_id ?>" />
 
-		<p class='explainer'>You are about to replace <b><?php echo $sourceFile->getFileName() ?></b> in your media library. This will be <b>permanent</b> . <br>You can click on the new image panel and select a file from your computer.  You can also drag and drop a file into this window</p>
+		<p class='explainer'>You are about to replace <b class='underline' title="<?php echo $sourceFile->getFullPath() ?>"><?php echo $sourceFile->getFileName() ?></b> in your media library. This will be <b>permanent</b> . <br>You can click on the new image panel and select a file from your computer.  You can also drag and drop a file into this window</p>
 
     <p><?php printf(__('Maximum file size: <strong>%s</strong>','enable-media-replace'), size_format(wp_max_upload_size() ) ) ?></p>
     <div class='form-error filesize'><p><?php printf(__('%s f %s exceeds the maximum upload size for this site.', 'enable-media-replace'), '<span class="fn">', '</span>'); ?></p>
@@ -78,6 +78,7 @@ $uiHelper = emr()->uiHelper();
     <div class='image_previews'>
 
               <?php
+
 							if (wp_attachment_is('image', $attachment_id) || $view->sourceMime == 'application/pdf')
               {
                   echo $uiHelper->getPreviewImage($attachment_id, $sourceFile);
@@ -123,7 +124,7 @@ $uiHelper = emr()->uiHelper();
 
 <div class='option-flex-wrapper'>
   <section class='replace_type wrapper'>
-    <div class='section-header'> <?php _e('Replace Options', 'enable-media-replace'); ?></div>
+    <div class='section-header'> <?php _e('Replacement Options', 'enable-media-replace'); ?></div>
 
           <?php
       // these are also used in externals, for checks.
@@ -164,7 +165,7 @@ $uiHelper = emr()->uiHelper();
 
     </section>
     <section class='options wrapper'>
-      <div class='section-header'> <?php _e('Date Options', 'enable-media-replace'); ?></div>
+      <div class='section-header'> <?php _e('Options', 'enable-media-replace'); ?></div>
       <div class='option timestamp'>
         <?php
           $attachment_current_date = date_i18n('d/M/Y H:i', strtotime($view->attachment->post_date) );
@@ -192,8 +193,8 @@ $uiHelper = emr()->uiHelper();
            <input type='text' name="custom_date" value="<?php echo $date->format(get_option('date_format')); ?>" id='emr_datepicker'
             class='emr_datepicker' />
 
-           @ <input type='text' name="custom_hour" class='emr_hour' value="<?php echo $date->format('H') ?>" /> &nbsp;
-            <input type="text" name="custom_minute" class='emr_minute' value="<?php echo $date->format('i'); ?>" />
+           @ <input type='text' name="custom_hour" class='emr_hour' id='emr_hour' value="<?php echo $date->format('H') ?>" /> &nbsp;
+            <input type="text" name="custom_minute" class='emr_minute' id='emr_minute' value="<?php echo $date->format('i'); ?>" />
             <input type="hidden" name="custom_date_formatted" value="<?php echo $date->format('Y-m-d'); ?>" />
 
 						<span class="replace_custom_date_wrapper">
@@ -209,12 +210,25 @@ $uiHelper = emr()->uiHelper();
             if ($settings['new_location'] !== false)
                $subdir = $settings['new_location_dir'];
           ?>
+
+				<div class='title_option'>
+						<input type="text" name="new_title" value="">
+				</div>
+
          <div class='location_option'>
+					 <?php
+					 if (true === $view->is_movable): ?>
            <label><input type="checkbox" name="new_location" value="1" <?php checked($settings['new_location'], 1); ?>  /> <?php _e('Place the newly uploaded file in this folder: ', 'enable-media-replace'); ?></label>
 					 <br>
             <?php echo $view->custom_basedir ?> <input type="text" name="location_dir" value="<?php echo $subdir ?>" />
+						<?php
+						else:
+								echo __('File is offloaded and can\'t be moved to other directory', 'enable-media-replace');
+						endif;
+					 ?>
           </div>
         <?php endif; ?>
+
       </div>
 
     </section>

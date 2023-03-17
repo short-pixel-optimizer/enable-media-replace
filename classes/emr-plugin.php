@@ -4,6 +4,7 @@ namespace EnableMediaReplace;
 use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
 use EnableMediaReplace\Notices\NoticeController as Notices;
 use EnableMediaReplace\FileSystem\Controller\FileSystemController as FileSystem;
+use EnableMediaReplace\Controller\RemoteNoticeController as RemoteNoticeController;
 use EnableMediaReplace\Ajax;
 
 // Does what a plugin does.
@@ -46,7 +47,7 @@ class EnableMediaReplacePlugin
             return;
         }
 
-
+				new Externals();
 
         $this->plugin_actions(); // init
     }
@@ -55,6 +56,11 @@ class EnableMediaReplacePlugin
 		{
 			$this->features['replace']  = true; // does nothing just for completeness
 			$this->features['background'] = apply_filters('emr/feature/background', true);
+
+			load_plugin_textdomain('enable-media-replace', false, basename(dirname(EMR_ROOT_FILE)) . '/languages');
+
+		// Load Submodules
+			new Ajax();
 		}
 
 		public function filesystem()
@@ -122,7 +128,7 @@ class EnableMediaReplacePlugin
       // init plugin
         add_action('admin_menu', array($this,'menu'));
 				add_action('submenu_file', array($this, 'hide_sub_menu'));
-        add_action('admin_init', array($this,'init'));
+
 				add_action( 'current_screen', array($this, 'setScreen') ); // annoying workaround for notices in edit-attachment screen
         add_action('admin_enqueue_scripts', array($this,'admin_scripts'));
 
@@ -178,20 +184,6 @@ class EnableMediaReplacePlugin
 				return $submenu_file;
 		}
 
-  /**
-   * Initialize this plugin. Called by 'admin_init' hook.
-   *
-   */
-    public function init()
-    {
-        load_plugin_textdomain('enable-media-replace', false, basename(dirname(EMR_ROOT_FILE)) . '/languages');
-
-      // Load Submodules
-
-
-        new Externals();
-        new Ajax();
-    }
 
 		public function setScreen()
 		{
@@ -201,9 +193,9 @@ class EnableMediaReplacePlugin
 			 if ( in_array($screen->id, $notice_pages) &&	true === emr()->useFeature('background'))
 			 {
 
+				 RemoteNoticeController::getInstance(); // check for remote stuff
 			 	 $notices = Notices::getInstance();
 				 add_action('admin_notices', array($notices, 'admin_notices')); // previous page / init time
-
 			 }
 		}
 
@@ -502,7 +494,6 @@ class EnableMediaReplacePlugin
 
         if (function_exists('get_current_screen')) {
             $screen = get_current_screen();
-
             if (! is_null($screen) && $screen->id == 'attachment') { // hide on edit attachment screen.
                 return $form_fields;
             }
