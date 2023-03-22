@@ -88,7 +88,7 @@ class RemoteNoticeController
 					//	'key' => $keyControl->forceGetApiKey(),
 						'version' => EMR_VERSION,
 						'plugin' => 'enable-media-replace',
-						'target' => 3,
+						'target' => '4',
 				), $url);
 
 
