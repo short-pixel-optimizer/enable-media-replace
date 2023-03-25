@@ -85,14 +85,14 @@ class RemoteNoticeController
 				$notices = get_transient($transient_name);
 				$url = $this->remote_message_endpoint;
 				$url = add_query_arg(array(  // has url
-					//	'key' => $keyControl->forceGetApiKey(),
 						'version' => EMR_VERSION,
 						'plugin' => 'enable-media-replace',
-						'target' => '4',
+						'target' => 4,
+
 				), $url);
 
 
-				if ( $notices === false  ) {
+				if ( $notices === false || $notices == 'none'  ) {
 						$notices_response = wp_safe_remote_request( $url );
 
 						$content = false;

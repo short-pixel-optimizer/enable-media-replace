@@ -195,6 +195,13 @@ class EnableMediaReplacePlugin
 
 				 RemoteNoticeController::getInstance(); // check for remote stuff
 			 	 $notices = Notices::getInstance();
+				 $notices->loadIcons(array(
+						 'normal' => '<img class="emr-notice-icon" src="' . plugins_url('img/notices/slider.png', EMR_ROOT_FILE) . '">',
+						 'success' => '<img class="emr-notice-icon" src="' . plugins_url('img/notices/robo-cool.png', EMR_ROOT_FILE) . '">',
+						 'warning' => '<img class="emr-notice-icon" src="' . plugins_url('img/notices/robo-scared.png', EMR_ROOT_FILE) . '">',
+						 'error' => '<img class="emr-notice-icon" src="' . plugins_url('img/notices/robo-scared.png', EMR_ROOT_FILE) . '">',
+				 ));
+
 				 add_action('admin_notices', array($notices, 'admin_notices')); // previous page / init time
 			 }
 		}
