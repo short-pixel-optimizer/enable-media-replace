@@ -104,7 +104,7 @@ class RemoteNoticeController
 										$notices = 'none';
 
 								// Save transient anywhere to prevent over-asking when nothing good is there.
-								set_transient( $transient_name, $notices, $transient_duration );
+								set_transient( $transient_name, 'true', $transient_duration );
 						}
 						else
 						{
