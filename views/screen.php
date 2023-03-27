@@ -63,7 +63,10 @@ $uiHelper = emr()->uiHelper();
 
 		<input type="hidden" name="ID" value="<?php echo $attachment_id ?>" />
 
-		<p class='explainer'>You are about to replace <b class='underline' title="<?php echo $sourceFile->getFullPath() ?>"><?php echo $sourceFile->getFileName() ?></b> in your media library. This will be <b>permanent</b> . <br>You can click on the new image panel and select a file from your computer.  You can also drag and drop a file into this window</p>
+		<p class='explainer'>
+			<?php printf(esc_html__('			You are about to replace %s  in your media library. This will be %spermanent%s . %s You can click on the new image panel and select a file from your computer.  You can also drag and drop a file into this window', 'enable-media-replace'), '<b class="underline" title="' . $sourceFile->getFullPath() . '">' . $sourceFile->getFileName()  . '</b>', '<b>','</b>', '<br>' );
+			?>
+		</p>
 
     <p><?php printf(__('Maximum file size: <strong>%s</strong>','enable-media-replace'), size_format(wp_max_upload_size() ) ) ?></p>
     <div class='form-error filesize'><p><?php printf(__('%s f %s exceeds the maximum upload size for this site.', 'enable-media-replace'), '<span class="fn">', '</span>'); ?></p>

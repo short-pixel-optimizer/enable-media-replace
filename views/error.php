@@ -23,7 +23,8 @@ use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
 				echo '<p class="description">' . $view->errorDescription . '</p>';
 		} ?>
 
-		<p>You can <a href='javascript:history.back()'>return to previous page</a> </p>
+		<p><?php printf(esc_html__('You can return to %s previous page %s','enable-media-replace'),
+		 '<a href="javascript:history.back()">', '</a>');	?></p>
 
 
 		<p><?php printf(esc_html__('If you need help, please see the plugin %sdocumentation%s. It contains clear solutions to most of the problems you may encounter when using our plugin.', 'enable-media-replace'), '<a href="https://shortpixel.com/knowledge-base/category/308-enable-media-replace" target="_blank">', '</a>'); ?></p>

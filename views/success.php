@@ -20,10 +20,13 @@ use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
 
 	<p><?php _e('Did you know that you can also optimize the images on your website to make them load faster?', 'enable-media-replace'); ?></p>
 
-	<p><?php printf(esc_html__('Try the %s ShortPixel Image Optimizer %s plugin!', 'enable-media-replace'), '<a href="https://wordpress.org/plugins/shortpixel-image-optimiser/" target="_blank">', '</a>'); ?></p>
+	<p><?php printf(esc_html__('Try the %sShortPixel Image Optimizer%s plugin!', 'enable-media-replace'), '<a href="https://wordpress.org/plugins/shortpixel-image-optimiser/" target="_blank">', '</a>'); ?></p>
 
-	<p>You will be redirect to the image screen in a few seconds.
-	( <span id='redirect_counter'></span> ) or <a id='redirect_url' href="<?php echo esc_url( $view->postUrl ) ?>">click here to continue</a>
+	<p><?php _e('You will be redirect to the image screen in a few seconds.', 'enable-media-replace');
+		printf(esc_html__('( %s ) or %s click here to continue %s', 'enable-media-replace'), '<span id="redirect_counter"></span>',
+		'<a id="redirect_url" href="' . esc_url( $view->postUrl ) .  '">', '</a>');
+	?>
+
 </p>
 
 	</div>
