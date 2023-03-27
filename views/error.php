@@ -26,7 +26,7 @@ use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
 		<p>You can <a href='javascript:history.back()'>return to previous page</a> </p>
 
 
-		<p><?php printf(__('If you don\'t understand this error %s Contact support %s', 'enable-media-replace'), '<a href="">', '</a>'); ?></p>
+		<p><?php printf(esc_html__('If you need help, please see the plugin %sdocumentation%s. It contains clear solutions to most of the problems you may encounter when using our plugin.', 'enable-media-replace'), '<a href="https://shortpixel.com/knowledge-base/category/308-enable-media-replace" target="_blank">', '</a>'); ?></p>
 	</div>
 </div> <!--- screen -->
 
