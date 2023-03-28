@@ -6,6 +6,7 @@ use EnableMediaReplace\Notices\NoticeController as Notices;
 use EnableMediaReplace\Externals\Elementor as Elementor;
 use EnableMediaReplace\Externals\WpBakery as WpBakery;
 use EnableMediaReplace\Externals\SiteOrigin as SiteOrigin;
+use EnableMediaReplace\Externals\WPOffload as WPOffload;
 
 
 class Externals
@@ -28,6 +29,7 @@ class Externals
       $this->loadElementor();
       $this->loadBakery(); // in case of urlencoded issues, this class should be used probably.
 			$this->loadSiteOrigins();
+			$this->loadWpOffload();
   }
 
   protected function check() //  check if any of the options should be disabled due to conflicts
@@ -76,6 +78,11 @@ class Externals
 	public function loadSiteOrigins()
 	{
 		 SiteOrigin::getInstance();
+	}
+
+	public function loadWPOffload()
+	{
+		 WPOffload::getInstance();
 	}
 
 } // class

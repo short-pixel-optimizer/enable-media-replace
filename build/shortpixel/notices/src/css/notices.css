@@ -1,11 +1,28 @@
 .shortpixel.shortpixel-notice {
+  min-height: 75px;
   padding: 8px;
+  display: flex;
+  align-items: center;
   background: #fff;
-  border: 1px solid #c3c4c7;
-  border-left-width: 4px;
+  padding: 1px 12px;
   box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
-  margin: 5px 15px 2px;
+  border: 1px solid #c3c4c7;
+  margin: 15px 0;
+  border-left-width: 4px;
+  border-left-color: #72aee6;
   position: relative;
+}
+.shortpixel.shortpixel-notice span {
+  vertical-align: middle;
+}
+.shortpixel.shortpixel-notice span.icon {
+  margin: 0 25px 0 0;
+  width: 80px;
+}
+.shortpixel.shortpixel-notice span.content {
+  padding: 8px 0;
+  word-wrap: break-word;
+  overflow: hidden;
 }
 .shortpixel.shortpixel-notice img {
   display: inline-block;

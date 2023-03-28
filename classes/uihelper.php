@@ -43,7 +43,7 @@ class UIHelper
       $url = admin_url('upload.php');
       $url = add_query_arg(array(
           'page' => 'enable-media-replace/enable-media-replace.php',
-          'noheader' => true,
+    //      'noheader' => true,
           'action' => $action,
           'attachment_id' => $attach_id,
       ));
@@ -64,10 +64,10 @@ class UIHelper
 
   }
 
-  public function getSuccesRedirect($post_id)
+  public function getSuccesRedirect($attach_id)
   {
     $url = admin_url('post.php');
-    $url = add_query_arg(array('action' => 'edit', 'post' => $post_id, 'emr_replaced' => '1'), $url);
+    $url = add_query_arg(array('action' => 'edit', 'post' => $attach_id, 'emr_replaced' => '1'), $url);
 
     if (isset($_REQUEST['SHORTPIXEL_DEBUG']))
     {
@@ -86,6 +86,21 @@ class UIHelper
     return $url;
 
   }
+
+	public function getBackgroundRemoveRedirect($attach_id)
+	{
+		//if ( isset( $_POST['remove_after_progress'] ) ) {
+		    $url = admin_url("upload.php");
+		    $url = add_query_arg(array(
+		    'page' => 'enable-media-replace/enable-media-replace.php',
+		    'action' => 'emr_prepare_remove',
+		    'attachment_id' => $attach_id,
+		    ), $url);
+
+//		    $redirect_success = $url;
+				return $url;
+	//	  }
+	}
 
   public function getFailedRedirect($attach_id)
   {
@@ -122,102 +137,6 @@ class UIHelper
       $this->full_height = $data[2];
     }
 
-  }
-
-  // Returns Preview Image HTML Output.
-  public function getPreviewImage($attach_id,$file, $args = array())
-  {
-      $data = false;
-
-      if ($attach_id > 0)
-      {
-        $data = $this->getImageSizes($attach_id, $this->preview_size); //wp_get_attachment_image_src($attach_id, $this->preview_size);
-				/*$file = get_attached_file($attach_id);
-
-
-        // If the file is relative, prepend upload dir.
-        if (! file_exists($file) && $file && 0 !== strpos( $file, '/' ) && ! preg_match( '|^.:\\\|', $file ) )
-        {
-          $file = get_post_meta( $attach_id, '_wp_attached_file', true );
-          $uploads = wp_get_upload_dir();
-          $file = $uploads['basedir'] . "/$file";
-        }
-        */
-      }
-
-      $mime_type = get_post_mime_type($attach_id);
-
-      if (! is_array($data) || ! $file->exists() )
-      {
-        // if attachid higher than zero ( exists ) but not the image, fail, that's an error state.
-        $icon = ($attach_id < 0) ? '' : 'dashicons-no';
-        $is_document = false;
-
-        $defaults = array(
-            'width' => $this->preview_width,
-            'height' => $this->preview_height,
-            'is_image' => false,
-            'is_document' => $is_document,
-            'icon' => $icon,
-            'mime_type' => null,
-        );
-
-				$args = wp_parse_args($args, $defaults);
-
-        // failed, it might be this server doens't support PDF thumbnails. Fallback to File preview.
-        if ($mime_type == 'application/pdf')
-        {
-            return $this->getPreviewFile($attach_id, $file);
-        }
-
-        return $this->getPlaceHolder($args);
-      }
-
-      $url = $data[0];
-      $width = $data[1];
-      $height = $data[2];
-
-			// width
-			$width_ratio = $height_ratio = 0;
-			if ($width > $this->preview_max_width)
-			{
-					$width_ratio = $width / $this->preview_max_width;
-			}
-			if ($height > $this->preview_max_height) // height
-			{
-					$height_ratio = $height / $this->preview_max_height;
-			}
-
-			$ratio = ($width_ratio > $height_ratio) ? $width_ratio : $height_ratio;
-
-			if ($ratio > 0)
-			{
-
-				$width  = floor($width / $ratio);
-				$height = floor($height / $ratio);
-			}
-
-      // SVG's without any helpers return around 0 for width / height. Fix preview.
-
-
-				// preview width, if source if found, should be set to source.
-	      $this->preview_width = $width;
-	      $this->preview_height = $height;
-
-      $image = "<img src='$url' width='$width' height='$height' class='image' style='max-width:100%; max-height: 100%;' />";
-
-      $defaults = array(
-        'width' => $width,
-        'height' => $height,
-        'image' => $image,
-        'mime_type' => $mime_type,
-        'file_size' => $file->getFileSize(),
-      );
-
-			$args = wp_parse_args($args, $defaults);
-
-      $output = $this->getPlaceHolder($args);
-      return $output;
   }
 
   protected function getImageSizes($attach_id, $size = 'thumbnail')
@@ -282,6 +201,93 @@ class UIHelper
     return $data;
   }
 
+	// Returns Preview Image HTML Output.
+	public function getPreviewImage($attach_id,$file, $args = array())
+	{
+			$data = false;
+
+			if ($attach_id > 0)
+			{
+				$data = $this->getImageSizes($attach_id, $this->preview_size); //wp_get_attachment_image_src($attach_id, $this->preview_size);
+			}
+
+			$mime_type = get_post_mime_type($attach_id);
+
+			if (! is_array($data) || (! $file->exists() && ! $file->is_virtual()) )
+			{
+				// if attachid higher than zero ( exists ) but not the image, fail, that's an error state.
+				$icon = ($attach_id < 0) ? '' : 'dashicons-no';
+				$is_document = false;
+
+				$defaults = array(
+						'width' => $this->preview_width,
+						'height' => $this->preview_height,
+						'is_image' => false,
+						'is_document' => $is_document,
+						'is_upload' => false,
+						'icon' => $icon,
+						'mime_type' => null,
+				);
+			 $args = wp_parse_args($args, $defaults);
+
+				// failed, it might be this server doens't support PDF thumbnails. Fallback to File preview.
+				if ($mime_type == 'application/pdf')
+				{
+						return $this->getPreviewFile($attach_id, $file);
+				}
+
+				return $this->getPlaceHolder($args);
+			}
+
+			$url = $data[0];
+			$width = $data[1];
+			$height = $data[2];
+
+		 // width
+		 $width_ratio = $height_ratio = 0;
+		 if ($width > $this->preview_max_width)
+		 {
+				 $width_ratio = $width / $this->preview_max_width;
+		 }
+		 if ($height > $this->preview_max_height) // height
+		 {
+				 $height_ratio = $height / $this->preview_max_height;
+		 }
+
+		 $ratio = ($width_ratio > $height_ratio) ? $width_ratio : $height_ratio;
+
+		 if ($ratio > 0)
+		 {
+
+			 $width  = floor($width / $ratio);
+			 $height = floor($height / $ratio);
+		 }
+
+			// SVG's without any helpers return around 0 for width / height. Fix preview.
+
+
+			 // preview width, if source if found, should be set to source.
+			 $this->preview_width = $width;
+			 $this->preview_height = $height;
+
+			$image = "<img src='$url' width='$width' height='$height' class='image' style='max-width:100%; max-height: 100%;' />";
+		//	$image = "<span class='the-image' style='background: url(\"" . $url . "\")';>&nbsp;</span>";
+
+			$defaults = array(
+				'width' => $width,
+				'height' => $height,
+				'image' => $image,
+				'mime_type' => $mime_type,
+				'is_upload' => false,
+				'file_size' => $file->getFileSize(),
+			);
+
+		 $args = wp_parse_args($args, $defaults);
+
+			$output = $this->getPlaceHolder($args);
+			return $output;
+	}
+
   public function getPreviewError($attach_id)
   {
     $args = array(
@@ -294,7 +300,7 @@ class UIHelper
     return $output;
   }
 
-  public function getPreviewFile($attach_id, $file)
+  public function getPreviewFile($attach_id, $file, $args = array())
   {
     if ($attach_id > 0)
     {
@@ -311,15 +317,19 @@ class UIHelper
 			$mime_type = get_post_mime_type($attach_id);
 		}
 
-    $args = array(
+    $defaults = array(
       'width' => 300,
       'height' => 300,
       'is_image' => false,
       'is_document' => true,
+			'is_upload' => false,
       'layer' => $filename,
       'mime_type' => $mime_type,
       'file_size' => $file->getFileSize(),
     );
+		$args = wp_parse_args($args, $defaults);
+
+
     $output = $this->getPlaceHolder($args);
     return $output;
   }
@@ -356,6 +366,7 @@ class UIHelper
         'layer' =>  $this->full_width . ' x ' . $this->full_height,
         'is_image' => true,
         'is_document' => false,
+				'is_upload' => false, // indicating right-side upload interface for image.
         'mime_type' => false,
         'file_size' => false,
 				'remove_bg_ui' => false, // In process icons et al when removing background, for preview pane.
@@ -387,6 +398,11 @@ class UIHelper
       $placeholder_class .= ' is_document';
     }
 
+		if (true == $args['is_upload'])
+		{
+			 $placeholder_class .= ' upload-file-action';
+		}
+
     $filetype = '';
     if ($args['mime_type'])
     {
@@ -395,17 +411,29 @@ class UIHelper
 
     $filesize = ($args['file_size']) ? $args['file_size'] : '';
 
-		$background_remove_ui = (isset($args['remove_bg_ui']) && $args['remove_bg_ui'] == true) ? $this->getBgremoveUI() : '';
+		$is_backgroundremove_ui = (isset($args['remove_bg_ui']) && $args['remove_bg_ui'] == true);
+		$background_remove_ui = ($is_backgroundremove_ui) ? $this->getBgremoveUI() : '';
 
     $output = "<div class='image_placeholder $placeholder_class' $filetype style='width:" . $w . "px; height:". $h ."px'> ";
-    $output .= $args['image'];
+		if (true === $args['is_upload'])
+		{
+			$output .= "<span class='upload-title'>" . __('New', 'enable-media-replacer') . "</span>";
+			$output .= '<input type="file" name="userfile" id="upload-file" />';
+				$output .= '<div class="drag-and-drop-title">
+                              <span>' . __('Click here to upload or drop file in area', 'enable-media-replace') . '</span>
+                   </div>';
+		}
+		else
+		{
+			$title = (true === $is_backgroundremove_ui ) ? __('Preview', 'enable-media-replace') : __('Current', 'enable-media-replace');
+			$output .= "<span class='upload-title'>" . $title . "</span>";
+    	$output .= $args['image'];
+		}
     $output .= "<div class='dashicons $icon'>&nbsp;</div>";
     $output .= "<span class='textlayer'>" . $args['layer'] . "</span>";
 		$output .= $background_remove_ui;
     $output .= "<div class='image_size'>" . $this->convertFileSize($filesize). "</div>";
     $output .= "</div>";
-
-
 
     return $output;
   }

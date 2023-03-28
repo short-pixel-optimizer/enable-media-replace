@@ -56,6 +56,8 @@ class Api {
 		$compression_level = 0; //  intval($posted_data['compression_level']); // off for now.
 
 		$attachment_id = isset($_POST['attachment_id']) ? intval($_POST['attachment_id']) : null;
+		$attachment = get_post($attachment_id);
+
 
 		if (is_null($attachment_id))
 		{
@@ -64,6 +66,13 @@ class Api {
 			 $result->message = __('No attachment ID given', 'enable-media-replace');
 			 return $result;
 		}
+
+  	if (! emr()->checkImagePermission($attachment)) {
+			$result = $this->getResponseObject();
+			$result->success = false;
+			$result->message = __('No permission for user', 'enable-media-replace');
+			return $result;
+	  }
 
 		$replacer = new Replacer($attachment_id);
 		$url = $replacer->getSourceUrl();

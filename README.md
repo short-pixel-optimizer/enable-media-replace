@@ -26,6 +26,9 @@ So `[file_modified id=870]` would display the last time the file with ID 870 was
 
 If you want more control over the format used to display the time, you can use the format option, so `[file_modified id=870 format=Y-m-d]` would display the file modification date but not the time. The format string uses [standard PHP date() formatting tags](http://php.net/manual/en/function.date.php). 
 
+## Disable background removal
+If you don't want to utilize the background removal feature, add `add_filter('emr/feature/background', '__return_false' );` to your functions.php
+
 ***
 
 See [Enable Media Replace](http://wordpress.org/plugins/enable-media-replace/) at WordPress.org for more information.

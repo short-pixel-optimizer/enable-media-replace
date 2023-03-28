@@ -50,7 +50,7 @@ class Replacer
 
 			if (false === $source_file)
 			{
-				$source_file = trim(get_attached_file($post_id, apply_filters( 'emr_unfiltered_get_attached_file', true )));				
+				$source_file = trim(get_attached_file($post_id, apply_filters( 'emr_unfiltered_get_attached_file', true )));
 			}
 
       /* It happens that the SourceFile returns relative / incomplete when something messes up get_upload_dir with an error something.
@@ -211,6 +211,7 @@ class Replacer
         delete_post_meta($this->post_id, '_emr_replace_author');
       }
 
+
       if ($this->replaceMode == self::MODE_SEARCHREPLACE)
       {
          // Write new image title.
@@ -243,6 +244,8 @@ class Replacer
 
       }  // SEARCH REPLACE MODE
 
+
+// FROM HERE STATS THE MODULE
       $args = array(
           'thumbnails_only' => ($this->replaceMode == self::MODE_SEARCHREPLACE) ? false : true,
       );
@@ -433,7 +436,6 @@ class Replacer
     }
 
     return $url;
-    //$this->targetFile
 
   }
 

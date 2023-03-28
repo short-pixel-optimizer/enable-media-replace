@@ -5,13 +5,13 @@ Tags: replace, attachment, media, files, replace image, remove background, repla
 Requires at least: 4.9.7
 Tested up to: 6.2
 Requires PHP: 5.6
-Stable tag: 4.0.3
+Stable tag: 4.1.0
 
 Easily replace any attached image/file by simply uploading a new file in the Media Library edit view - a real time saver!
 
 == Description ==
 
-**A free, lightweight and easy to use plugin that allows you to seamlessly replace an image or file in your Media Library by uploading a new file in its place. No more deleting, renaming and re-uploading files!
+**A free, lightweight and easy to use plugin that allows you to seamlessly replace an image or file in your Media Library by uploading a new file in its place. No more deleting, renaming and re-uploading files! Now fully compatible with <a href="https://wordpress.org/plugins/amazon-s3-and-cloudfront/" target="_blank">WP Offload Media!</a>
 New beta feature! You can now remove the background of your images for better integration with eCommerce solutions!
 Supported by the friendly team that created <a href="https://wordpress.org/plugins/shortpixel-image-optimiser/" target="_blank">ShortPixel</a>  :)**
 
@@ -33,6 +33,10 @@ This plugin is very powerful and a must-have for all major websites built with W
 #### New beta feature: You can now remove the background of any image!
 Similar to replacing media, you can also remove the background of the images from the Media Library! The background removal feature sends the images to ShortPixel's API, removes the background and sends them back in a preview window. If everything looks good, just replace the image with the one that has the background removed! If the source image is a PNG file, you will get a transparent background, while the other images default to a solid white background. You also have the option to choose a different color with an embedded color picker.
 The background removal feature is still in beta and will be free of charge for a reasonable usage.
+
+If you don't want to use the background removal feature, add this line to your theme's functions.php file, or use a plugin like <a href="https://wordpress.org/plugins/code-snippets/" target="_blank">Code Snippets</a>:
+
+```add_filter( 'emr/feature/background', '__return_false' );```
 
 #### Show file modification time
 
@@ -60,6 +64,19 @@ If you want more control over the format in which the time is shown, you can use
 * LinkedIn <a href="https://www.linkedin.com/company/shortpixel" target="_blank">https://www.linkedin.com/company/shortpixel</a>
 
 == Changelog ==
+
+= 4.1.0 =
+
+Release date: March 28, 2023
+* New: Integration with WP Offload Media; items that are offloaded can now be replaced correctly;
+* New: Switch to a Replacer module that improves the code and makes it more robust;
+* New: Adding an intermediate confirmation page to solve possible redirection issues;
+* Tweak: The new image can now be dragged and dropped directly into the preview area;
+* Tweak: Improved the display of both the original image and the new image on the replacement screen;
+* Tweak: Improved the notification system and added a mechanism for remote notifications;
+* Tweak: Updated the texts and banners to look better on the replacement screen;
+* Fix: Added documentation in the readme to disable the background removal feature (kudos to @jstask82);
+* Fix: Increased the security of the plugin by adding checks for various AJAX calls;
 
 = 4.0.3 =
 

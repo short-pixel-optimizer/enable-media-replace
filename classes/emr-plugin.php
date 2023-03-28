@@ -4,6 +4,7 @@ namespace EnableMediaReplace;
 use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
 use EnableMediaReplace\Notices\NoticeController as Notices;
 use EnableMediaReplace\FileSystem\Controller\FileSystemController as FileSystem;
+use EnableMediaReplace\Controller\RemoteNoticeController as RemoteNoticeController;
 use EnableMediaReplace\Ajax;
 
 // Does what a plugin does.
@@ -46,7 +47,7 @@ class EnableMediaReplacePlugin
             return;
         }
 
-
+				new Externals();
 
         $this->plugin_actions(); // init
     }
@@ -55,6 +56,11 @@ class EnableMediaReplacePlugin
 		{
 			$this->features['replace']  = true; // does nothing just for completeness
 			$this->features['background'] = apply_filters('emr/feature/background', true);
+
+			load_plugin_textdomain('enable-media-replace', false, basename(dirname(EMR_ROOT_FILE)) . '/languages');
+
+		// Load Submodules
+			new Ajax();
 		}
 
 		public function filesystem()
@@ -110,6 +116,7 @@ class EnableMediaReplacePlugin
         add_shortcode('file_modified', array($this, 'get_modified_date'));
     }
 
+
     public function plugin_actions()
     {
         $this->plugin_path = plugin_dir_path(EMR_ROOT_FILE);
@@ -121,7 +128,7 @@ class EnableMediaReplacePlugin
       // init plugin
         add_action('admin_menu', array($this,'menu'));
 				add_action('submenu_file', array($this, 'hide_sub_menu'));
-        add_action('admin_init', array($this,'init'));
+
 				add_action( 'current_screen', array($this, 'setScreen') ); // annoying workaround for notices in edit-attachment screen
         add_action('admin_enqueue_scripts', array($this,'admin_scripts'));
 
@@ -177,20 +184,6 @@ class EnableMediaReplacePlugin
 				return $submenu_file;
 		}
 
-  /**
-   * Initialize this plugin. Called by 'admin_init' hook.
-   *
-   */
-    public function init()
-    {
-        load_plugin_textdomain('enable-media-replace', false, basename(dirname(EMR_ROOT_FILE)) . '/languages');
-
-      // Load Submodules
-
-
-        new Externals();
-        new Ajax();
-    }
 
 		public function setScreen()
 		{
@@ -200,11 +193,17 @@ class EnableMediaReplacePlugin
 			 if ( in_array($screen->id, $notice_pages) &&	true === emr()->useFeature('background'))
 			 {
 
+				 RemoteNoticeController::getInstance(); // check for remote stuff
 			 	 $notices = Notices::getInstance();
-				 add_action('admin_notices', array($notices, 'admin_notices')); // previous page / init time
+				 $notices->loadIcons(array(
+						 'normal' => '<img class="emr-notice-icon" src="' . plugins_url('img/notices/slider.png', EMR_ROOT_FILE) . '">',
+						 'success' => '<img class="emr-notice-icon" src="' . plugins_url('img/notices/robo-cool.png', EMR_ROOT_FILE) . '">',
+						 'warning' => '<img class="emr-notice-icon" src="' . plugins_url('img/notices/robo-scared.png', EMR_ROOT_FILE) . '">',
+						 'error' => '<img class="emr-notice-icon" src="' . plugins_url('img/notices/robo-scared.png', EMR_ROOT_FILE) . '">',
+				 ));
 
+				 add_action('admin_notices', array($notices, 'admin_notices')); // previous page / init time
 			 }
-			// var_dump($screen);
 		}
 
   /** Load EMR views based on request */
@@ -221,23 +220,24 @@ class EnableMediaReplacePlugin
 
 								$this->uiHelper()->featureNotice();
 
-                if (! check_admin_referer($action, '_wpnonce')) {
-                    die('Invalid Nonce');
-                }
-
-                // @todo Later this should be move to it's own controller, and built view from there.
                 if ($action == 'media_replace') {
                     if (array_key_exists("attachment_id", $_GET) && intval($_GET["attachment_id"]) > 0) {
                                 wp_enqueue_script('emr_upsell');
-                        require_once($this->plugin_path . "views/popup.php"); // warning variables like $action be overwritten here.
+
+											 $controller = \EnableMediaReplace\ViewController\ReplaceViewController::getInstance();
+											 $controller->load();
+//                       require_once($this->plugin_path . "views/popup.php"); // warning variables like $action be overwritten here.
                     }
                 }
 								elseif ($action == 'media_replace_upload') {
-                    require_once($this->plugin_path . 'views/upload.php');
+
+									  $controller = \EnableMediaReplace\ViewController\UploadViewController::getInstance();
+										$controller->load();
+                  //  require_once($this->plugin_path . 'views/upload.php');
 								}
 								elseif ('emr_prepare_remove' === $action && $this->useFeature('background')) {
-										$attachment_id = intval($_GET['attachment_id']);
-										$attachment    = get_post($attachment_id);
+//										$attachment_id = intval($_GET['attachment_id']);
+//										$attachment    = get_post($attachment_id);
 										//We're adding a timestamp to the image URL for cache busting
 
 										wp_enqueue_script('emr_remove_bg');
@@ -245,25 +245,41 @@ class EnableMediaReplacePlugin
 										wp_enqueue_style('emr_style');
 										wp_enqueue_style('emr-remove-background');
 										wp_enqueue_script('emr_upsell');
-										require_once($this->plugin_path . "views/prepare-remove-background.php");
+
+										$controller = \EnableMediaReplace\ViewController\RemoveBackgroundViewController::getInstance();
+										$controller->load();
+
+									//	require_once($this->plugin_path . "views/prepare-remove-background.php");
 
 								} elseif ('do_background_replace' === $action &&
-												check_admin_referer($action, '_wpnonce') &&
 												$this->useFeature('background')
 											) {
-										require_once($this->plugin_path . 'views/do-replace-background.php');
+												$controller = \EnableMediaReplace\ViewController\RemoveBackgroundViewController::getInstance();
+												$controller->loadPost();
+
+									//	require_once($this->plugin_path . 'views/do-replace-background.php');
 								}
                 else {
+
                     exit('Something went wrong loading page, please try again');
                 }
                 break;
-        }
+        } // Route
     }
 
     public function getPluginURL($path = '')
     {
         return plugins_url($path, EMR_ROOT_FILE);
     }
+
+		public function plugin_path($path = '')
+		{
+			$plugin_path = trailingslashit(plugin_dir_path(EMR_ROOT_FILE));
+			if ( strlen( $path ) > 0 ) {
+				$plugin_path .= $path;
+			}
+			 return $plugin_path;
+		}
 
   /** register styles and scripts
   *
@@ -314,6 +330,8 @@ class EnableMediaReplacePlugin
         }
 
         wp_localize_script('emr_admin', 'emr_options', $emr_options);
+
+				wp_register_script('emr_success', plugins_url('js/emr_success.js', EMR_ROOT_FILE), array(), EMR_VERSION, true);
     }
 
   /** Utility function for the Jquery UI Datepicker */
@@ -483,7 +501,6 @@ class EnableMediaReplacePlugin
 
         if (function_exists('get_current_screen')) {
             $screen = get_current_screen();
-
             if (! is_null($screen) && $screen->id == 'attachment') { // hide on edit attachment screen.
                 return $form_fields;
             }
@@ -535,9 +552,9 @@ class EnableMediaReplacePlugin
             return $actions;
         }
 
-        $url = $this->getMediaReplaceURL($post->ID);
+        $media_replace_editurl = $this->getMediaReplaceURL($post->ID);
         $media_replace_action = "media_replace";
-        $media_replace_editurl = wp_nonce_url($url, $media_replace_action);
+     //   $media_replace_editurl = wp_nonce_url($url, $media_replace_action);
         $url = $this->getRemoveBgURL($post->ID);
         $background_remove_action = "emr_prepare_remove";
         $background_remove_editurl = wp_nonce_url($url, $background_remove_action);

@@ -19,8 +19,8 @@ jQuery(document).ready(function ($) {
     const nonce = emrObject.nonce;
 		const attachment_id = $('input[name="ID"]').val();
     const action = 'emr_remove_background';
-    const bgType = $('input[type=radio][name=background_type]:checked').val();
-    const cLvl = $('input[type=radio][name=compression_level]:checked').val();
+    const bgType = $('input[type=radio][name="background_type"]:checked').val();
+    const cLvl = $('input[type=radio][name="compression_level"]:checked').val();
     let background = {
       type: "transparent"
     }
@@ -45,9 +45,10 @@ jQuery(document).ready(function ($) {
         $('html, body').animate({
           scrollTop: $(".emr_upload_form").offset().top
         }, 1000);
-        $('input[type=radio][name=background_type]').attr('disabled', 'disabled')
-        $('input[type=radio][name=compression_level]').attr('disabled', 'disabled')
-        $('#remove_background_button').attr('disabled', 'disabled')
+        $('input[type=radio][name=background_type]').attr('disabled', 'disabled');
+        $('input[type=radio][name=compression_level]').attr('disabled', 'disabled');
+        $('#remove_background_button').attr('disabled', 'disabled');
+				$('h1.response').remove();
         $('#overlay').css('visibility', 'visible');
 				var preview = $('.image_placeholder').last();
 				preview.find('img').remove();
@@ -97,7 +98,7 @@ jQuery(document).ready(function ($) {
      //     initComparisons();
         }else{
 
-          preview.prepend(`<h1>${response.message}</h1>`);
+          preview.prepend(`<h1 class='response'>${response.message}</h1>`);
           $('#remove_background_button').attr('disabled', false)
           $('input[type=radio][name=background_type]').attr('disabled', false)
           $('input[type=radio][name=compression_level]').attr('disabled', false)

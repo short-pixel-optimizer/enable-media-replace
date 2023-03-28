@@ -3,7 +3,7 @@
  * Plugin Name: Enable Media Replace
  * Plugin URI: https://wordpress.org/plugins/enable-media-replace/
  * Description: Enable replacing media files by uploading a new file in the "Edit Media" section of the WordPress Media Library.
- * Version: 4.0.3
+ * Version: 4.1.0
  * Author: ShortPixel
  * Author URI: https://shortpixel.com
  * GitHub Plugin URI: https://github.com/short-pixel-optimizer/enable-media-replace
@@ -25,9 +25,7 @@
  *
  */
 
-namespace EnableMediaReplace;
-
-define( 'EMR_VERSION', '4.0.3' );
+define( 'EMR_VERSION', '4.1.0' );
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit; // Exit if accessed directly.
@@ -76,17 +74,27 @@ require_once( $plugin_path . 'classes/ajax.php' );
 require_once( $plugin_path . 'classes/emr-plugin.php' );
 require_once( $plugin_path . 'classes/installHelper.php' );
 
+// @todo Needs replacing with PSR-4
+require_once( $plugin_path . 'classes/Controller/ReplaceController.php');
+require_once( $plugin_path . 'classes/Controller/RemoteNoticeController.php');
+
+require_once( $plugin_path . 'classes/ViewController.php');
+require_once( $plugin_path . 'classes/ViewController/UploadViewController.php');
+require_once( $plugin_path . 'classes/ViewController/ReplaceViewController.php');
+require_once( $plugin_path . 'classes/ViewController/RemoveBackgroundViewController.php');
+
 require_once( $plugin_path . 'classes/externals.php' );
 require_once( $plugin_path . 'classes/external/elementor.php' );
 require_once( $plugin_path . 'classes/external/wpbakery.php' );
 require_once( $plugin_path . 'classes/external/upsell_installer.php' );
 require_once( $plugin_path . 'classes/external/siteorigin.php' );
+require_once( $plugin_path . 'classes/external/wp-offload.php' );
 
 require_once( $plugin_path . 'thumbnail_updater.php' );
 
 function emr()
 {
-	return EnableMediaReplacePlugin::get();
+	return EnableMediaReplace\EnableMediaReplacePlugin::get();
 }
 emr(); // runtime.
 
