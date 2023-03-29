@@ -417,7 +417,7 @@ class UIHelper
     $output = "<div class='image_placeholder $placeholder_class' $filetype style='width:" . $w . "px; height:". $h ."px'> ";
 		if (true === $args['is_upload'])
 		{
-			$output .= "<span class='upload-title'>" . __('New', 'enable-media-replacer') . "</span>";
+			$output .= "<span class='upload-title'>" . __('New', 'enable-media-replace') . "</span>";
 			$output .= '<input type="file" name="userfile" id="upload-file" />';
 				$output .= '<div class="drag-and-drop-title">
                               <span>' . __('Click here to upload or drop file in area', 'enable-media-replace') . '</span>

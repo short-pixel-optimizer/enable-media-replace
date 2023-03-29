@@ -72,7 +72,7 @@ $replace_url = add_query_arg(array(
 			</a></p>
 			<div class="option-flex-wrapper">
 				<section class="replace_type wrapper">
-					<div class="section-header"><?php esc_html_e('Background Removal Options'); ?></div>
+					<div class="section-header"><?php esc_html_e('Background Removal Options', 'enable-media-replace'); ?></div>
 					<div class="option replace ">
 						<p>
 							<?php esc_html_e('If a CDN is used, remember to clear the cache for this image!', 'enable-media-replace'); ?>
