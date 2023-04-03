@@ -4,6 +4,8 @@ window.addEventListener('load', function(event) {
 	url.searchParams.set('emr_success', 1);
 
   var timeout = 10;
+	if (emr_success_options.timeout)
+		timeout = emr_success_options.timeout;
 	var counter = document.getElementById('redirect_counter');
 	var redirectUrl = document.getElementById('redirect_url');
 	var redirected = false;
