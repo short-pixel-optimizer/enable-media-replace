@@ -98,12 +98,16 @@ class ReplaceController
 			// Set Source / and Source Metadata
 			$Replacer = new Replacer();
 			$source_url = $this->getSourceUrl();
+			Log::addTemp('Source URL: ' . $source_url);
 			$Replacer->setSource($source_url);
 			$Replacer->setSourceMeta(wp_get_attachment_metadata( $this->post_id ));
 
 			$targetFileObj = $this->fs()->getFile($this->targetFile);
 
 			$directoryObj = $targetFileObj->getFileDir();
+			Log::addTemp('Source', $this->sourceFile->getFullPath());
+			Log::addTemp('Target', $this->targetFile->getFullPath());
+			Log::addTemp('TargetFileObj', $targetFileObj);
 			$result = $directoryObj->check();
 
 			if ($result === false)
@@ -179,11 +183,14 @@ class ReplaceController
 				  \wp_update_post(array('post_mime_type' => $this->targetFile->getMime(), 'ID' => $this->post_id));
 			}
 
+Log::addTemp('Starting Generate Attachment Metadata' . $this->post_id, $this->targetFile->getFullPath());
 			do_action('emr/converter/prevent-offload', $this->post_id);
       $target_metadata = wp_generate_attachment_metadata( $this->post_id, $this->targetFile->getFullPath() );
 			do_action('emr/converter/prevent-offload-off', $this->post_id);
-
+Log::addTemp('Generated, updating attachment metadata');
       wp_update_attachment_metadata( $this->post_id, $target_metadata );
+
+Log::addTemp('Generating done!');
 
 			$Replacer->setTargetMeta($target_metadata);
 			//$this->target_metadata = $metadata;
@@ -235,7 +242,10 @@ class ReplaceController
 			$args = array(
           'thumbnails_only' => ($this->replaceType == self::MODE_SEARCHREPLACE) ? false : true,
       );
+
+			Log::addTemp('Replacing module starting');
 			$Replacer->replace($args);
+			Log::addTemp('Replacing module done');
 
 			// Here Updatedata and a ffew others.
 			$this->updateDate();
@@ -258,42 +268,67 @@ class ReplaceController
 		protected function setupSource()
 		{
 				$source_file = false;
+
+				// The main image as registered in attached_file metadata.  This can be regular or -scaled.
+				$source_file_main = trim(get_attached_file($this->post_id, apply_filters( 'emr_unfiltered_get_attached_file', true )));
+
+				// If available it -needs- to use the main image when replacing since treating a -scaled images as main will create a resursion in the filename when not replacing that one . Ie image-scaled-scaled.jpg or image-scaled-100x100.jpg .
 				if (function_exists('wp_get_original_image_path')) // WP 5.3+
 				{
 						$source_file = wp_get_original_image_path($this->post_id, apply_filters( 'emr_unfiltered_get_attached_file', true ));
-						// For offload et al to change path if wrong.
+						// For offload et al to change path if wrong. Somehow this happens?
 						$source_file = apply_filters('emr/replace/original_image_path', $source_file, $this->post_id);
+
+						Log::addTemp('Original image SourceFile' . $source_file);
 			 }
 
-			 if (false === $source_file)
+			 if (false === $source_file) // If not scaled, use the main one.
 			 {
-				 $source_file = trim(get_attached_file($this->post_id, apply_filters( 'emr_unfiltered_get_attached_file', true )));
+				 	$source_file = $source_file_main;
 			 }
+
 
 				$sourceFileObj = $this->fs()->getFile($source_file);
+				$isVirtual = false;
 				if ($sourceFileObj->is_virtual())
 				{
-						$this->sourceFileUntranslated = $this->fs()->getFile($source_file);
-						$sourcePath = apply_filters('emr/file/virtual/translate', $sourceFileObj->getFullPath(), $sourceFileObj);
+						$isVirtual = true;
 
-						if ($sourceFileObj->getFullPath() !== $sourcePath)
+						/***
+						*** Either here the table should check scaled - non-scaled ** or ** the original_path should be updated.
+						***
+
+						*/
+
+						$this->sourceFileUntranslated = $this->fs()->getFile($source_file);
+						$sourcePath = apply_filters('emr/file/virtual/translate', $sourceFileObj->getFullPath(), $sourceFileObj, $this->post_id);
+
+						if (false !== $sourcePath && $sourceFileObj->getFullPath() !== $sourcePath)
 						{
 							 $sourceFileObj = $this->fs()->getFile($sourcePath);
 							 $source_file = $sourcePath;
 						}
+
+						Log::addTemp('Source is virtual detected - ' . var_export($sourcePath, true), $source_file);
+
 				}
+
+
 				/* It happens that the SourceFile returns relative / incomplete when something messes up get_upload_dir with an error something.
 					 This case shoudl be detected here and create a non-relative path anyhow..
 				*/
-
-				if (! file_exists($source_file) && $source_file && 0 !== strpos( $source_file, '/' ) && ! preg_match( '|^.:\\\|', $source_file ) )
+				if (
+					false === $isVirtual &&
+					false === file_exists($source_file) &&
+					$source_file && 0 !== strpos( $source_file, '/' )
+					&& ! preg_match( '|^.:\\\|', $source_file ) )
 				{
 					$file = get_post_meta( $this->post_id, '_wp_attached_file', true );
 					$uploads = wp_get_upload_dir();
 					$source_file = $uploads['basedir'] . "/$source_file";
 				}
 
-				Log::addDebug('SourceFile ' . $source_file);
+				Log::addDebug('SetupSource SourceFile Path ' . $source_file);
 				$this->sourceFile = $this->fs()->getFile($source_file);
 		}
 

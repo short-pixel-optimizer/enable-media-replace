@@ -190,7 +190,8 @@ class Replacer
 	       Log::addDebug('Running additional replace for : '. $component, $run);
 	       $updated += $this->doReplaceQuery($run['base_url'], $run['search_urls'], $run['replace_urls']);
 	    }
-	    //do_action('')
+
+			do_action('shortpixel/replacer/after_replacing', $base_url, $search_urls, $replace_urls);
 
 	    Log::addDebug("Updated Records : " . $updated);
 	    return $updated;
@@ -378,7 +379,7 @@ class Replacer
     	}
     	return $arr;
   }
-	
+
 	private function getRelativeURLS()
   {
       $dataArray = array(
