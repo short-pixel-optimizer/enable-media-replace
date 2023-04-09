@@ -40,6 +40,7 @@ class ReplaceController
 	protected $tmpUploadPath;
 
 	protected $lastError;
+	protected $lastErrorData; // optional extra data for last error.
 
 		public function __construct($post_id)
 		{
@@ -89,6 +90,15 @@ class ReplaceController
 		public function returnLastError()
 		{
 			 return $this->lastError;
+		}
+
+		public function returnLastErrorData()
+		{
+			 if (! is_null($this->lastErrorData))
+			 	return $this->lastErrorData;
+			 else {
+			 		return array();
+			 }
 		}
 
 		public function run()
@@ -540,11 +550,13 @@ Log::addTemp('Generating done!');
 				$newPath = trailingslashit($uploadDir['basedir']) . $new_rel_location;
 
 				$realPath = realpath($newPath);
+				$basedir = realpath($uploadDir['basedir']); // both need to go to realpath, otherwise some servers will have issues with it.
 
 				// Detect traversal by making sure the canonical path starts with uploads' basedir.
-			 	if ( strpos($realPath, $uploadDir['basedir']) !== 0)
+			 	if ( strpos($realPath, $basedir) !== 0)
 			 	{
 					$this->lastError = self::ERROR_DIRECTORY_SECURITY;
+					$this->lastErrorData = array('path' => $realPath, 'basedir' => $basedir);
 					return false;
 				}
 
