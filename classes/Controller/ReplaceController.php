@@ -108,16 +108,13 @@ class ReplaceController
 			// Set Source / and Source Metadata
 			$Replacer = new Replacer();
 			$source_url = $this->getSourceUrl();
-			Log::addTemp('Source URL: ' . $source_url);
 			$Replacer->setSource($source_url);
 			$Replacer->setSourceMeta(wp_get_attachment_metadata( $this->post_id ));
 
 			$targetFileObj = $this->fs()->getFile($this->targetFile);
 
 			$directoryObj = $targetFileObj->getFileDir();
-			Log::addTemp('Source', $this->sourceFile->getFullPath());
-			Log::addTemp('Target', $this->targetFile->getFullPath());
-			Log::addTemp('TargetFileObj', $targetFileObj);
+
 			$result = $directoryObj->check();
 
 			if ($result === false)
@@ -193,14 +190,11 @@ class ReplaceController
 				  \wp_update_post(array('post_mime_type' => $this->targetFile->getMime(), 'ID' => $this->post_id));
 			}
 
-Log::addTemp('Starting Generate Attachment Metadata' . $this->post_id, $this->targetFile->getFullPath());
 			do_action('emr/converter/prevent-offload', $this->post_id);
       $target_metadata = wp_generate_attachment_metadata( $this->post_id, $this->targetFile->getFullPath() );
 			do_action('emr/converter/prevent-offload-off', $this->post_id);
-Log::addTemp('Generated, updating attachment metadata');
       wp_update_attachment_metadata( $this->post_id, $target_metadata );
 
-Log::addTemp('Generating done!');
 
 			$Replacer->setTargetMeta($target_metadata);
 			//$this->target_metadata = $metadata;
@@ -253,9 +247,7 @@ Log::addTemp('Generating done!');
           'thumbnails_only' => ($this->replaceType == self::MODE_SEARCHREPLACE) ? false : true,
       );
 
-			Log::addTemp('Replacing module starting');
 			$Replacer->replace($args);
-			Log::addTemp('Replacing module done');
 
 			// Here Updatedata and a ffew others.
 			$this->updateDate();
@@ -289,7 +281,6 @@ Log::addTemp('Generating done!');
 						// For offload et al to change path if wrong. Somehow this happens?
 						$source_file = apply_filters('emr/replace/original_image_path', $source_file, $this->post_id);
 
-						Log::addTemp('Original image SourceFile' . $source_file);
 			 }
 
 			 if (false === $source_file) // If not scaled, use the main one.
@@ -318,8 +309,6 @@ Log::addTemp('Generating done!');
 							 $sourceFileObj = $this->fs()->getFile($sourcePath);
 							 $source_file = $sourcePath;
 						}
-
-						Log::addTemp('Source is virtual detected - ' . var_export($sourcePath, true), $source_file);
 
 				}
 

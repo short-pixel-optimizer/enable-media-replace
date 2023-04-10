@@ -125,7 +125,6 @@ class WPOffload
 			 $base = $fs->getWPUploadBase();
 
 			 $file  = $base . $original_path;
-			 Log::addTemp('Translated file' . $file );
 			 return $file;
 		}
 
@@ -151,8 +150,6 @@ class WPOffload
 		{
 
 			$source_id = $this->sourceCache($url);
-
-//Log::addTemp('Check if offloaded: ' . $url);
 
 			if (false === $source_id)
 			{
@@ -189,8 +186,6 @@ class WPOffload
 
 		public function updateOriginalPath($source_url, $target_url, $post_id)
 		{
-				Log::addTemp('Base URL - ' . $source_url   . ' ' . $target_url . '  ' . $post_id);
-
 				$item = $this->getItemById($post_id);
 
 				$original_path = $item->original_path(); // Original path (non-scaled-)
@@ -198,30 +193,17 @@ class WPOffload
 				$path = $item->path();
 				$source_path = $item->source_path();
 
-				//Log::addTemp('Or source ' . $original_path . ' ' . $original_source_path);
-
 				$wp_original = wp_get_original_image_path($post_id, apply_filters( 'emr_unfiltered_get_attached_file', true ));
 				$wp_original = apply_filters('emr/replace/original_image_path', $wp_original, $post_id);
 				$wp_source = trim(get_attached_file($post_id, apply_filters( 'emr_unfiltered_get_attached_file', true )));
 
 				$updated = false;
 
-				Log::addTemp('Update Original Data', array(
-						'original_path' => $original_path,
-						'original_source_path' => $original_source_path,
-						'path' => $path,
-						'source_path' => $source_path,
-						'wp_original' => $wp_original,
-						'wp_source' => $wp_source,
-				));
-
 				// If image is replaced with another name, the original soruce path will not match.  This could also happen when an image is with -scaled as main is replaced by an image that doesn't have it.  In all cases update the table to reflect proper changes.
 				if (wp_basename($wp_original) !== wp_basename($original_path))
 				{
-					 Log::addTemp('Basename original path not matching');
 
 					 $newpath = str_replace( wp_basename( $original_path ), wp_basename($wp_original), $original_path );
-					 Log::addTemp('newPath', $newpath);
 
 					 $item->set_original_path($newpath);
 
@@ -290,7 +272,6 @@ class WPOffload
 				}
 
       	$source = $class::get_item_source_by_remote_url($url);
-				//Log::addTemp('Source from Remote ', $source);
 
 				$source_id = isset($source['id']) ? intval($source['id']) : false;
 			}
@@ -305,7 +286,6 @@ class WPOffload
 				if (false === $source_id)
 				{
 					$source = $class::get_item_source_by_remote_url($url);
-				//	Log::addTemp('Source from Remote Thumbnail ', $source);
 					$source_id = isset($source['id']) ? intval($source['id']) : false;
 				}
 
@@ -332,7 +312,6 @@ class WPOffload
 						{
 							$source = $class::get_item_source_by_remote_url($url);
 							$source_id = isset($source['id']) ? intval($source['id']) : false;
-			//				Log::addTemp('Source from remote double ext', $source);
 						}
 
 
