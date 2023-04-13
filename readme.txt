@@ -5,7 +5,7 @@ Tags: replace, attachment, media, files, replace image, remove background, repla
 Requires at least: 4.9.7
 Tested up to: 6.2
 Requires PHP: 5.6
-Stable tag: 4.1.0
+Stable tag: 4.1.1
 
 Easily replace any attached image/file by simply uploading a new file in the Media Library edit view - a real time saver!
 
@@ -38,6 +38,10 @@ If you don't want to use the background removal feature, add this line to your t
 
 ```add_filter( 'emr/feature/background', '__return_false' );```
 
+To shorten the wait time before redirecting to the media editing screen, use the following filter and specify the wait time in seconds (0 means that redirection is immediate, but may cause problems in certain configurations):
+
+```add_filter('emr/success/timeout', function () { return 3; });```
+
 #### Show file modification time
 
 There is a shortcode that takes the file modification date and displays it in a post or on a page. The code is:
@@ -64,6 +68,14 @@ If you want more control over the format in which the time is shown, you can use
 * LinkedIn <a href="https://www.linkedin.com/company/shortpixel" target="_blank">https://www.linkedin.com/company/shortpixel</a>
 
 == Changelog ==
+
+= 4.1.1 =
+
+Release date: April 13, 2023
+* Tweak: Added a filter to reduce or remove the wait time before redirecting to the media edit page;
+* Fix: Replacement works again on multisite setups where the plugin reported the path outside the uploads folder;
+* Fix: In some cases, replacement didn't work when images were offloaded;
+* Fix: Some translation strings were corrected (thanks @alexclassroom !).
 
 = 4.1.0 =
 
