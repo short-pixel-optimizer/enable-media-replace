@@ -74,7 +74,7 @@ abstract class ViewController
 				}
 		}
 
-		protected function viewError($errorCode)
+		protected function viewError($errorCode, $errorData = array())
 		{
 			 $message = $description = false;
 			 switch($errorCode)
@@ -114,6 +114,13 @@ abstract class ViewController
 					break;
 					case self::ERROR_DIRECTORY_SECURITY:
 						$message = __('Specificed directory is outside the upload directory. This is not allowed for security reasons', 'enable-media-replace');
+						$path = isset($errorData['path']) ? $errorData['path'] : false;
+						$basedir = isset($errorData['basedir']) ? $errorData['basedir'] : false;
+
+						if ($path !== false && $basedir !== false)
+						{
+							 $description  = sprintf(__('Path: %s is not within basedir reported as: %s', 'shortpixel-image-optimiser'), $path, $basedir);
+						}
 					break;
 					case self::ERROR_DIRECTORY_NOTEXIST:
 						$message = __('Specificed new directory does not exist. Path must be a relative path from the upload directory and exist', 'enable-media-replace');
@@ -136,6 +143,7 @@ abstract class ViewController
 
 			 if( false !== $message)
 			 	$this->view->errorMessage = $message;
+
 
 			 if (false !== $description)
 			 {

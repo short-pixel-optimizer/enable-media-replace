@@ -332,6 +332,10 @@ class EnableMediaReplacePlugin
         wp_localize_script('emr_admin', 'emr_options', $emr_options);
 
 				wp_register_script('emr_success', plugins_url('js/emr_success.js', EMR_ROOT_FILE), array(), EMR_VERSION, true);
+
+				wp_localize_script('emr_success', 'emr_success_options', array(
+					'timeout' => apply_filters('emr/success/timeout', 10),
+				));
     }
 
   /** Utility function for the Jquery UI Datepicker */

@@ -228,9 +228,15 @@ class FileModel
 
   public function getFileSize()
   {
-    if ($this->exists())
+		if ($this->exists() && false === $this->is_virtual() )
+		{
       return filesize($this->fullpath);
-    else
+		}
+    elseif (true === $this->is_virtual())
+		{
+			 return -1;
+		}
+		else
       return 0;
   }
 

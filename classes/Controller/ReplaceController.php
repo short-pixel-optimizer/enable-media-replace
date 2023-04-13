@@ -40,6 +40,7 @@ class ReplaceController
 	protected $tmpUploadPath;
 
 	protected $lastError;
+	protected $lastErrorData; // optional extra data for last error.
 
 		public function __construct($post_id)
 		{
@@ -91,6 +92,15 @@ class ReplaceController
 			 return $this->lastError;
 		}
 
+		public function returnLastErrorData()
+		{
+			 if (! is_null($this->lastErrorData))
+			 	return $this->lastErrorData;
+			 else {
+			 		return array();
+			 }
+		}
+
 		public function run()
 		{
 			do_action('wp_handle_replace', array('post_id' => $this->post_id));
@@ -104,6 +114,7 @@ class ReplaceController
 			$targetFileObj = $this->fs()->getFile($this->targetFile);
 
 			$directoryObj = $targetFileObj->getFileDir();
+
 			$result = $directoryObj->check();
 
 			if ($result === false)
@@ -182,8 +193,8 @@ class ReplaceController
 			do_action('emr/converter/prevent-offload', $this->post_id);
       $target_metadata = wp_generate_attachment_metadata( $this->post_id, $this->targetFile->getFullPath() );
 			do_action('emr/converter/prevent-offload-off', $this->post_id);
-
       wp_update_attachment_metadata( $this->post_id, $target_metadata );
+
 
 			$Replacer->setTargetMeta($target_metadata);
 			//$this->target_metadata = $metadata;
@@ -235,6 +246,7 @@ class ReplaceController
 			$args = array(
           'thumbnails_only' => ($this->replaceType == self::MODE_SEARCHREPLACE) ? false : true,
       );
+
 			$Replacer->replace($args);
 
 			// Here Updatedata and a ffew others.
@@ -258,42 +270,64 @@ class ReplaceController
 		protected function setupSource()
 		{
 				$source_file = false;
+
+				// The main image as registered in attached_file metadata.  This can be regular or -scaled.
+				$source_file_main = trim(get_attached_file($this->post_id, apply_filters( 'emr_unfiltered_get_attached_file', true )));
+
+				// If available it -needs- to use the main image when replacing since treating a -scaled images as main will create a resursion in the filename when not replacing that one . Ie image-scaled-scaled.jpg or image-scaled-100x100.jpg .
 				if (function_exists('wp_get_original_image_path')) // WP 5.3+
 				{
 						$source_file = wp_get_original_image_path($this->post_id, apply_filters( 'emr_unfiltered_get_attached_file', true ));
-						// For offload et al to change path if wrong.
+						// For offload et al to change path if wrong. Somehow this happens?
 						$source_file = apply_filters('emr/replace/original_image_path', $source_file, $this->post_id);
+
 			 }
 
-			 if (false === $source_file)
+			 if (false === $source_file) // If not scaled, use the main one.
 			 {
-				 $source_file = trim(get_attached_file($this->post_id, apply_filters( 'emr_unfiltered_get_attached_file', true )));
+				 	$source_file = $source_file_main;
 			 }
+
 
 				$sourceFileObj = $this->fs()->getFile($source_file);
+				$isVirtual = false;
 				if ($sourceFileObj->is_virtual())
 				{
-						$this->sourceFileUntranslated = $this->fs()->getFile($source_file);
-						$sourcePath = apply_filters('emr/file/virtual/translate', $sourceFileObj->getFullPath(), $sourceFileObj);
+						$isVirtual = true;
 
-						if ($sourceFileObj->getFullPath() !== $sourcePath)
+						/***
+						*** Either here the table should check scaled - non-scaled ** or ** the original_path should be updated.
+						***
+
+						*/
+
+						$this->sourceFileUntranslated = $this->fs()->getFile($source_file);
+						$sourcePath = apply_filters('emr/file/virtual/translate', $sourceFileObj->getFullPath(), $sourceFileObj, $this->post_id);
+
+						if (false !== $sourcePath && $sourceFileObj->getFullPath() !== $sourcePath)
 						{
 							 $sourceFileObj = $this->fs()->getFile($sourcePath);
 							 $source_file = $sourcePath;
 						}
+
 				}
+
+
 				/* It happens that the SourceFile returns relative / incomplete when something messes up get_upload_dir with an error something.
 					 This case shoudl be detected here and create a non-relative path anyhow..
 				*/
-
-				if (! file_exists($source_file) && $source_file && 0 !== strpos( $source_file, '/' ) && ! preg_match( '|^.:\\\|', $source_file ) )
+				if (
+					false === $isVirtual &&
+					false === file_exists($source_file) &&
+					$source_file && 0 !== strpos( $source_file, '/' )
+					&& ! preg_match( '|^.:\\\|', $source_file ) )
 				{
 					$file = get_post_meta( $this->post_id, '_wp_attached_file', true );
 					$uploads = wp_get_upload_dir();
 					$source_file = $uploads['basedir'] . "/$source_file";
 				}
 
-				Log::addDebug('SourceFile ' . $source_file);
+				Log::addDebug('SetupSource SourceFile Path ' . $source_file);
 				$this->sourceFile = $this->fs()->getFile($source_file);
 		}
 
@@ -505,11 +539,13 @@ class ReplaceController
 				$newPath = trailingslashit($uploadDir['basedir']) . $new_rel_location;
 
 				$realPath = realpath($newPath);
+				$basedir = realpath($uploadDir['basedir']); // both need to go to realpath, otherwise some servers will have issues with it.
 
 				// Detect traversal by making sure the canonical path starts with uploads' basedir.
-			 	if ( strpos($realPath, $uploadDir['basedir']) !== 0)
+			 	if ( strpos($realPath, $basedir) !== 0)
 			 	{
 					$this->lastError = self::ERROR_DIRECTORY_SECURITY;
+					$this->lastErrorData = array('path' => $realPath, 'basedir' => $basedir);
 					return false;
 				}
 

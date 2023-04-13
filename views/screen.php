@@ -214,10 +214,11 @@ $uiHelper = emr()->uiHelper();
                $subdir = $settings['new_location_dir'];
           ?>
 
+<!--
 				<div class='title_option'>
 						<input type="text" name="new_title" value="">
 				</div>
-
+-->
          <div class='location_option'>
 					 <?php
 					 if (true === $view->is_movable): ?>
