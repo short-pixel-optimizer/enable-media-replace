@@ -102,6 +102,7 @@ abstract class ViewController
 					break;
 					case self::ERROR_TARGET_EXISTS:
 					 $message = __('The target file already exists in this directory. Please try another name / directory', 'enable-media-replace');
+					 $description = __('This error is shown because you try to move the image to another folder, which already has this file', 'enable-media-replace');
 					break;
 					case self::ERROR_DESTINATION_FAIL:
 					 $message = __('Something went wrong while writing the file or directory', 'enable-media-replace');

@@ -8,6 +8,8 @@ if (! defined('ABSPATH')) {
 //use \EnableMediaReplace\UIHelper;
 use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
 use EnableMediaReplace\Notices\NoticeController as Notices;
+use EnableMediaReplace\Controller\ReplaceController as ReplaceController;
+
 
 /**
  * Uploadscreen for selecting and uploading new media file
@@ -179,7 +181,7 @@ $uiHelper = emr()->uiHelper();
 					$attachmentDate = new \dateTime($view->attachment->post_date);
 
 
-          if ($settings['timestamp_replace'] == \EnableMediaReplace\Replacer::TIME_CUSTOM)
+          if ($settings['timestamp_replace'] == ReplaceController::TIME_CUSTOM)
           {
              $date = new \dateTime($settings['custom_date']);
           }

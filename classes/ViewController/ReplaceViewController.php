@@ -52,7 +52,7 @@ class ReplaceViewController extends \EnableMediaReplace\ViewController
 
 			$defaults = array(
 			  'replace_type' => 'replace',
-			  'timestamp_replace' => \EnableMediaReplace\Replacer::TIME_UPDATEMODIFIED,
+			  'timestamp_replace' => ReplaceController::TIME_UPDATEMODIFIED,
 			  'custom_date' => date("Y-m-d H:i:s"),
 			  'new_location' => false,
 			  'new_location_dir' => false,

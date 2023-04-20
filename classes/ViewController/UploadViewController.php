@@ -97,22 +97,22 @@ class UploadViewController extends \EnableMediaReplace\ViewController
 	 {
 		 $ID = intval($_POST["ID"]); // legacy
 		 $replace_type = isset($_POST["replace_type"]) ? sanitize_text_field($_POST["replace_type"]) : false;
-		 $timestamp_replace = isset($_POST['timestamp_replace']) ? intval($_POST['timestamp_replace']) : Replacer::TIME_UPDATEMODIFIED;
+		 $timestamp_replace = isset($_POST['timestamp_replace']) ? intval($_POST['timestamp_replace']) : ReplaceController::TIME_UPDATEMODIFIED;
 
 		 $remove_background = ( isset( $_POST['remove_after_progress'] ) ) ? true : false;
 
 		 $do_new_location  = isset($_POST['new_location']) ? true : false;
-		 $do_new_location = apply_filters('emr/replace/file_is_movable', true, $ID);
+		 $do_new_location = apply_filters('emr/replace/file_is_movable', $do_new_location, $ID);
  		 $new_location_dir = isset($_POST['location_dir']) ? sanitize_text_field($_POST['location_dir']) : null;
 
 		 $is_custom_date = false;
 
 		 switch ($timestamp_replace) {
-		     case \EnableMediaReplace\Replacer::TIME_UPDATEALL:
-		     case \EnableMediaReplace\Replacer::TIME_UPDATEMODIFIED:
+		     case ReplaceController::TIME_UPDATEALL:
+		     case ReplaceController::TIME_UPDATEMODIFIED:
 		         $datetime = current_time('mysql');
 		         break;
-		     case \EnableMediaReplace\Replacer::TIME_CUSTOM:
+		     case ReplaceController::TIME_CUSTOM:
 		         $custom_date = $_POST['custom_date_formatted'];
 		         $custom_hour = str_pad($_POST['custom_hour'], 2, 0, STR_PAD_LEFT);
 		         $custom_minute = str_pad($_POST['custom_minute'], 2, 0, STR_PAD_LEFT);

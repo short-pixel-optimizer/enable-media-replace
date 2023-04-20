@@ -31,6 +31,7 @@ class ReplaceController
 	const ERROR_DIRECTORY_NOTEXIST = 25;
 
 	protected $replaceType;
+	/** @var string */
 	protected $new_location;
 	protected $timeMode;
 	protected $newDate;
@@ -352,6 +353,7 @@ class ReplaceController
 					{
 						 $otherTarget = $this->fs()->getFile($targetLocation . $this->new_filename);
 						 // Halt if new target exists, but not if it's the same ( overwriting itself )
+
 						 if ($otherTarget->exists() && $otherTarget->getFullPath() !== $this->getSourceFile()->getFullPath() )
 						 {
 								$this->lastError = self::ERROR_TARGET_EXISTS;
@@ -372,6 +374,7 @@ class ReplaceController
 					else
 					{
 							$unique = wp_unique_filename($path, $this->new_filename);
+							Log::addTemp('Unique FIleName', $unique);
 					}
 					$new_filename = apply_filters( 'emr_unique_filename', $unique, $path, $this->post_id );
 					$targetFile = trailingslashit($path) . $new_filename;
