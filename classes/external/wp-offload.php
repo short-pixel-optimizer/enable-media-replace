@@ -188,6 +188,13 @@ class WPOffload
 		{
 				$item = $this->getItemById($post_id);
 
+				// If no item comes back, probably it's not offloaded
+				if (false === $item)
+				{
+					 return;
+				}
+
+
 				$original_path = $item->original_path(); // Original path (non-scaled-)
 				$original_source_path = $item->original_source_path();
 				$path = $item->path();
