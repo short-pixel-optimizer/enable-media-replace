@@ -73,7 +73,8 @@ If you want more control over the format in which the time is shown, you can use
 
 Release date: April 24, 2023
 * Tweak: Reduced the wait time before redirecting to the media edit page to half (5s);
-* Fix: If an item is not offloaded, no attempt is made to update its data.
+* Fix: If an item is not offloaded, no attempt is made to update its data;
+* Fix: Removed some double spaces from the plugin strings (thanks to @Presskopp).
 
 = 4.1.1 =
 
