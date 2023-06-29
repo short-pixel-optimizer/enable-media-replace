@@ -374,7 +374,6 @@ class ReplaceController
 					else
 					{
 							$unique = wp_unique_filename($path, $this->new_filename);
-							Log::addTemp('Unique FIleName', $unique);
 					}
 					$new_filename = apply_filters( 'emr_unique_filename', $unique, $path, $this->post_id );
 					$targetFile = trailingslashit($path) . $new_filename;
