@@ -5,7 +5,7 @@ Tags: replace, attachment, media, files, replace image, remove background, repla
 Requires at least: 4.9.7
 Tested up to: 6.2
 Requires PHP: 5.6
-Stable tag: 4.1.1
+Stable tag: 4.1.2
 
 Easily replace any attached image/file by simply uploading a new file in the Media Library edit view - a real time saver!
 
@@ -68,6 +68,13 @@ If you want more control over the format in which the time is shown, you can use
 * LinkedIn <a href="https://www.linkedin.com/company/shortpixel" target="_blank">https://www.linkedin.com/company/shortpixel</a>
 
 == Changelog ==
+
+= 4.1.2 =
+
+Release date: April 24, 2023
+* Tweak: Reduced the wait time before redirecting to the media edit page to half (5s);
+* Fix: If an item is not offloaded, no attempt is made to update its data;
+* Fix: Removed some double spaces from the plugin strings (thanks to @Presskopp).
 
 = 4.1.1 =
 
