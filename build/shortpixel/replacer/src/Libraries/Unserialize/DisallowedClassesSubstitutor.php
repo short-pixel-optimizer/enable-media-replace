@@ -1,5 +1,5 @@
 <?php
-namespace EnableMediaReplace\Replacer\Libraries;
+namespace EnableMediaReplace\Replacer\Libraries\Unserialize;
 
 
 /**
