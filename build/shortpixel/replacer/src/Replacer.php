@@ -2,7 +2,7 @@
 namespace EnableMediaReplace\Replacer;
 
 use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
-
+use EnableMediaReplace\Replacer\Libraries\Unserialize\Unserialize;
 
 /** Module: Replacer.
 *
@@ -191,8 +191,6 @@ class Replacer
 	       $updated += $this->doReplaceQuery($run['base_url'], $run['search_urls'], $run['replace_urls']);
 	    }
 
-			do_action('shortpixel/replacer/after_replacing', $base_url, $search_urls, $replace_urls);
-
 	    Log::addDebug("Updated Records : " . $updated);
 	    return $updated;
 	}
@@ -202,8 +200,10 @@ class Replacer
     global $wpdb;
     /* Search and replace in WP_POSTS */
     // Removed $wpdb->remove_placeholder_escape from here, not compatible with WP 4.8
+
     $posts_sql = $wpdb->prepare(
-      "SELECT ID, post_content FROM $wpdb->posts WHERE post_status = 'publish' AND post_content LIKE %s",
+      "SELECT ID, post_content FROM $wpdb->posts WHERE post_status in ('publish', 'future', 'draft', 'pending', 'private')
+				AND post_content LIKE %s",
       '%' . $base_url . '%');
 
     $rs = $wpdb->get_results( $posts_sql, ARRAY_A );
@@ -254,7 +254,7 @@ class Replacer
 	        {
 	          case "post": // special case.
 	              $sql = 'SELECT meta_id as id, meta_key, meta_value FROM ' . $wpdb->postmeta . '
-	                WHERE post_id in (SELECT ID from '. $wpdb->posts . ' where post_status = "publish") AND meta_value like %s';
+	                WHERE post_id in (SELECT ID from '. $wpdb->posts . ' where post_status in ("publish", "future", "draft", "pending", "private") ) AND meta_value like %s';
 	              $type = 'post';
 
 	              $update_sql = ' UPDATE ' . $wpdb->postmeta . ' SET meta_value = %s WHERE meta_id = %d';
@@ -315,7 +315,12 @@ class Replacer
 	  private function replaceContent($content, $search, $replace, $in_deep = false)
 	  {
 	    //$is_serial = false;
-	    $content = maybe_unserialize($content);
+	    if ( true === is_serialized($content))
+			{
+				$serialized_content = $content; // use to return content back if incomplete classes are found, prevent destroying the original information
+	    	$content = Unserialize::unserialize($content, array('allowed_classes' => false));
+			}
+
 	    $isJson = $this->isJSON($content);
 
 	    if ($isJson)
@@ -349,6 +354,11 @@ class Replacer
 	    }
 	    elseif(is_object($content)) // metadata objects, they exist.
 	    {
+				// bail directly on incomplete classes.
+				if (true === $this->checkIncomplete($content))
+				{
+					 return $serialized_content;
+				}
 	      foreach($content as $key => $value)
 	      {
 	        $content->{$key} = $this->replaceContent($value, $search, $replace, true); //str_replace($value, $search, $replace);
@@ -484,6 +494,11 @@ class Replacer
       $json = json_decode($content);
       return $json && $json != $content;
   }
+
+	private function checkIncomplete($var)
+	{
+		 return ($var instanceof \__PHP_Incomplete_Class);
+	}
 
 
 } // class
