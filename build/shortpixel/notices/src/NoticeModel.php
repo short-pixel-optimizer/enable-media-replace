@@ -219,9 +219,16 @@ class NoticeModel //extends ShortPixelModel
               return false;
       }
 
-       $return = call_user_func($this->callback, $this);
-       if ($return === false) // don't display is callback returns false explicitly.
-        return;
+			if (! is_callable($this->callback))
+			{
+				 return;
+			}
+			else {
+				$return = call_user_func($this->callback, $this);
+        if ($return === false) // don't display is callback returns false explicitly.
+         return;
+
+			}
     }
 
     switch($this->messageType)

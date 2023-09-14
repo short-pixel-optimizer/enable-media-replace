@@ -2,6 +2,9 @@
 
 namespace EnableMediaReplace\ViewController;
 
+use EnableMediaReplace\Replacer\Libraries\Unserialize\Unserialize;
+
+
 if (! defined('ABSPATH')) {
     exit; // Exit if accessed directly.
 }
@@ -33,6 +36,7 @@ class RemoveBackGroundViewController extends \EnableMediaReplace\ViewController
 			 $this->viewError(self::ERROR_UPLOAD_PERMISSION);
 			// wp_die(esc_html__('You do not have permission to upload files.', 'enable-media-replace'));
 	 }
+
 
 	 $attachment_id = intval($_REQUEST['attachment_id']);
 	 $attachment = get_post($attachment_id);
