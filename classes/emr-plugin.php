@@ -103,7 +103,7 @@ class EnableMediaReplacePlugin
         if (Log::debugIsActive()) {
             $uploaddir = wp_upload_dir(null, false, false);
             if (isset($uploaddir['basedir'])) {
-                $log->setLogPath($uploaddir['basedir'] . "/emr_log");
+                $log->setLogPath( trailingslashit($uploaddir['basedir']) . "emr_log");
             }
         }
         return self::$instance;

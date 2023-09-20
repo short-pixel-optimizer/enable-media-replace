@@ -65,7 +65,7 @@ $plugin_path = plugin_dir_path( EMR_ROOT_FILE );
 require_once( $plugin_path . 'build/shortpixel/autoload.php' );
 require_once( $plugin_path . 'classes/compat.php' );
 require_once( $plugin_path . 'classes/functions.php' );
-require_once( $plugin_path . 'classes/replacer.php' );
+//require_once( $plugin_path . 'classes/replacer.php' );
 require_once( $plugin_path . 'classes/uihelper.php' );
 //require_once( $plugin_path . 'classes/file.php' );
 require_once( $plugin_path . 'classes/cache.php' );
