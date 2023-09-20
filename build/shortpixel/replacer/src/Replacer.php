@@ -362,7 +362,14 @@ class Replacer
 				// bail directly on incomplete classes.
 				if (true === $this->checkIncomplete($content))
 				{
-					 return $serialized_content;
+					// if it was serialized, return the original as not to corrupt data.
+					if (isset($serialized_content))
+					{
+						 return $serialized_content;
+					}
+					else { // else just return the content.
+						 return $content;
+					}
 				}
 	      foreach($content as $key => $value)
 	      {

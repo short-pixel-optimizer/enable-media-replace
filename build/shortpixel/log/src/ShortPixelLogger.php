@@ -106,14 +106,19 @@ namespace EnableMediaReplace\ShortPixelLogger;
 
      if ($this->is_active && $this->is_manual_request && $user_is_administrator )
      {
-          $content_url = content_url();
-          $logPath = $this->logPath;
-          $pathpos = strpos($logPath, 'wp-content') + strlen('wp-content');
-          $logPart = substr($logPath, $pathpos);
-          $logLink = $content_url . $logPart;
+
+         $logPath = $this->logPath;
+         $uploads = wp_get_upload_dir();
+
+
+     		  if ( 0 === strpos( $logPath, $uploads['basedir'] ) ) { // Simple as it should, filepath and basedir share.
+                     // Replace file location with url location.
+                     $logLink = str_replace( $uploads['basedir'], $uploads['baseurl'], $logPath );
+     		  }
+
 
          $this->view = new \stdClass;
-         $this->view->logLink = $logLink;
+         $this->view->logLink = 'view-source:' . esc_url($logLink);
          add_action('admin_footer', array($this, 'loadView'));
      }
    }
