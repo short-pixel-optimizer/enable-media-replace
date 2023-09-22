@@ -5,7 +5,7 @@ Tags: replace, attachment, media, files, replace image, remove background, repla
 Requires at least: 4.9.7
 Tested up to: 6.3
 Requires PHP: 5.6
-Stable tag: 4.1.3
+Stable tag: 4.1.4
 
 Easily replace any attached image/file by simply uploading a new file in the Media Library edit view - a real time saver!
 
@@ -68,6 +68,11 @@ If you want more control over the format in which the time is shown, you can use
 * LinkedIn <a href="https://www.linkedin.com/company/shortpixel" target="_blank">https://www.linkedin.com/company/shortpixel</a>
 
 == Changelog ==
+
+= 4.1.4 =
+
+Release date: September 22, 2023
+* Fix: The latest security fix was breaking the replacements made with Beaver Builder (and possibly other builders);
 
 = 4.1.3 =
 
