@@ -5,6 +5,8 @@
 namespace EnableMediaReplace;
 
 use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
+use EnableMediaReplace\Controller\ReplaceController as ReplaceController;
+
 
 use Exception;
 use stdClass;
@@ -74,8 +76,8 @@ class Api {
 			return $result;
 	  }
 
-		$replacer = new Replacer($attachment_id);
-		$url = $replacer->getSourceUrl();
+		$replaceController = new ReplaceController($attachment_id);
+		$url = $replaceController->getSourceUrl();
 
 		$settings = get_option('enable_media_replace', array()); // save settings and show last loaded.
 		$settings['bg_type'] = isset($_POST['background']['type']) ? sanitize_text_field($_POST['background']['type']) : false;

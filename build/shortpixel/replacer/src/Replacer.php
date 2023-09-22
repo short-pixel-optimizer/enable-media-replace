@@ -216,7 +216,7 @@ class Replacer
 
         $post_content = $rows["post_content"];
         $post_id = $rows['ID'];
-        $replaced_content = $this->replaceContent($post_content, $search_urls, $replace_urls);
+        $replaced_content = $this->replaceContent($post_content, $search_urls, $replace_urls, false, true);
 
         if ($replaced_content !== $post_content)
         {
@@ -311,14 +311,25 @@ class Replacer
 	  * @param $search String Search string
 	  * @param $replace String Replacement String
 	  * @param $in_deep Boolean.  This is use to prevent serialization of sublevels. Only pass back serialized from top.
+	  * @param $strict_check Boolean . If true, remove all classes from serialization check and fail. This should be done on post_content, not on metadata.
 	  */
-	  private function replaceContent($content, $search, $replace, $in_deep = false)
+	  private function replaceContent($content, $search, $replace, $in_deep = false, $strict_check = false)
 	  {
 	    //$is_serial = false;
 	    if ( true === is_serialized($content))
 			{
 				$serialized_content = $content; // use to return content back if incomplete classes are found, prevent destroying the original information
-	    	$content = Unserialize::unserialize($content, array('allowed_classes' => false));
+
+				if (true === $strict_check)
+				{
+						$args = array('allowed_classes' => false);
+				}
+				else
+				{
+						$args = array('allowed_classes' => true);
+				}
+
+	    	$content = Unserialize::unserialize($content, $args);
 				// bail directly on incomplete classes. In < PHP 7.2 is_object is false on incomplete objects!
 				if (true === $this->checkIncomplete($content))
 				{
@@ -362,7 +373,14 @@ class Replacer
 				// bail directly on incomplete classes.
 				if (true === $this->checkIncomplete($content))
 				{
-					 return $serialized_content;
+					// if it was serialized, return the original as not to corrupt data.
+					if (isset($serialized_content))
+					{
+						 return $serialized_content;
+					}
+					else { // else just return the content.
+						 return $content;
+					}
 				}
 	      foreach($content as $key => $value)
 	      {
@@ -493,7 +511,7 @@ class Replacer
   /* Check if given content is JSON format. */
   private function isJSON($content)
   {
-      if (is_array($content) || is_object($content))
+      if (is_array($content) || is_object($content) || is_null($content))
         return false; // can never be.
 
       $json = json_decode($content);

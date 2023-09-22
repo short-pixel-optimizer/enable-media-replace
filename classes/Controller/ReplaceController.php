@@ -437,7 +437,7 @@ class ReplaceController
 		 return $excerpt;
 		}
 
-		protected function getSourceUrl()
+		public function getSourceUrl()
 		{
 			if (function_exists('wp_get_original_image_url')) // WP 5.3+
 			{
