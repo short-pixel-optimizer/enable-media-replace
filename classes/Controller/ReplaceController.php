@@ -194,8 +194,8 @@ class ReplaceController
 			do_action('emr/converter/prevent-offload', $this->post_id);
       $target_metadata = wp_generate_attachment_metadata( $this->post_id, $this->targetFile->getFullPath() );
 			do_action('emr/converter/prevent-offload-off', $this->post_id);
-      wp_update_attachment_metadata( $this->post_id, $target_metadata );
 
+      wp_update_attachment_metadata( $this->post_id, $target_metadata );
 
 			$Replacer->setTargetMeta($target_metadata);
 			//$this->target_metadata = $metadata;

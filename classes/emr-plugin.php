@@ -287,11 +287,11 @@ class EnableMediaReplacePlugin
   */
     public function admin_scripts()
     {
-        if (is_rtl()) {
-            wp_register_style('emr_style', plugins_url('css/admin.rtl.css', EMR_ROOT_FILE));
+       if (is_rtl()) {
+            wp_register_style('emr_style', plugins_url('css/rtl/admin.css', EMR_ROOT_FILE));
         } else {
             wp_register_style('emr_style', plugins_url('css/admin.css', EMR_ROOT_FILE));
-        }
+       }
 
         wp_register_style('emr_edit-attachment', plugins_url('css/edit_attachment.css', EMR_ROOT_FILE));
 

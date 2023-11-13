@@ -90,6 +90,8 @@ class UploadViewController extends \EnableMediaReplace\ViewController
 		{
 			 $this->viewSuccess();
 		}
+
+
 	 }
 
 
