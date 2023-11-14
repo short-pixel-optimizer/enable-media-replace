@@ -541,20 +541,14 @@ class EnableMediaReplacePlugin
    * @param array $mime_types
    * @return array
    */
-     /* Off, no clue why this is here.
-  public function add_mime_types($mime_types)
-  {
-    $mime_types['dat'] = 'text/plain';     // Adding .dat extension
-    return $mime_types;
-  }
-*/
+
+
   /**
    * Function called by filter 'media_row_actions'
    * Enables linking to EMR straight from the media library
   */
     public function add_media_action($actions, $post)
     {
-
         if (! $this->checkImagePermission($post)) {
             return $actions;
         }
@@ -582,8 +576,6 @@ class EnableMediaReplacePlugin
 				}
 				return array_merge($actions, $newaction);
     }
-
-
 
   /** Outputs the replaced date of the media on the edit_attachment screen
   *

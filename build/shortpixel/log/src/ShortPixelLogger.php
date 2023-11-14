@@ -219,7 +219,7 @@ namespace EnableMediaReplace\ShortPixelLogger;
 			$logDir = dirname($this->logPath);
 		  if (! is_dir($logDir) || ! is_writable($logDir))
 			{
-				error_log('ShortpixelLogger: Log Directory is not writable');
+				error_log('ShortpixelLogger: Log Directory is not writable : ' . $logDir);
 				$this->logFile = false;
 				return false;
 			}

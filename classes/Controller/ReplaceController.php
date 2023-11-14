@@ -110,7 +110,9 @@ class ReplaceController
 			$Replacer = new Replacer();
 			$source_url = $this->getSourceUrl();
 			$Replacer->setSource($source_url);
-			$Replacer->setSourceMeta(wp_get_attachment_metadata( $this->post_id ));
+
+      $meta = $this->getSourceMeta();
+			$Replacer->setSourceMeta($meta);
 
 			$targetFileObj = $this->fs()->getFile($this->targetFile);
 
@@ -253,6 +255,15 @@ class ReplaceController
 			// Here Updatedata and a ffew others.
 			$this->updateDate();
 
+      // Remove backups  - if any - from the WordPress native image editor.  -- return false to cancel . This is done before everything because the main file is changed to to edited URL. Need to reset the source
+
+      $remove_editor_backup = apply_filters('shortpixel/replacer/remove_editor_backup', true);
+      if (true === $remove_editor_backup)
+      {
+          $this->removeEditorBackup();
+      }
+
+
 			// Give the caching a kick. Off pending specifics.
 			$cache_args = array(
 				'flush_mode' => 'post',
@@ -281,7 +292,6 @@ class ReplaceController
 						$source_file = wp_get_original_image_path($this->post_id, apply_filters( 'emr_unfiltered_get_attached_file', true ));
 						// For offload et al to change path if wrong. Somehow this happens?
 						$source_file = apply_filters('emr/replace/original_image_path', $source_file, $this->post_id);
-
 			 }
 
 			 if (false === $source_file) // If not scaled, use the main one.
@@ -301,7 +311,6 @@ class ReplaceController
 						***
 
 						*/
-
 						$this->sourceFileUntranslated = $this->fs()->getFile($source_file);
 						$sourcePath = apply_filters('emr/file/virtual/translate', $sourceFileObj->getFullPath(), $sourceFileObj, $this->post_id);
 
@@ -315,7 +324,7 @@ class ReplaceController
 
 
 				/* It happens that the SourceFile returns relative / incomplete when something messes up get_upload_dir with an error something.
-					 This case shoudl be detected here and create a non-relative path anyhow..
+					 This case should be detected here and create a non-relative path anyhow..
 				*/
 				if (
 					false === $isVirtual &&
@@ -399,7 +408,6 @@ class ReplaceController
 		{
 			// get basename without extension
 			$title = basename($this->targetFile->getFileName(), '.' . $this->targetFile->getExtension());
-		//	$meta = $this->target_metadata;
 
 			if (isset($meta['image_meta']))
 			{
@@ -420,7 +428,6 @@ class ReplaceController
 
 		protected function getNewExcerpt($meta)
 		{
-		//	 $meta = $this->target_metadata;
 			 $excerpt = false;
 
 			 if (isset($meta['image_meta']))
@@ -452,6 +459,22 @@ class ReplaceController
 
 			return $source_url;
 		}
+
+    protected function getSourceMeta()
+    {
+            $meta = wp_get_attachment_metadata( $this->post_id );
+
+            if (false === $meta)
+            {
+              return false;
+            }
+
+            if (isset($meta['sizes']))
+            {
+              $meta['sizes'] = array_merge($meta['sizes'], $this->getBackupmeta());
+            }
+        return $meta;
+    }
 
 		/** Handle new dates for the replacement */
 	  protected function updateDate()
@@ -499,15 +522,53 @@ class ReplaceController
 	       @unlink($attached_file);
 	    }
 
+
 	    do_action( 'emr_after_remove_current', $this->post_id, $meta, $backup_sizes, $this->sourceFile, $this->targetFile );
 	  }
+
+    /** Remove the backups from the WP native image editor  - prevent 'restore image' to remove the replacement */
+    protected function removeEditorBackup()
+    {
+        $post_id = $this->post_id;
+
+        // If backup sizes restore the image.
+        $backup_sizes = get_post_meta( $post_id, '_wp_attachment_backup_sizes', true );
+        if (true === is_array($backup_sizes))
+        {
+
+           delete_post_meta($post_id, '_wp_attachment_backup_sizes');
+        }
+
+    }
+
+    // Check for metadata in the backup, indicating the image editor has been used. Replace those too.
+    protected function getBackupmeta()
+    {
+      $meta = array();
+      $backup_sizes = get_post_meta( $this->post_id, '_wp_attachment_backup_sizes', true );
+
+      if (true === is_array($backup_sizes))
+      {
+          foreach($backup_sizes as $backup_name => $backup_data)
+          {
+              // Don't include the original files mentioned in backups.
+              if (strpos($backup_name, 'orig') !== false)
+              {
+                 continue;
+              }
+
+              $meta[$backup_name] = $backup_data;
+          }
+      }
+
+      return $meta;
+    }
 
 		/** Since WP functions also can't be trusted here in certain cases, create the URL by ourselves */
 		protected function getTargetURL()
 		{
 			if (is_null($this->targetFile))
 			{
-				 Log::addError('TargetFile NULL ', debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 10));
 				 return false;
 			}
 			//$uploads['baseurl']
