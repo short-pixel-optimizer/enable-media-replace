@@ -328,7 +328,7 @@ class ReplaceController
 				*/
 				if (
 					false === $isVirtual &&
-					false === file_exists($source_file) &&
+					false === $sourceFileObj->exists() &&
 					$source_file && 0 !== strpos( $source_file, '/' )
 					&& ! preg_match( '|^.:\\\|', $source_file ) )
 				{

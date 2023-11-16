@@ -1036,6 +1036,13 @@
   top: 50%;
   position: absolute;
 }
+#emr-drop-area-active p.close {
+  font-size: 14px;
+  color: #fff;
+  top: 60%;
+  left: 52%;
+  position: absolute;
+}
 #emr-drop-area-active .drop-wrapper {
   margin: 0 auto;
 }
@@ -1281,8 +1288,10 @@
   padding: 0;
 }
 .emr_upload_form .form_controls.wrapper .button {
-  padding-left: 20px;
-  padding-right: 20px;
+  padding: 8px 20px;
+}
+.emr_upload_form .form_controls.wrapper .button.button-primary {
+  min-width: 150px;
 }
 .emr_upload_form .shortpixel.notice {
   padding: 12px;

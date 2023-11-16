@@ -146,6 +146,7 @@ class UIHelper
 		$meta = wp_get_attachment_metadata($attach_id);
 
 		$data = false;
+    $fs = \emr()->filesystem();
 
 		if (isset($meta['sizes']))
 		{
@@ -168,7 +169,9 @@ class UIHelper
 		}
 
     $file = get_attached_file($attach_id, true);
-		if (! file_exists($file))
+    $fileObj = $fs->getFile($file);
+
+		if (false === $fileObj->exists())
 			return $data;
 
 		$mime_type = wp_get_image_mime($file);
