@@ -23,6 +23,14 @@
 		top: 50%;
 		position:absolute;
 	}
+	p.close {
+		font-size: 14px;
+		color: #fff;
+		top: 60%;
+		left: 52%;
+		position: absolute;
+
+	}
 
 	.drop-wrapper
 	{
@@ -348,8 +356,14 @@
     padding: 0;
     .button
     {
-      padding-left: 20px;
-      padding-right: 20px;
+//      padding-left: 20px;
+//      padding-right: 20px;
+			padding: 8px 20px;
+
+			&.button-primary
+			{
+				 min-width: 150px;
+			}
     }
   }
 

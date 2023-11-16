@@ -38,7 +38,10 @@ $uiHelper = emr()->uiHelper();
 
 <div class="wrap emr_upload_form">
 
-	<div class='emr_drop_area' id='emr-drop-area'><h3><?php _e('Drop File', 'enable-media-replace'); ?></h3></div>
+	<div class='emr_drop_area' id='emr-drop-area'>
+    <h3><?php _e('Drop File', 'enable-media-replace'); ?></h3>
+    <p class='close'><?php _e('Click to Close', 'enable-media-replace'); ?> </p>
+  </div>
 
 	<h1><?php echo esc_html__("Replace Media Upload", "enable-media-replace"); ?></h1>
 
@@ -239,8 +242,9 @@ $uiHelper = emr()->uiHelper();
     </section>
   </div>
   <section class='form_controls wrapper'>
+    <a href="#" class="button" onclick="history.back();"><?php echo esc_html__("Back", "enable-media-replace"); ?></a>
 		<input id="submit" type="submit" class="button button-primary" disabled="disabled" value="<?php echo esc_attr__("Upload", "enable-media-replace"); ?>" />
-        <a href="#" class="button" onclick="history.back();"><?php echo esc_html__("Cancel", "enable-media-replace"); ?></a>
+
   </section>
 </div>
 

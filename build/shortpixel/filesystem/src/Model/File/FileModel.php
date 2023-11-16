@@ -130,8 +130,16 @@ class FileModel
   {
     if (true === $forceCheck || is_null($this->exists))
     {
-      $this->exists = (@file_exists($this->fullpath) && is_file($this->fullpath));
+      if (true === $this->fileIsRestricted($this->fullpath))
+      {
+          $this->exists = false;
+      }
+      else {
+          $this->exists = (@file_exists($this->fullpath) && is_file($this->fullpath));
+      }
+
     }
+
 
     $this->exists = apply_filters('shortpixel_image_exists', $this->exists, $this->fullpath, $this); //legacy
     $this->exists = apply_filters('shortpixel/file/exists',  $this->exists, $this->fullpath, $this);

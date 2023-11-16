@@ -116,8 +116,9 @@ class UploadViewController extends \EnableMediaReplace\ViewController
 		         break;
 		     case ReplaceController::TIME_CUSTOM:
 		         $custom_date = $_POST['custom_date_formatted'];
-		         $custom_hour = str_pad($_POST['custom_hour'], 2, 0, STR_PAD_LEFT);
-		         $custom_minute = str_pad($_POST['custom_minute'], 2, 0, STR_PAD_LEFT);
+
+             $custom_hour = str_pad( intval($_POST['custom_hour']), 2, 0, STR_PAD_LEFT);
+		         $custom_minute = str_pad( intval($_POST['custom_minute']), 2, 0, STR_PAD_LEFT);
 
 		         // create a mysql time representation from what we have.
 		         Log::addDebug('Custom Date - ' . $custom_date . ' ' . $custom_hour . ':' . $custom_minute);

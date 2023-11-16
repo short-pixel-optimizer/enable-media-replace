@@ -24,11 +24,25 @@
       $('input[name="userfile"]').on('change', $.proxy(this.handleImage, this));
 			$('.replace_custom_date').on('click', $.proxy(this.updateCustomDate, this));
 
+
       // DragDrop
 			//$(document).on('dragover', $.proxy(this.dragOverArea, this));
 			//$(document).on('dragleave', $.proxy(this.dragOutArea, this));
 			document.addEventListener('dragover',  this.dragOverArea.bind(this), false );
 			document.addEventListener('dragleave',  this.dragOutArea.bind(this), false );
+
+      // Validate Custom Hour / Minute to be integer
+      //document.addEventListener('change', this.validateCustomDate.bind(this), false);
+    //  document.addEventListener('keyup', this.validateCustomDate.bind(this), false);
+
+      var self = this;
+      var eventlist = ['change', 'keyup'];
+      var elements = document.querySelectorAll('input[name="custom_hour"], input[name="custom_minute"]');
+      elements.forEach(function (el) {
+          el.addEventListener('change', self.validateCustomDate.bind(self), false);
+          //el.addEventListener('keypress', self.validateCustomDate.bind(self), false);
+
+      });
 
 
 
@@ -75,6 +89,29 @@
               }
         },
       });
+    }
+
+    this.validateCustomDate = function(event)
+    {
+        var target = event.target;
+        var value = target.value;
+
+        target.value = value.replace(/\D/g, '');
+
+        if (target.value.length > 2)
+        {
+           if (target.value[0] == 0)
+           {
+              target.value = target.value.slice(1);
+           }
+           else if (target.value[2]  == 0)
+           {
+              target.value = target.value.slice(0,2);
+           }
+           else {
+             target.value= target.defaultValue;
+           }
+        }
     }
 
     this.checkCustomDate = function()
@@ -326,7 +363,6 @@
     {
       e.preventDefault();
       e.stopPropagation();
-			console.log(e);
 
       if (true == this.is_dragging)
         return;
@@ -341,7 +377,11 @@
 
 			child.addEventListener('dragover', function(event){
 				event.preventDefault();
-			})
+			});
+
+      child.addEventListener('click', function (event) {
+        this.dragOutArea();
+      }.bind(this));
 
 
       this.is_dragging = true;
@@ -360,10 +400,12 @@
 		        return false;
 		    }
 			}
-		var removeEl = document.getElementById('emr-drop-area-active');
-			if (removeEl !== null)
-				document.getElementById('emr-drop-area-active').remove();
 
+      var removeEl = document.getElementById('emr-drop-area-active');
+      if (removeEl !== null)
+      {
+				document.getElementById('emr-drop-area-active').remove();
+      }
       this.is_dragging = false;
     }
     this.fileDrop = function (e)
