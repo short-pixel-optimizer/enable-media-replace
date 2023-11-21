@@ -89,6 +89,7 @@ require_once( $plugin_path . 'classes/external/wpbakery.php' );
 require_once( $plugin_path . 'classes/external/upsell_installer.php' );
 require_once( $plugin_path . 'classes/external/siteorigin.php' );
 require_once( $plugin_path . 'classes/external/wp-offload.php' );
+require_once( $plugin_path . 'classes/external/virtual-filesystem.php' );
 
 require_once( $plugin_path . 'thumbnail_updater.php' );
 

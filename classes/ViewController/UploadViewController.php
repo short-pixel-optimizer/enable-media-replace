@@ -31,7 +31,6 @@ class UploadViewController extends \EnableMediaReplace\ViewController
 
 	 public function load()
 	 {
-
 		 // No form submit?
 		 if (count($_POST) == 0)
 		 {
@@ -42,7 +41,6 @@ class UploadViewController extends \EnableMediaReplace\ViewController
 				{
 						$this->viewSuccess();
 				}
-
 		 }
 
 		 if ( ! isset( $_POST['emr_nonce'] )

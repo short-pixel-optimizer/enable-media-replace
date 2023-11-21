@@ -365,6 +365,8 @@ class ReplaceController
 
 						 if ($otherTarget->exists() && $otherTarget->getFullPath() !== $this->getSourceFile()->getFullPath() )
 						 {
+                Log::addWarn('Image already exists in target directory. Source : ' . $this->getSourceFile()->getFullPath() . ' Target : ' . $otherTarget->getFullPath());
+
 								$this->lastError = self::ERROR_TARGET_EXISTS;
 								return null;
 						 }

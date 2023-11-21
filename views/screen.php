@@ -223,6 +223,7 @@ $uiHelper = emr()->uiHelper();
 						<input type="text" name="new_title" value="">
 				</div>
 -->
+
          <div class='location_option'>
 					 <?php
 					 if (true === $view->is_movable): ?>
