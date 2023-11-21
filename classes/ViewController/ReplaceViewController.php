@@ -46,6 +46,7 @@ class ReplaceViewController extends \EnableMediaReplace\ViewController
 			$filetype = $file->getExtension(); */
 			$source_mime = get_post_mime_type($attachment_id);
 
+
 			$uiHelper = \emr()->uiHelper();
 			$uiHelper->setPreviewSizes();
 			$uiHelper->setSourceSizes($attachment_id);
@@ -65,7 +66,8 @@ class ReplaceViewController extends \EnableMediaReplace\ViewController
 			$this->view->settings = array_merge($defaults, $settings); // might miss some
 
 			// Indicates if file can be moved to other location. Can't be done when offloaded.
-			$this->view->is_movable = apply_filters('emr/replace/file_is_movable', true, $attachment_id);
+			$is_movable = ($file->is_virtual()) ? false : true;
+			$this->view->is_movable = apply_filters('emr/replace/file_is_movable', $is_movable, $attachment_id);
 
 			$uploadDir = wp_upload_dir();
 		 	$basedir = trailingslashit($uploadDir['basedir']);

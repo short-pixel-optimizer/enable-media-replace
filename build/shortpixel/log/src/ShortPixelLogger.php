@@ -116,7 +116,6 @@ namespace EnableMediaReplace\ShortPixelLogger;
                      $logLink = str_replace( $uploads['basedir'], $uploads['baseurl'], $logPath );
      		  }
 
-
          $this->view = new \stdClass;
          $this->view->logLink = 'view-source:' . esc_url($logLink);
          add_action('admin_footer', array($this, 'loadView'));

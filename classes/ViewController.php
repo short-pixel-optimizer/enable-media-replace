@@ -114,7 +114,7 @@ abstract class ViewController
 						$message = __('Error updating WordPress post in the database', 'enable-media-replace');
 					break;
 					case self::ERROR_DIRECTORY_SECURITY:
-						$message = __('Specificed directory is outside the upload directory. This is not allowed for security reasons', 'enable-media-replace');
+						$message = __('Specified directory is outside the upload directory. This is not allowed for security reasons', 'enable-media-replace');
 						$path = isset($errorData['path']) ? $errorData['path'] : false;
 						$basedir = isset($errorData['basedir']) ? $errorData['basedir'] : false;
 

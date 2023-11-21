@@ -1055,6 +1055,7 @@
 }
 .emr_upload_form .editor-wrapper {
   width: 100%;
+  margin-bottom: 100px;
 }
 .emr_upload_form .emr_drop_area {
   display: none;
