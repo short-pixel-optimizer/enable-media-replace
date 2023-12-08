@@ -250,8 +250,11 @@ class ReplaceController
           'thumbnails_only' => ($this->replaceType == self::MODE_SEARCHREPLACE) ? false : true,
       );
 
-			$Replacer->replace($args);
-
+			$doreplace = apply_filters('emr/replace/doreplace', true);
+			if(true === $doreplace){
+				$Replacer->replace($args);
+			}
+			
 			// Here Updatedata and a ffew others.
 			$this->updateDate();
 
