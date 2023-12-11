@@ -98,11 +98,7 @@ if (! apply_filters('emr/upsell', current_user_can('install_plugins')))
 	<?php endif; ?>
 	<!--- // SHORTPIXEL AI -->
 
-  <!--- Shortpixel THEME -->
-	<div class='shortpixel-offer theme-offer'>
-		<p><a href="https://wordpress.org/themes/superb-pixels/" target="_blank"><img src="<?php echo esc_url(emr()->getPluginURL('img/sp-banner-theme.jpg')); ?>" alt='ShortPixel Theme' ></a></p>
-	</div>
-	<!--- // Shortpixel THEME -->
+
 
 
   <div class='shortpixel-offer theme-offer'>
