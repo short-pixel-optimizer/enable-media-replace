@@ -101,70 +101,18 @@ if (! apply_filters('emr/upsell', current_user_can('install_plugins')))
   <!--- Shortpixel THEME -->
 	<div class='shortpixel-offer theme-offer'>
 		<p><a href="https://wordpress.org/themes/superb-pixels/" target="_blank"><img src="<?php echo esc_url(emr()->getPluginURL('img/sp-banner-theme.jpg')); ?>" alt='ShortPixel Theme' ></a></p>
-
 	</div>
 	<!--- // Shortpixel THEME -->
 
-	<!--- WPSO -->
-	<?php /*
-    <div class='shortpixel-offer site-speed'>
-      <p class='img-wrapper'><img width="40" height="40" src="<?php echo emr()->getPluginURL('img/sp-logo-wink.svg'); ?>" alt='ShortPixel'></p>
-      <h3><?php printf(__('GET AN ASSESSMENT FOR %s YOUR WEBSITE %s AND %s %s FIND OUT HOW TO MAKE IT FASTER %s', 'enable-media-replace'),'<br>', '<br>','<br>', '<span class="red">','</span>'); ?></h3>
 
-      <p class='button-wrapper'><a href='https://wso.shortpixel.com/?utm_source=EMR' target="_blank"><?php _e('FIND OUT MORE', 'enable-media-replace') ?></a></p>
-    </div>
-*/ ?>
-	<!--- // WPSO -->
+  <div class='shortpixel-offer theme-offer'>
+			<p><img src="<?php echo esc_url(emr()->getPluginURL('img/fastpixel-logo.svg')); ?>" alt="FastPixel"></p>
+			<h3> FAST<span class='red'>PIXEL</span> - the new website accelerator plugin from ShortPixel</h3>
+			<div class="button-wrapper">
+      	<a href="https://fastpixel.io/?utm_source=EMR" target="_blank" class="button">TRY NOW!</a>
+  		</div>
+	</div>
 
 
-
-		<!--- ENVIRA temprary deactivated
-		<?php if (! $envira_pro_active): ?>
-  <div class='envira-shortpixel-install shortpixel-offer'>
-
-	<p class='img-wrapper'><img src="<?php echo emr()->getPluginURL('img/envira-logo.png'); ?>" alt='Envira Gallery'></p>
-	<p><?php esc_html_e('Create beautiful, fast-loading photo & video galleries for your site in minutes.', 'enable-media-replace' ); ?></p>
-
-		 <?php
-			  $install_class = (! $envira_installed) ? '' : 'hidden';
-				$activate_class = ($envira_installed && ! $envira_active) ? '' : 'hidden';
-		 ?>
-		 <?php if (! $envira_active) { ?>
-	   <p class='button-wrapper envira-emr-button-wrap'>
-
-			 <a class="emr-installer button button-envira-emr emr-install-envira <?php echo $install_class ?>"  data-action="install" data-plugin="envira" href='javascript:void(0)'><?php _e('Install now', 'enable-media-replace') ?></a>
-
-			 <a class="emr-activate button button-envira-emr emr-activate-envira <?php echo $activate_class ?>" href='javascript:void(0)' data-action="activate" data-plugin="envira" ><?php _e('Activate', 'enable-media-replace') ?></a>
-
-				<h4 class='emr-activate-done hidden' data-plugin='envira'><?php _e('Envira Gallery activated!', 'enable-media-replace'); ?></h4>
-
-		</p>
-
-		<?php } else {
-				if ( is_plugin_active( 'envira-gallery-lite/envira-gallery-lite.php' ) ) {
-			?>
-				<p class='button-wrapper envira-emr-button-wrap'><a class="button button-envira-emr" href='https://enviragallery.com/pricing' target="_blank"><?php _e('Get Pro', 'enable-media-replace') ?></a></p>
-
-				<?php } else { ?>
-
-				<?php }
-			} ?>
-    </div>
-    <style>
-	    .envira-emr-button-wrap {
-		text-align: center;
-	}
-	.button-envira-emr {
-		background-color: #7cc048 !important;
-		border: none !important;
-		color: rgb(255,255,255) !important;
-		font-size: 21px !important;
-	}
-	.button-envira-emr:hover {
-		background-color: #95dc5e !important;
-	}
-    </style>
-	<?php endif; // envira ?>
--->
 
 </section>
