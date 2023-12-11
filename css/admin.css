@@ -1347,6 +1347,7 @@
   font-weight: 700;
   font-size: 20px;
   text-transform: uppercase;
+  border: 0;
 }
 .emr_upload_form .shortpixel-offer .hidden {
   display: none !important;
@@ -1368,6 +1369,9 @@
 }
 .emr_upload_form .shortpixel-offer.theme-offer img {
   max-width: 100%;
+}
+.emr_upload_form .shortpixel-offer.theme-offer .button-wrapper {
+  margin-top: 20px;
 }
 @media (max-width: 1200px) {
   .emr_upload_form .image_previews {

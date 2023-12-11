@@ -418,6 +418,7 @@
         font-weight: 700;
         font-size: 20px;
 				text-transform: uppercase;
+				border: 0;
       }
     }
 		.hidden { display: none !important; }
@@ -445,6 +446,10 @@
 			 background: #fff;
 			 img {
 				 max-width: 100%;
+			 }
+			 .button-wrapper
+			 {
+				 margin-top: 20px;
 			 }
 		}
   }
