@@ -45,14 +45,13 @@ $uiHelper = emr()->uiHelper();
 	<?php
 
 	$formurl = $uiHelper->getFormUrl($attachment_id);
-  //$formurl = wp_nonce_url( $url, "media_replace_upload" );
 
 	if (FORCE_SSL_ADMIN) {
 			$formurl = str_replace("http:", "https:", $formurl);
 		}
 	?>
 
-	<form enctype="multipart/form-data" method="POST" action="<?php echo $formurl; ?>">
+	<form enctype="multipart/form-data" method="POST" action="<?php echo esc_url($formurl); ?>">
 		<?php wp_nonce_field('media_replace_upload', 'emr_nonce'); ?>
 
 <div class='editor-wrapper'>
