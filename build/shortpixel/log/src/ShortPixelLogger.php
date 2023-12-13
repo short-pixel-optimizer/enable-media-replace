@@ -82,7 +82,6 @@ namespace EnableMediaReplace\ShortPixelLogger;
       {
           if (defined('SHORTPIXEL_LOG_OVERWRITE')) // if overwrite, do this on init once.
             file_put_contents($this->logPath,'-- Log Reset -- ' .PHP_EOL);
-
       }
 
       if ($this->is_active)
