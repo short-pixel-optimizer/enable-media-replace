@@ -56,6 +56,7 @@ class EnableMediaReplacePlugin
 		{
 			$this->features['replace']  = true; // does nothing just for completeness
 			$this->features['background'] = apply_filters('emr/feature/background', true);
+      $this->features['remote_notice']  = apply_filters('emr/feature/remote_notice', true);
 
 			load_plugin_textdomain('enable-media-replace', false, basename(dirname(EMR_ROOT_FILE)) . '/languages');
 
@@ -86,6 +87,9 @@ class EnableMediaReplacePlugin
 					 case 'background':
 					 		$bool = $this->features['background'];
 					 break;
+           case 'remote_notice':
+		           $bool = $this->features['remote_notice'];
+           break;
 					 default:
 					 		$bool = false;
 					 break;
@@ -190,9 +194,8 @@ class EnableMediaReplacePlugin
 			 $screen = get_current_screen();
 
 			 $notice_pages = array('attachment',  'media_page_enable-media-replace/enable-media-replace', 'upload' );
-			 if ( in_array($screen->id, $notice_pages) &&	true === emr()->useFeature('background'))
+			 if ( in_array($screen->id, $notice_pages) &&	true === emr()->useFeature('remote_notice'))
 			 {
-
 				 RemoteNoticeController::getInstance(); // check for remote stuff
 			 	 $notices = Notices::getInstance();
 				 $notices->loadIcons(array(
