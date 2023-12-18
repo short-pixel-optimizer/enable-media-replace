@@ -5,7 +5,7 @@ Tags: replace, attachment, media, files, replace image, remove background, repla
 Requires at least: 4.9.7
 Tested up to: 6.3
 Requires PHP: 5.6
-Stable tag: 4.1.4
+Stable tag: 4.1.5
 
 Easily replace any attached image/file by simply uploading a new file in the Media Library edit view - a real time saver!
 
@@ -38,6 +38,10 @@ If you don't want to use the background removal feature, add this line to your t
 
 ```add_filter( 'emr/feature/background', '__return_false' );```
 
+A similar filter, for the remote notification system is:
+
+```add_filter( 'emr/feature/remote_notice', '__return_false' );```
+
 To shorten the wait time before redirecting to the media editing screen, use the following filter and specify the wait time in seconds (0 means that redirection is immediate, but may cause problems in certain configurations):
 
 ```add_filter('emr/success/timeout', function () { return 3; });```
@@ -68,6 +72,12 @@ If you want more control over the format in which the time is shown, you can use
 * LinkedIn <a href="https://www.linkedin.com/company/shortpixel" target="_blank">https://www.linkedin.com/company/shortpixel</a>
 
 == Changelog ==
+
+= 4.1.5 =
+
+Release date: December 14, 2023
+* Tweak: Added a filter to disable the remote notification system added in version 4.1.0;
+* Fix: A potential "Reflected Cross-Site Scripting" vulnerability has been patched, responsibly disclosed by the Wordfence team.
 
 = 4.1.4 =
 
