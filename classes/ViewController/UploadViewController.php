@@ -107,6 +107,8 @@ class UploadViewController extends \EnableMediaReplace\ViewController
 
 		 $is_custom_date = false;
 
+     $keep_title = isset($_POST['keep_title']) ? intval($_POST['keep_title']) : 0;
+
 		 switch ($timestamp_replace) {
 		     case ReplaceController::TIME_UPDATEALL:
 		     case ReplaceController::TIME_UPDATEMODIFIED:
@@ -142,6 +144,7 @@ class UploadViewController extends \EnableMediaReplace\ViewController
 				'remove_background' => $remove_background,
 				'uploadFile' => $uploadFile,
 				'new_filename' => $new_filename,
+        'keep_title' => $keep_title,
 		 );
 
 	 }
@@ -168,6 +171,7 @@ class UploadViewController extends \EnableMediaReplace\ViewController
 		 $settings['timestamp_replace'] = $params['timestamp_replace'];
 		 $settings['new_location'] = $params['new_location'];
 		 $settings['new_location_dir'] = $params['location_dir'];
+     $settings['keep_title'] = $params['keep_title'];
 
 		 if (true === $params['is_custom_date'])
 		 {

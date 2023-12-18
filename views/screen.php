@@ -238,6 +238,13 @@ $uiHelper = emr()->uiHelper();
           </div>
         <?php endif; ?>
 
+        <div class='title_option'>
+          <label><input type="checkbox" name="keep_title" value="1" <?php checked($settings['keep_title'], 1); ?>
+            />
+            <?php _e('Keep title from old image', 'enable-media-replace' ); ?>
+
+          </label>
+        </div>
       </div>
 
     </section>
