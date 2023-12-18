@@ -54,8 +54,8 @@ class VirtualFileSystem
 
 		public function listen()
 		{
-					add_filter('shortpixel/image/urltopath', array($this, 'checkIfOffloaded'), 10,2);
-					add_filter('shortpixel/file/virtual/translate', array($this, 'getLocalPathByURL'));
+					add_filter('emr/image/urltopath', array($this, 'checkIfOffloaded'), 10,2);
+					add_filter('emr/file/virtual/translate', array($this, 'getLocalPathByURL'));
 				//	add_filter('shortpixel/file/virtual/heavy_features', array($this, 'extraFeatures'), 10);
 		}
 

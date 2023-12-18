@@ -254,7 +254,7 @@ class ReplaceController
 			if(true === $doreplace){
 				$Replacer->replace($args);
 			}
-			
+
 			// Here Updatedata and a ffew others.
 			$this->updateDate();
 
@@ -608,6 +608,13 @@ class ReplaceController
 
 				$realPath = realpath($newPath);
 				$basedir = realpath($uploadDir['basedir']); // both need to go to realpath, otherwise some servers will have issues with it.
+
+        // If path is virtual, realpath fails and returns false. If the file is offloaded, don't check for the directory further ( also since move path is not supported on offload)
+        if (false === $realPath && true === $this->sourceFile->is_virtual())
+        {
+            return $newPath;
+        }
+
 
 				// Detect traversal by making sure the canonical path starts with uploads' basedir.
 			 	if ( strpos($realPath, $basedir) !== 0)

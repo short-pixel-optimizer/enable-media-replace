@@ -513,7 +513,7 @@ class UIHelper
         return false;
   }
 
-	public function featureNotice()
+	/*public function featureNotice()
 	{
 		 	// @todo Remove in 2023.
 			$message = sprintf(__('%s New Beta Feature! %s %s Enable Media Replace now gives you the ability to remove the background of any image. Try it out in the Media Library: hover over an image and click on Remove Background. Or just click on Remove background from the image editing window! %s  ', 'enable-media-replace' ), '<h3>', '</h3>',
@@ -521,6 +521,6 @@ class UIHelper
 
 		  $notice = Notices::addNormal($message, true);
 			Notices::makePersistent($notice, self::NOTICE_NEW_FEATURE, 2 * YEAR_IN_SECONDS);
-	}
+	} */
 
 } // class
