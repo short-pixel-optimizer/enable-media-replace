@@ -178,12 +178,12 @@ class Replacer
 	    Log::addDebug('Doing meta search and replace -', array($search_urls, $replace_urls) );
 	    Log::addDebug('Searching with BaseuRL ' . $base_url);
 
-	    do_action('shortpixel/replacer/replace_urls', $search_urls, $replace_urls);
+	    do_action('emr/replacer/replace_urls', $search_urls, $replace_urls);
 	    $updated = 0;
 
 	    $updated += $this->doReplaceQuery($base_url, $search_urls, $replace_urls);
 
-	    $replaceRuns = apply_filters('shortpixel/replacer/custom_replace_query', array(), $base_url, $search_urls, $replace_urls);
+	    $replaceRuns = apply_filters('emr/replacer/custom_replace_query', array(), $base_url, $search_urls, $replace_urls);
 	    Log::addDebug("REPLACE RUNS", $replaceRuns);
 	    foreach($replaceRuns as $component => $run)
 	    {
@@ -245,7 +245,7 @@ class Replacer
 	  {
 	    global $wpdb;
 
-	    $meta_options = apply_filters('shortpixel/replacer/metadata_tables', array('post', 'comment', 'term', 'user'));
+	    $meta_options = apply_filters('emr/replacer/metadata_tables', array('post', 'comment', 'term', 'user'));
 	    $number_of_updates = 0;
 
 	    foreach($meta_options as $type)
@@ -347,7 +347,7 @@ class Replacer
 
 	    if (is_string($content))  // let's check the normal one first.
 	    {
-	      $content = apply_filters('shortpixel/replacer/content', $content, $search, $replace);
+	      $content = apply_filters('emr/replacer/content', $content, $search, $replace);
 
 	      $content = str_replace($search, $replace, $content);
 	    }

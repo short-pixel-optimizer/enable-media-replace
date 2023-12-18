@@ -223,8 +223,6 @@ class EnableMediaReplacePlugin
                 wp_enqueue_style('jquery-ui-datepicker');
                 wp_enqueue_script('emr_admin');
 
-								$this->uiHelper()->featureNotice();
-
                 if ($action == 'media_replace') {
                     if (array_key_exists("attachment_id", $_GET) && intval($_GET["attachment_id"]) > 0) {
                                 wp_enqueue_script('emr_upsell');

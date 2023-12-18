@@ -82,6 +82,7 @@ namespace EnableMediaReplace\ShortPixelLogger;
       {
           if (defined('SHORTPIXEL_LOG_OVERWRITE')) // if overwrite, do this on init once.
             file_put_contents($this->logPath,'-- Log Reset -- ' .PHP_EOL);
+
       }
 
       if ($this->is_active)
@@ -114,6 +115,7 @@ namespace EnableMediaReplace\ShortPixelLogger;
                      // Replace file location with url location.
                      $logLink = str_replace( $uploads['basedir'], $uploads['baseurl'], $logPath );
      		  }
+
 
          $this->view = new \stdClass;
          $this->view->logLink = 'view-source:' . esc_url($logLink);
@@ -223,8 +225,20 @@ namespace EnableMediaReplace\ShortPixelLogger;
 				return false;
 			}
 
+      $file = false;
+      if (file_exists($this->logPath))
+      {
+         if (! is_writable($this->logPath))
+         {
+            error_log('ShortPixelLogger: File Exists, but not writable: ' . $this->logPath);
+            $this->logFile = false;
+            return $file;
+         }
+      }
+
 			$file = fopen($this->logPath, 'a');
-			if ($file === false)
+
+      if ($file === false)
 			{
 				 error_log('ShortpixelLogger: File could not be opened / created: ' . $this->logPath);
 				 $this->logFile = false;
@@ -251,8 +265,13 @@ namespace EnableMediaReplace\ShortPixelLogger;
         $data = array_filter($args['data']);
         if (count($data) > 0)
         {
+          // @todo This should probably be a formatter function to handle multiple stuff?
           foreach($data as $item)
           {
+              if (is_bool($item))
+              {
+                 $item = (true === $item) ? 'true' : 'false';
+              }
               $line .= $item . PHP_EOL;
           }
         }

@@ -142,7 +142,7 @@ class FileModel
 
 
     $this->exists = apply_filters('shortpixel_image_exists', $this->exists, $this->fullpath, $this); //legacy
-    $this->exists = apply_filters('shortpixel/file/exists',  $this->exists, $this->fullpath, $this);
+    $this->exists = apply_filters('emr/file/exists',  $this->exists, $this->fullpath, $this);
     return $this->exists;
   }
 
@@ -405,7 +405,7 @@ class FileModel
         $destination->setFileInfo(); // refresh info.
       }
       //
-      do_action('shortpixel/filesystem/addfile', array($destinationPath, $destination, $this, $is_new));
+      do_action('emr/filesystem/addfile', array($destinationPath, $destination, $this, $is_new));
       return $status;
   }
 
@@ -584,7 +584,7 @@ class FileModel
 
       $path = $this->relativeToFullPath($path);
     }
-    $path = apply_filters('shortpixel/filesystem/processFilePath', $path, $original_path);
+    $path = apply_filters('emr/filesystem/processFilePath', $path, $original_path);
     /* This needs some check here on malformed path's, but can't be test for existing since that's not a requirement.
     if (file_exists($path) === false) // failed to process path to something workable.
     {
@@ -694,7 +694,7 @@ class FileModel
 		 *   Use translate filter to correct filepath when needed.
 		 * Return could be true, or fileModel virtual constant
 		 */
-     $result = apply_filters('shortpixel/image/urltopath', false, $url);
+     $result = apply_filters('emr/image/urltopath', false, $url);
 
 		 if ($result === false)
 		 {
