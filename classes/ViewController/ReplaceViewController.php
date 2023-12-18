@@ -57,6 +57,7 @@ class ReplaceViewController extends \EnableMediaReplace\ViewController
 			  'custom_date' => date("Y-m-d H:i:s"),
 			  'new_location' => false,
 			  'new_location_dir' => false,
+        'keep_title' => 0,
 			);
 			$settings = get_option('enable_media_replace', $defaults);
 

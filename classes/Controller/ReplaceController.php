@@ -35,6 +35,7 @@ class ReplaceController
 	protected $new_location;
 	protected $timeMode;
 	protected $newDate;
+  protected $keepTitle;
 
 	protected $new_filename;
 
@@ -74,6 +75,7 @@ class ReplaceController
 
 				$this->timeMode = $params['timestamp_replace'];
 				$this->newDate = $params['new_date'];
+        $this->keepTitle = (bool) $params['keep_title'];
 
 				$this->new_filename = $params['new_filename'];
 				$this->tmpUploadPath = $params['uploadFile'];
@@ -84,6 +86,8 @@ class ReplaceController
 						return false;
 				}
 				$this->targetFile = $this->fs()->getFile($targetFile);
+
+
 
 				return true;
 		}
@@ -222,12 +226,18 @@ class ReplaceController
          $title = $this->getNewTitle($target_metadata);
 				 $excerpt = $this->getNewExcerpt($target_metadata);
          $update_ar = array('ID' => $this->post_id);
-         $update_ar['post_title'] = $title;
-         $update_ar['post_name'] = sanitize_title($title);
-				 if ($excerpt !== false)
-				 {
-				 		$update_ar['post_excerpt'] = $excerpt;
-				 }
+
+         // Option for keeping the title.
+         if (false === $this->keepTitle)
+         {
+             $update_ar['post_title'] = $title;
+             $update_ar['post_name'] = sanitize_title($title);
+
+             if ($excerpt !== false)
+    				 {
+    				 		$update_ar['post_excerpt'] = $excerpt;
+    				 }
+         }
          $update_ar['guid'] = $target_url; //wp_get_attachment_url($this->post_id);
 
          $post_id = \wp_update_post($update_ar, true);

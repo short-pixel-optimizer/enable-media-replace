@@ -351,11 +351,12 @@
     }
     this.showReplaceOptions = function(e)
     {
-        $('section.options .location_option').hide();
+        $('section.options .location_option, section.options .title_option').hide();
+
         var replace_option = $('input[name="replace_type"]:checked').val();
         if (replace_option == 'replace_and_search')
         {
-           $('section.options .location_option').show();
+           $('section.options .location_option, section.options .title_option').show();
         }
 
     }

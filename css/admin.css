@@ -1274,11 +1274,11 @@
   vertical-align: top;
   margin-right: 4px;
 }
-.emr_upload_form .options.wrapper .location_option {
+.emr_upload_form .options.wrapper .location_option, .emr_upload_form .options.wrapper .title_option {
   display: none;
   margin-top: 12px;
 }
-.emr_upload_form .options.wrapper .location_option label {
+.emr_upload_form .options.wrapper .location_option label, .emr_upload_form .options.wrapper .title_option label {
   vertical-align: baseline;
   margin-right: 8px;
 }
