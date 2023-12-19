@@ -61,9 +61,6 @@ $uiHelper = emr()->uiHelper();
     <section class='image_chooser wrapper'>
       <div class='section-header'> <?php _e('Select Replacement Media', 'enable-media-replace'); ?></div>
 
-<!--
-		<div id="message" class=""><strong><?php printf( esc_html__('NOTE: You are about to replace the media file "%s". There is no undo. Think about it!', "enable-media-replace"), $sourceFile->getFileName() ); ?></strong></div>
--->
 
 		<input type="hidden" name="ID" value="<?php echo $attachment_id ?>" />
 
