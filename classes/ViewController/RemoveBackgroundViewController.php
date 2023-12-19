@@ -115,6 +115,7 @@ class RemoveBackGroundViewController extends \EnableMediaReplace\ViewController
 			 'remove_background' => true,
 			 'uploadFile' => $result->image,
 			 'new_filename' => $sourceFile->getFileName(),
+       'keep_title' => false, 
 		);
 
 
