@@ -30,8 +30,8 @@ class Externals
       $this->loadElementor();
       $this->loadBakery(); // in case of urlencoded issues, this class should be used probably.
 			$this->loadSiteOrigins();
-	 //   $this->loadWpOffload();
-    //  $this->loadVirtualFileSystem();
+	    $this->loadWpOffload();
+      $this->loadVirtualFileSystem();
   }
 
   protected function check() //  check if any of the options should be disabled due to conflicts

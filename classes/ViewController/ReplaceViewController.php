@@ -41,11 +41,7 @@ class ReplaceViewController extends \EnableMediaReplace\ViewController
 			$replacer = new ReplaceController($attachment_id);
 
 			$file = $replacer->getSourceFile(true);
-		/*	$filepath = $file->getFullPath();
-			$filename = $file->getFileName();
-			$filetype = $file->getExtension(); */
 			$source_mime = get_post_mime_type($attachment_id);
-
 
 			$uiHelper = \emr()->uiHelper();
 			$uiHelper->setPreviewSizes();

@@ -87,8 +87,6 @@ class ReplaceController
 				}
 				$this->targetFile = $this->fs()->getFile($targetFile);
 
-
-
 				return true;
 		}
 
@@ -140,7 +138,7 @@ class ReplaceController
 			{
 				if ($targetFileObj->exists())
 				{
-					 Log::addDebug('Copy declared failed, but target available');
+					 Log::addInfo('Copy declared failed, but target available');
 				}
 				else {
 					$this->lastError = self::ERROR_COPY_FAILED;
@@ -156,8 +154,10 @@ class ReplaceController
 			$this->targetFile->resetStatus(); // reinit target file because it came into existence.
 
 			if ($permissions > 0)
-        chmod( $this->targetFile->getFullPath(), $permissions ); // restore permissions
-      else {
+        $modbool = chmod( $this->targetFile->getFullPath(), $permissions ); // restore permissions
+
+      if ($permissions <= 0 || false === $modbool)
+      {
         Log::addWarn('Setting permissions failed');
       }
 
@@ -184,9 +184,6 @@ class ReplaceController
         Log::addInfo('WP_Handle_upload filter returned different file', $filtered);
       }
 
-			$target_url = $this->getTargetURL();
-			$Replacer->setTarget($target_url);
-
 			// Check and update post mimetype, otherwise badly coded plugins cry.
 		  $post_mime = get_post_mime_type($this->post_id);
 			$target_mime = $this->targetFile->getMime();
@@ -203,6 +200,12 @@ class ReplaceController
 
       wp_update_attachment_metadata( $this->post_id, $target_metadata );
 
+
+      $target_url = $this->getTargetURL();
+			$Replacer->setTarget($target_url);
+
+      Log::addTemp("TARGET URL", $target_url);
+      
 			$Replacer->setTargetMeta($target_metadata);
 			//$this->target_metadata = $metadata;
 
@@ -245,7 +248,6 @@ class ReplaceController
 				 global $wpdb;
          // update post doesn't update GUID on updates.
          $wpdb->update( $wpdb->posts, array( 'guid' =>  $target_url), array('ID' => $this->post_id) );
-         //enable-media-replace-upload-done
 
          // @todo This error in general ever happens?
          if (is_wp_error($post_id))
@@ -259,6 +261,8 @@ class ReplaceController
 			$args = array(
           'thumbnails_only' => ($this->replaceType == self::MODE_SEARCHREPLACE) ? false : true,
       );
+
+      Log::addTemp('Replacer URL before Replace', $this->getTargetURL());
 
 			$doreplace = apply_filters('emr/replace/doreplace', true);
 			if(true === $doreplace){
@@ -326,6 +330,7 @@ class ReplaceController
 						*/
 						$this->sourceFileUntranslated = $this->fs()->getFile($source_file);
 						$sourcePath = apply_filters('emr/file/virtual/translate', $sourceFileObj->getFullPath(), $sourceFileObj, $this->post_id);
+
 
 						if (false !== $sourcePath && $sourceFileObj->getFullPath() !== $sourcePath)
 						{
