@@ -23,12 +23,12 @@ class WPOffload
 
 		public function __construct()
 		{
+
 			add_action('as3cf_init', array($this, 'init'));
 
 			add_action('emr/converter/prevent-offload', array($this, 'preventOffload'), 10);
 			add_action('emr/converter/prevent-offload-off', array($this, 'preventOffloadOff'), 10);
 			add_filter('as3cf_pre_update_attachment_metadata', array($this, 'preventUpdateMetaData'), 10,4);
-
 
 		}
 
@@ -66,13 +66,8 @@ class WPOffload
     			include_once( ABSPATH . 'wp-admin/includes/plugin.php' );
 
     		}
-        $spio_active = \is_plugin_active('shortpixel-image-optimiser/wp-shortpixel.php');
 
-        // Let spio handle this.
-        if (false === $spio_active)
-        {
-				      add_filter('shortpixel/image/urltopath', array($this, 'checkIfOffloaded'), 10,2);
-        }
+				add_filter('emr/image/urltopath', array($this, 'checkIfOffloaded'), 10,2);
 
 				add_action('emr_after_remove_current', array($this, 'removeRemote'), 10, 5);
 				add_filter('emr/file/virtual/translate', array($this, 'getLocalPath'), 10, 3);
@@ -104,6 +99,10 @@ class WPOffload
 						$itemHandler = $this->as3cf->get_item_handler($remove);
 
 						$result = $itemHandler->handle($a3cfItem, array( 'verify_exists_on_local' => false)); //handle it then.
+
+            // From S3offload integration.
+            $a3cfItem->delete();
+
 
 		}
 
@@ -160,28 +159,32 @@ class WPOffload
 
 		public function checkIfOffloaded($bool, $url)
 		{
+      $source_id = $this->sourceCache($url);
+			$orig_url = $url;
 
-			$source_id = $this->sourceCache($url);
-
-			if (false === $source_id)
+			if (is_null($source_id))
 			{
 				$extension = substr($url, strrpos($url, '.') + 1);
+
 				// If these filetypes are not in the cache, they cannot be found via geSourceyIDByUrl method ( not in path DB ), so it's pointless to try. If they are offloaded, at some point the extra-info might load.
 				if ($extension == 'webp' || $extension == 'avif')
 				{
 					return false;
 				}
 
-				$source_id = $this->getSourceIDByURL($url);
+     		$source_id = $this->getSourceIDByURL($url);
+
+			}
+			else {
 			}
 
-			if ($source_id !== false)
+      if ($source_id !== false)
 			{
-				return true;
+        return FileModel::$VIRTUAL_REMOTE;
 			}
-			else
+      else
 			{
-				return false;
+        return false;
 			}
 		}
 

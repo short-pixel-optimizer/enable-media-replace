@@ -41,8 +41,6 @@ class FileModel
 
   protected $status;
 
-  protected $backupDirectory;
-
   const FILE_OK = 1;
   const FILE_UNKNOWN_ERROR = 2;
 
@@ -263,38 +261,6 @@ class FileModel
     return filemtime($this->fullpath);
   }
 
-  public function hasBackup()
-  {
-      $directory = $this->getBackupDirectory();
-      if (! $directory)
-        return false;
-
-      $backupFile =  $directory . $this->getBackupFileName();
-
-      if (file_exists($backupFile) && ! is_dir($backupFile) )
-        return true;
-      else {
-        return false;
-      }
-  }
-
-  /** Tries to retrieve an *existing* BackupFile. Returns false if not present.
-  * This file might not be writable.
-  * To get writable directory reference to backup, use FileSystemController
-  */
-  public function getBackupFile()
-  {
-     if ($this->hasBackup())
-        return new FileModel($this->getBackupDirectory() . $this->getBackupFileName() );
-     else
-       return false;
-  }
-
-	/** Function returns the filename for the backup.  This is an own function so it's possible to manipulate backup file name if needed, i.e. conversion or enumeration */
-	public function getBackupFileName()
-	{
-		 return $this->getFileName();
-	}
 
   /** Returns the Directory Model this file resides in
   *
