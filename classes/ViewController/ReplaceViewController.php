@@ -32,7 +32,7 @@ class ReplaceViewController extends \EnableMediaReplace\ViewController
 		 	$attachment_id = intval($_GET['attachment_id']);
 			$attachment = get_post($attachment_id);
 
-			if (! \emr()->checkImagePermission($attachment))
+			if (! $this->emr()->checkImagePermission($attachment))
 			{
 				$this->viewError(self::ERROR_IMAGE_PERMISSION);
 			  wp_die( esc_html__('You do not have permission to upload files for this author.', 'enable-media-replace') );
@@ -43,7 +43,7 @@ class ReplaceViewController extends \EnableMediaReplace\ViewController
 			$file = $replacer->getSourceFile(true);
 			$source_mime = get_post_mime_type($attachment_id);
 
-			$uiHelper = \emr()->uiHelper();
+			$uiHelper = $this->emr()->uiHelper();
 			$uiHelper->setPreviewSizes();
 			$uiHelper->setSourceSizes($attachment_id);
 

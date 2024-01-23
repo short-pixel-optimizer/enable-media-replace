@@ -9,7 +9,7 @@ use EnableMediaReplace as emr;
 use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
 
 
-abstract class ViewController
+abstract class ViewController extends Base
 {
 
 	  abstract function load();
@@ -60,7 +60,7 @@ abstract class ViewController
 
 				$view = $this->view;
 				$controller = $this;
-				$template_path = emr()->plugin_path('views/' . $template  . '.php');
+				$template_path = $this->emr()->plugin_path('views/' . $template  . '.php');
 
 				if (file_exists($template_path) === false)
 				{

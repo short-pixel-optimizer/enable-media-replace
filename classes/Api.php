@@ -13,7 +13,7 @@ use stdClass;
 /**
  * This class contains api methods
  */
-class Api {
+class Api extends Base {
 
 	/**
 	 * Request Counter
@@ -69,7 +69,7 @@ class Api {
 			 return $result;
 		}
 
-  	if (! emr()->checkImagePermission($attachment)) {
+  	if (! $this->emr()->checkImagePermission($attachment)) {
 			$result = $this->getResponseObject();
 			$result->success = false;
 			$result->message = __('No permission for user', 'enable-media-replace');
@@ -198,8 +198,6 @@ class Api {
 
 	public function handleSuccess($result)
 	{
-		 // $fs = emr()->filesystem();
-		//	$result = $fs->downloadFile($result->image, wp_tempnam($result->image));
 		$nonce = isset($_POST['nonce']) ? sanitize_text_field($_POST['nonce']) : wp_create_nonce();
 		$key = wp_hash($nonce . $result->image, 'logged_in');
 
@@ -218,7 +216,7 @@ class Api {
 				return $result;
 		}
 
-		$fs = emr()->filesystem();
+		$fs = $this->filesystem();
 		$target = wp_tempnam($url);
 
 		$bool = $fs->downloadFile($url, $target);

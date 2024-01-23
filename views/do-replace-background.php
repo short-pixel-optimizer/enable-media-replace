@@ -23,11 +23,11 @@ if (is_null($post_id)) {
 
 $attachment = get_post($post_id);
 
-if (! emr()->checkImagePermission($attachment)) {
+if (false === $this->emr()->checkImagePermission($attachment)) {
     wp_die(esc_html__('You do not have permission to upload files for this author.', 'enable-media-replace'));
 }
 
-$uiHelper = emr()->uiHelper();
+$uiHelper = $this->emr()->uiHelper();
 
 $replaceController = new ReplaceController($post_id);
 

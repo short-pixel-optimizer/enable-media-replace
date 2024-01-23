@@ -32,7 +32,7 @@ $attachment_id = $view->attachment->ID;
 $settings = $view->settings;
 $sourceFile = $view->sourceFile;
 
-$uiHelper = emr()->uiHelper();
+$uiHelper = $this->emr()->uiHelper();
 
 ?>
 

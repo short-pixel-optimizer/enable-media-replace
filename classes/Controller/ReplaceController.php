@@ -7,9 +7,9 @@ if (! defined('ABSPATH')) {
 
 use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
 use EnableMediaReplace\Replacer\Replacer as Replacer;
-use EnableMediaReplace\emrCache as emrCache;
+use EnableMediaReplace\Cache as Cache;
 
-class ReplaceController
+class ReplaceController extends \EnableMediaReplace\Base
 {
 	protected $post_id;
 	protected $sourceFile;
@@ -205,7 +205,7 @@ class ReplaceController
 			$Replacer->setTarget($target_url);
 
       Log::addTemp("TARGET URL", $target_url);
-      
+
 			$Replacer->setTargetMeta($target_metadata);
 			//$this->target_metadata = $metadata;
 
@@ -287,7 +287,7 @@ class ReplaceController
 				'post_id' => $this->post_id,
 			);
 
-			$cache = new emrCache();
+			$cache = new Cache();
 			$cache->flushCache($cache_args);
 
 			do_action("enable-media-replace-upload-done", $target_url, $source_url, $this->post_id);
@@ -650,6 +650,6 @@ class ReplaceController
 
 		private function fs()
 		{
-		 return emr()->filesystem();
+		 return $this->filesystem();
 		}
 }

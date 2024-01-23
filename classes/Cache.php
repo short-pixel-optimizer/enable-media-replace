@@ -3,7 +3,7 @@ namespace EnableMediaReplace;
 
 use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
 
-class emrCache
+class Cache
 {
     protected $has_supercache  = false; // supercache seems to replace quite fine, without our help. @todo Test if this is needed
     protected $has_w3tc = false;
