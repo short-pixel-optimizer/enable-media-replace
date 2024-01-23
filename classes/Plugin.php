@@ -25,7 +25,14 @@ class Plugin extends Base
 
     public function __construct()
     {
-        //add_action('plugins_loaded', array($this, 'runtime')); //lowInit, before theme setup!
+      $log = Log::getInstance();
+      if (Log::debugIsActive()) {
+          $uploaddir = wp_upload_dir(null, false, false);
+          if (isset($uploaddir['basedir'])) {
+              $log->setLogPath( trailingslashit($uploaddir['basedir']) . "emr_log");
+          }
+      }
+
         $this->runtime();
 				add_action('admin_init', array($this, 'adminInit')); // adminInit, after functions.php
     }
@@ -103,16 +110,7 @@ class Plugin extends Base
         if (is_null(self::$instance)) {
             self::$instance = new Plugin();
 
-
-            $log = Log::getInstance();
-            if (Log::debugIsActive()) {
-                $uploaddir = wp_upload_dir(null, false, false);
-                if (isset($uploaddir['basedir'])) {
-                    $log->setLogPath( trailingslashit($uploaddir['basedir']) . "emr_log");
-                }
-            }
         }
-
         return self::$instance;
     }
 
