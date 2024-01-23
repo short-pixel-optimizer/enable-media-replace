@@ -1,5 +1,10 @@
 <?php
 namespace EnableMediaReplace;
+
+if (! defined('ABSPATH')) {
+    exit; // Exit if accessed directly.
+}
+
 use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
 use EnableMediaReplace\Notices\NoticeController as Notices;
 
@@ -30,8 +35,7 @@ class Externals
       $this->loadElementor();
       $this->loadBakery(); // in case of urlencoded issues, this class should be used probably.
 			$this->loadSiteOrigins();
-	    $this->loadWpOffload();
-      $this->loadVirtualFileSystem();
+
   }
 
   protected function check() //  check if any of the options should be disabled due to conflicts
@@ -83,14 +87,5 @@ class Externals
 		 Externals\SiteOrigin::getInstance();
 	}
 
-	public function loadWPOffload()
-	{
-		 Externals\WPOffload::getInstance();
-	}
-
-  public function loadVirtualFileSystem()
-  {
-     new Externals\VirtualFileSystem();
-  }
 
 } // class

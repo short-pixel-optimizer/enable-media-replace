@@ -61,19 +61,22 @@ if ( ! defined( 'EMR_CAPABILITY' ) ) {
 /* if (! defined('EMR_CAPABILITY_USERONLY'))
   define('EMR_CAPABILITY_USERONLY', false); */
 
-$plugin_path = plugin_dir_path( EMR_ROOT_FILE );
 
-require_once( $plugin_path . 'build/shortpixel/autoload.php' );
+	$plugin_path = plugin_dir_path( EMR_ROOT_FILE );
 
+	require_once( $plugin_path . 'build/shortpixel/autoload.php' );
 
-$loader = new \EnableMediaReplace\Build\PackageLoader();
-$loader->setComposerFile($plugin_path . 'classes/plugin.json');
-$loader->load($plugin_path);
+	$loader = new Build\PackageLoader();
+	$loader->setComposerFile($plugin_path . 'classes/plugin.json');
+	$loader->load($plugin_path);
 
+function startEmr()
+{
+	exit('foo');
+	Plugin::get();
+}
 
-add_action('plugins_loaded', function () {
-  	Plugin::get();
-});
+add_action('plugins_loaded', 'EnableMediaReplace\startEmr', 20 );
 
 //register_uninstall_hook( __FILE__, '\EnableMediaReplace\emr_uninstall' );
 register_deactivation_hook( __FILE__,  array('\EnableMediaReplace\InstallHelper','deactivatePlugin') );
