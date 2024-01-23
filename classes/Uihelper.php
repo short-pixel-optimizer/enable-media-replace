@@ -3,8 +3,12 @@ namespace EnableMediaReplace;
 use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
 use EnableMediaReplace\Notices\NoticeController as Notices;
 
+if (! defined('ABSPATH')) {
+    exit; // Exit if accessed directly.
+}
+
 /* Collection of functions helping the interface being cleaner. */
-class UIHelper
+class UIHelper extends Base
 {
   protected $preview_size = '';
   protected $preview_width = 0;
@@ -144,7 +148,7 @@ class UIHelper
 		$meta = wp_get_attachment_metadata($attach_id);
 
 		$data = false;
-    $fs = \emr()->filesystem();
+    $fs = $this->filesystem();
 
 		if (isset($meta['sizes']))
 		{
@@ -444,7 +448,7 @@ class UIHelper
 		  if (false === wp_attachment_is_image($post))
 				return false;
 
-			if (false === emr()->useFeature('background'))
+			if (false === $this->emr()->useFeature('background'))
 				return false;
 
 			$extensions = array('jpg', 'png','jpeg');

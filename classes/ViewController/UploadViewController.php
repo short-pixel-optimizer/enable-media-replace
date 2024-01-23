@@ -61,7 +61,7 @@ class UploadViewController extends \EnableMediaReplace\ViewController
 		 }
 		 $attachment = get_post($post_id);
 
-		 if (! emr()->checkImagePermission($attachment)) {
+		 if (false ===  $this->emr()->checkImagePermission($attachment)) {
 			 	 $this->viewError(self::ERROR_IMAGE_PERMISSION);
 //		     wp_die(esc_html__('You do not have permission to upload files for this author.', 'enable-media-replace'));
 		 }
@@ -152,7 +152,7 @@ class UploadViewController extends \EnableMediaReplace\ViewController
 	 // Low init might only be w/ post_id ( error handling et al ), most advanced / nicer with params.
 	 protected function setView($post_id, $params = array())
 	 {
-		 	$uiHelper = \emr()->uiHelper();
+		 	$uiHelper = $this->emr()->uiHelper();
 		  $this->view->post_id = $post_id;
 			$this->view->postUrl = $uiHelper->getSuccesRedirect($post_id);
 			$this->view->emrUrl = $uiHelper->getFailedRedirect($post_id);

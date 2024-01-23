@@ -41,7 +41,7 @@ class RemoveBackGroundViewController extends \EnableMediaReplace\ViewController
 	 $attachment_id = intval($_REQUEST['attachment_id']);
 	 $attachment = get_post($attachment_id);
 
-	 $uiHelper = \emr()->uiHelper();
+	 $uiHelper = $this->emr()->uiHelper();
 	 $uiHelper->setPreviewSizes();
 	 $uiHelper->setSourceSizes($attachment_id);
 
@@ -115,7 +115,7 @@ class RemoveBackGroundViewController extends \EnableMediaReplace\ViewController
 			 'remove_background' => true,
 			 'uploadFile' => $result->image,
 			 'new_filename' => $sourceFile->getFileName(),
-       'keep_title' => false, 
+       'keep_title' => false,
 		);
 
 
@@ -139,7 +139,7 @@ class RemoveBackGroundViewController extends \EnableMediaReplace\ViewController
 	// Low init might only be w/ post_id ( error handling et al ), most advanced / nicer with params.
 	protected function setView($post_id, $params = array())
 	{
-		 $uiHelper = \emr()->uiHelper();
+		 $uiHelper = $this->emr()->uiHelper();
 		 $this->view->post_id = $post_id;
 		 $this->view->postUrl = $uiHelper->getSuccesRedirect($post_id);
 		 $this->view->emrUrl = $uiHelper->getFailedRedirect($post_id);

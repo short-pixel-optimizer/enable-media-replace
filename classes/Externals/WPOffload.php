@@ -9,7 +9,7 @@ use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
 use EnableMediaReplace\Notices\NoticeController as Notices;
 
 
-class WPOffload
+class WPOffload extends \EnableMediaReplace\Base
 {
 		private static $instance;
 
@@ -132,7 +132,7 @@ class WPOffload
 					$original_path = str_replace(wp_basename($original_path), wp_basename($url), $original_path);
 			 }
 
-			 $fs = emr()->filesystem();
+			 $fs = $this->filesystem();
 			 $base = $fs->getWPUploadBase();
 
 			 $file  = $base . $original_path;

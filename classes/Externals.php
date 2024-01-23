@@ -70,27 +70,27 @@ class Externals
 
   public function loadElementor()
   {
-         Elementor::getInstance();
+     Externals\Elementor::getInstance();
   }
 
   public function loadBakery()
   {
-      WpBakery::getInstance();
+      Externals\WpBakery::getInstance();
   }
 
 	public function loadSiteOrigins()
 	{
-		 SiteOrigin::getInstance();
+		 Externals\SiteOrigin::getInstance();
 	}
 
 	public function loadWPOffload()
 	{
-		 WPOffload::getInstance();
+		 Externals\WPOffload::getInstance();
 	}
 
   public function loadVirtualFileSystem()
   {
-    new VirtualFileSystem();
+     new Externals\VirtualFileSystem();
   }
 
 } // class

@@ -1,4 +1,5 @@
 <?php
+namespace EnableMediaReplace;
 /**
  * Plugin Name: Enable Media Replace
  * Plugin URI: https://wordpress.org/plugins/enable-media-replace/
@@ -63,41 +64,16 @@ if ( ! defined( 'EMR_CAPABILITY' ) ) {
 $plugin_path = plugin_dir_path( EMR_ROOT_FILE );
 
 require_once( $plugin_path . 'build/shortpixel/autoload.php' );
-require_once( $plugin_path . 'classes/compat.php' );
-require_once( $plugin_path . 'classes/functions.php' );
-//require_once( $plugin_path . 'classes/replacer.php' );
-require_once( $plugin_path . 'classes/uihelper.php' );
-//require_once( $plugin_path . 'classes/file.php' );
-require_once( $plugin_path . 'classes/cache.php' );
-require_once( $plugin_path . 'classes/api.php' );
-require_once( $plugin_path . 'classes/ajax.php' );
-require_once( $plugin_path . 'classes/emr-plugin.php' );
-require_once( $plugin_path . 'classes/installHelper.php' );
 
-// @todo Needs replacing with PSR-4
-require_once( $plugin_path . 'classes/Controller/ReplaceController.php');
-require_once( $plugin_path . 'classes/Controller/RemoteNoticeController.php');
 
-require_once( $plugin_path . 'classes/ViewController.php');
-require_once( $plugin_path . 'classes/ViewController/UploadViewController.php');
-require_once( $plugin_path . 'classes/ViewController/ReplaceViewController.php');
-require_once( $plugin_path . 'classes/ViewController/RemoveBackgroundViewController.php');
+$loader = new \EnableMediaReplace\Build\PackageLoader();
+$loader->setComposerFile($plugin_path . 'classes/plugin.json');
+$loader->load($plugin_path);
 
-require_once( $plugin_path . 'classes/externals.php' );
-require_once( $plugin_path . 'classes/external/elementor.php' );
-require_once( $plugin_path . 'classes/external/wpbakery.php' );
-require_once( $plugin_path . 'classes/external/upsell_installer.php' );
-require_once( $plugin_path . 'classes/external/siteorigin.php' );
-require_once( $plugin_path . 'classes/external/wp-offload.php' );
-require_once( $plugin_path . 'classes/external/virtual-filesystem.php' );
 
-require_once( $plugin_path . 'thumbnail_updater.php' );
-
-function emr()
-{
-	return EnableMediaReplace\EnableMediaReplacePlugin::get();
-}
-emr(); // runtime.
+add_action('plugins_loaded', function () {
+  	Plugin::get();
+});
 
 //register_uninstall_hook( __FILE__, '\EnableMediaReplace\emr_uninstall' );
 register_deactivation_hook( __FILE__,  array('\EnableMediaReplace\InstallHelper','deactivatePlugin') );

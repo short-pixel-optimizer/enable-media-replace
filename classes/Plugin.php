@@ -1,6 +1,10 @@
 <?php
 namespace EnableMediaReplace;
 
+if (! defined('ABSPATH')) {
+    exit; // Exit if accessed directly.
+}
+
 use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
 use EnableMediaReplace\Notices\NoticeController as Notices;
 use EnableMediaReplace\FileSystem\Controller\FileSystemController as FileSystem;
@@ -8,7 +12,7 @@ use EnableMediaReplace\Controller\RemoteNoticeController as RemoteNoticeControll
 use EnableMediaReplace\Ajax;
 
 // Does what a plugin does.
-class EnableMediaReplacePlugin
+class Plugin extends Base
 {
 
     protected $plugin_path;
@@ -21,7 +25,8 @@ class EnableMediaReplacePlugin
 
     public function __construct()
     {
-        add_action('plugins_loaded', array($this, 'runtime')); //lowInit, before theme setup!
+        //add_action('plugins_loaded', array($this, 'runtime')); //lowInit, before theme setup!
+        $this->runtime();
 				add_action('admin_init', array($this, 'adminInit')); // adminInit, after functions.php
     }
 
@@ -64,10 +69,6 @@ class EnableMediaReplacePlugin
 			new Ajax();
 		}
 
-		public function filesystem()
-		{
-			 return new FileSystem();
-		}
 
 		public function uiHelper()
 		{
@@ -100,7 +101,7 @@ class EnableMediaReplacePlugin
     public static function get()
     {
         if (is_null(self::$instance)) {
-            self::$instance = new EnableMediaReplacePlugin();
+            self::$instance = new Plugin();
 
 
             $log = Log::getInstance();
@@ -126,7 +127,6 @@ class EnableMediaReplacePlugin
     public function plugin_actions()
     {
         $this->plugin_path = plugin_dir_path(EMR_ROOT_FILE);
-        //$this->plugin_url = plugin_dir_url(EMR_ROOT_FILE);
 
 				// loads the dismiss hook.
 				$notices = Notices::getInstance();
@@ -196,7 +196,7 @@ class EnableMediaReplacePlugin
 			 $screen = get_current_screen();
 
 			 $notice_pages = array('attachment',  'media_page_enable-media-replace/enable-media-replace', 'upload' );
-			 if ( in_array($screen->id, $notice_pages) &&	true === emr()->useFeature('remote_notice'))
+			 if ( in_array($screen->id, $notice_pages) &&	true === $this->useFeature('remote_notice'))
 			 {
 				 RemoteNoticeController::getInstance(); // check for remote stuff
 			 	 $notices = Notices::getInstance();
@@ -227,14 +227,14 @@ class EnableMediaReplacePlugin
                     if (array_key_exists("attachment_id", $_GET) && intval($_GET["attachment_id"]) > 0) {
                                 wp_enqueue_script('emr_upsell');
 
-											 $controller = \EnableMediaReplace\ViewController\ReplaceViewController::getInstance();
+											 $controller = ViewController\ReplaceViewController::getInstance();
 											 $controller->load();
-//                       require_once($this->plugin_path . "views/popup.php"); // warning variables like $action be overwritten here.
+//                     require_once($this->plugin_path . "views/popup.php"); // warning variables like $action be overwritten here.
                     }
                 }
 								elseif ($action == 'media_replace_upload') {
 
-									  $controller = \EnableMediaReplace\ViewController\UploadViewController::getInstance();
+									  $controller = ViewController\UploadViewController::getInstance();
 										$controller->load();
                   //  require_once($this->plugin_path . 'views/upload.php');
 								}
@@ -249,7 +249,7 @@ class EnableMediaReplacePlugin
 										wp_enqueue_style('emr-remove-background');
 										wp_enqueue_script('emr_upsell');
 
-										$controller = \EnableMediaReplace\ViewController\RemoveBackgroundViewController::getInstance();
+										$controller = ViewController\RemoveBackgroundViewController::getInstance();
 										$controller->load();
 
 									//	require_once($this->plugin_path . "views/prepare-remove-background.php");
@@ -257,13 +257,12 @@ class EnableMediaReplacePlugin
 								} elseif ('do_background_replace' === $action &&
 												$this->useFeature('background')
 											) {
-												$controller = \EnableMediaReplace\ViewController\RemoveBackgroundViewController::getInstance();
+												$controller = ViewController\RemoveBackgroundViewController::getInstance();
 												$controller->loadPost();
 
 									//	require_once($this->plugin_path . 'views/do-replace-background.php');
 								}
                 else {
-
                     exit('Something went wrong loading page, please try again');
                 }
                 break;
