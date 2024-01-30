@@ -80,7 +80,7 @@ class Replacer
 
 	     // Search-and-replace filename in post database
 	     // @todo Check this with scaled images.
-	 		$base_url = parse_url($this->source_url, PHP_URL_PATH);
+	 		$base_url = parse_url($this->source_url, PHP_URL_PATH);// emr_get_match_url( $this->source_url);
 	    $base_url = str_replace('.' . pathinfo($base_url, PATHINFO_EXTENSION), '', $base_url);
 
 	    /** Fail-safe if base_url is a whole directory, don't go search/replace */

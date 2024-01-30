@@ -21,4 +21,9 @@ class Base
     {
        return new FileSystem();
     }
+
+    public function env()
+    {
+       return Enviroment::getInstance();
+    }
 }

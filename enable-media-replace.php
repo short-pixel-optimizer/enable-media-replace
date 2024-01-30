@@ -72,9 +72,10 @@ if ( ! defined( 'EMR_CAPABILITY' ) ) {
 
 function startEmr()
 {
-	exit('foo');
 	Plugin::get();
 }
+
+Plugin::checkLogger();
 
 add_action('plugins_loaded', 'EnableMediaReplace\startEmr', 20 );
 
