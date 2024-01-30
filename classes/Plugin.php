@@ -25,13 +25,6 @@ class Plugin extends Base
 
     public function __construct()
     {
-      $log = Log::getInstance();
-      if (Log::debugIsActive()) {
-          $uploaddir = wp_upload_dir(null, false, false);
-          if (isset($uploaddir['basedir'])) {
-              $log->setLogPath( trailingslashit($uploaddir['basedir']) . "emr_log");
-          }
-      }
 
         $this->runtime();
 				add_action('admin_init', array($this, 'adminInit')); // adminInit, after functions.php
@@ -112,6 +105,17 @@ class Plugin extends Base
 
         }
         return self::$instance;
+    }
+
+    public static function checkLogger()
+    {
+      $log = Log::getInstance();
+      if (Log::debugIsActive()) {
+          $uploaddir = wp_upload_dir(null, false, false);
+          if (isset($uploaddir['basedir'])) {
+              $log->setLogPath( trailingslashit($uploaddir['basedir']) . "emr_log");
+          }
+      }
     }
 
     // Actions for EMR that always need to hook

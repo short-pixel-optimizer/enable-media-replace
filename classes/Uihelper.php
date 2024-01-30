@@ -263,13 +263,11 @@ class UIHelper extends Base
 
 		 if ($ratio > 0)
 		 {
-
 			 $width  = floor($width / $ratio);
 			 $height = floor($height / $ratio);
 		 }
 
 			// SVG's without any helpers return around 0 for width / height. Fix preview.
-
 
 			 // preview width, if source if found, should be set to source.
 			 $this->preview_width = $width;

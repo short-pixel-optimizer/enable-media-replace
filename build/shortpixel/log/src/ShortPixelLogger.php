@@ -108,7 +108,7 @@ namespace EnableMediaReplace\ShortPixelLogger;
      if ($this->is_active && $this->is_manual_request && $user_is_administrator )
      {
 
-         $logPath = $this->logPath;
+         $logPath = $logLink = $this->logPath; // default
          $uploads = wp_get_upload_dir();
 
 
