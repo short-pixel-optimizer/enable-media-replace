@@ -159,7 +159,11 @@ class UIHelper extends Base
 							 $width = isset($metaData['width']) ? $metaData['width'] : 0;
 							 $height = isset($metaData['height']) ? $metaData['height'] : 0;
 							 $imgData = image_downsize($attach_id, $size); // return whole array w/ possible wrong dimensions.
-							 $data = array($imgData[0], $width, $height);
+
+               if (is_array($imgData))
+               {
+							    $data = array($imgData[0], $width, $height);
+               }
 						}
 				}
 		}
@@ -183,7 +187,6 @@ class UIHelper extends Base
         $file = get_attached_file($attach_id);
         $data = $this->fixSVGSize($data, $file);
     }
-
 
     return $data;
   }
@@ -445,6 +448,7 @@ class UIHelper extends Base
 	{
 		  if (false === wp_attachment_is_image($post))
 				return false;
+
 
 			if (false === $this->emr()->useFeature('background'))
 				return false;

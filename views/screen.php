@@ -33,6 +33,7 @@ $settings = $view->settings;
 $sourceFile = $view->sourceFile;
 
 $uiHelper = $this->emr()->uiHelper();
+$env = $this->emr()->env();
 
 ?>
 
@@ -43,7 +44,7 @@ $uiHelper = $this->emr()->uiHelper();
     <p class='close'><?php _e('Click to Close', 'enable-media-replace'); ?> </p>
   </div>
 
-	<h1><?php echo esc_html__("Replace Media Upload", "enable-media-replace"); ?></h1>
+	<h1 class='emr-title'><?php echo esc_html__("Replace Media Upload", "enable-media-replace"); ?></h1>
 
 	<?php
 
@@ -246,6 +247,15 @@ $uiHelper = $this->emr()->uiHelper();
 
     </section>
   </div>
+
+
+ <?php if (true === $env->isOffLoadActive())
+ { ?>
+  <section class='offload-warning'>
+     <?php _e('EMR detected an active offload plugin. ', 'enable-media-replace'); ?>
+  </section>
+<?php } ?>
+
   <section class='form_controls wrapper'>
     <a href="#" class="button" onclick="history.back();"><?php echo esc_html__("Back", "enable-media-replace"); ?></a>
 		<input id="submit" type="submit" class="button button-primary" disabled="disabled" value="<?php echo esc_attr__("Upload", "enable-media-replace"); ?>" />

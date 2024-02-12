@@ -5,25 +5,21 @@ namespace EnableMediaReplace;
 use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
 use EnableMediaReplace\Notices\NoticeController as Notices;
 
-if (! apply_filters('emr/upsell', current_user_can('install_plugins')))
-{
-	 return;
-}
 
 	#wp_nonce_field('enable-media-replace');
   $plugins = get_plugins();
+	$env = $this->emr()->env();
+
+	if (false === $env->canInstallPlugins())
+	{
+		return;
+	}
 
   $spio_installed = isset($plugins['shortpixel-image-optimiser/wp-shortpixel.php']);
-  $spio_active = is_plugin_active('shortpixel-image-optimiser/wp-shortpixel.php');
-
-
 	$spai_installed = isset($plugins['shortpixel-adaptive-images/short-pixel-ai.php']);
-	$spai_active = is_plugin_active('shortpixel-adaptive-images/short-pixel-ai.php');
 
-	$envira_installed = isset($plugins['envira-gallery-lite/envira-gallery-lite.php']);
-	$envira_active = is_plugin_active('envira-gallery-lite/envira-gallery-lite.php');
-	$envira_pro_active = is_plugin_active('envira-gallery/envira-gallery.php');
-
+  $spio_active = $env->plugin_active('shortpixel'); // s_plugin_active('shortpixel-image-optimiser/wp-shortpixel.php');
+	$spai_active = $env->plugin_active('shortpixel-ai'); //is_plugin_active('shortpixel-adaptive-images/short-pixel-ai.php');
 
 ?>
 
@@ -97,8 +93,6 @@ if (! apply_filters('emr/upsell', current_user_can('install_plugins')))
     </div>
 	<?php endif; ?>
 	<!--- // SHORTPIXEL AI -->
-
-
 
 
   <div class='shortpixel-offer theme-offer'>
