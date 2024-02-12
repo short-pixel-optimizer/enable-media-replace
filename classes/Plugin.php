@@ -21,13 +21,14 @@ class Plugin extends Base
     private $user_cap = false;
     private $general_cap = false;
 
-		private $features = array();
+		protected $features = array();
 
     public function __construct()
     {
 
         $this->runtime();
 				add_action('admin_init', array($this, 'adminInit')); // adminInit, after functions.php
+        add_action('wp_loaded', array($this, 'plugin_actions'));
     }
 
     public function runtime()
@@ -54,25 +55,20 @@ class Plugin extends Base
 
 				new Externals();
 
-        $this->plugin_actions(); // init
     }
 
 		public function adminInit()
 		{
 			$this->features['replace']  = true; // does nothing just for completeness
-			$this->features['background'] = apply_filters('emr/feature/background', true);
       $this->features['remote_notice']  = apply_filters('emr/feature/remote_notice', true);
 
-			load_plugin_textdomain('enable-media-replace', false, basename(dirname(EMR_ROOT_FILE)) . '/languages');
-
-		// Load Submodules
-			new Ajax();
+			//load_plugin_textdomain('enable-media-replace', false, basename(dirname(EMR_ROOT_FILE)) . '/languages');
 		}
 
 
 		public function uiHelper()
 		{
-			 return Uihelper::getInstance();
+			 return UiHelper::getInstance();
 		}
 
 		public function useFeature($name)
@@ -86,7 +82,7 @@ class Plugin extends Base
 			  switch($name)
 				{
 					 case 'background':
-					 		$bool = $this->features['background'];
+					 		$bool = false;
 					 break;
            case 'remote_notice':
 		           $bool = $this->features['remote_notice'];
@@ -217,58 +213,35 @@ class Plugin extends Base
     public function route()
     {
         global $plugin_page;
-        switch ($plugin_page) {
-            case 'enable-media-replace/enable-media-replace.php':
-                $action = isset($_GET['action']) ? sanitize_text_field($_GET['action']) : '';
-                wp_enqueue_style('emr_style');
-                wp_enqueue_script('jquery-ui-datepicker');
-                wp_enqueue_style('jquery-ui-datepicker');
-                wp_enqueue_script('emr_admin');
+        if ('enable-media-replace/enable-media-replace.php' !== $plugin_page)
+        {
+           return;
+        }
 
-                if ($action == 'media_replace') {
-                    if (array_key_exists("attachment_id", $_GET) && intval($_GET["attachment_id"]) > 0) {
-                                wp_enqueue_script('emr_upsell');
+        $action = isset($_GET['action']) ? sanitize_text_field($_GET['action']) : '';
+        wp_enqueue_style('emr_style');
+        wp_enqueue_script('jquery-ui-datepicker');
+        wp_enqueue_style('jquery-ui-datepicker');
+        wp_enqueue_script('emr_admin');
 
-											 $controller = ViewController\ReplaceViewController::getInstance();
-											 $controller->load();
-//                     require_once($this->plugin_path . "views/popup.php"); // warning variables like $action be overwritten here.
-                    }
-                }
-								elseif ($action == 'media_replace_upload') {
 
-									  $controller = ViewController\UploadViewController::getInstance();
-										$controller->load();
-                  //  require_once($this->plugin_path . 'views/upload.php');
-								}
-								elseif ('emr_prepare_remove' === $action && $this->useFeature('background')) {
-//										$attachment_id = intval($_GET['attachment_id']);
-//										$attachment    = get_post($attachment_id);
-										//We're adding a timestamp to the image URL for cache busting
+        if ($action == 'media_replace') {
+            if (array_key_exists("attachment_id", $_GET) && intval($_GET["attachment_id"]) > 0) {
+                        wp_enqueue_script('emr_upsell');
 
-										wp_enqueue_script('emr_remove_bg');
+							 $controller = ViewController\ReplaceViewController::getInstance();
+							 $controller->load();
+            }
+        }
+				elseif ($action == 'media_replace_upload') {
+					  $controller = ViewController\UploadViewController::getInstance();
+						$controller->load();
+				}
 
-										wp_enqueue_style('emr_style');
-										wp_enqueue_style('emr-remove-background');
-										wp_enqueue_script('emr_upsell');
+        else {
+            exit('Something went wrong loading page, please try again');
+        }
 
-										$controller = ViewController\RemoveBackgroundViewController::getInstance();
-										$controller->load();
-
-									//	require_once($this->plugin_path . "views/prepare-remove-background.php");
-
-								} elseif ('do_background_replace' === $action &&
-												$this->useFeature('background')
-											) {
-												$controller = ViewController\RemoveBackgroundViewController::getInstance();
-												$controller->loadPost();
-
-									//	require_once($this->plugin_path . 'views/do-replace-background.php');
-								}
-                else {
-                    exit('Something went wrong loading page, please try again');
-                }
-                break;
-        } // Route
     }
 
     public function getPluginURL($path = '')
@@ -282,6 +255,7 @@ class Plugin extends Base
 			if ( strlen( $path ) > 0 ) {
 				$plugin_path .= $path;
 			}
+
 			 return $plugin_path;
 		}
 

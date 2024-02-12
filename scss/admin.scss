@@ -50,6 +50,12 @@
     }
   }
 
+	h1.emr-title {
+		background: linear-gradient(90deg, rgb(26, 189, 202) 72%, rgba(255, 255, 255, 0) 99%);
+		color: #fff;
+		padding: 8px 0 8px 15px;
+	}
+
 	.editor-wrapper
 	{
 		width: 100%;
@@ -72,6 +78,7 @@
       border-bottom: 1px solid #ccc;
       padding: 6px 0;
       margin: 0 0 15px 0;
+
     }
   }
 
@@ -487,3 +494,11 @@
 			}
 	}
 } // emr_upload_form
+
+section.offload-warning
+{
+	 border-left : 4px solid #ffb900;
+	 padding: 12px;
+	 background: #fff;
+	 margin: 10px 0 20px;
+}

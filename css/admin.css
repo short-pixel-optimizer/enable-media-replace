@@ -1053,6 +1053,11 @@
 .emr_upload_form form .upsell-wrapper {
   margin-left: 10px;
 }
+.emr_upload_form h1.emr-title {
+  background: linear-gradient(90deg, rgb(26, 189, 202) 72%, rgba(255, 255, 255, 0) 99%);
+  color: #fff;
+  padding: 8px 0 8px 15px;
+}
 .emr_upload_form .editor-wrapper {
   width: 100%;
   margin-bottom: 100px;
@@ -1399,6 +1404,13 @@
     margin: 25px 0;
     display: inline-block;
   }
+}
+
+section.offload-warning {
+  border-left: 4px solid #ffb900;
+  padding: 12px;
+  background: #fff;
+  margin: 10px 0 20px;
 }
 
 /*# sourceMappingURL=admin.css.map */

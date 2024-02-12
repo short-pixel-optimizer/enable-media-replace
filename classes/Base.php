@@ -8,13 +8,18 @@ if (! defined('ABSPATH')) {
 use EnableMediaReplace\FileSystem\Controller\FileSystemController as FileSystem;
 use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
 
-
 class Base
 {
 
     public function emr()
     {
-       return Plugin::get();
+       if (class_exists('EnableMediaReplace\PluginPro'))
+       {
+          return PluginPro::get();
+       }
+       else {
+          return Plugin::get();
+       }
     }
 
     public function filesystem()
@@ -24,6 +29,6 @@ class Base
 
     public function env()
     {
-       return Enviroment::getInstance();
+       return Environment::getInstance();
     }
 }

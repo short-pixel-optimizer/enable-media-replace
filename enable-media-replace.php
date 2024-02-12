@@ -9,7 +9,6 @@ namespace EnableMediaReplace;
  * Author URI: https://shortpixel.com
  * GitHub Plugin URI: https://github.com/short-pixel-optimizer/enable-media-replace
  * Text Domain: enable-media-replace
- * Domain Path: /languages
  * Dual licensed under the MIT and GPL licenses:
  * License URI: http://www.opensource.org/licenses/mit-license.php
  * License URI: http://www.gnu.org/licenses/gpl.html
