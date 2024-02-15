@@ -6,6 +6,7 @@ if (! defined('ABSPATH')) {
 }
 
 //use \EnableMediaReplace\UIHelper;
+use function EnableMediaReplace\EMR as EMR;
 use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
 use EnableMediaReplace\Notices\NoticeController as Notices;
 use EnableMediaReplace\Controller\ReplaceController as ReplaceController;
@@ -28,12 +29,17 @@ if (!current_user_can('upload_files'))
 	wp_die( esc_html__('You do not have permission to upload files.', 'enable-media-replace') );
 
 
-$attachment_id = $view->attachment->ID;
-$settings = $view->settings;
-$sourceFile = $view->sourceFile;
+$image = $view->image;
+$attachment_id = $image->image_id;
 
-$uiHelper = $this->emr()->uiHelper();
-$env = $this->emr()->env();
+$settings = $view->settings;
+//$sourceFile = $view->sourceFile;
+
+$uiHelper = emr()->uiHelper();
+$env = emr()->env();
+
+$fs = emr()->filesystem();
+
 
 ?>
 
@@ -60,13 +66,15 @@ $env = $this->emr()->env();
 
 <div class='editor-wrapper'>
     <section class='image_chooser wrapper'>
-      <div class='section-header'> <?php _e('Select Replacement Media', 'enable-media-replace'); ?></div>
+      <div class='section-header'> <?php _e('Select Replacement Media', 'enable-media-replace'); ?>
+
+      </div>
 
 
-		<input type="hidden" name="ID" value="<?php echo $attachment_id ?>" />
+		<input type="hidden" name="ID" value="<?php echo esc_attr($attachment_id) ?>" />
 
 		<p class='explainer'>
-			<?php printf(esc_html__('			You are about to replace %s in your media library. This will be %spermanent%s. %s You can click on the new image panel and select a file from your computer. You can also drag and drop a file into this window', 'enable-media-replace'), '<b class="underline" title="' . $sourceFile->getFullPath() . '">' . $sourceFile->getFileName()  . '</b>', '<b>','</b>', '<br>' );
+			<?php printf(esc_html__('			You are about to replace %s in your media library. This will be %spermanent%s. %s You can click on the new image panel and select a file from your computer. You can also drag and drop a file into this window', 'enable-media-replace'), '<b class="underline" title="' . $image->getFullPath() . '">' . $image->getFileName()  . '</b>', '<b>','</b>', '<br>' );
 			?>
 		</p>
 
@@ -86,19 +94,19 @@ $env = $this->emr()->env();
 
 							if (wp_attachment_is('image', $attachment_id) || $view->sourceMime == 'application/pdf')
               {
-                  echo $uiHelper->getPreviewImage($attachment_id, $sourceFile);
-                  echo $uiHelper->getPreviewImage(-1, $sourceFile, array('is_upload' => true));
+                  echo $uiHelper->getPreviewImage($attachment_id, $image);
+                  echo $uiHelper->getPreviewImage(-1, $image, array('is_upload' => true));
               }
               else {
 
                     if (strlen($sourceFile->getFullPath()) == 0) // check if image in error state.
                     {
                         echo $uiHelper->getPreviewError(-1);
-                        echo $uiHelper->getPreviewImage(-1, $sourceFile, array('is_upload' => true));
+                        echo $uiHelper->getPreviewImage(-1, $image, array('is_upload' => true));
                     }
                     else {
-                        echo $uiHelper->getPreviewFile($attachment_id, $sourceFile);
-                        echo $uiHelper->getPreviewFile(-1, $sourceFile, array('is_upload' => true));
+                        echo $uiHelper->getPreviewFile($attachment_id, $image);
+                        echo $uiHelper->getPreviewFile(-1, $image, array('is_upload' => true));
                     }
 
               }
@@ -114,14 +122,14 @@ $env = $this->emr()->env();
       ?>
 
 			<p>&nbsp;</p>
-			<?php if ($uiHelper->isBackgroundRemovable($view->attachment)): ?>
+			<?php if (true === $image->isBackgroundRemovable()): ?>
 								  <div>
 
                     <a href="<?php echo wp_nonce_url( $url , 'emr_prepare_remove' ); ?>">
 											<?php _e('New! Click here to remove the background of this image!', 'enable-media-replace'); ?></a>
                     <br>
                     <br>
-                    <input type="checkbox" id="remove_after_progress" name="remove_after_progress" value="<?php echo $attachment_id;?>">
+                    <input type="checkbox" id="remove_after_progress" name="remove_after_progress" value="<?php echo esc_attr($attachment_id); ?>">
                     <label for="remove_after_progress"><?php _e('Remove the background after replacing this image!' ,'enable-media-replace'); ?> </label>
                   </div>
 			 <?php endif; ?>
@@ -135,8 +143,8 @@ $env = $this->emr()->env();
       // these are also used in externals, for checks.
       do_action( 'emr_before_replace_type_options' ); ?>
 
-
-     <?php $enabled_search = apply_filters( 'emr_display_replace_type_options', true );
+     <?php
+       $enabled_search = apply_filters( 'emr_display_replace_type_options', true );
        $search_disabled = (! $enabled_search) ? 'disabled' : '';
     ?>
       <div class='option replace <?php echo $search_disabled ?>'>
@@ -144,7 +152,7 @@ $env = $this->emr()->env();
         </label>
 
           <p class="howto">
-            <?php printf( esc_html__("Note: This option requires you to upload a file of the same type (%s) as the file you want to replace. The attachment name will remain the same (%s) regardless of what the file you upload is called. If a CDN is used, remember to clear the cache for this image!", "enable-media-replace"), $sourceFile->getExtension(), $sourceFile->getFileName() ); ?>
+            <?php printf( esc_html__("Note: This option requires you to upload a file of the same type (%s) as the file you want to replace. The attachment name will remain the same (%s) regardless of what the file you upload is called. If a CDN is used, remember to clear the cache for this image!", "enable-media-replace"), $image->getExtension(), $image->getFileName() ); ?>
         </p>
 
 				<p class='form-warning filetype'><?php _e('If you replace the file with a different filetype, this file might become unreadable and / or cause unexpected issues', 'enable-media-replace'); ?>
@@ -161,7 +169,7 @@ $env = $this->emr()->env();
           <label for="replace_type_2"><input id="replace_type_2" <?php checked('replace_and_search', $settings['replace_type']) ?> type="radio" name="replace_type" value="replace_and_search" <?php echo $searchreplace_disabled ?> > <?php echo __("Replace the file, use the new file name, and update all links", "enable-media-replace"); ?>
       </label>
 
-          <p class="howto"><?php printf( esc_html__("Note: If you enable this option, the name and type of the file you are uploading will replace the old file. All links pointing to the current file (%s) will be updated to point to the new file name. (If other websites link directly to the file, those links will no longer work. Be careful!)", "enable-media-replace"), $sourceFile->getFileName() ); ?></p>
+          <p class="howto"><?php printf( esc_html__("Note: If you enable this option, the name and type of the file you are uploading will replace the old file. All links pointing to the current file (%s) will be updated to point to the new file name. (If other websites link directly to the file, those links will no longer work. Be careful!)", "enable-media-replace"), $image->getFileName() ); ?></p>
 
      <!-- <p class="howto"><?php echo esc_html__("Please note that if you upload a new image, only the embeds/links of the original size image will be replaced in your posts.", "enable-media-replace"); ?></p> -->
 
@@ -173,12 +181,12 @@ $env = $this->emr()->env();
       <div class='section-header'> <?php _e('Options', 'enable-media-replace'); ?></div>
       <div class='option timestamp'>
         <?php
-          $attachment_current_date = date_i18n('d/M/Y H:i', strtotime($view->attachment->post_date) );
+          $attachment_current_date = date_i18n('d/M/Y H:i', strtotime($image->post_date) );
 					$attachment_now_date = date_i18n('d/M/Y H:i' );
 
           $time = current_time('mysql');
           $date = $nowDate = new \dateTime($time); // default to now.
-					$attachmentDate = new \dateTime($view->attachment->post_date);
+					$attachmentDate = new \dateTime($image->post_date);
 
 
           if ($settings['timestamp_replace'] == ReplaceController::TIME_CUSTOM)

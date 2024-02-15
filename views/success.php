@@ -7,8 +7,9 @@ if (! defined('ABSPATH')) {
 
 //use \EnableMediaReplace\UIHelper;
 use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
+use function EnableMediaReplace\EMR as EMR;
 
-$env = $this->env();
+$env = EMR()->env();
 
 ?>
 
