@@ -7,10 +7,23 @@ if (! defined('ABSPATH')) {
 
 use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
 
-class Environment extends Base
+class Environment
 {
 
   protected static $instance;
+
+  protected $permissions = array(
+    'general_cap' => false,
+    'user_cap' => false
+  );
+
+
+  // Init
+  public function __construct()
+  {
+      $this->setCaps();
+  }
+
 
   public static function getInstance()
   {
@@ -56,6 +69,34 @@ class Environment extends Base
   public function isOffLoadActive()
   {
      return $this->plugin_active('s3-offload');
+  }
+
+  public function getPermission($name)
+  {
+      if ('user' === $name)
+      {
+         $cap = $this->permissions['user_cap'];
+      }
+      if ('general' === $name)
+      {
+         $cap = $this->permissions['general_cap'];
+      }
+
+      return $cap;
+  }
+
+
+  protected function setCaps()
+  {
+      if (EMR_CAPABILITY !== false) {
+          if (is_array(EMR_CAPABILITY)) {
+              $this->permissions['general_cap'] = EMR_CAPABILITY[0];
+              $this->permissions['user_cap'] = EMR_CAPABILITY[1];
+
+          } else {
+              $this->permissions['general_cap'] = EMR_CAPABILITY;
+          }
+      }
   }
 
 

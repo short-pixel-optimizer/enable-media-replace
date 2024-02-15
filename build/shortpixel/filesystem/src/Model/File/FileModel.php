@@ -39,7 +39,7 @@ class FileModel
   protected $is_virtual = false;
   protected $virtual_status = null;
 
-  protected $status;
+  protected $status; // seems unused ? 
 
   const FILE_OK = 1;
   const FILE_UNKNOWN_ERROR = 2;

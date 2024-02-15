@@ -69,14 +69,22 @@ if ( ! defined( 'EMR_CAPABILITY' ) ) {
 	$loader->setComposerFile($plugin_path . 'classes/plugin.json');
 	$loader->load($plugin_path);
 
-function startEmr()
+function EMR()
 {
-	Plugin::get();
+	if (class_exists('\EnableMediaReplace\PluginPro'))
+	{
+		return PluginPro::get();
+	}
+	else {
+		return Plugin::get();
+	}
+
 }
+
 
 Plugin::checkLogger();
 
-add_action('plugins_loaded', 'EnableMediaReplace\startEmr', 20 );
+add_action('plugins_loaded', 'EnableMediaReplace\EMR');
 
 //register_uninstall_hook( __FILE__, '\EnableMediaReplace\emr_uninstall' );
 register_deactivation_hook( __FILE__,  array('\EnableMediaReplace\InstallHelper','deactivatePlugin') );

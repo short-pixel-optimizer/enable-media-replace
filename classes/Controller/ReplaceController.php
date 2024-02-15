@@ -5,15 +5,18 @@ if (! defined('ABSPATH')) {
     exit; // Exit if accessed directly.
 }
 
+use function EnableMediaReplace\EMR as EMR;
 use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
 use EnableMediaReplace\Replacer\Replacer as Replacer;
 use EnableMediaReplace\Cache as Cache;
 
-class ReplaceController extends \EnableMediaReplace\Base
+class ReplaceController
 {
-	protected $post_id;
-	protected $sourceFile;
-	protected $sourceFileUntranslated;
+  protected $post_id;
+//	protected $sourceFile;
+//	protected $sourceFileUntranslated;
+//
+  protected $sourceImage;
 	protected $targetFile;
 
 	const MODE_REPLACE = 1;
@@ -44,16 +47,18 @@ class ReplaceController extends \EnableMediaReplace\Base
 	protected $lastError;
 	protected $lastErrorData; // optional extra data for last error.
 
-		public function __construct($post_id)
+		public function __construct($sourceImage)
 		{
-				$this->post_id = $post_id;
-				$this->setupSource();
+				$this->post_id = $sourceImage->image_id;
+			//	$this->setupSource();
+			   $this->sourceImage = $sourceImage;
 		}
 
 		/* getSourceFile
 		*
 		* @param $untranslated boolean if file is offloaded, this indicates to return remote variant. Used for displaying preview
 		*/
+	/*
 		public function getSourceFile($untranslated = false)
 		{
 
@@ -62,7 +67,7 @@ class ReplaceController extends \EnableMediaReplace\Base
 					return $this->sourceFileUntranslated;
 				}
 				return $this->sourceFile;
-		}
+		} */
 
 		public function setupParams($params)
 		{
@@ -85,7 +90,8 @@ class ReplaceController extends \EnableMediaReplace\Base
 				{
 						return false;
 				}
-				$this->targetFile = $this->fs()->getFile($targetFile);
+        $fs = EMR()->filesystem();
+				$this->targetFile = $fs->getFile($targetFile);
 
 				return true;
 		}
@@ -107,6 +113,7 @@ class ReplaceController extends \EnableMediaReplace\Base
 		public function run()
 		{
 			do_action('wp_handle_replace', array('post_id' => $this->post_id));
+      $fs = EMR()->filesystem();
 
 			// Set Source / and Source Metadata
 			$Replacer = new Replacer();
@@ -116,7 +123,7 @@ class ReplaceController extends \EnableMediaReplace\Base
       $meta = $this->getSourceMeta();
 			$Replacer->setSourceMeta($meta);
 
-			$targetFileObj = $this->fs()->getFile($this->targetFile);
+			$targetFileObj = $fs->getFile($this->targetFile);
 
 			$directoryObj = $targetFileObj->getFileDir();
 
@@ -127,11 +134,11 @@ class ReplaceController extends \EnableMediaReplace\Base
 				Log::addError('Directory creation for targetFile failed');
 			}
 
-			$permissions = ($this->sourceFile->exists() ) ? $this->sourceFile->getPermissions() : -1;
+			$permissions = ($this->sourceImage->exists() ) ? $this->sourceImage->getPermissions() : -1;
 
 			$this->removeCurrent(); // tries to remove the current files.
 
-			$fileObj = $this->fs()->getFile($this->tmpUploadPath);
+			$fileObj = $fs->getFile($this->tmpUploadPath);
 			$copied = $fileObj->copy($targetFileObj);
 
 			if (false === $copied)
@@ -180,7 +187,7 @@ class ReplaceController extends \EnableMediaReplace\Base
       if (isset($filtered['file']) && $filtered['file'] != $this->targetFile->getFullPath() )
       {
         update_attached_file($this->post_id, $filtered['file'] );
-        $this->targetFile = $this->fs()->getFile($filtered['file']);  // handle as a new file
+        $this->targetFile = $fs->getFile($filtered['file']);  // handle as a new file
         Log::addInfo('WP_Handle_upload filter returned different file', $filtered);
       }
 
@@ -199,7 +206,6 @@ class ReplaceController extends \EnableMediaReplace\Base
 			do_action('emr/converter/prevent-offload-off', $this->post_id);
 
       wp_update_attachment_metadata( $this->post_id, $target_metadata );
-
 
       $target_url = $this->getTargetURL();
 			$Replacer->setTarget($target_url);
@@ -296,80 +302,19 @@ class ReplaceController extends \EnableMediaReplace\Base
 		} // run
 
 
-		protected function setupSource()
-		{
-				$source_file = false;
-
-				// The main image as registered in attached_file metadata.  This can be regular or -scaled.
-				$source_file_main = trim(get_attached_file($this->post_id, apply_filters( 'emr_unfiltered_get_attached_file', true )));
-
-				// If available it -needs- to use the main image when replacing since treating a -scaled images as main will create a resursion in the filename when not replacing that one . Ie image-scaled-scaled.jpg or image-scaled-100x100.jpg .
-				if (function_exists('wp_get_original_image_path')) // WP 5.3+
-				{
-						$source_file = wp_get_original_image_path($this->post_id, apply_filters( 'emr_unfiltered_get_attached_file', true ));
-						// For offload et al to change path if wrong. Somehow this happens?
-						$source_file = apply_filters('emr/replace/original_image_path', $source_file, $this->post_id);
-			 }
-
-			 if (false === $source_file) // If not scaled, use the main one.
-			 {
-				 	$source_file = $source_file_main;
-			 }
-
-
-				$sourceFileObj = $this->fs()->getFile($source_file);
-				$isVirtual = false;
-				if ($sourceFileObj->is_virtual())
-				{
-						$isVirtual = true;
-
-						/***
-						*** Either here the table should check scaled - non-scaled ** or ** the original_path should be updated.
-						***
-
-						*/
-						$this->sourceFileUntranslated = $this->fs()->getFile($source_file);
-						$sourcePath = apply_filters('emr/file/virtual/translate', $sourceFileObj->getFullPath(), $sourceFileObj, $this->post_id);
-
-
-						if (false !== $sourcePath && $sourceFileObj->getFullPath() !== $sourcePath)
-						{
-							 $sourceFileObj = $this->fs()->getFile($sourcePath);
-							 $source_file = $sourcePath;
-						}
-
-				}
-
-
-				/* It happens that the SourceFile returns relative / incomplete when something messes up get_upload_dir with an error something.
-					 This case should be detected here and create a non-relative path anyhow..
-				*/
-				if (
-					false === $isVirtual &&
-					false === $sourceFileObj->exists() &&
-					$source_file && 0 !== strpos( $source_file, '/' )
-					&& ! preg_match( '|^.:\\\|', $source_file ) )
-				{
-					$file = get_post_meta( $this->post_id, '_wp_attached_file', true );
-					$uploads = wp_get_upload_dir();
-					$source_file = $uploads['basedir'] . "/$source_file";
-				}
-
-				Log::addDebug('SetupSource SourceFile Path ' . $source_file);
-				$this->sourceFile = $this->fs()->getFile($source_file);
-		}
-
 		/** Returns a full target path to place to new file. Including the file name!  **/
 		protected function setupTarget()
 		{
 			$targetPath = null;
+      $fs = EMR()->filesystem();
+
 			if ($this->replaceType == self::MODE_REPLACE)
 			{
-				$targetFile = $this->getSourceFile()->getFullPath(); // overwrite source
+				$targetFile = $this->sourceImage->getFullPath(); // overwrite source
 			}
 			elseif ($this->replaceType == self::MODE_SEARCHREPLACE)
 			{
-					$path = (string) $this->getSourceFile()->getFileDir();
+					$path = (string) $this->sourceImage->getFileDir();
 					$targetLocation = $this->getNewTargetLocation();
 					if (false === $targetLocation)
 					{
@@ -378,12 +323,12 @@ class ReplaceController extends \EnableMediaReplace\Base
 
 					if (false === is_null($this->new_location)) // Replace to another path.
 					{
-						 $otherTarget = $this->fs()->getFile($targetLocation . $this->new_filename);
+						 $otherTarget = $fs->getFile($targetLocation . $this->new_filename);
 						 // Halt if new target exists, but not if it's the same ( overwriting itself )
 
-						 if ($otherTarget->exists() && $otherTarget->getFullPath() !== $this->getSourceFile()->getFullPath() )
+						 if ($otherTarget->exists() && $otherTarget->getFullPath() !== $this->sourceImage->getFullPath() )
 						 {
-                Log::addWarn('Image already exists in target directory. Source : ' . $this->getSourceFile()->getFullPath() . ' Target : ' . $otherTarget->getFullPath());
+                Log::addWarn('Image already exists in target directory. Source : ' . $this->sourceImage->getFullPath() . ' Target : ' . $otherTarget->getFullPath());
 
 								$this->lastError = self::ERROR_TARGET_EXISTS;
 								return null;
@@ -391,13 +336,12 @@ class ReplaceController extends \EnableMediaReplace\Base
 
 						 $path = $targetLocation; // $this->target_location; // if all went well.
 					}
-					//if ($this->sourceFile->getFileName() == $this->targetName)
 					$targetpath = $path . $this->new_filename;
 
 					// If the source and target path AND filename are identical, user has wrong mode, just overwrite the sourceFile.
-					if ($targetpath == $this->sourceFile->getFullPath())
+					if ($targetpath == $this->sourceImage->getFullPath())
 					{
-							$unique = $this->sourceFile->getFileName();
+							$unique = $this->sourceImage->getFileName();
 							$this->replaceType == self::MODE_REPLACE;
 					}
 					else
@@ -530,7 +474,7 @@ class ReplaceController extends \EnableMediaReplace\Base
 	    $backup_sizes = get_post_meta( $this->post_id, '_wp_attachment_backup_sizes', true );
 
 	    // this must be -scaled if that exists, since wp_delete_attachment_files checks for original_files but doesn't recheck if scaled is included since that the one 'that exists' in WP . $this->source_file replaces original image, not the -scaled one.
-	    $file = $this->sourceFile->getFullPath();
+	    $file = $this->sourceImage->getFullPath();
 	    $result = \wp_delete_attachment_files($this->post_id, $meta, $backup_sizes, $file );
 
 	    // If Attached file is not the same path as file, this indicates a -scaled images is in play.
@@ -543,7 +487,7 @@ class ReplaceController extends \EnableMediaReplace\Base
 	    }
 
 
-	    do_action( 'emr_after_remove_current', $this->post_id, $meta, $backup_sizes, $this->sourceFile, $this->targetFile );
+	    do_action( 'emr_after_remove_current', $this->post_id, $meta, $backup_sizes, $this->sourceImage, $this->targetFile );
 	  }
 
     /** Remove the backups from the WP native image editor  - prevent 'restore image' to remove the replacement */
@@ -618,22 +562,51 @@ class ReplaceController extends \EnableMediaReplace\Base
 		protected function getNewTargetLocation()
 		{
 				$uploadDir = wp_upload_dir();
+        $fs = emr()->filesystem();
+
 				$new_rel_location = $this->new_location;
 				$newPath = trailingslashit($uploadDir['basedir']) . $new_rel_location;
 
 				$realPath = realpath($newPath);
 				$basedir = realpath($uploadDir['basedir']); // both need to go to realpath, otherwise some servers will have issues with it.
 
-        // If path is virtual, realpath fails and returns false. If the file is offloaded, don't check for the directory further ( also since move path is not supported on offload)
-        if (false === $realPath && true === $this->sourceFile->is_virtual())
+        // If path is virtual, realpath fails and returns false. If the file is offloaded, don't check for the directory further ( also since move path is not supported on offload).
+        // realpath also reports false if directory doesn't exist, so check if structure itself it within allowed bounds.
+        if (false === $realPath)
         {
-            return $newPath;
-        }
 
+            if (true === $this->sourceImage->is_virtual())
+            {
+            return $newPath;
+            }
+            else { // This happens when directory doesn't exist.
+                $topdir = $dir = $fs->getDirectory($newPath);
+                $i = 0;
+                while($dir !== false) // check if the structure somewhere is readable / try to check the directory into live.
+                {
+                    $dir = $dir->getParent();
+                    if ($dir !== false && $dir->exists())
+                    {
+                       break;
+                    }
+
+                    $i++;
+                    if ($i > 10) // loop prevention in case of unsuspected cases.
+                    {
+                       break;
+                    }
+                }
+
+                $topdir->check();
+                $realPath = $topdir->getPath();
+
+            }
+        }
 
 				// Detect traversal by making sure the canonical path starts with uploads' basedir.
 			 	if ( strpos($realPath, $basedir) !== 0)
 			 	{
+          Log::addWarn('Path outside of allowed directories: ' . $realPath);
 					$this->lastError = self::ERROR_DIRECTORY_SECURITY;
 					$this->lastErrorData = array('path' => $realPath, 'basedir' => $basedir);
 					return false;
@@ -647,9 +620,4 @@ class ReplaceController extends \EnableMediaReplace\Base
 				return trailingslashit($newPath);
 		}
 
-
-		private function fs()
-		{
-		 return $this->filesystem();
-		}
 }

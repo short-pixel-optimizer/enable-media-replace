@@ -12,7 +12,7 @@ use EnableMediaReplace\Controller\RemoteNoticeController as RemoteNoticeControll
 use EnableMediaReplace\Ajax;
 
 // Does what a plugin does.
-class Plugin extends Base
+class Plugin
 {
 
     protected $plugin_path;
@@ -31,11 +31,11 @@ class Plugin extends Base
         add_action('wp_loaded', array($this, 'plugin_actions'));
     }
 
-    public function runtime()
+    protected function runtime()
     {
          $this->nopriv_plugin_actions();
 
-        if (EMR_CAPABILITY !== false) {
+      /*  if (EMR_CAPABILITY !== false) {
             if (is_array(EMR_CAPABILITY)) {
                 $this->general_cap = EMR_CAPABILITY[0];
                 $this->user_cap = EMR_CAPABILITY[1];
@@ -51,7 +51,7 @@ class Plugin extends Base
             }
         } elseif (! current_user_can('upload_files')) {
             return;
-        }
+        } */
 
 				new Externals();
 
@@ -65,11 +65,36 @@ class Plugin extends Base
 			//load_plugin_textdomain('enable-media-replace', false, basename(dirname(EMR_ROOT_FILE)) . '/languages');
 		}
 
+    public function getClass($name)
+    {
+        $name = strtolower($name);
+        $namespace = '\\' . __NAMESPACE__ . '\\';
+
+        switch($name)
+        {
+           case 'image':
+             $class = $namespace  . 'Image';
+           break;
+        }
+
+        return $class;
+    }
 
 		public function uiHelper()
 		{
 			 return UiHelper::getInstance();
 		}
+
+    public function filesystem()
+    {
+       return new FileSystem();
+    }
+
+    public function env()
+    {
+       return Environment::getInstance();
+    }
+
 
 		public function useFeature($name)
 		{
@@ -337,6 +362,7 @@ class Plugin extends Base
         }
     }
 
+/*
     public function checkImagePermission($post)
     {
 			 if (! is_object($post))
@@ -367,6 +393,7 @@ class Plugin extends Base
 
         return false;
     }
+*/
 
   /** Get the URL to the media replace page
   * @param $attach_id  The attachment ID to replace
@@ -403,7 +430,10 @@ class Plugin extends Base
               return false;
         }
 
-        if (! $this->checkImagePermission($post)) {
+        $imageClass = $this->getClass('image');
+        $image = new $imageClass($post->ID);
+
+        if (! $image->hasImagePermission()) {
             return;
         }
 
@@ -416,6 +446,9 @@ class Plugin extends Base
 
     public function replace_meta_box($post)
     {
+
+        $imageClass = $this->getClass('image');
+        $image = new $imageClass($post->ID);
 
         //Replace media button
         $replace_url = $this->getMediaReplaceURL($post->ID);
@@ -434,7 +467,7 @@ class Plugin extends Base
 
         $removeBg_link = "href=\"$removeBg_editurl\"";
 
-				if ($this->uiHelper()->isBackgroundRemovable($post))
+				if ($image->isBackgroundRemovable())
 				{
         	echo "<p><a class='button-secondary' $removeBg_link>" . esc_html__("Remove background", "enable-media-replace") . "</a></p><p>" . esc_html__("To remove the background, click the link and select the options.", "enable-media-replace") . "</p>";
 				}
@@ -442,7 +475,10 @@ class Plugin extends Base
 
     public function show_thumbs_box($post)
     {
-        if (! $this->checkImagePermission($post)) {
+        $imageClass = $this->getClass('image');
+        $image = new $imageClass($post->ID);
+
+        if (false === $image->hasImagePermission()) {
             return;
         }
 
@@ -475,8 +511,10 @@ class Plugin extends Base
     public function attachment_editor($form_fields, $post)
     {
         $screen = null;
+        $imageClass = $this->getClass('image');
+        $image = new $imageClass($post->ID);
 
-        if (! $this->checkImagePermission($post)) {
+        if (! $image->hasImagePermission()) {
             return $form_fields;
         }
 
@@ -526,7 +564,11 @@ class Plugin extends Base
   */
     public function add_media_action($actions, $post)
     {
-        if (! $this->checkImagePermission($post)) {
+
+        $imageClass = $this->getClass('image');
+        $image = new $imageClass($post->ID);
+
+        if (false === $image->hasImagePermission($post)) {
             return $actions;
         }
 
@@ -546,7 +588,7 @@ class Plugin extends Base
 
         $newaction['media_replace'] = '<a ' . $media_replace_link . ' aria-label="' . esc_attr__("Replace media", "enable-media-replace") . '" rel="permalink">' . esc_html__("Replace media", "enable-media-replace") . '</a>';
 
-				if ($this->uiHelper()->isBackgroundRemovable($post))
+				if ($image->isBackgroundRemovable())
 				{
 	        $newaction['remove_background'] = '<a ' . $background_remove_link . ' aria-label="' . esc_attr__("Remove  background", "enable-media-replace") . '" rel="permalink">' . esc_html__("Remove  background", "enable-media-replace") . '</a>';
 

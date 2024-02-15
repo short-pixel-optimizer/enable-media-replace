@@ -5,15 +5,12 @@ if (! defined('ABSPATH')) {
     exit; // Exit if accessed directly.
 }
 
-use EnableMediaReplace as emr;
 use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
 
-
-abstract class ViewController extends Base
+abstract class ViewController
 {
 
 	  abstract function load();
-
 
 	 const ERROR_UPLOAD_PERMISSION = 1;
 	 const ERROR_IMAGE_PERMISSION = 2;
@@ -60,7 +57,7 @@ abstract class ViewController extends Base
 
 				$view = $this->view;
 				$controller = $this;
-				$template_path = $this->emr()->plugin_path('views/' . $template  . '.php');
+				$template_path = emr()->plugin_path('views/' . $template  . '.php');
 
 				if (file_exists($template_path) === false)
 				{

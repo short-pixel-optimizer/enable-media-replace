@@ -5,7 +5,7 @@ if (! defined('ABSPATH')) {
     exit; // Exit if accessed directly.
 }
 
-use EnableMediaReplace as emr;
+use function EnableMediaReplace\EMR as EMR;
 use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
 use EnableMediaReplace\Controller\UploadController as UploadController;
 use EnableMediaReplace\Controller\ReplaceController as ReplaceController;
@@ -59,9 +59,12 @@ class UploadViewController extends \EnableMediaReplace\ViewController
 			 	 $this->viewError(self::ERROR_FORM);
 //		     wp_die(esc_html__('Error in request. Please try again', 'enable-media-replace'));
 		 }
-		 $attachment = get_post($post_id);
 
-		 if (false ===  $this->emr()->checkImagePermission($attachment)) {
+     $imageClass = emr()->getClass('image');
+     $image = new $imageClass($post_id);
+
+
+		 if (false ===  $image->hasImagePermission()) {
 			 	 $this->viewError(self::ERROR_IMAGE_PERMISSION);
 //		     wp_die(esc_html__('You do not have permission to upload files for this author.', 'enable-media-replace'));
 		 }
@@ -72,7 +75,7 @@ class UploadViewController extends \EnableMediaReplace\ViewController
 		 $this->updateSettings($params);
 		 $this->setView($post_id, $params); // set variables needed for view.
 
-		 $replaceController = new ReplaceController($post_id);
+		 $replaceController = new ReplaceController($image);
 		 $check = $replaceController->setupParams($params);
 
 		if (false === $check)
@@ -82,6 +85,7 @@ class UploadViewController extends \EnableMediaReplace\ViewController
 			 $this->viewError($error, $data);
 		}
 
+    // Main replacement function
 		$result = $replaceController->run();
 
 		if (true == $result)
@@ -152,7 +156,7 @@ class UploadViewController extends \EnableMediaReplace\ViewController
 	 // Low init might only be w/ post_id ( error handling et al ), most advanced / nicer with params.
 	 protected function setView($post_id, $params = array())
 	 {
-		 	$uiHelper = $this->emr()->uiHelper();
+		 	$uiHelper = EMR()->uiHelper();
 		  $this->view->post_id = $post_id;
 			$this->view->postUrl = $uiHelper->getSuccesRedirect($post_id);
 			$this->view->emrUrl = $uiHelper->getFailedRedirect($post_id);

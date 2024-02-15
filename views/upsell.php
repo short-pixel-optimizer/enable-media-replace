@@ -8,7 +8,7 @@ use EnableMediaReplace\Notices\NoticeController as Notices;
 
 	#wp_nonce_field('enable-media-replace');
   $plugins = get_plugins();
-	$env = $this->emr()->env();
+	$env = emr()->env();
 
 	if (false === $env->canInstallPlugins())
 	{
@@ -32,7 +32,7 @@ use EnableMediaReplace\Notices\NoticeController as Notices;
 
     <div class='shortpixel-offer spio'>
       <div class='img-wrapper'>
-          <img width="40" height="40" src="<?php echo $this->emr()->getPluginURL('img/sp-logo-regular.svg') ?>" alt="ShortPixel">
+          <img width="40" height="40" src="<?php echo emr()->getPluginURL('img/sp-logo-regular.svg') ?>" alt="ShortPixel">
       </div>
 			<h4 class="grey">
 		     <?php echo esc_html__("ShortPixel Image Optimizer", "enable-media-replace"); ?>
@@ -65,7 +65,7 @@ use EnableMediaReplace\Notices\NoticeController as Notices;
 
     <div class='shortpixel-offer spai'>
       <div class='img-wrapper'>
-          <img width="40" height="40" src="<?php echo esc_url($this->emr()->getPluginURL('img/spai-logo.svg')) ?>" alt="ShortPixel">
+          <img width="40" height="40" src="<?php echo esc_url(emr()->getPluginURL('img/spai-logo.svg')) ?>" alt="ShortPixel">
       </div>
 			<h4 class="grey">
 		     <?php echo esc_html__("ShortPixel Adaptive Images", "enable-media-replace"); ?>
@@ -96,7 +96,7 @@ use EnableMediaReplace\Notices\NoticeController as Notices;
 
 
   <div class='shortpixel-offer theme-offer'>
-			<p><img src="<?php echo esc_url($this->emr()->getPluginURL('img/fastpixel-logo.svg')); ?>" alt="FastPixel"></p>
+			<p><img src="<?php echo esc_url(emr()->getPluginURL('img/fastpixel-logo.svg')); ?>" alt="FastPixel"></p>
 			<h3> FAST<span class='red'>PIXEL</span> - the new website accelerator plugin from ShortPixel</h3>
 			<div class="button-wrapper">
       	<a href="https://fastpixel.io/?utm_source=EMR" target="_blank" class="button">TRY NOW!</a>

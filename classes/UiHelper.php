@@ -8,7 +8,7 @@ if (! defined('ABSPATH')) {
 }
 
 /* Collection of functions helping the interface being cleaner. */
-class UIHelper extends Base
+class UIHelper
 {
   protected $preview_size = '';
   protected $preview_width = 0;
@@ -148,7 +148,7 @@ class UIHelper extends Base
 		$meta = wp_get_attachment_metadata($attach_id);
 
 		$data = false;
-    $fs = $this->filesystem();
+    $fs = EMR()->filesystem();
 
 		if (isset($meta['sizes']))
 		{
@@ -450,7 +450,7 @@ class UIHelper extends Base
 				return false;
 
 
-			if (false === $this->emr()->useFeature('background'))
+			if (false === emr()->useFeature('background'))
 				return false;
 
 			$extensions = array('jpg', 'png','jpeg');
