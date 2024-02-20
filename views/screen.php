@@ -37,7 +37,6 @@ $settings = $view->settings;
 
 $uiHelper = emr()->uiHelper();
 $env = emr()->env();
-
 $fs = emr()->filesystem();
 
 
@@ -50,7 +49,13 @@ $fs = emr()->filesystem();
     <p class='close'><?php _e('Click to Close', 'enable-media-replace'); ?> </p>
   </div>
 
-	<h1 class='emr-title'><?php echo esc_html__("Replace Media Upload", "enable-media-replace"); ?></h1>
+	<h1 class='emr-title'>
+    <?php echo esc_html__("Replace Media Upload", "enable-media-replace"); ?>
+    <span class='small-title'>
+
+      <?php echo $uiHelper->getSubtitle(); ?>
+    </span>
+  </h1>
 
 	<?php
 

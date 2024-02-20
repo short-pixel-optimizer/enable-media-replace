@@ -20,6 +20,13 @@ $env = EMR()->env();
 
 	<p><?php _e('Your image has been successfully replaced!', 'enable-media-replace'); ?></p>
 
+
+  <p><?php
+  printf(__('If you enjoy using this plugin, please %s leave us a ⭐⭐⭐⭐⭐ review %s, it would help us a lot!', 'enable-media-replace'), '<a href="https://wordpress.org/support/plugin/enable-media-replace/reviews/#new-post" target="_blank">', '</a>');
+  ?>
+
+  </p>
+
   <?php
   $spio_active = $env->plugin_active('shortpixel');
   if (true === $env->canInstallPlugins() && false === $spio_active)

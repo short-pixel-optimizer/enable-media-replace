@@ -104,6 +104,11 @@ class UIHelper
 	//	  }
 	}
 
+  public function getSubTitle()
+  {
+      return sprintf(__('Version %s (Free)', 'enable-media-replace'), EMR_VERSION); 
+  }
+
   public function getFailedRedirect($attach_id)
   {
     $url = admin_url('upload.php');

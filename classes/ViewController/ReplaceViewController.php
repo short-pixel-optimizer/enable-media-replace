@@ -29,12 +29,11 @@ class ReplaceViewController extends \EnableMediaReplace\ViewController
 	 public function load()
 	 {
 		 	$attachment_id = intval($_GET['attachment_id']);
-			//$attachment = get_post($attachment_id);
 
       $imageClass = emr()->getClass('image');
       $image = new $imageClass($attachment_id);
 
-// Perhaps this move to an image Class with all data?
+      // Perhaps this move to an image Class with all data?
 			if (false === $image->hasImagePermission())
 			{
 				$this->viewError(self::ERROR_IMAGE_PERMISSION);
