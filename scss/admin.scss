@@ -54,6 +54,14 @@
 		background: linear-gradient(90deg, rgb(26, 189, 202) 72%, rgba(255, 255, 255, 0) 99%);
 		color: #fff;
 		padding: 8px 0 8px 15px;
+		position: relative;
+
+		.small-title {
+			 	position: absolute;
+				right: 100px;
+				top: 35%;
+				font-size: 12px;
+		}
 	}
 
 	.editor-wrapper
