@@ -2,6 +2,7 @@
 namespace EnableMediaReplace\Controller;
 use EnableMediaReplace\Notices\NoticeController as Notices;
 use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
+use function EnableMediaReplace\EMR as EMR;
 
 
 if (! defined('ABSPATH')) {
@@ -16,7 +17,10 @@ class RemoteNoticeController
 
 		public function __construct()
 		{
-			 $this->doRemoteNotices();
+       if (true === emr()->useFeature('remote_notice'))
+       {
+          $this->doRemoteNotices();
+       }
 		}
 
 		public static function getInstance()

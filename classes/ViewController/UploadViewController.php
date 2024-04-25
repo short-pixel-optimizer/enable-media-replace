@@ -24,7 +24,7 @@ class UploadViewController extends \EnableMediaReplace\ViewController
 	 public static function getInstance()
 	 {
 		 	if (is_null(self::$instance))
-		 		self::$instance = new UploadViewController();
+		 		self::$instance = new static();
 
 			return self::$instance;
 	 }
@@ -75,7 +75,11 @@ class UploadViewController extends \EnableMediaReplace\ViewController
 		 $this->updateSettings($params);
 		 $this->setView($post_id, $params); // set variables needed for view.
 
-		 $replaceController = new ReplaceController($image);
+     
+     $replaceClass = emr()->getClass('replaceController');
+     $replaceController = new $replaceClass($image);
+
+
 		 $check = $replaceController->setupParams($params);
 
 		if (false === $check)

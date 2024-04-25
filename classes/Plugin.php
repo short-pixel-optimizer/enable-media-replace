@@ -23,6 +23,13 @@ class Plugin
 
 		protected $features = array();
 
+    // Pages we show notices on
+    protected $notice_pages = array(
+         'attachment',   // edit media
+         'media_page_enable-media-replace/enable-media-replace',  // emr screens
+         'upload',  // list media
+    );
+
     public function __construct()
     {
 
@@ -63,6 +70,8 @@ class Plugin
       $this->features['remote_notice']  = apply_filters('emr/feature/remote_notice', true);
 
 			//load_plugin_textdomain('enable-media-replace', false, basename(dirname(EMR_ROOT_FILE)) . '/languages');
+			$notices  = Notices::getInstance(); // This hooks the ajax listener
+
 		}
 
     public function getClass($name)
@@ -75,6 +84,11 @@ class Plugin
            case 'image':
              $class = $namespace  . 'Image';
            break;
+           case 'replacecontroller':
+             $class = $namespace  . 'Controller\ReplaceController';
+           break;
+           case 'uploadviewcontroller':
+             $class = $namespace  . 'ViewController\UploadViewController';
         }
 
         return $class;
@@ -214,12 +228,11 @@ class Plugin
 		}
 
 
-		public function setScreen()
+		public function setScreen($screen)
 		{
-			 $screen = get_current_screen();
+	//		 $screen = get_current_screen();
 
-			 $notice_pages = array('attachment',  'media_page_enable-media-replace/enable-media-replace', 'upload' );
-			 if ( in_array($screen->id, $notice_pages) &&	true === $this->useFeature('remote_notice'))
+			 if ( in_array($screen->id, $this->notice_pages))
 			 {
 				 RemoteNoticeController::getInstance(); // check for remote stuff
 			 	 $notices = Notices::getInstance();
@@ -244,6 +257,9 @@ class Plugin
         }
 
         $action = isset($_GET['action']) ? sanitize_text_field($_GET['action']) : '';
+        $url    = menu_page_url( $plugin_page, false );
+
+
         wp_enqueue_style('emr_style');
         wp_enqueue_script('jquery-ui-datepicker');
         wp_enqueue_style('jquery-ui-datepicker');
@@ -255,11 +271,14 @@ class Plugin
                         wp_enqueue_script('emr_upsell');
 
 							 $controller = ViewController\ReplaceViewController::getInstance();
+               $controller->setControllerURL($url);
 							 $controller->load();
             }
         }
 				elseif ($action == 'media_replace_upload') {
-					  $controller = ViewController\UploadViewController::getInstance();
+            $viewController = $this->getClass('uploadviewcontroller');
+					  $controller = $viewController::getInstance();
+            $controller->setControllerURL($url);
 						$controller->load();
 				}
 

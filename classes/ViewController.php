@@ -9,8 +9,7 @@ use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
 
 abstract class ViewController
 {
-
-	  abstract function load();
+	 abstract function load();
 
 	 const ERROR_UPLOAD_PERMISSION = 1;
 	 const ERROR_IMAGE_PERMISSION = 2;
@@ -66,10 +65,20 @@ abstract class ViewController
 				}
 				elseif ($unique === false || ! in_array($template, self::$viewsLoaded))
 				{
+          do_action('emr/view/start-' . $template);
 					include($template_path);
+          do_action('emr/view/end-' . $template);
+
 					self::$viewsLoaded[] = $template;
+
 				}
 		}
+
+    public function setControllerURL($url)
+    {
+       $this->url = $url;
+    }
+
 
 		protected function viewError($errorCode, $errorData = array())
 		{
@@ -160,5 +169,37 @@ abstract class ViewController
 			 $this->loadView('success');
 			 exit();
 		}
+
+    protected function getSwitchButton($args = array())
+    {
+       $defaults = array(
+          'name' => 'checkbox',
+          'value' => '1',
+          'checked' => false,
+          'label' => __('No Label', 'enable-media-replace'),
+          'class' => '',
+       );
+
+       $args = wp_parse_args($args, $defaults);
+
+       $checked = (true === $args['checked']) ? ' checked ' : '';
+
+       $output = '<div class="switch_button ' . $args['class'] . '">
+            <label>
+             <input class="switch"
+                    type="checkbox"
+                    name="' . $args['name'] . '"
+                    value="' . $args['value'] . '"
+                    ' . $checked . '
+                    >
+             <div class="the_switch">&nbsp;</div>
+                ' . $args['label'] . '
+           </label>
+         </div>';
+
+        return $output;
+    }
+
+
 
 }

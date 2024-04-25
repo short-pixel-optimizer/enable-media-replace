@@ -249,12 +249,23 @@
   .option-flex-wrapper
   {
     display: flex;
+		flex-wrap: wrap;
+		section {
+			flex: 1;
+			border: 1px solid #ccc;
+		}
+		.break {
+			 flex-basis: 100%;
+			 height: 0;
+			 flex-grow: 1;
+
+		}
   }
 
   .replace_type.wrapper
   {
-    flex: 1;
-    border: 1px solid #ccc;
+    //flex: 1;
+  //  border: 1px solid #ccc;
     margin: 15px 0;
     .option
     {
@@ -293,8 +304,8 @@
 
   .options.wrapper
   {
-    flex: 1;
-    border: 1px solid #ccc;
+//    flex: 1;
+//    border: 1px solid #ccc;
     padding: 15px;
     margin: 15px 0 15px 35px;
     .custom_date

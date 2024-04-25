@@ -67,21 +67,9 @@ class Image extends \EnableMediaReplace\FileSystem\Model\File\FileModel
      }
 
       $env = EMR()->env();
-      $general_cap = $env->getPermission('general');
-      $user_cap = $env->getPermission('user');
 
+      return $env->checkUserPermission($author_id);
 
-       if ($general_cap === false && $user_cap === false) {
-           if (current_user_can('edit_post', $post_id)  === true) {
-                           return true;
-           }
-       } elseif (current_user_can($general_cap)) {
-           return true;
-       } elseif (current_user_can($user_cap) && $author_id == get_current_user_id()) {
-           return true;
-       }
-
-       return false;
    }
 
    public function isBackgroundRemovable()

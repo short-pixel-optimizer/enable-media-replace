@@ -13,8 +13,10 @@ class Environment
   protected static $instance;
 
   protected $permissions = array(
-    'general_cap' => false,
-    'user_cap' => false
+    'general_cap' => 'edit_posts',
+    'user_cap' => 'edit_posts',
+    'general_roles' => false,
+    'user_roles' => false,
   );
 
 
@@ -28,7 +30,7 @@ class Environment
   public static function getInstance()
   {
     if (is_null(self::$instance))
-        self::$instance = new Environment();
+        self::$instance = new static();
 
     return self::$instance;
   }
@@ -98,6 +100,27 @@ class Environment
           }
       }
   }
+
+  public function checkUserPermission($author_id)
+  {
+
+    $general_cap = $this->getPermission('general');
+    $user_cap = $this->getPermission('user');
+
+
+     if ($general_cap === false && $user_cap === false) {
+         if (current_user_can('edit_post', $post_id)  === true) {
+                         return true;
+         }
+     } elseif (current_user_can($general_cap)) {
+         return true;
+     } elseif (current_user_can($user_cap) && $author_id == get_current_user_id()) {
+         return true;
+     }
+
+     return false;
+  }
+
 
 
 }

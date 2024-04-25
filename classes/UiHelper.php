@@ -106,7 +106,7 @@ class UIHelper
 
   public function getSubTitle()
   {
-      return sprintf(__('Version %s (Free)', 'enable-media-replace'), EMR_VERSION); 
+      return sprintf(__('Version %s (Free)', 'enable-media-replace'), EMR_VERSION);
   }
 
   public function getFailedRedirect($attach_id)
@@ -278,6 +278,8 @@ class UIHelper
 			// SVG's without any helpers return around 0 for width / height. Fix preview.
 
 			 // preview width, if source if found, should be set to source.
+			 Log::addTemp('Preview Width ' . $this->preview_width);
+       Log::addTemp('Preview Height ' . $this->preview_height);
 			 $this->preview_width = $width;
 			 $this->preview_height = $height;
 
@@ -348,15 +350,14 @@ class UIHelper
   public function findImageSizeByMax($maxwidth)
   {
       $image_sizes = $this->wp_get_image_sizes();
-
       $match_width = 0;
       $match_height = 0;
       $match = '';
 
       foreach($image_sizes as $sizeName => $sizeItem)
       {
-
           $width = $sizeItem['width'];
+
           if ($width > $match_width && $width <= $maxwidth)
           {
             $match = $sizeName;
@@ -364,6 +365,7 @@ class UIHelper
             $match_height = $sizeItem['height'];
           }
       }
+
       return array($match, $match_width, $match_height);
   }
 
