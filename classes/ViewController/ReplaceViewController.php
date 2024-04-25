@@ -21,7 +21,7 @@ class ReplaceViewController extends \EnableMediaReplace\ViewController
 	 public static function getInstance()
 	 {
 		 	if (is_null(self::$instance))
-		 		self::$instance = new ReplaceViewController();
+		 		self::$instance = new static();
 
 			return self::$instance;
 	 }
@@ -40,7 +40,8 @@ class ReplaceViewController extends \EnableMediaReplace\ViewController
 			  wp_die( esc_html__('You do not have permission to upload files for this author.', 'enable-media-replace') );
 			}
 
-			$replacer = new ReplaceController($image);
+      $replaceClass = emr()->getClass('replaceController');
+			$replacer = new $replaceClass($image);
 
 			//$file = $replacer->getSourceFile(true);
 			//$source_mime = get_post_mime_type($attachment_id);

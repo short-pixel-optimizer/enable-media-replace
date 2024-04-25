@@ -210,8 +210,6 @@ class ReplaceController
       $target_url = $this->getTargetURL();
 			$Replacer->setTarget($target_url);
 
-      Log::addTemp("TARGET URL", $target_url);
-
 			$Replacer->setTargetMeta($target_metadata);
 			//$this->target_metadata = $metadata;
 
@@ -275,31 +273,35 @@ class ReplaceController
 				$Replacer->replace($args);
 			}
 
-			// Here Updatedata and a ffew others.
-			$this->updateDate();
-
-      // Remove backups  - if any - from the WordPress native image editor.  -- return false to cancel . This is done before everything because the main file is changed to to edited URL. Need to reset the source
-
-      $remove_editor_backup = apply_filters('shortpixel/replacer/remove_editor_backup', true);
-      if (true === $remove_editor_backup)
-      {
-          $this->removeEditorBackup();
-      }
-
-
-			// Give the caching a kick. Off pending specifics.
-			$cache_args = array(
-				'flush_mode' => 'post',
-				'post_id' => $this->post_id,
-			);
-
-			$cache = new Cache();
-			$cache->flushCache($cache_args);
-
+      $this->afterRun();
 			do_action("enable-media-replace-upload-done", $target_url, $source_url, $this->post_id);
 
 			return true;
 		} // run
+
+    // Post-run updates not related directly to the replace process
+    protected function afterRun()
+    {
+        // Here Updatedata and a ffew others.
+  			$this->updateDate();
+
+        // Remove backups  - if any - from the WordPress native image editor.  -- return false to cancel . This is done before everything because the main file is changed to to edited URL. Need to reset the source
+
+        $remove_editor_backup = apply_filters('shortpixel/replacer/remove_editor_backup', true);
+        if (true === $remove_editor_backup)
+        {
+            $this->removeEditorBackup();
+        }
+
+  			// Give the caching a kick. Off pending specifics.
+  			$cache_args = array(
+  				'flush_mode' => 'post',
+  				'post_id' => $this->post_id,
+  			);
+
+  			$cache = new Cache();
+  			$cache->flushCache($cache_args);
+    }
 
 
 		/** Returns a full target path to place to new file. Including the file name!  **/
