@@ -35,6 +35,8 @@ class Externals
       $this->loadElementor();
       $this->loadBakery(); // in case of urlencoded issues, this class should be used probably.
 			$this->loadSiteOrigins();
+			$this->loadUpsell();
+
 
   }
 
@@ -85,6 +87,11 @@ class Externals
 	public function loadSiteOrigins()
 	{
 		 Externals\SiteOrigin::getInstance();
+	}
+
+	protected function loadUpsell()
+	{
+		 Externals\UpsellInstaller::getInstance();
 	}
 
 
