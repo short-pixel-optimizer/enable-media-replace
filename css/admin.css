@@ -1051,6 +1051,7 @@
   display: flex;
 }
 .emr_upload_form form .upsell-wrapper {
+  margin-top: 4px;
   margin-left: 10px;
 }
 .emr_upload_form h1.emr-title {

@@ -1,4 +1,12 @@
 <?php
+namespace EnableMediaReplace\Externals;
+
+use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
+
+
+if (! defined('ABSPATH')) {
+    exit; // Exit if accessed directly.
+}
 
 
 /**
@@ -9,7 +17,7 @@
  * @package Envira_Gallery
  * @author  Envira Team
  */
-class EMR_Envira_Gallery_Skin extends WP_Upgrader_Skin {
+class InstallSkin extends \WP_Upgrader_Skin {
 
 	/**
 	 * Primary class constructor.

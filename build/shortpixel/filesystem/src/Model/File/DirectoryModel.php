@@ -247,6 +247,7 @@ class DirectoryModel
   */
   private function fileIsRestricted($path)
   {
+
      $basedir = ini_get('open_basedir');
 
      if (false === $basedir || strlen($basedir) == 0)
@@ -265,6 +266,9 @@ class DirectoryModel
              break;
           }
      }
+
+     // Allow this to be overridden due to specific server configs ( ie symlinks ) might get this flagged falsely.
+     $restricted = apply_filters('emr/file/basedir_check', $restricted);
 
      return $restricted;
   }
