@@ -21,11 +21,18 @@ jQuery(document).ready(function($)
 	 				},
 	 				success: function(response) {
 	 					$(button).addClass('hidden');
-
 						$('.emr-activate[data-plugin="' + plugin + '"]').removeClass('hidden');
 
 	 				},
 	 				error: function(xhr, textStatus, e) {
+						 console.error(xhr, textStatus, e);
+						 // Sometimes the output buffer can fail ( no clue why ), so in case of parsererror, it's just update info from the plugin, and probably all fine.
+						 if ('parsererror' === textStatus)
+						 {
+							 $(button).addClass('hidden');
+							 $('.emr-activate[data-plugin="' + plugin + '"]').removeClass('hidden');
+
+						 }
 	 				},
 	 			};
 

@@ -2,6 +2,7 @@
 namespace EnableMediaReplace\Externals;
 
 use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
+use function EnableMediaReplace\EMR as EMR;
 
 
 if (! defined('ABSPATH')) {
@@ -82,7 +83,8 @@ class UpsellInstaller
 			$url    = esc_url( $url );
 
 			// Start output bufferring to catch the filesystem form if credentials are needed.
-			ob_start();
+			$bool = ob_start();
+
 			$creds = request_filesystem_credentials( $url, $method, false, false, null );
 			if ( false === $creds ) {
 				$form = ob_get_clean();
@@ -101,11 +103,11 @@ class UpsellInstaller
 
 			// We do not need any extra credentials if we have gotten this far, so let's install the plugin.
 			require_once (ABSPATH . 'wp-admin/includes/class-wp-upgrader.php');
-			require_once (plugin_dir_path( EMR_ROOT_FILE ) . 'classes/external/upgrader_skin.php');
+			//require_once ( emr()->plugin_path( 'classes/external/upgrader_skin.php') );
 
 			// Create the plugin upgrader with our custom skin.
-			$skin      = new EMR_Envira_Gallery_Skin();
-			$installer = new Plugin_Upgrader( $skin );
+			$skin      = new InstallSkin();
+			$installer = new \Plugin_Upgrader( $skin );
 			$installer->install( $download_url );
 
 			// Flush the cache and return the newly installed plugin basename.
@@ -116,9 +118,7 @@ class UpsellInstaller
 
 			ob_clean();
 
-
 				wp_send_json_success( array( 'plugin' => $plugin_basename ) );
-
 				die();
 			}
 		}

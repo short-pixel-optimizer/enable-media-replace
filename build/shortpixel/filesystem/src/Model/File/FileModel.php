@@ -37,9 +37,10 @@ class FileModel
   protected $is_readable = null;
   protected $is_file = null;
   protected $is_virtual = false;
+  protected $is_restricted = false;
   protected $virtual_status = null;
 
-  protected $status; // seems unused ? 
+  protected $status; // seems unused ?
 
   const FILE_OK = 1;
   const FILE_UNKNOWN_ERROR = 2;
@@ -115,9 +116,11 @@ class FileModel
 			$this->is_directory_writable = null;
       $this->is_readable = null;
       $this->is_file = null;
+      $this->is_restricted = null;
       $this->exists = null;
       $this->is_virtual = null;
 			$this->filesize = null;
+
 	$this->permissions = null;
   }
 
@@ -597,6 +600,11 @@ class FileModel
   */
   private function fileIsRestricted($path)
   {
+     if (! is_null($this->is_restricted))
+     {
+        return $this->is_restricted;
+     }
+
      $basedir = ini_get('open_basedir');
 
      if (false === $basedir || strlen($basedir) == 0)
@@ -616,6 +624,10 @@ class FileModel
           }
      }
 
+     // Allow this to be overridden due to specific server configs ( ie symlinks ) might get this flagged falsely.
+     $restricted = apply_filters('emr/file/basedir_check', $restricted);
+
+     $this->is_restricted = $restricted;
      return $restricted;
   }
 

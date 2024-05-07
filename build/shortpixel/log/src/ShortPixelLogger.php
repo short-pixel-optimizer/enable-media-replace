@@ -415,6 +415,19 @@ namespace EnableMediaReplace\ShortPixelLogger;
      $log->addLog($message, $level, $args);
    }
 
+   /**
+    * Adds a trace for debuggins.
+    * @param String  $message       Description
+    * @param integer  $amount        Amount of lines needed.
+    * @param integer $debug_option  Debug backtrace ( default IGNORE_ARGS, see docs )
+    */
+   public static function addTrace($message, $amount = 10, $debug_option = 2)
+   {
+      $trace = debug_backtrace($debug_option, $amount);
+      $log = self::getInstance();
+      $log->addLog($message, DebugItem::LEVEL_DEBUG, $trace);
+   }
+
    public static function addMemory($message, $args = array())
    {
       $log = self::getInstance();
