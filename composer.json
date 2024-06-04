@@ -27,6 +27,8 @@
     },
     "extra": {
          "targetNamespace" : "EnableMediaReplace",
-         "targetFilter" : "emr"
+         "targetFilter" : "emr",
+         "targetTextDomain": "enable-media-replace"
+
     }
 }
