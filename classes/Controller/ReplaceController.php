@@ -266,8 +266,6 @@ class ReplaceController
           'thumbnails_only' => ($this->replaceType == self::MODE_SEARCHREPLACE) ? false : true,
       );
 
-      Log::addTemp('Replacer URL before Replace', $this->getTargetURL());
-
 			$doreplace = apply_filters('emr/replace/doreplace', true);
 			if(true === $doreplace){
 				$Replacer->replace($args);

@@ -278,8 +278,7 @@ class UIHelper
 			// SVG's without any helpers return around 0 for width / height. Fix preview.
 
 			 // preview width, if source if found, should be set to source.
-			 Log::addTemp('Preview Width ' . $this->preview_width);
-       Log::addTemp('Preview Height ' . $this->preview_height);
+
 			 $this->preview_width = $width;
 			 $this->preview_height = $height;
 

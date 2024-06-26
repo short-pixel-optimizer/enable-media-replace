@@ -444,7 +444,7 @@ class Plugin
 
     public function add_meta_boxes($post)
     {
-            // Because some plugins don't like to play by the rules.
+         // Because some plugins don't like to play by the rules.
         if (is_null($post) || ! is_object($post) ) {
               return false;
         }
@@ -533,7 +533,7 @@ class Plugin
         $imageClass = $this->getClass('image');
         $image = new $imageClass($post->ID);
 
-        if (! $image->hasImagePermission()) {
+        if (false === $image->hasImagePermission()) {
             return $form_fields;
         }
 
@@ -543,9 +543,6 @@ class Plugin
                 return $form_fields;
             }
         }
-
-        //Log::addTemp('DEBUG Addmetaboxes', debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 10));
-
 
         $url = $this->getMediaReplaceURL($post->ID);
         $action = "media_replace";

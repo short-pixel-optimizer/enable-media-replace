@@ -13,7 +13,7 @@ class Environment
   protected static $instance;
 
   protected $permissions = array(
-    'general_cap' => 'edit_posts',
+    'general_cap' => 'edit_others_posts',
     'user_cap' => 'edit_posts',
     'general_roles' => false,
     'user_roles' => false,
@@ -107,9 +107,8 @@ class Environment
     $general_cap = $this->getPermission('general');
     $user_cap = $this->getPermission('user');
 
-
      if ($general_cap === false && $user_cap === false) {
-         if (current_user_can('edit_post', $post_id)  === true) {
+         if (current_user_can('edit_others_posts', $post_id)  === true) {
                          return true;
          }
      } elseif (current_user_can($general_cap)) {
