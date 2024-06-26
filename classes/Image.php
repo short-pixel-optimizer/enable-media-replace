@@ -67,7 +67,6 @@ class Image extends \EnableMediaReplace\FileSystem\Model\File\FileModel
      }
 
       $env = EMR()->env();
-
       return $env->checkUserPermission($author_id);
 
    }
@@ -76,7 +75,6 @@ class Image extends \EnableMediaReplace\FileSystem\Model\File\FileModel
    {
        if (false === wp_attachment_is_image($this->post))
          return false;
-
 
        if (false === emr()->useFeature('background'))
        {
@@ -117,7 +115,6 @@ class Image extends \EnableMediaReplace\FileSystem\Model\File\FileModel
          $source_file = $source_file_main;
       }
 
-
        $sourceFileObj = $fs->getFile($source_file);
        $isVirtual = false;
        if ($sourceFileObj->is_virtual())
@@ -131,7 +128,6 @@ class Image extends \EnableMediaReplace\FileSystem\Model\File\FileModel
            */
            $this->sourceFileUntranslated = $fs->getFile($source_file);
            $sourcePath = apply_filters('emr/file/virtual/translate', $sourceFileObj->getFullPath(), $sourceFileObj, $this->post_id);
-
 
            if (false !== $sourcePath && $sourceFileObj->getFullPath() !== $sourcePath)
            {
@@ -155,8 +151,6 @@ class Image extends \EnableMediaReplace\FileSystem\Model\File\FileModel
          $source_file = $uploads['basedir'] . "/$source_file";
        }
 
-       Log::addDebug('SetupSource SourceFile Path ' . $source_file);
-       //$this->sourceFile = $fs->getFile($source_file);
        return $source_file;
    }
 
