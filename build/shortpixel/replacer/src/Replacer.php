@@ -19,6 +19,13 @@ class Replacer
 	protected $source_metadata = array();
 	protected $target_metadata = array();
 
+	private $default_replace_settings = array(
+			'component' => 'unset',
+			'json_flags' => JSON_UNESCAPED_SLASHES
+	);
+
+	private $replace_settings;
+
 	public function __construct()
 	{
 		  //$this->source_url = $source_url;
@@ -32,6 +39,8 @@ class Replacer
 			Modules\Elementor::getInstance();
 			Modules\WpBakery::getInstance();
 			Modules\YoastSeo::getInstance();
+			Modules\Breakdance::getInstance();
+
 	}
 
 	public function setSource($url)
@@ -77,6 +86,8 @@ class Replacer
 
 			$errors = array();
 	    $args = wp_parse_args($args, $defaults);
+
+			$this->setReplaceSettings(['component' => 'emr']); // set to defaults.
 
 	     // Search-and-replace filename in post database
 	     // @todo Check this with scaled images.
@@ -188,6 +199,16 @@ class Replacer
 	    foreach($replaceRuns as $component => $run)
 	    {
 	       Log::addDebug('Running additional replace for : '. $component, $run);
+
+				 // @todo This could perhaps benefit from a more general approach somewhere in class for settings.
+				 if (isset($run['args']))
+				 {
+						// Update current settings for this run only.
+						$this->setReplaceSettings($run['args']);
+				 }
+				 else {
+						$this->setReplaceSettings();
+				 }
 	       $updated += $this->doReplaceQuery($run['base_url'], $run['search_urls'], $run['replace_urls']);
 	    }
 
@@ -285,11 +306,21 @@ class Replacer
 	          {
 	            $number_of_updates++;
 	            $content = $row['meta_value'];
-
+							$meta_key = $row['meta_key'];
+							$component = $this->replace_setting['component'];
 
 	            $id = $row['id'];
+							Log::addTemp('Raw Dbase content meta_value ', var_export($content, true));
 
-	           $content = $this->replaceContent($content, $search_urls, $replace_urls); //str_replace($search_urls, $replace_urls, $content);
+						 // Content as how it's loading.
+						 $content = apply_filters('shortpixel/replacer/load_meta_value', $content, $meta_key, $component);
+
+
+	           $content = $this->replaceContent($content, $search_urls, $replace_urls);
+
+						 // Content as how it's going to dbase.
+						 $content = apply_filters('shortpixel/replacer/save_meta_value', $content, $meta_key, $component );
+
 
 	           $prepared_sql = $wpdb->prepare($update_sql, $content, $id);
 
@@ -304,6 +335,10 @@ class Replacer
 	  } // function
 
 
+		private function setReplaceSettings($settings = array())
+		{
+			 $this->replace_settings = wp_parse_args($settings, $this->default_replace_settings);
+		}
 
 	  /**
 	  * Replaces Content across several levels of possible data
@@ -342,7 +377,7 @@ class Replacer
 	    if ($isJson)
 	    {
 	      $content = json_decode($content);
-	      Log::addDebug('JSon Content', $content);
+	     // Log::addDebug('JSon Content', $content);
 	    }
 
 	    if (is_string($content))  // let's check the normal one first.
@@ -384,16 +419,19 @@ class Replacer
 				}
 	      foreach($content as $key => $value)
 	      {
-	        $content->{$key} = $this->replaceContent($value, $search, $replace, true); //str_replace($value, $search, $replace);
+	        $content->{$key} = $this->replaceContent($value, $search, $replace, true);
 	      }
 	    }
 
 	    if ($isJson && $in_deep === false) // convert back to JSON, if this was JSON. Different than serialize which does WP automatically.
 	    {
-	      Log::addDebug('Value was found to be JSON, encoding');
+
 	      // wp-slash -> WP does stripslashes_deep which destroys JSON
-	      $content = json_encode($content, JSON_UNESCAPED_SLASHES);
-	      Log::addDebug('Content returning', array($content));
+
+				$json_flags = $this->replace_settings['json_flags'];
+				Log::addDebug('Value was found to be JSON, encoding with flag: ' . $json_flags);
+				$content = json_encode($content, $json_flags);
+	      Log::addDebug('Content returning (array ours) ', array($content));
 	    }
 	    elseif($in_deep === false && (is_array($content) || is_object($content)))
 	      $content = maybe_serialize($content);

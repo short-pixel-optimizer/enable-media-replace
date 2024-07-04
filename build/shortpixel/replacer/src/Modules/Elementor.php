@@ -51,7 +51,7 @@ class Elementor
        if (defined('ELEMENTOR_VERSION'))
           $bool = true;
 
-        return apply_filters('emr/externals/elementor_is_active', $bool); // manual override
+        return apply_filters('shortpixel/externals/elementor_is_active', $bool); // manual override
     }
 
     public function removeCache()

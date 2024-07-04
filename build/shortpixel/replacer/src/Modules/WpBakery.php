@@ -45,6 +45,6 @@ class WpBakery
        if (did_action('vc_plugins_loaded') || defined('VCV_VERSION'))
           $bool = true;
 
-        return apply_filters('emr/externals/urlencode_is_active', $bool); // manual override
+        return apply_filters('shortpixel/externals/urlencode_is_active', $bool); // manual override
     }
 }
