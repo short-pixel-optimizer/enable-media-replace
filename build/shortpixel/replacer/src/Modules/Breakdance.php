@@ -6,7 +6,6 @@ use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
 class Breakdance
 {
     private static $instance;
-
     protected $queryKey = 'breakdance';
 
     public static function getInstance()
@@ -23,8 +22,6 @@ class Breakdance
       {
          if ($this->checkRequiredFunctions())
          {
-				       Log::addTemp('Breakdance loaded');
-
                add_filter('shortpixel/replacer/custom_replace_query', array($this, 'addBreakdance'), 10, 4);
 				       add_filter('shortpixel/replacer/load_meta_value', array($this, 'loadContent'),10,3);
                add_filter('shortpixel/replacer/save_meta_value', array($this, 'saveContent'), 10,3);
@@ -33,7 +30,6 @@ class Breakdance
               add_filter('shortpixel/replacer/load_meta_value', array($this, 'abortOnContent'),10,3);
           }
      }
-     Log::addTemp('After load Breakdance');
     }
 
     // This integration uses several Breakdance functions.  Don't something if this dance breaks somehow
@@ -42,7 +38,8 @@ class Breakdance
         $functions = [
           '\Breakdance\Data\get_tree',
           '\Breakdance\Data\encode_before_writing_to_wp',
-
+          '\Breakdance\Data\get_global_option',
+          '\Breakdance\Data\save_document'
         ];
 
         foreach($functions as $function)
@@ -65,7 +62,7 @@ class Breakdance
 			$el_search_urls = $search_urls; //array_map(array($this, 'addslash'), $search_urls);
 			$el_replace_urls = $replace_urls; //array_map(array($this, 'addslash'), $replace_urls);
 			//$args = [('json_flags' => 0, 'component' => $this->queryKey];
-      $args = ['component' => $this->queryKey];
+      $args = ['component' => $this->queryKey, 'replacer_do_save' => false, 'replace_no_serialize' => true];
 			$items[$this->queryKey] = array('base_url' => $base_url, 'search_urls' => $el_search_urls, 'replace_urls' => $el_replace_urls, 'args' => $args);
 			return $items;
 
@@ -97,27 +94,26 @@ class Breakdance
         $result = \Breakdance\Data\get_tree($post_id);
         if (false === $result)
         {
-           Log::addTemp('tree false, returning null');
+           Log::addWarn("Breakdance integration: Tree returns as false");
            return null;
         }
-
 
         return $result;
 		}
 
     public function saveContent($content, $meta_row, $component)
     {
-      Log::addTemp('Save content comp' . $component);
       if ($component !== $this->queryKey)
       {
          return $content;
       }
 
       $global = \Breakdance\Data\get_global_option('global_settings_json_string');
-Log::addTemp("Doing breakdance save ", $content);
-      \Breakdance\Data\save_document($content, $global, null, $meta_row['meta_id']);
-/*      Log::addTemp('Saving with some tree content', $content);
-        return \Breakdance\Data\encode_before_writing_to_wp([
+
+      $content = json_encode($content, JSON_UNESCAPED_SLASHES);
+      \Breakdance\Data\save_document($content, $global, null, $meta_row['post_id']);
+
+      /*  return \Breakdance\Data\encode_before_writing_to_wp([
           'tree_json_string' => $content,
         ], true); */
 

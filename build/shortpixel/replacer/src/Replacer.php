@@ -23,6 +23,7 @@ class Replacer
 			'component' => 'unset',
 			'json_flags' => JSON_UNESCAPED_SLASHES,
 			'replacer_do_save' => true,
+			'replace_no_serialize' => false,
 	);
 
 	private $replace_settings;
@@ -41,7 +42,6 @@ class Replacer
 			Modules\WpBakery::getInstance();
 			Modules\YoastSeo::getInstance();
 			Modules\Breakdance::getInstance();
-
 	}
 
 	public function setSource($url)
@@ -196,7 +196,7 @@ class Replacer
 	    $updated += $this->doReplaceQuery($base_url, $search_urls, $replace_urls);
 
 	    $replaceRuns = apply_filters('shortpixel/replacer/custom_replace_query', array(), $base_url, $search_urls, $replace_urls);
-	    Log::addDebug("REPLACE RUNS", $replaceRuns);
+
 	    foreach($replaceRuns as $component => $run)
 	    {
 	       Log::addDebug('Running additional replace for : '. $component, $run);
@@ -298,7 +298,6 @@ class Replacer
 	        $sql = $wpdb->prepare($sql, '%' . $url . '%');
 
 	        // This is a desparate solution. Can't find anyway for wpdb->prepare not the add extra slashes to the query, which messes up the query.
-	    //    $postmeta_sql = str_replace('[JSON_URL]', $json_url, $postmeta_sql);
 	        $rsmeta = $wpdb->get_results($sql, ARRAY_A);
 
 	        if (! empty($rsmeta))
@@ -307,7 +306,7 @@ class Replacer
 	          {
 	            $number_of_updates++;
 	            $content = $row['meta_value'];
-							//$meta_key = $row['meta_key'];
+
 							$component = $this->replace_settings['component'];
 
 	            $id = $row['meta_id'];
@@ -315,9 +314,6 @@ class Replacer
 
 						 // Content as how it's loading.
 						 $content = apply_filters('shortpixel/replacer/load_meta_value', $content, $row, $component);
-
-				 Log::addTemp('Content sent to Replacer', $content);
-
 
 						 // If content is null, break out of everything and don't replace this.
 						 if (null === $content)
@@ -331,13 +327,12 @@ class Replacer
 						 // Content as how it's going to dbase.
 						 $content = apply_filters('shortpixel/replacer/save_meta_value', $content, $row, $component );
 
-
-Log::addTemp('Doing update post -> ' . $component);
-					//	 \update_post_meta($id, $row['meta_key'], $content);
-	           //$prepared_sql = $wpdb->prepare($update_sql, $content, $id);
-
-	           //Log::addDebug('Update Meta SQl' . $prepared_sql);
-	           //$result = $wpdb->query($prepared_sql);
+						 // Check if usual save should be prevented. This is for integrations.
+						 if (true === $this->replace_settings['replacer_do_save'])
+						 {
+	           		$prepared_sql = $wpdb->prepare($update_sql, $content, $id);
+	           		$result = $wpdb->query($prepared_sql);
+						}
 
 	          }
 	        }
@@ -444,10 +439,12 @@ Log::addTemp('Doing update post -> ' . $component);
 				$content = json_encode($content, $json_flags);
 	      Log::addDebug('Content returning (array ours) ', array($content));
 	    }
-	    elseif($in_deep === false && (is_array($content) || is_object($content)))
+	    elseif($this->replace_settings['replace_no_serialize'] === false &&
+			 			$in_deep === false && (is_array($content) || is_object($content))
+						)
 			{
 				Log::addTemp('Content is array or object - not json, - maybe serializing');
-	      $content = maybe_serialize($content);
+				$content = maybe_serialize($content);
 			}
 	    return $content;
 	}
