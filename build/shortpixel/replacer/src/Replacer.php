@@ -21,7 +21,8 @@ class Replacer
 
 	private $default_replace_settings = array(
 			'component' => 'unset',
-			'json_flags' => JSON_UNESCAPED_SLASHES
+			'json_flags' => JSON_UNESCAPED_SLASHES,
+			'replacer_do_save' => true,
 	);
 
 	private $replace_settings;
@@ -274,7 +275,7 @@ class Replacer
 	        switch($type)
 	        {
 	          case "post": // special case.
-	              $sql = 'SELECT meta_id as id, meta_key, meta_value FROM ' . $wpdb->postmeta . '
+	              $sql = 'SELECT * FROM ' . $wpdb->postmeta . '
 	                WHERE post_id in (SELECT ID from '. $wpdb->posts . ' where post_status in ("publish", "future", "draft", "pending", "private") ) AND meta_value like %s';
 	              $type = 'post';
 
@@ -306,26 +307,37 @@ class Replacer
 	          {
 	            $number_of_updates++;
 	            $content = $row['meta_value'];
-							$meta_key = $row['meta_key'];
-							$component = $this->replace_setting['component'];
+							//$meta_key = $row['meta_key'];
+							$component = $this->replace_settings['component'];
 
-	            $id = $row['id'];
-							Log::addTemp('Raw Dbase content meta_value ', var_export($content, true));
+	            $id = $row['meta_id'];
+						//	Log::addTemp('Raw Dbase content meta_value ', var_export($content, true));
 
 						 // Content as how it's loading.
-						 $content = apply_filters('shortpixel/replacer/load_meta_value', $content, $meta_key, $component);
+						 $content = apply_filters('shortpixel/replacer/load_meta_value', $content, $row, $component);
 
+				 Log::addTemp('Content sent to Replacer', $content);
+
+
+						 // If content is null, break out of everything and don't replace this.
+						 if (null === $content)
+						 {
+							  Log::addTemp('Content null, aborting');
+							 	return 0;
+						 }
 
 	           $content = $this->replaceContent($content, $search_urls, $replace_urls);
 
 						 // Content as how it's going to dbase.
-						 $content = apply_filters('shortpixel/replacer/save_meta_value', $content, $meta_key, $component );
+						 $content = apply_filters('shortpixel/replacer/save_meta_value', $content, $row, $component );
 
 
-	           $prepared_sql = $wpdb->prepare($update_sql, $content, $id);
+Log::addTemp('Doing update post -> ' . $component);
+					//	 \update_post_meta($id, $row['meta_key'], $content);
+	           //$prepared_sql = $wpdb->prepare($update_sql, $content, $id);
 
-	           Log::addDebug('Update Meta SQl' . $prepared_sql);
-	           $result = $wpdb->query($prepared_sql);
+	           //Log::addDebug('Update Meta SQl' . $prepared_sql);
+	           //$result = $wpdb->query($prepared_sql);
 
 	          }
 	        }
@@ -343,8 +355,8 @@ class Replacer
 	  /**
 	  * Replaces Content across several levels of possible data
 	  * @param $content String The Content to replace
-	  * @param $search String Search string
-	  * @param $replace String Replacement String
+	  * @param $search Array Search string
+	  * @param $replace Array Replacement String
 	  * @param $in_deep Boolean.  This is use to prevent serialization of sublevels. Only pass back serialized from top.
 	  * @param $strict_check Boolean . If true, remove all classes from serialization check and fail. This should be done on post_content, not on metadata.
 	  */
@@ -383,7 +395,6 @@ class Replacer
 	    if (is_string($content))  // let's check the normal one first.
 	    {
 	      $content = apply_filters('shortpixel/replacer/content', $content, $search, $replace);
-
 	      $content = str_replace($search, $replace, $content);
 	    }
 	    elseif (is_wp_error($content)) // seen this.
@@ -397,6 +408,7 @@ class Replacer
 	        $content[$index] = $this->replaceContent($value, $search, $replace, true); //str_replace($value, $search, $replace);
 	        if (is_string($index)) // If the key is the URL (sigh)
 	        {
+
 	           $index_replaced = $this->replaceContent($index, $search,$replace, true);
 	           if ($index_replaced !== $index)
 	             $content = $this->change_key($content, array($index => $index_replaced));
@@ -427,15 +439,16 @@ class Replacer
 	    {
 
 	      // wp-slash -> WP does stripslashes_deep which destroys JSON
-
 				$json_flags = $this->replace_settings['json_flags'];
 				Log::addDebug('Value was found to be JSON, encoding with flag: ' . $json_flags);
 				$content = json_encode($content, $json_flags);
 	      Log::addDebug('Content returning (array ours) ', array($content));
 	    }
 	    elseif($in_deep === false && (is_array($content) || is_object($content)))
+			{
+				Log::addTemp('Content is array or object - not json, - maybe serializing');
 	      $content = maybe_serialize($content);
-
+			}
 	    return $content;
 	}
 

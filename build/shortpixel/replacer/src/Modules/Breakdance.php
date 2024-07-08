@@ -21,11 +21,41 @@ class Breakdance
     {
       if (\has_action('breakdance_loaded'))   // elementor is active
       {
-				Log::addTemp('Breakdance loaded');
-        add_filter('shortpixel/replacer/custom_replace_query', array($this, 'addBreakdance'), 10, 4);
-				add_filter('shortpixel/replacer/load_meta_value', array($this, 'loadContent'),10,3);
+         if ($this->checkRequiredFunctions())
+         {
+				       Log::addTemp('Breakdance loaded');
 
+               add_filter('shortpixel/replacer/custom_replace_query', array($this, 'addBreakdance'), 10, 4);
+				       add_filter('shortpixel/replacer/load_meta_value', array($this, 'loadContent'),10,3);
+               add_filter('shortpixel/replacer/save_meta_value', array($this, 'saveContent'), 10,3);
+          }
+          else {
+              add_filter('shortpixel/replacer/load_meta_value', array($this, 'abortOnContent'),10,3);
+          }
      }
+     Log::addTemp('After load Breakdance');
+    }
+
+    // This integration uses several Breakdance functions.  Don't something if this dance breaks somehow
+    public function checkRequiredFunctions()
+    {
+        $functions = [
+          '\Breakdance\Data\get_tree',
+          '\Breakdance\Data\encode_before_writing_to_wp',
+
+        ];
+
+        foreach($functions as $function)
+        {
+           if (false === function_exists($function))
+           {
+              Log::addWarn('Replacer breakdance module cannot find ' . $function);
+              return false;
+           }
+
+        }
+
+        return true;
     }
 
 		public function addBreakdance($items, $base_url, $search_urls, $replace_urls)
@@ -34,7 +64,8 @@ class Breakdance
 			$base_url = $this->addSlash($base_url);
 			$el_search_urls = $search_urls; //array_map(array($this, 'addslash'), $search_urls);
 			$el_replace_urls = $replace_urls; //array_map(array($this, 'addslash'), $replace_urls);
-			$args = array('json_flags' => 0, 'component' => $this->queryKey);
+			//$args = [('json_flags' => 0, 'component' => $this->queryKey];
+      $args = ['component' => $this->queryKey];
 			$items[$this->queryKey] = array('base_url' => $base_url, 'search_urls' => $el_search_urls, 'replace_urls' => $el_replace_urls, 'args' => $args);
 			return $items;
 
@@ -51,17 +82,58 @@ class Breakdance
         return $value;
     }
 
-		public function loadContent($content, $meta_key, $component)
+		public function loadContent($content, $meta_row, $component)
 		{
-			 Log::addTemp("Component", $component);
-			 Log::addTemp('MetaKey', $meta_key);
-			 if ($component ==  $this->queryKey)
-			 {
-			 	Log::addTemp('Precise Content', $content);
-			}
+        if ($component !== $this->queryKey)
+        {
+           return $content;
+        }
 
-			return $content;
+        Log::addTemp('using tree loader');
+
+        $meta_id = $meta_row['meta_id'];
+        $post_id = $meta_row['post_id'];
+
+        $result = \Breakdance\Data\get_tree($post_id);
+        if (false === $result)
+        {
+           Log::addTemp('tree false, returning null');
+           return null;
+        }
+
+
+        return $result;
 		}
+
+    public function saveContent($content, $meta_row, $component)
+    {
+      Log::addTemp('Save content comp' . $component);
+      if ($component !== $this->queryKey)
+      {
+         return $content;
+      }
+
+      $global = \Breakdance\Data\get_global_option('global_settings_json_string');
+Log::addTemp("Doing breakdance save ", $content);
+      \Breakdance\Data\save_document($content, $global, null, $meta_row['meta_id']);
+/*      Log::addTemp('Saving with some tree content', $content);
+        return \Breakdance\Data\encode_before_writing_to_wp([
+          'tree_json_string' => $content,
+        ], true); */
+
+       return $content;
+    }
+
+    // If something is wrong with breakdance, don't replace content for it since it breaks the whole page content.
+    public function abortOnContent($content, $meta_row, $component)
+    {
+      if ($component !== $this->queryKey)
+      {
+         return $content;
+      }
+
+      return null;
+    }
 
 
 
