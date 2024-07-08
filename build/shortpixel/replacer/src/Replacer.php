@@ -310,7 +310,6 @@ class Replacer
 							$component = $this->replace_settings['component'];
 
 	            $id = $row['meta_id'];
-						//	Log::addTemp('Raw Dbase content meta_value ', var_export($content, true));
 
 						 // Content as how it's loading.
 						 $content = apply_filters('shortpixel/replacer/load_meta_value', $content, $row, $component);
@@ -318,24 +317,25 @@ class Replacer
 						 // If content is null, break out of everything and don't replace this.
 						 if (null === $content)
 						 {
-							  Log::addTemp('Content null, aborting');
-							 	return 0;
+							 	Log::addDebug('Content returned null, aborting this record, meta_id : ' . $id);
+						 }
+						 else {
+								 $content = $this->replaceContent($content, $search_urls, $replace_urls);
+
+								 // Content as how it's going to dbase.
+								 $content = apply_filters('shortpixel/replacer/save_meta_value', $content, $row, $component );
+
+								 // Check if usual save should be prevented. This is for integrations.
+								 if (true === $this->replace_settings['replacer_do_save'])
+								 {
+			           		$prepared_sql = $wpdb->prepare($update_sql, $content, $id);
+			           		$result = $wpdb->query($prepared_sql);
+								}
 						 }
 
-	           $content = $this->replaceContent($content, $search_urls, $replace_urls);
 
-						 // Content as how it's going to dbase.
-						 $content = apply_filters('shortpixel/replacer/save_meta_value', $content, $row, $component );
-
-						 // Check if usual save should be prevented. This is for integrations.
-						 if (true === $this->replace_settings['replacer_do_save'])
-						 {
-	           		$prepared_sql = $wpdb->prepare($update_sql, $content, $id);
-	           		$result = $wpdb->query($prepared_sql);
-						}
-
-	          }
-	        }
+						} // Loop
+	        } // if
 	    } // foreach
 
 	    return $number_of_updates;
