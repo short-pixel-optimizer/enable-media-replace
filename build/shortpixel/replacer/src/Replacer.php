@@ -19,6 +19,14 @@ class Replacer
 	protected $source_metadata = array();
 	protected $target_metadata = array();
 
+	private $default_replace_settings = array(
+			'component' => 'unset',
+			'json_flags' => JSON_UNESCAPED_SLASHES,
+			'replacer_do_save' => true,
+	);
+
+	private $replace_settings;
+
 	public function __construct()
 	{
 		  //$this->source_url = $source_url;
@@ -32,6 +40,8 @@ class Replacer
 			Modules\Elementor::getInstance();
 			Modules\WpBakery::getInstance();
 			Modules\YoastSeo::getInstance();
+			Modules\Breakdance::getInstance();
+
 	}
 
 	public function setSource($url)
@@ -77,6 +87,8 @@ class Replacer
 
 			$errors = array();
 	    $args = wp_parse_args($args, $defaults);
+
+			$this->setReplaceSettings(['component' => 'emr']); // set to defaults.
 
 	     // Search-and-replace filename in post database
 	     // @todo Check this with scaled images.
@@ -188,6 +200,16 @@ class Replacer
 	    foreach($replaceRuns as $component => $run)
 	    {
 	       Log::addDebug('Running additional replace for : '. $component, $run);
+
+				 // @todo This could perhaps benefit from a more general approach somewhere in class for settings.
+				 if (isset($run['args']))
+				 {
+						// Update current settings for this run only.
+						$this->setReplaceSettings($run['args']);
+				 }
+				 else {
+						$this->setReplaceSettings();
+				 }
 	       $updated += $this->doReplaceQuery($run['base_url'], $run['search_urls'], $run['replace_urls']);
 	    }
 
@@ -253,7 +275,7 @@ class Replacer
 	        switch($type)
 	        {
 	          case "post": // special case.
-	              $sql = 'SELECT meta_id as id, meta_key, meta_value FROM ' . $wpdb->postmeta . '
+	              $sql = 'SELECT * FROM ' . $wpdb->postmeta . '
 	                WHERE post_id in (SELECT ID from '. $wpdb->posts . ' where post_status in ("publish", "future", "draft", "pending", "private") ) AND meta_value like %s';
 	              $type = 'post';
 
@@ -285,16 +307,37 @@ class Replacer
 	          {
 	            $number_of_updates++;
 	            $content = $row['meta_value'];
+							//$meta_key = $row['meta_key'];
+							$component = $this->replace_settings['component'];
+
+	            $id = $row['meta_id'];
+						//	Log::addTemp('Raw Dbase content meta_value ', var_export($content, true));
+
+						 // Content as how it's loading.
+						 $content = apply_filters('emr/replacer/load_meta_value', $content, $row, $component);
+
+				 Log::addTemp('Content sent to Replacer', $content);
 
 
-	            $id = $row['id'];
+						 // If content is null, break out of everything and don't replace this.
+						 if (null === $content)
+						 {
+							  Log::addTemp('Content null, aborting');
+							 	return 0;
+						 }
 
-	           $content = $this->replaceContent($content, $search_urls, $replace_urls); //str_replace($search_urls, $replace_urls, $content);
+	           $content = $this->replaceContent($content, $search_urls, $replace_urls);
 
-	           $prepared_sql = $wpdb->prepare($update_sql, $content, $id);
+						 // Content as how it's going to dbase.
+						 $content = apply_filters('emr/replacer/save_meta_value', $content, $row, $component );
 
-	           Log::addDebug('Update Meta SQl' . $prepared_sql);
-	           $result = $wpdb->query($prepared_sql);
+
+Log::addTemp('Doing update post -> ' . $component);
+					//	 \update_post_meta($id, $row['meta_key'], $content);
+	           //$prepared_sql = $wpdb->prepare($update_sql, $content, $id);
+
+	           //Log::addDebug('Update Meta SQl' . $prepared_sql);
+	           //$result = $wpdb->query($prepared_sql);
 
 	          }
 	        }
@@ -304,12 +347,16 @@ class Replacer
 	  } // function
 
 
+		private function setReplaceSettings($settings = array())
+		{
+			 $this->replace_settings = wp_parse_args($settings, $this->default_replace_settings);
+		}
 
 	  /**
 	  * Replaces Content across several levels of possible data
 	  * @param $content String The Content to replace
-	  * @param $search String Search string
-	  * @param $replace String Replacement String
+	  * @param $search Array Search string
+	  * @param $replace Array Replacement String
 	  * @param $in_deep Boolean.  This is use to prevent serialization of sublevels. Only pass back serialized from top.
 	  * @param $strict_check Boolean . If true, remove all classes from serialization check and fail. This should be done on post_content, not on metadata.
 	  */
@@ -342,13 +389,12 @@ class Replacer
 	    if ($isJson)
 	    {
 	      $content = json_decode($content);
-	      Log::addDebug('JSon Content', $content);
+
 	    }
 
 	    if (is_string($content))  // let's check the normal one first.
 	    {
 	      $content = apply_filters('emr/replacer/content', $content, $search, $replace);
-
 	      $content = str_replace($search, $replace, $content);
 	    }
 	    elseif (is_wp_error($content)) // seen this.
@@ -362,6 +408,7 @@ class Replacer
 	        $content[$index] = $this->replaceContent($value, $search, $replace, true); //str_replace($value, $search, $replace);
 	        if (is_string($index)) // If the key is the URL (sigh)
 	        {
+
 	           $index_replaced = $this->replaceContent($index, $search,$replace, true);
 	           if ($index_replaced !== $index)
 	             $content = $this->change_key($content, array($index => $index_replaced));
@@ -384,20 +431,24 @@ class Replacer
 				}
 	      foreach($content as $key => $value)
 	      {
-	        $content->{$key} = $this->replaceContent($value, $search, $replace, true); //str_replace($value, $search, $replace);
+	        $content->{$key} = $this->replaceContent($value, $search, $replace, true);
 	      }
 	    }
 
 	    if ($isJson && $in_deep === false) // convert back to JSON, if this was JSON. Different than serialize which does WP automatically.
 	    {
-	      Log::addDebug('Value was found to be JSON, encoding');
+
 	      // wp-slash -> WP does stripslashes_deep which destroys JSON
-	      $content = json_encode($content, JSON_UNESCAPED_SLASHES);
-	      Log::addDebug('Content returning', array($content));
+				$json_flags = $this->replace_settings['json_flags'];
+				Log::addDebug('Value was found to be JSON, encoding with flag: ' . $json_flags);
+				$content = json_encode($content, $json_flags);
+	      Log::addDebug('Content returning (array ours) ', array($content));
 	    }
 	    elseif($in_deep === false && (is_array($content) || is_object($content)))
+			{
+				Log::addTemp('Content is array or object - not json, - maybe serializing');
 	      $content = maybe_serialize($content);
-
+			}
 	    return $content;
 	}
 
