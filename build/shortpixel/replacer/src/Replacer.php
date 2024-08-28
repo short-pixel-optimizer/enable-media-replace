@@ -23,6 +23,7 @@ class Replacer
 			'component' => 'unset',
 			'json_flags' => JSON_UNESCAPED_SLASHES,
 			'replacer_do_save' => true,
+			'replace_no_serialize' => false,
 	);
 
 	private $replace_settings;
@@ -41,7 +42,6 @@ class Replacer
 			Modules\WpBakery::getInstance();
 			Modules\YoastSeo::getInstance();
 			Modules\Breakdance::getInstance();
-
 	}
 
 	public function setSource($url)
@@ -96,17 +96,17 @@ class Replacer
 	    $base_url = str_replace('.' . pathinfo($base_url, PATHINFO_EXTENSION), '', $base_url);
 
 	    /** Fail-safe if base_url is a whole directory, don't go search/replace */
-	    if (is_dir($base_url))
+	    if (false === $this->fileIsRestricted($base_url) && is_dir($base_url))
 	    {
 	      Log::addError('Search Replace tried to replace to directory - ' . $base_url);
-				$errors[] = __('Fail Safe :: Source Location seems to be a directory.', 'enable-media-replace');
+				$errors[] = __('Fail Safe :: Source Location seems to be a directory.', 'enable-media-replace/');
 	      return $errors;
 	    }
 
 	    if (strlen(trim($base_url)) == 0)
 	    {
 	      Log::addError('Current Base URL emtpy - ' . $base_url);
-	      $errors[] = __('Fail Safe :: Source Location returned empty string. Not replacing content','enable-media-replace');
+	      $errors[] = __('Fail Safe :: Source Location returned empty string. Not replacing content','enable-media-replace/');
 	      return $errors;
 	    }
 
@@ -196,7 +196,7 @@ class Replacer
 	    $updated += $this->doReplaceQuery($base_url, $search_urls, $replace_urls);
 
 	    $replaceRuns = apply_filters('emr/replacer/custom_replace_query', array(), $base_url, $search_urls, $replace_urls);
-	    Log::addDebug("REPLACE RUNS", $replaceRuns);
+
 	    foreach($replaceRuns as $component => $run)
 	    {
 	       Log::addDebug('Running additional replace for : '. $component, $run);
@@ -267,14 +267,40 @@ class Replacer
 	  {
 	    global $wpdb;
 
-	    $meta_options = apply_filters('emr/replacer/metadata_tables', array('post', 'comment', 'term', 'user'));
+	    $meta_options = apply_filters('emr/replacer/metadata_tables', array('post', 'comment', 'term', 'user', 'options'));
 	    $number_of_updates = 0;
 
-	    foreach($meta_options as $type)
+			$meta_default = [
+					'id' => 'meta_id',
+					'value' => 'meta_value',
+			];
+
+			$table_options = [
+					'postmeta' => $meta_default,
+					'commentmeta' => $meta_default,
+					'termmeta' => $meta_default,
+					'usermeta' => $meta_default,
+					'options' => [
+							'id' => 'option_id',
+							'value' => 'option_value',
+					]
+
+			];
+
+			$table_options = apply_filters('emr/replacer/replacement_tables', $table_options );
+
+			// Exeception in user meta table.
+			$table_options['usermeta']['id'] = 'umeta_id';
+
+	    foreach($table_options as $table => $data)
 	    {
-	        switch($type)
+				 	// These must be always defined.
+					$id_field = esc_sql($data['id']);
+					$value_field = esc_sql($data['value']);
+
+	        switch($table)
 	        {
-	          case "post": // special case.
+	          case "postmeta": // special case.
 	              $sql = 'SELECT * FROM ' . $wpdb->postmeta . '
 	                WHERE post_id in (SELECT ID from '. $wpdb->posts . ' where post_status in ("publish", "future", "draft", "pending", "private") ) AND meta_value like %s';
 	              $type = 'post';
@@ -282,65 +308,59 @@ class Replacer
 	              $update_sql = ' UPDATE ' . $wpdb->postmeta . ' SET meta_value = %s WHERE meta_id = %d';
 	          break;
 	          default:
-	              $table = $wpdb->{$type . 'meta'};  // termmeta, commentmeta etc
+	              $wp_table = $wpdb->{$table};  // termmeta, commentmeta etc
 
-	              $meta_id = 'meta_id';
-	              if ($type == 'user')
-	                $meta_id = 'umeta_id';
+	              $sql = "SELECT $id_field , $value_field FROM $wp_table WHERE $value_field like %s";
 
-	              $sql = 'SELECT ' . $meta_id . ' as id, meta_value FROM ' . $table . '
-	                WHERE meta_value like %s';
-
-	              $update_sql = " UPDATE $table set meta_value = %s WHERE $meta_id  = %d ";
+	              $update_sql = " UPDATE $wp_table set $value_field = %s WHERE $id_field  = %d ";
 	          break;
 	        }
 
 	        $sql = $wpdb->prepare($sql, '%' . $url . '%');
 
+					Log::addTemp('Checking -- ', $sql);
+
 	        // This is a desparate solution. Can't find anyway for wpdb->prepare not the add extra slashes to the query, which messes up the query.
-	    //    $postmeta_sql = str_replace('[JSON_URL]', $json_url, $postmeta_sql);
 	        $rsmeta = $wpdb->get_results($sql, ARRAY_A);
+
+					Log::addTemp('result', $rsmeta);
 
 	        if (! empty($rsmeta))
 	        {
 	          foreach ($rsmeta as $row)
 	          {
 	            $number_of_updates++;
-	            $content = $row['meta_value'];
-							//$meta_key = $row['meta_key'];
+	            $content = $row[$value_field];
+
 							$component = $this->replace_settings['component'];
 
-	            $id = $row['meta_id'];
-						//	Log::addTemp('Raw Dbase content meta_value ', var_export($content, true));
+	            $id = $row[$id_field];
 
 						 // Content as how it's loading.
 						 $content = apply_filters('emr/replacer/load_meta_value', $content, $row, $component);
 
-				 Log::addTemp('Content sent to Replacer', $content);
-
-
 						 // If content is null, break out of everything and don't replace this.
 						 if (null === $content)
 						 {
-							  Log::addTemp('Content null, aborting');
-							 	return 0;
+							 	Log::addDebug('Content returned null, aborting this record, meta_id : ' . $id_field);
+						 }
+						 else {
+								 $content = $this->replaceContent($content, $search_urls, $replace_urls);
+
+								 // Content as how it's going to dbase.
+								 $content = apply_filters('emr/replacer/save_meta_value', $content, $row, $component );
+
+								 // Check if usual save should be prevented. This is for integrations.
+								 if (true === $this->replace_settings['replacer_do_save'])
+								 {
+			           		$prepared_sql = $wpdb->prepare($update_sql, $content, $id);
+			           		$result = $wpdb->query($prepared_sql);
+								}
 						 }
 
-	           $content = $this->replaceContent($content, $search_urls, $replace_urls);
 
-						 // Content as how it's going to dbase.
-						 $content = apply_filters('emr/replacer/save_meta_value', $content, $row, $component );
-
-
-Log::addTemp('Doing update post -> ' . $component);
-					//	 \update_post_meta($id, $row['meta_key'], $content);
-	           //$prepared_sql = $wpdb->prepare($update_sql, $content, $id);
-
-	           //Log::addDebug('Update Meta SQl' . $prepared_sql);
-	           //$result = $wpdb->query($prepared_sql);
-
-	          }
-	        }
+						} // Loop
+	        } // if
 	    } // foreach
 
 	    return $number_of_updates;
@@ -444,12 +464,45 @@ Log::addTemp('Doing update post -> ' . $component);
 				$content = json_encode($content, $json_flags);
 	      Log::addDebug('Content returning (array ours) ', array($content));
 	    }
-	    elseif($in_deep === false && (is_array($content) || is_object($content)))
+	    elseif($this->replace_settings['replace_no_serialize'] === false &&
+			 			$in_deep === false && (is_array($content) || is_object($content))
+						)
 			{
 				Log::addTemp('Content is array or object - not json, - maybe serializing');
-	      $content = maybe_serialize($content);
+				$content = maybe_serialize($content);
 			}
 	    return $content;
+	}
+
+	/** Check if path is allowed within openbasedir restrictions. This is an attempt to limit notices in file funtions if so.  Most likely the path will be relative in that case.
+	* @param String Path as String
+	*/
+	private function fileIsRestricted($path)
+	{
+
+		 $basedir = ini_get('open_basedir');
+
+		 if (false === $basedir || strlen($basedir) == 0)
+		 {
+				 return false;
+		 }
+
+		 $restricted = true;
+		 $basedirs = preg_split('/:|;/i', $basedir);
+
+		 foreach($basedirs as $basepath)
+		 {
+					if (strpos($path, $basepath) !== false)
+					{
+						 $restricted = false;
+						 break;
+					}
+		 }
+
+		 // Allow this to be overridden due to specific server configs ( ie symlinks ) might get this flagged falsely.
+		 $restricted = apply_filters('emr/file/basedir_check', $restricted);
+
+		 return $restricted;
 	}
 
 	private function change_key($arr, $set) {
