@@ -36,6 +36,8 @@ class Externals
       $this->loadBakery(); // in case of urlencoded issues, this class should be used probably.
 			$this->loadSiteOrigins();
 			$this->loadUpsell();
+			$this->loadWpOffload();
+
 
 
   }
@@ -94,5 +96,9 @@ class Externals
 		 Externals\UpsellInstaller::getInstance();
 	}
 
+	public function loadWPOffload()
+	{
+		 Externals\WPOffload::getInstance();
+	}
 
 } // class

@@ -76,6 +76,7 @@ function EMR()
 		return PluginPro::get();
 	}
 	else {
+
 		return Plugin::get();
 	}
 
@@ -85,6 +86,7 @@ function EMR()
 Plugin::checkLogger();
 
 add_action('plugins_loaded', 'EnableMediaReplace\EMR');
+
 
 //register_uninstall_hook( __FILE__, '\EnableMediaReplace\emr_uninstall' );
 register_deactivation_hook( __FILE__,  array('\EnableMediaReplace\InstallHelper','deactivatePlugin') );
