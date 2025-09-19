@@ -669,20 +669,17 @@ class Plugin
    * @return string content / replacement shorttag
    * @todo Note this returns the wrong date, ie. server date not corrected for timezone. Function could be removed altogether, not sure about purpose.
    */
-    public function get_modified_date($atts)
+    public function get_modified_date($args)
     {
-        $id=0;
-        $format= '';
 
-        extract(shortcode_atts(array(
-        'id' => '',
-        'format' => get_option('date_format') . " " . get_option('time_format'),
-        ), $atts));
+        $id = isset($args['id']) ? intval($args['id']) : false; 
+        $format = isset($args['format']) ? sanitize_text_field($args['format']) : false; 
 
-        if ($id == '') {
-            return false;
+        if (false === $id)
+        {
+          return false; 
         }
-
+ 
         // Get path to file
         $current_file = get_attached_file($id);
 
@@ -693,9 +690,14 @@ class Plugin
       // Get file modification time
         $filetime = filemtime($current_file);
 
+        if (false === $format)
+        {
+          $format = get_option( 'date_format' ) . ' ' . get_option( 'time_format' );
+        }
+
         if (false !== $filetime) {
             // do date conversion
-            return date($format, $filetime);
+            return wp_date($format, $filetime);
         }
 
         return false;
