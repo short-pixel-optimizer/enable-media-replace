@@ -5,7 +5,7 @@ Tags: replace, replace image, remove background, replace jpg, change media
 Requires at least: 4.9.7
 Tested up to: 6.8
 Requires PHP: 5.6
-Stable tag: 4.1.6
+Stable tag: 4.1.7
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -79,6 +79,12 @@ If you want more control over the format in which the time is shown, you can use
 Please report security bugs found in the source code of the Enable Media Replace plugin through the [Patchstack Vulnerability Disclosure Program](https://patchstack.com/database/vdp/enable-media-replace). The Patchstack team will assist you with verification, CVE assignment, and notify the developers of this plugin.
 
 == Changelog ==
+
+= 4.1.7 =
+
+Release date: October 2, 2025
+* Fix: A potential "Cross-Site Scripting" vulnerability has been patched, responsibly disclosed by the WordFence team;
+* Fix: Corrected a few text typos.
 
 = 4.1.6 =
 
