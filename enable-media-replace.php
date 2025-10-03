@@ -2,7 +2,7 @@
 namespace EnableMediaReplace;
 /**
  * Plugin Name: Enable Media Replace
- * Plugin URI: https://wordpress.org/plugins/enable-media-replace/
+ * Plugin URI: https://shortpixel.com
  * Description: Enable replacing media files by uploading a new file in the "Edit Media" section of the WordPress Media Library.
  * Version: 4.1.7
  * Author: ShortPixel
