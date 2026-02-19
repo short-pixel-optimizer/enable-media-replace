@@ -37,9 +37,14 @@ class RemoveBackGroundViewController extends \EnableMediaReplace\ViewController
 			// wp_die(esc_html__('You do not have permission to upload files.', 'enable-media-replace'));
 	 }
 
-
 	 $attachment_id = intval($_REQUEST['attachment_id']);
 	 $attachment = get_post($attachment_id);
+
+	 if (! \emr()->checkImagePermission($attachment))
+	 {
+		 $this->viewError(self::ERROR_IMAGE_PERMISSION);
+	   wp_die( esc_html__('You do not have permission to upload files for this author.', 'enable-media-replace') );
+	 }
 
 	 $uiHelper = \emr()->uiHelper();
 	 $uiHelper->setPreviewSizes();
@@ -85,6 +90,14 @@ class RemoveBackGroundViewController extends \EnableMediaReplace\ViewController
 			 	 $this->viewError(self::ERROR_FORM);
 //		     wp_die(esc_html__('Error in request. Please try again', 'enable-media-replace'));
 		 }
+
+		 $attachment = get_post($attachment_id);
+
+		 if (! \emr()->checkImagePermission($attachment))
+		 {
+			 $this->viewError(self::ERROR_IMAGE_PERMISSION);
+		   wp_die( esc_html__('You do not have permission to upload files for this author.', 'enable-media-replace') );
+		 }		 
 
 		 $this->setView($post_id);
 		 $result = $this->replaceBackground($post_id, $key);
