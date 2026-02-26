@@ -193,20 +193,7 @@ class FileModel
     return filemtime($this->fullpath);
   }
 
-  public function hasBackup()
-  {
-      $directory = $this->getBackupDirectory();
-      if (! $directory)
-        return false;
 
-      $backupFile =  $directory . $this->getFileName();
-
-      if (file_exists($backupFile) && ! is_dir($backupFile) )
-        return true;
-      else {
-        return false;
-      }
-  }
 
 
   /** Returns the Directory Model this file resides in
@@ -521,7 +508,7 @@ class FileModel
      $this->is_virtual = true;
 
 		 // This filter checks if some supplier will be able to handle the file when needed.
-     $path = apply_filters('shortpixel/image/urltopath', false, $url);
+     $path = apply_filters('shortpixel/image/urltopath', false, $url, $this->getRawFullPath());
 
 		 if ($path !== false)
      {
