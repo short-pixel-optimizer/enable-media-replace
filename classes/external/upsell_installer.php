@@ -19,13 +19,16 @@ function emr_plugin_install() {
 	switch($plugin)
 	{
 		 case "envira":
-		    $download_url = 'https://downloads.wordpress.org/plugin/envira-gallery-lite.zip';
+			$download_url = 'https://downloads.wordpress.org/plugin/envira-gallery-lite.zip';
 		 break;
 		 case 'spio':
-		 		$download_url = 'https://downloads.wordpress.org/plugin/shortpixel-image-optimiser.zip';
+			$download_url = 'https://downloads.wordpress.org/plugin/shortpixel-image-optimiser.zip';
 		 break;
 		 case 'spai':
-		 	 $download_url = 'https://downloads.wordpress.org/plugin/shortpixel-adaptive-images.zip';
+			$download_url = 'https://downloads.wordpress.org/plugin/shortpixel-adaptive-images.zip';
+		 break;
+		 case 'fp':
+			$download_url = 'https://downloads.wordpress.org/plugin/fastpixel-website-accelerator.zip';
 		 break;
 	}
 
@@ -127,7 +130,10 @@ switch($plugin)
 			$plugin = 'shortpixel-image-optimiser/wp-shortpixel.php';
 	 break;
 	 case 'spai':
-		 $plugin = 'shortpixel-adaptive-images/short-pixel-ai.php';
+			$plugin = 'shortpixel-adaptive-images/short-pixel-ai.php';
+	 break;
+	 case 'fp':
+			$plugin = 'fastpixel-website-accelerator/fastpixel.php';
 	 break;
 }
 

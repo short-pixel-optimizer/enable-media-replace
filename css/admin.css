@@ -1298,6 +1298,9 @@
   clear: both;
   background-color: #dcfdff;
 }
+.emr_upload_form .shortpixel-offer.fp {
+  background-color: #fff;
+}
 .emr_upload_form .shortpixel-offer h3 {
   color: #00d0e5;
   font-size: 18px;
@@ -1344,7 +1347,7 @@
 }
 .emr_upload_form .shortpixel-offer .img-wrapper {
   text-align: center;
-  margin: 0 0 25px 0;
+  margin: 10px 0 20px 0;
 }
 .emr_upload_form .shortpixel-offer .img-wrapper img {
   max-width: 140px;

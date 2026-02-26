@@ -20,6 +20,9 @@ if (! apply_filters('emr/upsell', current_user_can('install_plugins')))
 	$spai_installed = isset($plugins['shortpixel-adaptive-images/short-pixel-ai.php']);
 	$spai_active = is_plugin_active('shortpixel-adaptive-images/short-pixel-ai.php');
 
+	$fp_installed = isset($plugins['fastpixel-website-accelerator/fastpixel.php']);
+	$fp_active = is_plugin_active('fastpixel-website-accelerator/fastpixel.php');
+
 	$envira_installed = isset($plugins['envira-gallery-lite/envira-gallery-lite.php']);
 	$envira_active = is_plugin_active('envira-gallery-lite/envira-gallery-lite.php');
 	$envira_pro_active = is_plugin_active('envira-gallery/envira-gallery.php');
@@ -39,11 +42,13 @@ if (! apply_filters('emr/upsell', current_user_can('install_plugins')))
           <img width="40" height="40" src="<?php echo emr()->getPluginURL('img/sp-logo-regular.svg') ?>" alt="ShortPixel">
       </div>
 			<h4 class="grey">
-		     <?php echo esc_html__("ShortPixel Image Optimizer", "enable-media-replace"); ?>
+		    <?php echo esc_html__("ShortPixel Image Optimizer", "enable-media-replace"); ?>
 			 </h4>
-			<h3 class="red ucase"><?php _e('Is your website slow?', 'enable-media-replace'); ?></h3>
-			<br>
-			<h3 class="cyan ucase"><?php printf(__('Optimize all images %s automatically', 'enable-media-replace'), '<br>'); ?></h3>
+			<h3 class="cyan ucase"><?php _e('Unlimited Image Optimizations', 'enable-media-replace'); ?></h3>
+			</br>
+			<h3 class="cyan ucase"><?php _e('Unlimited AI Captioning', 'enable-media-replace'); ?></h3>
+			</br>
+			<h3 class="cyan ucase"><?php _e('Unlimited Background removal', 'enable-media-replace'); ?></h3>
       <p class='button-wrapper '>
 			<?php
 			  $install_class = (! $spio_installed) ? '' : 'hidden';
@@ -63,6 +68,41 @@ if (! apply_filters('emr/upsell', current_user_can('install_plugins')))
     </div>
 	<?php endif; ?>
 	<!--- // SHORTPIXEL -->
+
+
+		<!--- FASTPIXEL -->
+    <?php if(! $fp_active): ?>
+
+    <div class='shortpixel-offer fp'>
+      <div class='img-wrapper'>
+          <img width="150" height="" src="<?php echo esc_url(emr()->getPluginURL('img/fastpixel-logo.svg')) ?>" alt="FastPixel">
+      </div>
+			<h4 class="grey">
+		     <?php echo esc_html__("FastPixel Website Accelerator", "enable-media-replace"); ?>
+			 </h4>
+
+
+			<h3 class="cyan ucase"><?php printf(__('Faster WordPress', 'enable-media-replace')); ?></h3>
+			<h3 class="red ucase"><?php _e('Made Easy', 'enable-media-replace'); ?></h3>
+      <p class='button-wrapper '>
+			<?php
+			  $install_class = (! $fp_installed) ? '' : 'hidden';
+				$activate_class = ($fp_installed && ! $fp_active) ? '' : 'hidden';
+			?>
+					<a class="emr-installer <?php echo $install_class ?>"  data-action="install" data-plugin="fp" href="javascript:void(0)">
+						<?php _e('INSTALL NOW', 'enable-media-replace') ?>
+					</a>
+
+				<a class='emr-activate <?php echo $activate_class ?>' data-action="activate" data-plugin="fp" href="javascript:void(0)">
+					<?php _e('ACTIVATE', 'enable-media-replace') ?>
+				</a>
+
+				<h4 class='emr-activate-done hidden' data-plugin='fp'><?php _e('FastPixel activated!', 'enable-media-replace'); ?></h4>
+			</p>
+
+    </div>
+	<?php endif; ?>
+	<!--- // FASTPIXEL -->
 
 		<!--- SHORTPIXEL AI -->
     <?php if(! $spai_active): ?>
@@ -97,18 +137,5 @@ if (! apply_filters('emr/upsell', current_user_can('install_plugins')))
     </div>
 	<?php endif; ?>
 	<!--- // SHORTPIXEL AI -->
-
-
-
-
-  <div class='shortpixel-offer theme-offer'>
-			<p><img src="<?php echo esc_url(emr()->getPluginURL('img/fastpixel-logo.svg')); ?>" alt="FastPixel"></p>
-			<h3> FAST<span class='red'>PIXEL</span> - the new website accelerator plugin from ShortPixel</h3>
-			<div class="button-wrapper">
-      	<a href="https://fastpixel.io/?utm_source=EMR" target="_blank" class="button">TRY NOW!</a>
-  		</div>
-	</div>
-
-
 
 </section>

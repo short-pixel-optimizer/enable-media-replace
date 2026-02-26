@@ -370,7 +370,10 @@
     margin-bottom: 10px;
     float: right;
     clear: both;
-		background-color: #dcfdff;
+    background-color: #dcfdff;
+    &.fp {
+      background-color: #fff;
+    }
     h3 {
       color: #00d0e5;
       font-size: 18px;
@@ -411,7 +414,7 @@
     .img-wrapper
     {
       text-align: center;
-      margin: 0 0 25px 0;
+      margin: 10px 0 20px 0;
       img { max-width: 140px; max-height: 140px; margin: 0; }
     }
 
