@@ -12,7 +12,8 @@ function emr_plugin_install() {
 	if ( ! current_user_can('install_plugins'))
 	{
 		// Send back a response.
-		wp_send_json(array('result'=> false));
+		
+		wp_send_json(array('result'=> false, 'message' => 'Install permission issue'));
 		die;
 	}
 
@@ -91,7 +92,7 @@ function emr_plugin_install() {
 	}
 
 	// Send back a response.
-	wp_send_json(array('result'=> false));
+	wp_send_json(array('result'=> false, 'download url issue'));
 	die;
 
 }

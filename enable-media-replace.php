@@ -31,18 +31,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit; // Exit if accessed directly.
 }
 
-/* Not sure why we define this?
-if(!defined("S3_UPLOADS_AUTOENABLE")) {
-	define('S3_UPLOADS_AUTOENABLE', true);
-} */
 
 if ( ! defined( 'EMR_ROOT_FILE' ) ) {
 	  define( 'EMR_ROOT_FILE', __FILE__ );
 }
 
-if ( ! defined( 'SHORTPIXEL_AFFILIATE_CODE' ) ) {
-	define( 'SHORTPIXEL_AFFILIATE_CODE', 'VKG6LYN28044' );
-}
 
 /** Usage:
 * Define in wp-config.php
