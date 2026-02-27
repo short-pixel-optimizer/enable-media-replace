@@ -35,7 +35,6 @@ function emr_plugin_install() {
 	// Install the addon.
 	if ( ! is_null($download_url ) ) {
 
-		//$download_url = esc_url_raw( wp_unslash( $_POST['plugin'] ) );
 		global $hook_suffix;
 
 		// Set the current screen to avoid undefined notices.
@@ -45,7 +44,6 @@ function emr_plugin_install() {
 		$method = '';
 		$url    = add_query_arg(
 			array(
-			//	'page' => 'envira-gallery-settings',
 			),
 			admin_url( 'admin.php' )
 		);
@@ -74,7 +72,7 @@ function emr_plugin_install() {
 		require_once (plugin_dir_path( EMR_ROOT_FILE ) . 'classes/external/upgrader_skin.php');
 
 		// Create the plugin upgrader with our custom skin.
-		$skin      = new EMR_Envira_Gallery_Skin();
+		$skin      = new Automatic_Upgrader_Skin();
 		$installer = new Plugin_Upgrader( $skin );
 		$installer->install( $download_url );
 
@@ -84,7 +82,7 @@ function emr_plugin_install() {
 		if ( $installer->plugin_info() ) {
 			$plugin_basename = $installer->plugin_info();
 
-		ob_clean();
+		ob_end_clean();
 
 
 			wp_send_json_success( array( 'plugin' => $plugin_basename ) );
