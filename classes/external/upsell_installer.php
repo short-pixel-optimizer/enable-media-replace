@@ -69,7 +69,6 @@ function emr_plugin_install() {
 
 		// We do not need any extra credentials if we have gotten this far, so let's install the plugin.
 		require_once (ABSPATH . 'wp-admin/includes/class-wp-upgrader.php');
-		require_once (plugin_dir_path( EMR_ROOT_FILE ) . 'classes/external/upgrader_skin.php');
 
 		// Create the plugin upgrader with our custom skin.
 		$skin      = new Automatic_Upgrader_Skin();
