@@ -104,7 +104,7 @@ if (! apply_filters('emr/upsell', current_user_can('install_plugins')))
 	<?php endif; ?>
 	<!--- // FASTPIXEL -->
 
-		<!--- SHORTPIXEL AI -->
+		<!--- SHORTPIXEL AI
     <?php if(! $spai_active): ?>
 
     <div class='shortpixel-offer spai'>
