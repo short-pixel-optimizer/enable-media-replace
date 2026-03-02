@@ -388,12 +388,15 @@
 			 text-align: center;
 		}
 		.red { color: #ff0000; }
-		.cyan { color: #00d0e5; }
+		.cyan { color: #116C7E; }
 		.grey { color: grey; }
 		.ucase { text-transform: uppercase; }
 		 a {
 			 	text-decoration: none
 		 }
+    &.fp .cyan {
+	color: #00d0e5;
+    }
     .button-wrapper
     {
       text-align: center;
