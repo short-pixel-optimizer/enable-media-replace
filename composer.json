@@ -26,6 +26,8 @@
         "buildSP" : "\\ShortPixel\\Build\\Build::BuildIt"
     },
     "extra": {
-         "targetNamespace" : "EnableMediaReplace"
+         "targetNamespace" : "EnableMediaReplace",
+         "targetFilter" : "emr",
+         "targetTextDomain": "enable-media-replace"
     }
 }

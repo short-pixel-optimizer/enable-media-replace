@@ -82,16 +82,14 @@ class RemoveBackGroundViewController extends \EnableMediaReplace\ViewController
 		 if (is_null($key) || strlen($key) == 0)
 		 {
 			 $this->viewError(self::ERROR_KEY);
-			 //wp_die(esc_html__('Error while sending form (no key). Please try again.', 'enable-media-replace'));
 		 }
 
 		 $post_id = isset($_POST['ID']) ? intval($_POST['ID']) : null; // sanitize, post_id.
 		 if (is_null($post_id)) {
 			 	 $this->viewError(self::ERROR_FORM);
-//		     wp_die(esc_html__('Error in request. Please try again', 'enable-media-replace'));
 		 }
 
-		 $attachment = get_post($attachment_id);
+		 $attachment = get_post($post_id);
 
 		 if (! \emr()->checkImagePermission($attachment))
 		 {
@@ -105,15 +103,13 @@ class RemoveBackGroundViewController extends \EnableMediaReplace\ViewController
 		 if (false === $result->success)
 		 {
 			  $this->view->errorMessage = $result->message;
-				$this->viewError();
+				$this->viewError(self::ERROR_DOWNLOAD_FAILED);
 		 }
 		 elseif (! file_exists($result->image))
 		 {
 			 $this->viewError(self::ERROR_DOWNLOAD_FAILED);
 		 }
 
-//		 $result = $replacer->replaceWith($result->image, $source->getFileName() , true);
-//$params = array();
 		$replaceController = new ReplaceController($post_id);
 		$sourceFile = $replaceController->getSourceFile();
 

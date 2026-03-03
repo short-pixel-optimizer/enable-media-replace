@@ -274,11 +274,11 @@ class NoticeModel //extends ShortPixelModel
     {
       $output .= '<div class="details-wrapper">
       <input type="checkbox" name="detailhider" id="check-' . $id .'">
-      <label for="check-' . $id . '"  class="show-details"><span>' . __('See Details', 'shortpixel-image-optimiser')   . '</span>
+      <label for="check-' . $id . '"  class="show-details"><span>' . __('See Details', 'enable-media-replace/')   . '</span>
       </label>';
 
       $output .= "<div class='detail-content-wrapper'><p class='detail-content'>" . $this->parseDetails() . "</p></div>";
-      $output .= '<label for="check-' . $id . '" class="hide-details"><span>' . __('Hide Details', 'shortpixel-image-optimiser') . '</span></label>';
+      $output .= '<label for="check-' . $id . '" class="hide-details"><span>' . __('Hide Details', 'enable-media-replace/') . '</span></label>';
 
       $output .= '</div>'; // detail wrapper
 
@@ -287,7 +287,7 @@ class NoticeModel //extends ShortPixelModel
 
     if ($this->is_removable)
     {
-			      $output .= '<button type="button" id="button-' . $id . '" class="notice-dismiss" data-dismiss="' . $this->suppress_period . '" ><span class="screen-reader-text">' . __('Dismiss this notice', 'shortpixel-image-optimiser') . '</span></button>';
+			      $output .= '<button type="button" id="button-' . $id . '" class="notice-dismiss" data-dismiss="' . $this->suppress_period . '" ><span class="screen-reader-text">' . __('Dismiss this notice', 'enable-media-replace/') . '</span></button>';
 
        if (! $this->is_persistent)
        {
