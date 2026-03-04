@@ -132,7 +132,7 @@ class emrCache
 
     protected function litespeedReset($post_id)
     {
-      do_action('litespeed_media_reset', $post_id);
+      do_action('litespeed_purge_all');
     }
 
 }
