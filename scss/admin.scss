@@ -418,7 +418,11 @@
     margin-bottom: 10px;
     float: right;
     clear: both;
-		background-color: #dcfdff;
+    //background-color: #dcfdff;
+    background-color: #fff;
+    &.fp {
+      background-color: #fff;
+    }
     h3 {
       color: #00d0e5;
       font-size: 18px;
@@ -432,12 +436,15 @@
 			 text-align: center;
 		}
 		.red { color: #ff0000; }
-		.cyan { color: #00d0e5; }
+		.cyan { color: #116C7E; }
 		.grey { color: grey; }
 		.ucase { text-transform: uppercase; }
 		 a {
 			 	text-decoration: none
 		 }
+    &.fp .cyan {
+	color: #00d0e5;
+    }
     .button-wrapper
     {
       text-align: center;
@@ -459,7 +466,7 @@
     .img-wrapper
     {
       text-align: center;
-      margin: 0 0 25px 0;
+      margin: 10px 0 20px 0;
       img { max-width: 140px; max-height: 140px; margin: 0; }
     }
 

@@ -271,7 +271,7 @@ class ReplaceController
 				$Replacer->replace($args);
 			}
 
-      $this->afterRun();
+      		$this->afterRun();
 			do_action("enable-media-replace-upload-done", $target_url, $source_url, $this->post_id);
 
 			return true;

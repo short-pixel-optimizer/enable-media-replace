@@ -32,8 +32,8 @@ class Plugin
 
     public function __construct()
     {
-
-        $this->runtime();
+        add_action('init', array($this, 'runtime')); 
+       // add_action('init', [$this, 'init']);  // init for user authentication, not set on plugins_loaded.
 				add_action('admin_init', array($this, 'adminInit')); // adminInit, after functions.php
         add_action('wp_loaded', array($this, 'plugin_actions'));
     }
@@ -42,27 +42,35 @@ class Plugin
     {
          $this->nopriv_plugin_actions();
 
-      /*  if (EMR_CAPABILITY !== false) {
-            if (is_array(EMR_CAPABILITY)) {
-                $this->general_cap = EMR_CAPABILITY[0];
-                $this->user_cap = EMR_CAPABILITY[1];
+         if (EMR_CAPABILITY !== false) {
+          if (is_array(EMR_CAPABILITY)) {
+              $this->general_cap = EMR_CAPABILITY[0];
+              $this->user_cap = EMR_CAPABILITY[1];
 
-                if (! current_user_can($this->general_cap) && ! current_user_can($this->user_cap)) {
-                    return;
-                }
-            } else {
-                $this->general_cap = EMR_CAPABILITY;
-                if (! current_user_can($this->general_cap)) {
-                    return;
-                }
-            }
-        } elseif (! current_user_can('upload_files')) {
-            return;
-        } */
-
+              if (! current_user_can($this->general_cap) && ! current_user_can($this->user_cap)) {
+                  return;
+              }
+          } else {
+              $this->general_cap = EMR_CAPABILITY;
+              if (! current_user_can($this->general_cap)) {
+                  return;
+              }
+          }
+      } elseif (false === current_user_can('upload_files')) {
+          return;
+      }
+      
 				new Externals();
+     $this->plugin_actions(); // init
+    }
+
+    public function init()
+    {
+
 
     }
+
+
 
 		public function adminInit()
 		{

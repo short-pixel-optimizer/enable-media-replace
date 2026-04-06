@@ -3,9 +3,9 @@ Contributors: ShortPixel
 Donate link: https://www.paypal.me/resizeImage
 Tags: replace, replace image, remove background, replace jpg, change media
 Requires at least: 4.9.7
-Tested up to: 6.8
+Tested up to: 6.9
 Requires PHP: 5.6
-Stable tag: 4.1.7
+Stable tag: 4.1.8
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -79,6 +79,17 @@ If you want more control over the format in which the time is shown, you can use
 Please report security bugs found in the source code of the Enable Media Replace plugin through the [Patchstack Vulnerability Disclosure Program](https://patchstack.com/database/vdp/enable-media-replace). The Patchstack team will assist you with verification, CVE assignment, and notify the developers of this plugin.
 
 == Changelog ==
+
+= 4.1.8 =
+
+Release date: March 3, 2026
+* Fix: Unauthorized modification and deletion of media files vulnerability responsibly disclosed by the WordFence team;
+* Fix: The plugin works for RTL languages now;
+* Fix: Textdomain modules are loaded properly in all cases;
+* Tweak: Added a permission check for the ShortPixel recommendation displayed after the replacement;
+* Tweak: Added the raw file path to the filemodel filter;
+* Tweak: Added a filter to disable the database replacements (thanks @seed-glauco);
+* Tweak: Updated the banners from the plugin pages.
 
 = 4.1.7 =
 

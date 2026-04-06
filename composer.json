@@ -29,6 +29,5 @@
          "targetNamespace" : "EnableMediaReplace",
          "targetFilter" : "emr",
          "targetTextDomain": "enable-media-replace"
-
     }
 }
