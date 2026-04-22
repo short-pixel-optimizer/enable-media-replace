@@ -668,8 +668,11 @@ class FileModel
 
      $this->is_virtual = true;
 
-		 // This filter checks if some supplier will be able to handle the file when needed.
-     $path = apply_filters('shortpixel/image/urltopath', false, $url, $this->getRawFullPath());
+		 /* This filter checks if some supplier will be able to handle the file when needed.
+		 *   Use translate filter to correct filepath when needed.
+		 * Return could be true, or fileModel virtual constant
+		 */
+     $result = apply_filters('emr/image/urltopath', false, $url, $this->getRawFullPath());
 
 		 if ($result === false)
 		 {
