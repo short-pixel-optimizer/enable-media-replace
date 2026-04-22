@@ -582,15 +582,18 @@ class Replacer
 
 			if (! isset($this->source_metadata['sizes'][$sizeName]) || ! isset($this->target_metadata['width'])) // This can happen with non-image files like PDF.
 			{
-				 // Check if metadata-less item is a svg file. Just the main file to replace all thumbnails since SVG's don't need thumbnails.
-				 if (strpos($this->target_url, '.svg') !== false)
-				 {
-					$svg_file = wp_basename($this->target_url);
-					return $svg_file;  // this is the relpath of the mainfile.
-				 }
+
 
 				return false;
 			}
+
+			// Check if metadata-less item is a svg file. Just the main file to replace all thumbnails since SVG's don't need thumbnails.
+			if (strpos($this->target_url, '.svg') !== false)
+			{
+			$svg_file = wp_basename($this->target_url);
+			return $svg_file;  // this is the relpath of the mainfile.
+			}
+
 			$old_width = $this->source_metadata['sizes'][$sizeName]['width']; // the width from size not in new image
 			$new_width = $this->target_metadata['width']; // default check - the width of the main image
 
