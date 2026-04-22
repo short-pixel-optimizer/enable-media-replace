@@ -89,11 +89,11 @@ if (! apply_filters('emr/upsell', current_user_can('install_plugins')))
 			  $install_class = (! $fp_installed) ? '' : 'hidden';
 				$activate_class = ($fp_installed && ! $fp_active) ? '' : 'hidden';
 			?>
-					<a class="emr-installer <?php echo $install_class ?>"  data-action="install" data-plugin="fp" href="javascript:void(0)">
+					<a class="emr-installer <?php echo esc_attr($install_class) ?>"  data-action="install" data-plugin="fp" href="javascript:void(0)">
 						<?php _e('INSTALL NOW', 'enable-media-replace') ?>
 					</a>
 
-				<a class='emr-activate <?php echo $activate_class ?>' data-action="activate" data-plugin="fp" href="javascript:void(0)">
+				<a class='emr-activate <?php echo esc_attr($activate_class) ?>' data-action="activate" data-plugin="fp" href="javascript:void(0)">
 					<?php _e('ACTIVATE', 'enable-media-replace') ?>
 				</a>
 

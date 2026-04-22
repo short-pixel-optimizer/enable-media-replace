@@ -8,7 +8,6 @@ if (! defined('ABSPATH')) {
 //use \EnableMediaReplace\UIHelper;
 use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
 
-
 ?>
 
 <div class='enable-media-replace emr-screen success-screen'>
