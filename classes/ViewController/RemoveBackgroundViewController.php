@@ -57,6 +57,7 @@ class RemoveBackGroundViewController extends \EnableMediaReplace\ViewController
 	 	'bg_type' => 'transparent',
 	 	'bg_color' => '#ffffff',
 	 	'bg_transparency' => 100,
+	 	'save_backup' => false,
 	 );
 	 $settings = get_option('enable_media_replace', $defaults);
 	 $settings = array_merge($defaults, $settings); // might miss some
@@ -95,7 +96,13 @@ class RemoveBackGroundViewController extends \EnableMediaReplace\ViewController
 		 {
 			 $this->viewError(self::ERROR_IMAGE_PERMISSION);
 		   wp_die( esc_html__('You do not have permission to upload files for this author.', 'enable-media-replace') );
-		 }		 
+		 }
+
+		 // Persist the "save backup" preference so it's remembered for next time.
+		 $save_backup = !empty($_POST['save_backup']);
+		 $settings = get_option('enable_media_replace', array());
+		 $settings['save_backup'] = $save_backup;
+		 update_option('enable_media_replace', $settings, false);
 
 		 $this->setView($post_id);
 		 $result = $this->replaceBackground($post_id, $key);
@@ -136,6 +143,13 @@ class RemoveBackGroundViewController extends \EnableMediaReplace\ViewController
 				$this->viewError($error);
 		 }
 
+		 // If the user opted to keep the original, duplicate the attachment
+		 // before the replacement overwrites the source file.
+		 if ($save_backup)
+		 {
+		 	$this->createBackup($post_id);
+		 }
+
 		 $result = $replaceController->run();
 		 if (true == $result)
 		 {
@@ -161,6 +175,68 @@ class RemoveBackGroundViewController extends \EnableMediaReplace\ViewController
 		$result = $api->handleDownload($key);
 
 		return $result;
+	}
+
+	/**
+	 * Duplicate the original attachment so the user keeps a copy in the
+	 * Media Library before the background-removed version overwrites the source.
+	 *
+	 * @param int $post_id Original attachment ID.
+	 * @return int|false New attachment ID on success, false on failure.
+	 */
+	protected function createBackup($post_id)
+	{
+		$source_file = get_attached_file($post_id);
+		if (!$source_file || !file_exists($source_file)) {
+			Log::addError('EMR backup: source file missing', $source_file);
+			return false;
+		}
+
+		$dir = dirname($source_file);
+		$filename = wp_basename($source_file);
+		$pathinfo = pathinfo($filename);
+		$extension = isset($pathinfo['extension']) ? '.' . $pathinfo['extension'] : '';
+		$base = isset($pathinfo['filename']) ? $pathinfo['filename'] : $filename;
+
+		$backup_filename = wp_unique_filename($dir, $base . '-backup' . $extension);
+		$backup_path = trailingslashit($dir) . $backup_filename;
+
+		if (!@copy($source_file, $backup_path)) {
+			Log::addError('EMR backup: copy failed', array('from' => $source_file, 'to' => $backup_path));
+			return false;
+		}
+
+		$original = get_post($post_id);
+		$original_url = wp_get_attachment_url($post_id);
+		$backup_url = $original_url ? trailingslashit(dirname($original_url)) . $backup_filename : '';
+
+		$attachment_data = array(
+			'guid'           => $backup_url,
+			'post_mime_type' => $original->post_mime_type,
+			'post_title'     => $original->post_title . ' ' . __('(backup)', 'enable-media-replace'),
+			'post_content'   => '',
+			'post_status'    => 'inherit',
+		);
+
+		$backup_id = wp_insert_attachment($attachment_data, $backup_path, 0, true);
+
+		if (is_wp_error($backup_id) || !$backup_id) {
+			@unlink($backup_path);
+			Log::addError('EMR backup: wp_insert_attachment failed', is_wp_error($backup_id) ? $backup_id->get_error_message() : 'unknown');
+			return false;
+		}
+
+		if (!function_exists('wp_generate_attachment_metadata')) {
+			require_once ABSPATH . 'wp-admin/includes/image.php';
+		}
+		$metadata = wp_generate_attachment_metadata($backup_id, $backup_path);
+		wp_update_attachment_metadata($backup_id, $metadata);
+
+		// Cross-reference so the relationship can be inspected later if needed.
+		update_post_meta($backup_id, '_emr_backup_of', $post_id);
+		update_post_meta($post_id, '_emr_backup_id', $backup_id);
+
+		return $backup_id;
 	}
 
 

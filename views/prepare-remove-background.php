@@ -113,6 +113,16 @@ $replace_url = add_query_arg(array(
 							</label>
 						</div>
 					</div>
+					<hr>
+					<div class="option">
+						<label for="save_backup">
+							<input id="save_backup" type="checkbox" name="save_backup" value="1" <?php checked(!empty($view->settings['save_backup'])); ?>>
+							<?php esc_html_e('Save original image as backup in the media library', 'enable-media-replace'); ?>
+						</label>
+						<p class="howto">
+							<?php esc_html_e('When this option is enabled, the original image is replaced with the background-removed version, and the original image is preserved in the Media Library as a backup.', 'enable-media-replace'); ?>
+						</p>
+					</div>
 				</section>
 
 
