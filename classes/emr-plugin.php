@@ -223,6 +223,7 @@ class EnableMediaReplacePlugin
             case 'enable-media-replace/enable-media-replace.php':
                 $action = isset($_GET['action']) ? sanitize_text_field($_GET['action']) : '';
                 wp_enqueue_style('emr_style');
+                wp_enqueue_style('emr-redesign');
                 wp_enqueue_script('jquery-ui-datepicker');
                 wp_enqueue_style('jquery-ui-datepicker');
                 wp_enqueue_script('emr_admin');
@@ -306,6 +307,10 @@ class EnableMediaReplacePlugin
 
 				wp_register_style('emr-remove-background', plugins_url('css/remove_background.css', EMR_ROOT_FILE));
 
+				$emr_redesign_path = plugin_dir_path(EMR_ROOT_FILE) . 'css/redesign.css';
+				$emr_redesign_ver  = file_exists($emr_redesign_path) ? filemtime($emr_redesign_path) : EMR_VERSION;
+				wp_register_style('emr-redesign', plugins_url('css/redesign.css', EMR_ROOT_FILE), array('emr_style'), $emr_redesign_ver);
+
         $mimes = array_values(get_allowed_mime_types());
 
         wp_register_script('emr_admin', plugins_url('js/emr_admin.js', EMR_ROOT_FILE), array('jquery'), EMR_VERSION, true);
@@ -327,7 +332,9 @@ class EnableMediaReplacePlugin
 				$ajax_url = admin_url('admin-ajax.php');
 
 
-        wp_register_script('emr_remove_bg', plugins_url('js/remove_bg.js', EMR_ROOT_FILE), array('jquery'), EMR_VERSION, true);
+        $emr_remove_bg_path = plugin_dir_path(EMR_ROOT_FILE) . 'js/remove_bg.js';
+        $emr_remove_bg_ver  = file_exists($emr_remove_bg_path) ? filemtime($emr_remove_bg_path) : EMR_VERSION;
+        wp_register_script('emr_remove_bg', plugins_url('js/remove_bg.js', EMR_ROOT_FILE), array('jquery'), $emr_remove_bg_ver, true);
 				wp_localize_script('emr_remove_bg', 'emrObject', array(
 					'ajax_url' => $ajax_url,
 					'nonce'    => wp_create_nonce('emr_remove_background')

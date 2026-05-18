@@ -63,6 +63,7 @@ require_once( $plugin_path . 'classes/uihelper.php' );
 //require_once( $plugin_path . 'classes/file.php' );
 require_once( $plugin_path . 'classes/cache.php' );
 require_once( $plugin_path . 'classes/api.php' );
+require_once( $plugin_path . 'classes/ApiKeyManager.php' );
 require_once( $plugin_path . 'classes/ajax.php' );
 require_once( $plugin_path . 'classes/emr-plugin.php' );
 require_once( $plugin_path . 'classes/installHelper.php' );
