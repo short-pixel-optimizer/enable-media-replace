@@ -241,13 +241,19 @@ $emr_can_manage  = current_user_can('manage_options');
 				margin-bottom: 2px;
 			}
 			.emr-sp-key-value { font-size: 13px; color: #333; }
-			.emr-sp-key-actions { display: flex; gap: 8px; flex-shrink: 0; }
+			.emr-sp-key-actions { display: flex; gap: 8px; flex-shrink: 0; align-items: center; }
 			.emr-sp-change-btn,
 			.emr-sp-remove-btn {
+				display: inline-flex !important;
+				align-items: center !important;
+				justify-content: center !important;
 				font-size: 12px !important;
-				padding: 4px 12px !important;
-				height: auto !important;
-				line-height: 1.6 !important;
+				padding: 0 12px !important;
+				height: 28px !important;
+				min-height: 28px !important;
+				line-height: 1 !important;
+				min-width: 0 !important;
+				box-sizing: border-box !important;
 			}
 			.emr-sp-remove-btn {
 				color: #b32d2e !important;
