@@ -138,7 +138,7 @@ $emr_can_manage  = current_user_can('manage_options');
 						if ($emr_has_api_key) {
 							esc_html_e('Your ShortPixel API Key is connected. Background Removal is unlimited as long as your Unlimited or Unlimited AI plan is active.', 'enable-media-replace');
 						} else {
-							esc_html_e('Background Removal is limited to 100 images on the Free plan. Add your ShortPixel Unlimited or Unlimited AI plan API Key to remove that limit.', 'enable-media-replace');
+							esc_html_e('Background Removal is limited to 150 images on the Free plan. Add your ShortPixel Unlimited or Unlimited AI plan API Key to remove that limit.', 'enable-media-replace');
 						}
 						?>
 					</p>
@@ -311,7 +311,7 @@ $emr_can_manage  = current_user_can('manage_options');
 
 				$('#emr-remove-key').on('click', function (e) {
 					e.preventDefault();
-					if ( ! window.confirm('<?php echo esc_js(__('Remove the saved ShortPixel API Key? Background removal will fall back to the Free plan (100-image limit).', 'enable-media-replace')); ?>') ) {
+					if ( ! window.confirm('<?php echo esc_js(__('Remove the saved ShortPixel API Key? Background removal will fall back to the Free plan (150-image limit).', 'enable-media-replace')); ?>') ) {
 						return;
 					}
 					var $btn = $(this);
