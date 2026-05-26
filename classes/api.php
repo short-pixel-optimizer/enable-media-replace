@@ -113,7 +113,7 @@ class Api {
 
 
 		$data = array(
-			'plugin_version' => 'EMR4.2.0',
+			'plugin_version' => 'EMR' . EMR_VERSION,
 			'bg_remove'      => $bg_remove,
 			'urllist'        => array( urlencode( esc_url($url) ) ),
 			'lossy'          => $compression_level,
@@ -248,7 +248,7 @@ class Api {
 	private function purgeRemoteCache( $apiKey, $imageUrl, $itemId = 0 )
 	{
 		$body = array(
-			'plugin_version' => 'EMR4.2.0',
+			'plugin_version' => 'EMR' . EMR_VERSION,
 			'key'            => $apiKey,
 			'urllist'        => array( $imageUrl ),
 			'item_id'        => intval( $itemId ),
