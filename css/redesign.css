@@ -105,7 +105,8 @@
 	border-radius: 6px;
 	font-weight: 600;
 	padding: 0 18px;
-	height: 36px;
+	height: 36px !important;
+	min-height: 36px !important;
 	line-height: 34px;
 	min-width: 110px;
 	text-align: center;
@@ -113,6 +114,16 @@
 	vertical-align: middle;
 	text-shadow: none;
 	box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04);
+}
+
+a.emr_upload_form .button,
+.emr_upload_form a.button,
+.emr_upload_form button.button,
+.emr_upload_form button.button-primary {
+	display: inline-flex !important;
+	align-items: center !important;
+	justify-content: center !important;
+	line-height: 1 !important;
 }
 
 .emr_upload_form .button-primary,
