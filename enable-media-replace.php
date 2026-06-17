@@ -25,7 +25,7 @@
  *
  */
 
-define( 'EMR_VERSION', '4.1.9' );
+define( 'EMR_VERSION', '4.2.0' );
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit; // Exit if accessed directly.
