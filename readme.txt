@@ -5,7 +5,7 @@ Tags: replace, replace image, remove background, replace jpg, change media
 Requires at least: 4.9.7
 Tested up to: 7.0
 Requires PHP: 5.6
-Stable tag: 4.1.9
+Stable tag: 4.2.0
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -48,6 +48,19 @@ To shorten the wait time before redirecting to the media editing screen, use the
 
 ```add_filter('emr/success/timeout', function () { return 3; });```
 
+To set "Just replace the file" as the default replacing method, use the following filter:
+
+```add_filter( 'emr/replace/default_type', function() {
+    return 'replace';
+} );```
+
+To set "Replace the file, use the new file name, and update all links" as the default replacing method, use the following filter:
+
+```add_filter( 'emr/replace/default_type', function() {
+    return 'replace_and_search';
+} );```
+
+
 #### Show file modification time
 
 There is a shortcode that takes the file modification date and displays it in a post or on a page. The code is:
@@ -80,12 +93,23 @@ Please report security bugs found in the source code of the Enable Media Replace
 
 == Changelog ==
 
+= 4.2.0 =
+
+Release date: June 17, 2026
+* New: Updated the plugin design and user interface;
+* New: Added hooks/filters to programmatically select the default replacement method;
+* New: Added cache plugin integrations for FastPixel, Breeze(Cloudways), and Cache Enabler(KeyCDN). EMR will now automatically purge the cache when a media file is replaced;
+* New: You can now add the API key from your ShortPixel Unlimited or Unlimited AI plan to enable unlimited AI background removals. This is especially useful when the standard 100 background removal limit has been reached;
+* New: Added support for the Breakdance builder. Images uploaded through this page builder can now be replaced correctly;
+* Fix: Fixed an issue where image titles could lose diacritical characters after replacement in certain cases;
+* Tweak: Added various visual improvements and compatibility tweaks for WordPress 7.0.
+
 = 4.1.9 =
 
 Release date: April 22, 2026
-*Fix: open_basedir warnings should be gone now for more restrictive hosts;
-*Fix: Stored Cross-Site Scripting vulnerability via the ‘location_dir’ parameter, responsibly disclosed by the WordFence team;
-*Compat: Updated the hook used for the LS Cache plugin integration for better compatibility.
+* Fix: open_basedir warnings should be gone now for more restrictive hosts;
+* Fix: Stored Cross-Site Scripting vulnerability via the ‘location_dir’ parameter, responsibly disclosed by the WordFence team;
+* Compat: Updated the hook used for the LS Cache plugin integration for better compatibility.
 
 = 4.1.8 =
 
