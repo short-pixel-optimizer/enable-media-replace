@@ -318,12 +318,12 @@ class Replacer
 
 	        $sql = $wpdb->prepare($sql, '%' . $url . '%');
 
-					Log::addTemp('Checking -- ', $sql);
+			Log::addTemp('Checking -- ', $sql);
 
 	        // This is a desparate solution. Can't find anyway for wpdb->prepare not the add extra slashes to the query, which messes up the query.
 	        $rsmeta = $wpdb->get_results($sql, ARRAY_A);
 
-					Log::addTemp('result', $rsmeta);
+			Log::addTemp('result -- ' . count($rsmeta) , $rsmeta);
 
 	        if (! empty($rsmeta))
 	        {
