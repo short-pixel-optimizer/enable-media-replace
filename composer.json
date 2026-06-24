@@ -2,7 +2,8 @@
     "name": "short-pixel-optimizer/enable-media-replace",
     "description": "A free, lightweight and easy to use WordPress plugin that allows you to seamlessly replace an image or file in your Media Library by uploading a new file in its place.",
     "homepage": "https://github.com/short-pixel-optimizer/enable-media-replace/",
-    "repositories": [
+    "repositories": 
+    [
         {
             "packagist.org": false,
             "type": "path",
@@ -16,8 +17,8 @@
         "php": ">=5.6.0",
         "shortpixel/notices":"@dev",
         "shortpixel/build" : "@dev",
-				"shortpixel/filesystem" : "@dev",
-				"shortpixel/replacer" : ">=1.0"
+        "shortpixel/filesystem" : "@dev",
+        "shortpixel/replacer" : ">=1.0"
     },
     "require-dev": {
 	"phpunit/phpunit": "^9",
