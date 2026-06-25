@@ -318,12 +318,10 @@ class Replacer
 
 	        $sql = $wpdb->prepare($sql, '%' . $url . '%');
 
-			Log::addTemp('Checking -- ', $sql);
 
 	        // This is a desparate solution. Can't find anyway for wpdb->prepare not the add extra slashes to the query, which messes up the query.
 	        $rsmeta = $wpdb->get_results($sql, ARRAY_A);
 
-			Log::addTemp('result -- ' . count($rsmeta) , $rsmeta);
 
 	        if (! empty($rsmeta))
 	        {
@@ -474,7 +472,6 @@ class Replacer
 			 			$in_deep === false && (is_array($content) || is_object($content))
 						)
 			{
-				Log::addTemp('Content is array or object - not json, - maybe serializing');
 				$content = maybe_serialize($content);
 			}
 	    return $content;
@@ -582,18 +579,15 @@ class Replacer
 
 			if (! isset($this->source_metadata['sizes'][$sizeName]) || ! isset($this->target_metadata['width'])) // This can happen with non-image files like PDF.
 			{
-
+				 // Check if metadata-less item is a svg file. Just the main file to replace all thumbnails since SVG's don't need thumbnails.
+				 if (strpos($this->target_url, '.svg') !== false)
+				 {
+					$svg_file = wp_basename($this->target_url);
+					return $svg_file;  // this is the relpath of the mainfile.
+				 }
 
 				return false;
 			}
-
-			// Check if metadata-less item is a svg file. Just the main file to replace all thumbnails since SVG's don't need thumbnails.
-			if (strpos($this->target_url, '.svg') !== false)
-			{
-			$svg_file = wp_basename($this->target_url);
-			return $svg_file;  // this is the relpath of the mainfile.
-			}
-
 			$old_width = $this->source_metadata['sizes'][$sizeName]['width']; // the width from size not in new image
 			$new_width = $this->target_metadata['width']; // default check - the width of the main image
 
