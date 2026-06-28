@@ -54,10 +54,8 @@ class ShortPixelLogger
     $this->namespace = substr($ns, 0, strpos($ns, '\\')); // try to get first part of namespace
 
     // phpcs:ignore WordPress.Security.NonceVerification.Recommended  -- This is not a form
-    if (isset($_REQUEST['SHORTPIXEL_DEBUG'])) 
+    if (isset($_REQUEST['SHORTPIXEL_DEBUG']) && true === $this->checkUserLevel()) // manual takes precedence over constants
     {
-
-      // Note! User access level is checked in Addlog and Loadview to prevent lower than administrator access. It can't be checked early, because the user functions might not be loaded before first logs
       $this->is_manual_request = true;
       $this->is_active = true;
 

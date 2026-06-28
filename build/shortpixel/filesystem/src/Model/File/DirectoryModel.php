@@ -350,6 +350,11 @@ class DirectoryModel
 	public function getPermissionRecursive()
 	{
 		 $parent = $this->getParent();
+      // Edge-case when the whole structure doesn't exist and / or getParent can only retrieve same-level path ? 
+      if (false === $parent)
+      {
+          return false; 
+      }
 		  if (! $parent->exists())
 			{
 				 return $parent->getPermissionRecursive();
