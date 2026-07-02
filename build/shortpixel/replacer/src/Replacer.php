@@ -99,14 +99,14 @@ class Replacer
 	    if (false === $this->fileIsRestricted($base_url) && is_dir($base_url))
 	    {
 	      Log::addError('Search Replace tried to replace to directory - ' . $base_url);
-				$errors[] = __('Fail Safe :: Source Location seems to be a directory.', 'enable-media-replace/');
+				$errors[] = __('Fail Safe :: Source Location seems to be a directory.', 'enable-media-replace');
 	      return $errors;
 	    }
 
 	    if (strlen(trim($base_url)) == 0)
 	    {
 	      Log::addError('Current Base URL emtpy - ' . $base_url);
-	      $errors[] = __('Fail Safe :: Source Location returned empty string. Not replacing content','enable-media-replace/');
+	      $errors[] = __('Fail Safe :: Source Location returned empty string. Not replacing content','enable-media-replace');
 	      return $errors;
 	    }
 

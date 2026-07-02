@@ -279,7 +279,7 @@ class NoticeModel //extends ShortPixelModel
             </label>
              <div class="detail-content-wrapper"><p class="detail-content">%s</p></div>
           <label for="check-%s" class="hide-details"><span>%s</span></label>
-            </div>', $id, $id, __('See Details', 'enable-media-replace/'), $this->parseDetails(), $id, __('Hide Details', 'enable-media-replace/') );
+            </div>', $id, $id, __('See Details', 'enable-media-replace'), $this->parseDetails(), $id, __('Hide Details', 'enable-media-replace') );
 
       $output .= $details;
 
@@ -288,7 +288,7 @@ class NoticeModel //extends ShortPixelModel
 
     if ($this->is_removable)
     {
-        $output .= sprintf('<button type="button" id="button-%s" class="notice-dismiss" data-dismiss="%s" ><span class="screen-reader-text">%s</span></button>', $id,  $this->suppress_period, __('Dismiss this notice', 'enable-media-replace/') );
+        $output .= sprintf('<button type="button" id="button-%s" class="notice-dismiss" data-dismiss="%s" ><span class="screen-reader-text">%s</span></button>', $id,  $this->suppress_period, __('Dismiss this notice', 'enable-media-replace') );
 
        if (! $this->is_persistent)
        {

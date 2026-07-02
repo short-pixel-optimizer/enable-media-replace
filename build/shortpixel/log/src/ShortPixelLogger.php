@@ -85,11 +85,11 @@ class ShortPixelLogger
     }
 
     if ($this->is_active) {
-      /* On Early init, this function might not exist, then queue it when needed */
-      if (! function_exists('wp_get_current_user'))
+      /* Update - always defer to init to build loglink, otherwise logpath is not properly set. */
+      //if (! function_exists('wp_get_current_user'))
         add_action('init', array($this, 'initView'));
-      else
-        $this->initView();
+      /*else
+        $this->initView(); */
     }
 
     if ($this->is_active && count($this->hooks) > 0)
@@ -104,6 +104,10 @@ class ShortPixelLogger
    */
   protected function checkUserLevel()
   {
+    if(false === function_exists('wp_get_current_user')) { 
+      include(ABSPATH . "wp-includes/pluggable.php"); 
+    }
+
     $user_is_administrator = (current_user_can('manage_options')) ? true : false;
     return $user_is_administrator;
   }

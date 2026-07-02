@@ -3,6 +3,11 @@
 namespace EnableMediaReplace\ShortPixelLogger;
 wp_enqueue_script( 'jquery-ui-draggable' );
 
+namespace ShortPixel;
+
+if ( ! defined( 'ABSPATH' ) ) {
+ exit; // Exit if accessed directly.
+}
 ?>
 
 <style>
