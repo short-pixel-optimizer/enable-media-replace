@@ -251,7 +251,8 @@ class Replacer
 
           if ($result === false)
           {
-            Notice::addError('Something went wrong while replacing' .  $result->get_error_message() );
+			// This can never work with result false check. 
+           // Notice::addError('Something went wrong while replacing' .  $result->get_error_message() );
             Log::addError('WP-Error during post update', $result);
           }
         }
@@ -380,7 +381,6 @@ class Replacer
 	  */
 		public function replaceContent($content, $search, $replace, $in_deep = false, $strict_check = false)
 	  {
-
 			// Since ReplaceContent can now be called directly, this might not be set, set defaults if so
 			if (is_null($this->replace_settings))
 			{
@@ -429,11 +429,11 @@ class Replacer
 	    {
 	      foreach($content as $index => $value)
 	      {
-	        $content[$index] = $this->replaceContent($value, $search, $replace, true); //str_replace($value, $search, $replace);
+	        $content[$index] = $this->replaceContent($value, $search, $replace, true, $strict_check); //str_replace($value, $search, $replace);
 	        if (is_string($index)) // If the key is the URL (sigh)
 	        {
 
-	           $index_replaced = $this->replaceContent($index, $search,$replace, true);
+	           $index_replaced = $this->replaceContent($index, $search,$replace, true, $strict_check);
 	           if ($index_replaced !== $index)
 	             $content = $this->change_key($content, array($index => $index_replaced));
 	        }
@@ -455,7 +455,7 @@ class Replacer
 				}
 	      foreach($content as $key => $value)
 	      {
-	        $content->{$key} = $this->replaceContent($value, $search, $replace, true);
+	        $content->{$key} = $this->replaceContent($value, $search, $replace, true, $strict_check);
 	      }
 	    }
 
@@ -492,6 +492,9 @@ class Replacer
 
 		 $restricted = true;
 		 $basedirs = preg_split('/:|;/i', $basedir);
+
+		// Remove blanket dirs like / from here since that could cause false positives on the strpos check on the path
+		 $basedirs = array_diff($basedirs, ['/', '//', '.', '..']); 
 
 		 foreach($basedirs as $basepath)
 		 {
