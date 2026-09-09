@@ -391,14 +391,14 @@ class Replacer
 			{
 				$serialized_content = $content; // use to return content back if incomplete classes are found, prevent destroying the original information
 
-				if (true === $strict_check)
-				{
+				//if (true === $strict_check)
+				//{
 						$args = array('allowed_classes' => false);
-				}
+				/*}
 				else
 				{ 
 						$args = array('allowed_classes' => true);
-				}
+				} */
 
 	    	$content = Unserialize::unserialize($content, $args);
 				// bail directly on incomplete classes. In < PHP 7.2 is_object is false on incomplete objects!
