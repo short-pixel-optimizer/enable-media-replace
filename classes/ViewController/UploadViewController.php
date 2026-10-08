@@ -11,10 +11,9 @@ use EnableMediaReplace\Controller\UploadController as UploadController;
 use EnableMediaReplace\Controller\ReplaceController as ReplaceController;
 
 
-class UploadViewController extends \EnableMediaReplace\ViewController
+class UploadViewController extends ViewController
 {
 	 static $instance;
-
 
 	 public function __construct()
 	 {

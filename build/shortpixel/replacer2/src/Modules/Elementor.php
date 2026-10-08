@@ -20,6 +20,7 @@ class Elementor
       if ($this->elementor_is_active())   // elementor is active
       {
         add_filter('emr/replacer/custom_replace_query', array($this, 'addElementor'), 10, 4); // custom query for elementor \ // problem
+
       }
     }
 

@@ -1,6 +1,7 @@
 <?php
 namespace EnableMediaReplace\Replacer\Modules;
 
+use ReflectionMethod;
 use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
 
 
@@ -111,12 +112,12 @@ class Breakdance
 
       $tree = json_encode($content, JSON_UNESCAPED_SLASHES);
 
+    
      $paramCount = 4; // Default. 
      try 
      {
        $method = new \ReflectionFunction('Breakdance\Data\save_document');
        $paramCount = $method->getNumberOfParameters();
-
      }
      catch (\Exception $e)
      {
@@ -132,12 +133,7 @@ class Breakdance
      {
           \Breakdance\Data\save_document($tree, false, false, false, false, false, false, false, false, $meta_row['post_id']);
      }
-     
-     // \Breakdance\Data\save_document($content, $global, null, $meta_row['post_id']);
-
-      /*  return \Breakdance\Data\encode_before_writing_to_wp([
-          'tree_json_string' => $content,
-        ], true); */
+    
 
        return $content;
     }
