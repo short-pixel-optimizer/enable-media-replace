@@ -11,7 +11,7 @@ use EnableMediaReplace\Controller\UploadController as UploadController;
 use EnableMediaReplace\Controller\ReplaceController as ReplaceController;
 
 
-class UploadViewController extends ViewController
+class UploadViewController extends \EnableMediaReplace\ViewController
 {
 	 static $instance;
 
@@ -52,19 +52,16 @@ class UploadViewController extends ViewController
 
 		 if (!current_user_can('upload_files')) {
 			 	 $this->viewError(self::ERROR_UPLOAD_PERMISSION);
-		    // wp_die(esc_html__('You do not have permission to upload files.', 'enable-media-replace'));
 		 }
 
 		 $post_id = isset($_POST['ID']) ? intval($_POST['ID']) : null; // sanitize, post_id.
 		 if (is_null($post_id)) {
 			 	 $this->viewError(self::ERROR_FORM);
-//		     wp_die(esc_html__('Error in request. Please try again', 'enable-media-replace'));
 		 }
 		 $attachment = get_post($post_id);
 
 		 if (! emr()->checkImagePermission($attachment)) {
 			 	 $this->viewError(self::ERROR_IMAGE_PERMISSION);
-//		     wp_die(esc_html__('You do not have permission to upload files for this author.', 'enable-media-replace'));
 		 }
 
 		 $params = $this->getPost();
@@ -188,11 +185,7 @@ class UploadViewController extends ViewController
 
 				 Log::addDebug('Data after check', $filedata);
 				 if (isset($_FILES['userfile']['error']) && $_FILES['userfile']['error'] > 0) {
-							//$e = new RunTimeException('File Uploaded Failed');
-							//Notices::addError($e->getMessage());
-						//	wp_safe_redirect($redirect_error);
 						  $this->viewError(self::ERROR_UPDATE_FAILED);
-						//	exit();
 				 }
 
 				 if ($filedata["ext"] == false && ! current_user_can('unfiltered_upload')) {

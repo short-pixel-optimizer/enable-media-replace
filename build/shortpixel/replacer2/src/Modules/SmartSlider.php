@@ -55,9 +55,6 @@ class SmartSlider
         $replace_urls = array_map([$this, 'convertToFormat'], $replace_urls);
 
 
-           Log::addTemp('BaseURL', $base_url); 
-        Log::addTemp('SearchU', $search_urls);
-
         $select_sql = 'SELECT * FROM %i where %i like %s OR %i like %s OR %i LIKE %s'; 
 
             $prepared_select = $wpdb->prepare($select_sql, [
@@ -70,7 +67,6 @@ class SmartSlider
                 '%' . $base_url . '%'
             ]);              
                         
-     //       Log::addTemp('Query', $prepared_select);
             $results = $wpdb->get_results($prepared_select, ARRAY_A);
 
             foreach($results as $index => $data)
@@ -81,7 +77,6 @@ class SmartSlider
                 $params = $this->replacer->replaceContent($data['params'], $search_urls, $replace_urls); 
                 $slide = $this->replacer->replaceContent($data['slide'], $search_urls, $replace_urls); 
 
-                Log::addTemp('Row found - ' . $row_id);
                 $update = []; 
                 if ($thumbnail != $data['thumbnail'])
                 {
@@ -127,7 +122,6 @@ class SmartSlider
         $result = [];
         foreach ($value as $key => $item) {
             if ('font' === $key) {
-                Log::addTemp('Found key - updating ', $item);
                 $result[$key] = is_string($item) ? base64_encode($item) : $item;
             } else {
                 $result[$key] = $this->encodeFontValues($item);

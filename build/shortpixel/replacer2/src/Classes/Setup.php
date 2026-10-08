@@ -1,5 +1,4 @@
 <?php 
-
 namespace EnableMediaReplace\Replacer\Classes; 
 
 if (! defined('ABSPATH')) {
@@ -22,12 +21,15 @@ class Setup
     
     public static function getInstance()
     {
-         if (is_null(self::$instance))
+        /* if (is_null(self::$instance))
          {
              self::$instance = new Setup();
          }
 
-         return self::$instance;
+         return self::$instance; */
+
+         // If using singleton here each request after uses the old data from previous request. Since the whole new module is not fully formed
+         return new Setup(); 
     }
 
 

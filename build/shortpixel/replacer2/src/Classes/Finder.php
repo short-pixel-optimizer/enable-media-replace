@@ -110,6 +110,7 @@ class Finder
 				'post_results' => ['post_id', 'content'],
 				'post_ids' => [],
 				'post_status' => ['publish', 'future', 'draft', 'pending', 'private'],
+				'exclude_post_ids' => [], 
 			];
 
 			$args = wp_parse_args($args, $defaults);
@@ -150,6 +151,15 @@ class Finder
 
 				$postmeta_sql .= " AND $wpdb->postmeta.post_id IN ($placeholders)";
 				$prepare = array_merge($prepare, $post_ids);
+			}
+
+			if (is_array($args['exclude_post_ids']) && count($args['exclude_post_ids']) > 0)
+			{
+				$exclude_post_ids = $args['exclude_post_ids'];
+				$placeholders = implode(',', array_fill(0, count($exclude_post_ids), '%d'));
+
+				$postmeta_sql .= " AND $wpdb->postmeta.post_id NOT IN ($placeholders)";
+				$prepare = array_merge($prepare, $exclude_post_ids);
 			}
 
 			$postmeta_sql = $wpdb->prepare($postmeta_sql, $prepare);

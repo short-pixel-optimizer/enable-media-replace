@@ -231,6 +231,11 @@ class Replacer
 		do_action('emr/replacer/replace_urls', $search_urls, $replace_urls, $base_url);
 		$updated = 0;
 
+		if (0 === count($search_urls)) 
+		{
+			 Log::addDebug('Search URLS array empty, nothing to replace this go '); 
+			 return $updated; 
+		}
 		$updated += $this->doReplaceQuery($base_url, $search_urls, $replace_urls);
 
 		$replaceRuns = apply_filters('emr/replacer/custom_replace_query', array(), $base_url, $search_urls, $replace_urls);
@@ -278,6 +283,7 @@ class Replacer
 
 				if ($replaced_content !== $post_content) {
 
+					// @todo This should be moved indeed to wp_update_post ( And Updater.php class ) to better do with cache etc
 					//  $result = wp_update_post($post_ar);
 					$sql = 'UPDATE ' . $wpdb->posts . ' SET post_content = %s WHERE ID = %d';
 					$sql = $wpdb->prepare($sql, $replaced_content, $post_id);
@@ -288,6 +294,8 @@ class Replacer
 						// Notice::addError('Something went wrong while replacing' .  $result->get_error_message() );
 						Log::addError('WP-Error during post update', $result);
 					}
+			        clean_post_cache($post_id);
+
 				}
 			}
 		}
@@ -300,7 +308,7 @@ class Replacer
 	{
 		global $wpdb;
 
-		$meta_options = apply_filters('emr/replacer/metadata_tables', array('post', 'comment', 'term', 'user', 'options'));
+//		$meta_options = apply_filters('emr/replacer/metadata_tables', array('post', 'comment', 'term', 'user', 'options'));
 		$number_of_updates = 0;
 
 		$meta_default = [
@@ -332,7 +340,7 @@ class Replacer
 
 			switch ($table) {
 				case "postmeta": // special case.
-					$sql = 'SELECT * FROM ' . $wpdb->postmeta . '
+					$sql = "SELECT $id_field, $value_field FROM " . $wpdb->postmeta . '
 	                WHERE post_id in (SELECT ID from ' . $wpdb->posts . ' where post_status in ("publish", "future", "draft", "pending", "private") ) AND meta_value like %s';
 					$type = 'post';
 
@@ -368,7 +376,7 @@ class Replacer
 					if (null === $content) {
 						Log::addDebug('Content returned null, aborting this record, meta_id : ' . $id_field);
 					} else {
-						$content = $this->replaceContent($content, $search_urls, $replace_urls);
+						$content = $this->replaceContent($content, $search_urls, $replace_urls, false, false);
 
 						// Content as how it's going to dbase.
 						$content = apply_filters('emr/replacer/save_meta_value', $content, $row, $component);
@@ -376,12 +384,12 @@ class Replacer
 						// Check if usual save should be prevented. This is for integrations.
 						if (true === $this->replace_settings['replacer_do_save']) {
 							$prepared_sql = $wpdb->prepare($update_sql, $content, $id);
-							$result = $wpdb->query($prepared_sql);
+							$wpdb->query($prepared_sql);
 						}
 					}
 				} // Loop
 			} // if
-		} // foreach
+		} // foreach on table options
 
 		return $number_of_updates;
 	} // function
@@ -400,7 +408,7 @@ class Replacer
 	 * @param $in_deep Boolean.  This is use to prevent serialization of sublevels. Only pass back serialized from top.
 	 * @param $strict_check Boolean . If true, remove all classes from serialization check and fail. This should be done on post_content, not on metadata.
 	 */
-	public function replaceContent($content, $search, $replace, $in_deep = false, $strict_check = false)
+	public function replaceContent($content, $search, $replace, $in_deep = false, $strict_check = true)
 	{
 
 		// Since ReplaceContent can now be called directly, this might not be set, set defaults if so
@@ -411,15 +419,9 @@ class Replacer
 		if (true === is_serialized($content)) {
 			$serialized_content = $content; // use to return content back if incomplete classes are found, prevent destroying the original information
 
-			if (false === $strict_check) {
-				$strict_check = $this->containsMagicMethods($content);
-			}
 
-			if (true === $strict_check) {
-				$args = array('allowed_classes' => false);
-			} else {
-				$args = array('allowed_classes' => true);
-			}
+			$args = array('allowed_classes' => false);
+
 
 			$content = Unserialize::unserialize($content, $args);
 			// bail directly on incomplete classes. In < PHP 7.2 is_object is false on incomplete objects!
@@ -444,11 +446,11 @@ class Replacer
 		} elseif (is_array($content)) // array metadata and such.
 		{
 			foreach ($content as $index => $value) {
-				$content[$index] = $this->replaceContent($value, $search, $replace, true); //str_replace($value, $search, $replace);
+				$content[$index] = $this->replaceContent($value, $search, $replace, true, $strict_check); //str_replace($value, $search, $replace);
 				if (is_string($index)) // If the key is the URL (sigh)
 				{
 
-					$index_replaced = $this->replaceContent($index, $search, $replace, true);
+					$index_replaced = $this->replaceContent($index, $search, $replace, true, $strict_check);
 					if ($index_replaced !== $index)
 						$content = $this->change_key($content, array($index => $index_replaced));
 				}
@@ -466,7 +468,7 @@ class Replacer
 
 			}
 			foreach ($content as $key => $value) {
-				$content->{$key} = $this->replaceContent($value, $search, $replace, true);
+				$content->{$key} = $this->replaceContent($value, $search, $replace, true, $strict_check);
 			}
 		}
 
@@ -487,32 +489,7 @@ class Replacer
 		return $content;
 	}
 
-	private function containsMagicMethods($serialized_content) : bool 
-	{
-		preg_match_all('/[OC]:\d+:"([^"]+)":/', $serialized_content, $matches);
 
-		$magic_methods = array(
-			'__construct', '__destruct', '__call', '__callStatic',
-			'__get', '__set', '__isset', '__unset', '__sleep',
-			'__wakeup', '__serialize', '__unserialize', '__set_state',
-			'__clone', '__debugInfo', '__toString', '__invoke'
-		);
-
-		foreach (array_unique($matches[1]) as $class_name) {
-			if (!class_exists($class_name, false)) {
-				continue;
-			}
-
-			$reflection = new \ReflectionClass($class_name);
-			foreach ($magic_methods as $method_name) {
-				if ($reflection->hasMethod($method_name)) {
-					return true;
-				}
-			}
-		}
-
-		return false;
-	}
 
 	/** Check if path is allowed within openbasedir restrictions. This is an attempt to limit notices in file funtions if so.  Most likely the path will be relative in that case.
 	 * @param String Path as String
