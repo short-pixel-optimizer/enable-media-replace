@@ -111,7 +111,6 @@ class ReplaceController
 		$Replacer->setSourceMeta(wp_get_attachment_metadata($this->post_id));
 
 		$targetFileObj = $this->fs()->getFile($this->targetFile);
-
 		$directoryObj = $targetFileObj->getFileDir();
 
 		$result = $directoryObj->check();

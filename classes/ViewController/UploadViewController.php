@@ -87,10 +87,7 @@ class UploadViewController extends \EnableMediaReplace\ViewController
 			 $this->updateSettings($params);
 			 $this->viewSuccess();
 		}
-
-
 	 }
-
 
 	 protected function getPost()
 	 {
@@ -172,7 +169,6 @@ class UploadViewController extends \EnableMediaReplace\ViewController
 			  $settings['custom_date']  = $params['new_date'];
 		 }
 		 update_option('enable_media_replace', $settings, false);
-
 	 }
 
 	 protected function getUpload()
@@ -201,8 +197,5 @@ class UploadViewController extends \EnableMediaReplace\ViewController
 		 }
 		 $this->viewError(self::ERROR_UPLOAD_FAILED);
 	 }
-
-
-
 
 } // class

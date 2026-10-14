@@ -524,7 +524,9 @@ class EnableMediaReplacePlugin
             "helps" => esc_html__("To replace the current file, click the link and upload a replacement file.", "enable-media-replace")
         );
 
-        if ($this->uiHelper()->isBackgroundRemovable($post)) {
+        $uiHelper = $this->uiHelper(); 
+
+        if ($uiHelper->isBackgroundRemovable($post) && false === $uiHelper->is_author_restricted() ) {
             $link = $this->getRemoveBgURL($post->ID);
             $link = "href='" . wp_nonce_url($link, 'emr_prepare_remove') . "'";
             $form_fields["emr-remove-background"] = array(
@@ -550,21 +552,19 @@ class EnableMediaReplacePlugin
 
         $media_replace_editurl = $this->getMediaReplaceURL($post->ID);
         $media_replace_action = "media_replace";
-        //   $media_replace_editurl = wp_nonce_url($url, $media_replace_action);
         $url = $this->getRemoveBgURL($post->ID);
         $background_remove_action = "emr_prepare_remove";
         $background_remove_editurl = wp_nonce_url($url, $background_remove_action);
 
-        /* See above, not needed.
-      if (FORCE_SSL_ADMIN) {
-        $editurl = str_replace("http:", "https:", $editurl);
-      } */
+ 
         $media_replace_link = "href=\"$media_replace_editurl\"";
         $background_remove_link = "href=\"$background_remove_editurl\"";
 
         $newaction['media_replace'] = '<a ' . $media_replace_link . ' aria-label="' . esc_attr__("Replace media", "enable-media-replace") . '" rel="permalink">' . esc_html__("Replace media", "enable-media-replace") . '</a>';
 
-        if ($this->uiHelper()->isBackgroundRemovable($post)) {
+        $uiHelper = $this->uiHelper(); 
+
+        if ($uiHelper->isBackgroundRemovable($post) && false === $uiHelper->is_author_restricted()) {
             $newaction['remove_background'] = '<a ' . $background_remove_link . ' aria-label="' . esc_attr__("Remove  background", "enable-media-replace") . '" rel="permalink">' . esc_html__("Remove  background", "enable-media-replace") . '</a>';
         }
         return array_merge($actions, $newaction);

@@ -58,7 +58,6 @@ class UIHelper
         }
         $url = add_query_arg('SHORTPIXEL_DEBUG', $spdebug, $url);
       }
-
       return $url;
 
   }
@@ -115,7 +114,20 @@ class UIHelper
     return $url;
   }
 
-
+  // Restrict some functionality on basis of user profile. 
+  public function is_author_restricted()
+  {
+    
+    $bool = current_user_can( 'edit_others_posts' ); 
+    
+    if (true === $bool)
+    {
+       return false; 
+    }
+    
+    
+    return true; 
+  }
 
   public function setPreviewSizes()
   {

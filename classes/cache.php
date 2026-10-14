@@ -158,7 +158,7 @@ class emrCache
 
     protected function removeSiteGround()
     {
-    		sg_cachepress_purge_cache();
+    	sg_cachepress_purge_cache();
     }
 
     protected function litespeedReset($post_id)
