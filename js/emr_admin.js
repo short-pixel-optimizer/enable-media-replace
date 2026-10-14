@@ -25,12 +25,8 @@
 			$('.replace_custom_date').on('click', $.proxy(this.updateCustomDate, this));
 
       // DragDrop
-			//$(document).on('dragover', $.proxy(this.dragOverArea, this));
-			//$(document).on('dragleave', $.proxy(this.dragOutArea, this));
 			document.addEventListener('dragover',  this.dragOverArea.bind(this), false );
 			document.addEventListener('dragleave',  this.dragOutArea.bind(this), false );
-
-
 
       $('.emr_drop_area').on('drop', $.proxy(this.fileDrop, this));
 			$('.upload-file-action').on('click', function () {

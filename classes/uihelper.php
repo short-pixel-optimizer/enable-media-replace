@@ -275,13 +275,15 @@ class UIHelper
 
 			// SVG's without any helpers return around 0 for width / height. Fix preview.
 
-
 			 // preview width, if source if found, should be set to source.
 			 $this->preview_width = $width;
 			 $this->preview_height = $height;
 
-			$image = "<img src='$url' width='$width' height='$height' class='image' style='max-width:100%; max-height: 100%;' />";
-		//	$image = "<span class='the-image' style='background: url(\"" . $url . "\")';>&nbsp;</span>";
+      $image_width = ($width >= 150) ? $width: 150; 
+      $image_height = ($height >= 150) ? $height : 150;
+
+			$image = sprintf("<img src='%s' width='%d' height='%d' class='image' style='max-width:100%%; max-height: 100%%;' />", 
+        esc_url($url), $image_width, $image_height );
 
 			$defaults = array(
 				'width' => $width,
@@ -440,7 +442,11 @@ class UIHelper
     	$output .= $args['image'];
 		}
     $output .= "<div class='dashicons $icon'>&nbsp;</div>";
-    $output .= "<span class='textlayer'>" . $args['layer'] . "</span>";
+
+    if ($this->full_width > 0 && $this->full_height > 0)
+    {
+      $output .= "<span class='textlayer'>" . $args['layer'] . "</span>";
+    }
 		$output .= $background_remove_ui;
     $output .= "<div class='image_size'>" . $this->convertFileSize($filesize). "</div>";
     $output .= "</div>";
