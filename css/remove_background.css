@@ -114,8 +114,7 @@
 }
 #remove-background-form .img-comp-container {
   position: relative;
-  height: 200px;
-  /*should be the same height as the images*/
+  height: 200px; /*should be the same height as the images*/
 }
 #remove-background-form .img-comp-img {
   position: absolute;
