@@ -65,7 +65,8 @@ class Api {
 		$bg_remove         = '1';
 		$compression_level = 0; //  intval($posted_data['compression_level']); // off for now.
 
-		$attachment_id = isset($_POST['attachment_id']) ? intval($_POST['attachment_id']) : null;
+		// Read from the passed data (not $_POST directly), so this can also run from cron for bulk.
+		$attachment_id = isset($posted_data['attachment_id']) ? intval($posted_data['attachment_id']) : null;
 		$attachment = get_post($attachment_id);
 
 
@@ -88,14 +89,14 @@ class Api {
 		$url = $replaceController->getSourceUrl();
 
 		$settings = get_option('enable_media_replace', array()); // save settings and show last loaded.
-		$settings['bg_type'] = isset($_POST['background']['type']) ? sanitize_text_field($_POST['background']['type']) : false;
-		$settings['bg_color'] = isset($_POST['background']['color']) ? sanitize_text_field($_POST['background']['color']) : '#ffffff'; // default to white.
-		$settings['bg_transparency'] = isset($_POST['background']['transparency']) ? sanitize_text_field($_POST['background']['transparency']) : false;
+		$settings['bg_type'] = isset($posted_data['background']['type']) ? sanitize_text_field($posted_data['background']['type']) : false;
+		$settings['bg_color'] = isset($posted_data['background']['color']) ? sanitize_text_field($posted_data['background']['color']) : '#ffffff'; // default to white.
+		$settings['bg_transparency'] = isset($posted_data['background']['transparency']) ? sanitize_text_field($posted_data['background']['transparency']) : false;
 
 		update_option('enable_media_replace', $settings, false);
 
 
-		if ( 'solid' === $posted_data['background']['type'] ) {
+		if ( isset( $posted_data['background']['type'] ) && 'solid' === $posted_data['background']['type'] ) {
 			$bg_remove = $posted_data['background']['color'];
 
 			$transparency = isset($posted_data['background']['transparency']) ? intval($posted_data['background']['transparency']) : -1;
@@ -208,7 +209,7 @@ class Api {
 							$result->image = $json[0]->LosslessURL;
 						}
 
-						$key = $this->handleSuccess($result);
+						$key = $this->handleSuccess($result, $posted_data);
 						$result->key = $key;
 						$result->url = $url;
 						$result->image = add_query_arg('ts', time(), $result->image);
@@ -277,11 +278,11 @@ class Api {
 		}
 	}
 
-	public function handleSuccess($result)
+	public function handleSuccess($result, $posted_data = array())
 	{
 		 // $fs = emr()->filesystem();
 		//	$result = $fs->downloadFile($result->image, wp_tempnam($result->image));
-		$nonce = isset($_POST['nonce']) ? sanitize_text_field($_POST['nonce']) : wp_create_nonce();
+		$nonce = isset($posted_data['nonce']) ? sanitize_text_field($posted_data['nonce']) : wp_create_nonce();
 		$key = wp_hash($nonce . $result->image, 'logged_in');
 
 		set_transient('emr_' . $key, $result->image, 30 * MINUTE_IN_SECONDS);

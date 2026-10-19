@@ -462,7 +462,8 @@ class UIHelper
 			if (false === emr()->useFeature('background'))
 				return false;
 
-			$extensions = array('jpg', 'png','jpeg');
+			// Formats the ShortPixel background removal API accepts.
+			$extensions = apply_filters('emr/background/extensions', array('jpg', 'png', 'jpeg', 'webp'));
 
 			$mime = get_post_mime_type($post);
 			foreach($extensions as $extension)

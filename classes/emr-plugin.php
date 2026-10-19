@@ -19,6 +19,9 @@ class EnableMediaReplacePlugin
     private $general_cap = false;
 
     private $features = array();
+    private $externalsLoaded = false;
+
+    const BULK_BG_PAGE = 'emr-bulk-background-removal';
 
     public function __construct()
     {
@@ -49,9 +52,19 @@ class EnableMediaReplacePlugin
             return;
         }
 
-        new Externals();
+        $this->loadExternals();
 
         $this->plugin_actions(); // init
+    }
+
+    /** Integrations (Elementor, WPBakery, ...). Also needed by the bulk background removal when it runs from cron. */
+    public function loadExternals()
+    {
+        if (true === $this->externalsLoaded) {
+            return;
+        }
+        $this->externalsLoaded = true;
+        new Externals();
     }
 
     public function init() {}
@@ -169,6 +182,13 @@ class EnableMediaReplacePlugin
         $title =  esc_html__("Replace media", "enable-media-replace");
         $title = (isset($_REQUEST['action']) && ($_REQUEST['action'] === 'emr_prepare_remove')) ? esc_html__("Remove background", "enable-media-replace") : $title;
         add_submenu_page('upload.php', $title, $title, 'upload_files', 'enable-media-replace/enable-media-replace.php', array($this, 'route'));
+
+        // Visible Media submenu. Checked via the filter directly, since admin_menu fires before adminInit sets the features.
+        // Like the other background removal links, not for author-level users.
+        if (true === apply_filters('emr/feature/background', true) && false === $this->uiHelper()->is_author_restricted()) {
+            $bulk_title = esc_html__('Bulk Background Removal', 'enable-media-replace');
+            add_submenu_page('upload.php', $bulk_title, $bulk_title, 'upload_files', self::BULK_BG_PAGE, array($this, 'route'));
+        }
     }
 
     public function hide_sub_menu($submenu_file)
@@ -191,7 +211,7 @@ class EnableMediaReplacePlugin
     {
         $screen = get_current_screen();
 
-        $notice_pages = array('attachment',  'media_page_enable-media-replace/enable-media-replace', 'upload');
+        $notice_pages = array('attachment',  'media_page_enable-media-replace/enable-media-replace', 'upload', 'media_page_' . self::BULK_BG_PAGE);
         if (in_array($screen->id, $notice_pages) &&    true === emr()->useFeature('remote_notice')) {
             RemoteNoticeController::getInstance(); // check for remote stuff
             $notices = Notices::getInstance();
@@ -263,6 +283,19 @@ class EnableMediaReplacePlugin
                     exit('Something went wrong loading page, please try again');
                 }
                 break;
+            case self::BULK_BG_PAGE:
+                if (! $this->useFeature('background') || $this->uiHelper()->is_author_restricted()) {
+                    break;
+                }
+                wp_enqueue_style('emr_style');
+                wp_enqueue_style('emr-redesign');
+                wp_enqueue_style('emr-bulk-background');
+                wp_enqueue_script('emr_bulk_bg');
+                wp_enqueue_script('emr_upsell');
+
+                $controller = \EnableMediaReplace\ViewController\BulkRemoveBackgroundViewController::getInstance();
+                $controller->load();
+                break;
         } // Route
     }
 
@@ -329,6 +362,39 @@ class EnableMediaReplacePlugin
             'nonce'    => wp_create_nonce('emr_remove_background')
         ));
 
+
+        $emr_bulk_css_path = plugin_dir_path(EMR_ROOT_FILE) . 'css/bulk_background.css';
+        $emr_bulk_css_ver  = file_exists($emr_bulk_css_path) ? filemtime($emr_bulk_css_path) : EMR_VERSION;
+        wp_register_style('emr-bulk-background', plugins_url('css/bulk_background.css', EMR_ROOT_FILE), array('emr-redesign'), $emr_bulk_css_ver);
+
+        $emr_bulk_bg_path = plugin_dir_path(EMR_ROOT_FILE) . 'js/bulk_remove_bg.js';
+        $emr_bulk_bg_ver  = file_exists($emr_bulk_bg_path) ? filemtime($emr_bulk_bg_path) : EMR_VERSION;
+        wp_register_script('emr_bulk_bg', plugins_url('js/bulk_remove_bg.js', EMR_ROOT_FILE), array('jquery'), $emr_bulk_bg_ver, true);
+        wp_localize_script('emr_bulk_bg', 'emrBulkObject', array(
+            'ajax_url' => $ajax_url,
+            'nonce'    => wp_create_nonce('emr_bulk_remove_background'),
+            'strings'  => array(
+                'confirm'        => __('This will remove the background of the product images and replace the original files. This cannot be undone. Continue?', 'enable-media-replace'),
+                'confirm_stop'   => __('Stop this bulk run? Images that were already processed stay processed.', 'enable-media-replace'),
+                'starting'       => __('Collecting product images…', 'enable-media-replace'),
+                'running'        => __('Processing image %1$s of %2$s…', 'enable-media-replace'),
+                'running_bg'     => __('Running in background mode: %1$s of %2$s images done. You can close this page.', 'enable-media-replace'),
+                'waiting_cron'   => __('Waiting for WP-Cron to pick up the next images…', 'enable-media-replace'),
+                'paused'         => __('Paused at %1$s of %2$s images. Click Resume to continue.', 'enable-media-replace'),
+                'pausing'        => __('Pausing after the current image…', 'enable-media-replace'),
+                'finished'       => __('Bulk background removal finished.', 'enable-media-replace'),
+                'stopped'        => __('Bulk background removal was stopped.', 'enable-media-replace'),
+                'halted'         => __('Bulk background removal was stopped:', 'enable-media-replace'),
+                'request_fail'   => __('Request failed. Retrying…', 'enable-media-replace'),
+                'start'          => __('Start Background Removal', 'enable-media-replace'),
+                'resume'         => __('Resume', 'enable-media-replace'),
+                'edit'           => __('Edit', 'enable-media-replace'),
+                'processing'     => __('Removing background…', 'enable-media-replace'),
+                'now_processing' => __('Now processing:', 'enable-media-replace'),
+                'no_original'    => __('Original not available', 'enable-media-replace'),
+                'open_full'      => __('Open the full size image in a new tab', 'enable-media-replace'),
+            ),
+        ));
 
         if (Log::debugIsActive()) {
             $emr_options['is_debug'] = true;

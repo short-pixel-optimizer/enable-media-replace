@@ -70,11 +70,13 @@ require_once( $plugin_path . 'classes/installHelper.php' );
 // @todo Needs replacing with PSR-4
 require_once( $plugin_path . 'classes/Controller/ReplaceController.php');
 require_once( $plugin_path . 'classes/Controller/RemoteNoticeController.php');
+require_once( $plugin_path . 'classes/Controller/BulkBackgroundController.php');
 
 require_once( $plugin_path . 'classes/ViewController.php');
 require_once( $plugin_path . 'classes/ViewController/UploadViewController.php');
 require_once( $plugin_path . 'classes/ViewController/ReplaceViewController.php');
 require_once( $plugin_path . 'classes/ViewController/RemoveBackgroundViewController.php');
+require_once( $plugin_path . 'classes/ViewController/BulkRemoveBackgroundViewController.php');
 
 require_once( $plugin_path . 'classes/externals.php' );
 require_once( $plugin_path . 'classes/external/elementor.php' );
@@ -90,6 +92,7 @@ function emr()
 	return EnableMediaReplace\EnableMediaReplacePlugin::get();
 }
 emr(); // runtime.
+EnableMediaReplace\Controller\BulkBackgroundController::hooks(); // cron, runs without a user.
 
 //register_uninstall_hook( __FILE__, '\EnableMediaReplace\emr_uninstall' );
 register_deactivation_hook( __FILE__,  array('\EnableMediaReplace\InstallHelper','deactivatePlugin') );

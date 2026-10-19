@@ -1,0 +1,538 @@
+/**
+ * Enable Media Replace — Bulk Background Removal screen.
+ *
+ * Builds on redesign.css (cards, section headers, teal buttons). Uses the full width of the screen.
+ */
+
+#emr-bulk-background .editor-wrapper {
+	width: 100%;
+	min-width: 0;
+}
+
+/* ---------- Header ---------- */
+#emr-bulk-background .emr-bulk-header {
+	text-align: center;
+	margin: 8px 0 22px;
+}
+
+#emr-bulk-background .emr-bulk-header h1 {
+	margin: 10px 0 6px;
+	padding: 0;
+	font-size: 26px;
+}
+
+#emr-bulk-background .emr-bulk-header p {
+	margin: 0;
+	color: #646970;
+	font-size: 14px;
+}
+
+/* ---------- Notices (centered, no left accent border) ---------- */
+#emr-bulk-background .emr-bulk-notes {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 18px;
+	margin-bottom: 18px;
+}
+
+#emr-bulk-background .emr-bulk-notice {
+	border: 1px solid #e6e7e9;
+	border-radius: 10px;
+	padding: 18px 24px;
+	text-align: center;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	/* Top, not center: both boxes are stretched to the same height, so centering would push
+	   the shorter one's icon and text down when the other wraps to more lines. */
+	justify-content: flex-start;
+	gap: 6px;
+}
+
+#emr-bulk-background .emr-bulk-notice .dashicons {
+	width: 36px;
+	height: 36px;
+	font-size: 20px;
+	line-height: 36px;
+	border-radius: 50%;
+	background: #fff;
+	margin-bottom: 4px;
+}
+
+#emr-bulk-background .emr-bulk-notice p {
+	margin: 0;
+	max-width: 620px;
+	color: #50575e;
+	font-size: 13px;
+	line-height: 1.6;
+}
+
+#emr-bulk-background .emr-bulk-notice .emr-bulk-notice-title {
+	font-size: 14px;
+	font-weight: 600;
+	color: #1d2327;
+}
+
+#emr-bulk-background .emr-bulk-notice.is-info {
+	background: #f0fbfc;
+	border-color: #b9e9ed;
+}
+#emr-bulk-background .emr-bulk-notice.is-info .dashicons {
+	color: #1abdca;
+	border: 1px solid #b9e9ed;
+}
+
+#emr-bulk-background .emr-bulk-notice.is-warning {
+	background: #fff8e5;
+	border-color: #f5e1a4;
+}
+#emr-bulk-background .emr-bulk-notice.is-warning .dashicons {
+	color: #dba617;
+	border: 1px solid #f5e1a4;
+}
+
+#emr-bulk-background .emr-bulk-notice.is-error {
+	background: #fcf0f1;
+	border-color: #f1c4c6;
+	margin-bottom: 18px;
+}
+#emr-bulk-background .emr-bulk-notice.is-error p {
+	color: #8a2424;
+	font-weight: 500;
+}
+
+/* ---------- Stats ---------- */
+#emr-bulk-background .emr-bulk-stats {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 18px;
+}
+
+#emr-bulk-background .emr-bulk-stat {
+	background: #fff;
+	border: 1px solid #e6e7e9;
+	border-radius: 10px;
+	box-shadow: 0 1px 3px rgba(16, 24, 40, 0.06), 0 1px 2px rgba(16, 24, 40, 0.04);
+	padding: 20px 16px;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	text-align: center;
+	gap: 6px;
+}
+
+#emr-bulk-background .emr-bulk-stat-value {
+	font-size: 30px;
+	font-weight: 600;
+	color: #1d2327;
+	line-height: 1.1;
+}
+
+#emr-bulk-background .emr-bulk-stat.is-total .emr-bulk-stat-value {
+	color: #1abdca;
+}
+
+#emr-bulk-background .emr-bulk-stat-label {
+	font-size: 11px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: .05em;
+	color: #6c757d;
+}
+
+#emr-bulk-background .emr-bulk-stats-note {
+	text-align: center;
+	color: #646970;
+	font-size: 12px;
+	margin: 10px 0 18px;
+}
+
+/* ---------- Settings panel (with account and run at the bottom) ---------- */
+#emr-bulk-background .emr-bulk-settings.wrapper {
+	margin: 0;
+}
+
+#emr-bulk-background .emr-bulk-group-label {
+	font-size: 11px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: .05em;
+	color: #6c757d;
+	margin: 4px 0 8px;
+}
+
+#emr-bulk-background .emr-bulk-group-label:not(:first-of-type) {
+	border-top: 1px solid #f0f0f1;
+	padding-top: 16px;
+	margin-top: 8px;
+}
+
+#emr-bulk-background .emr-bulk-cron-warning {
+	color: #996800 !important;
+}
+
+/* Account and Run are part of the settings panel, not cards of their own. */
+#emr-bulk-background .emr-bulk-embedded {
+	border-top: 1px solid #f0f0f1;
+	margin-top: 16px;
+	padding-top: 16px;
+}
+
+#emr-bulk-background .emr-bulk-embedded .emr-bulk-group-label {
+	border-top: none;
+	padding-top: 0;
+	margin-top: 0;
+}
+
+#emr-bulk-background .emr-bulk-account .emr-sp-account.wrapper {
+	background: transparent;
+	border: none;
+	border-radius: 0;
+	box-shadow: none;
+	padding: 0;
+	margin: 0;
+}
+
+/* The account box's own header, shown like the other group labels. */
+#emr-bulk-background .emr-bulk-account .emr-sp-account .section-header {
+	font-size: 11px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: .05em;
+	color: #6c757d;
+	border: none;
+	padding: 0;
+	margin: 0 0 8px;
+}
+
+#emr-bulk-background .emr-bulk-account .emr-sp-account-body {
+	padding: 0;
+}
+
+#emr-bulk-background .emr-bulk-actions {
+	text-align: center;
+}
+
+#emr-bulk-background .emr-bulk-status {
+	margin: 0 0 16px;
+	font-size: 14px;
+	font-weight: 500;
+	color: #1d2327;
+}
+
+#emr-bulk-background .emr-bulk-status.is-error {
+	color: #b32d2e;
+}
+
+/* Pause and Stop keep their natural size; the columns are sized to them and Start spans both. */
+#emr-bulk-background .emr-bulk-buttons {
+	display: grid;
+	grid-template-columns: auto auto;
+	justify-content: center;
+	gap: 8px;
+}
+
+#emr-bulk-background .emr-bulk-buttons .button {
+	margin: 0 !important;
+}
+
+/* width 0 + min-width 100%: Start fills the two columns but doesn't make them wider itself. */
+#emr-bulk-background .emr-bulk-buttons .emr-bulk-start {
+	grid-column: 1 / -1;
+	width: 0;
+	min-width: 100%;
+}
+
+/* Before a run Pause and Stop are hidden, so keep Start at the same width they'd give it
+   (2 × their 110px min-width + the gap), to not jump when the run starts. */
+#emr-bulk-background .emr-bulk-buttons.is-idle .emr-bulk-start {
+	width: auto;
+	min-width: calc(2 * 110px + 8px);
+}
+
+/* !important and the id are needed to beat the display rule on buttons in redesign.css. */
+#emr-bulk-background .emr-bulk-buttons.is-idle .emr-bulk-secondary {
+	display: none !important;
+}
+
+#emr-bulk-background .emr-bulk-buttons .emr-bulk-stop {
+	color: #b32d2e;
+	border-color: #e0b4b5;
+}
+#emr-bulk-background .emr-bulk-buttons .emr-bulk-stop:not(:disabled):hover {
+	background: #b32d2e;
+	border-color: #b32d2e;
+	color: #fff;
+}
+
+/* Pause is disabled while paused. */
+#emr-bulk-background .emr-bulk-buttons .button:not(.button-primary):disabled,
+#emr-bulk-background .emr-bulk-buttons .button:not(.button-primary):disabled:hover {
+	background: #f6f7f7 !important;
+	border-color: #dcdcde !important;
+	color: #a7aaad !important;
+	cursor: not-allowed;
+	box-shadow: none;
+}
+
+#emr-bulk-background .emr-bulk-buttons .button-primary:disabled {
+	cursor: not-allowed;
+}
+
+/* ---------- Progress ---------- */
+#emr-bulk-background .emr-bulk-progress.wrapper {
+	margin-top: 18px;
+}
+
+#emr-bulk-background .emr-bulk-bar {
+	height: 10px;
+	background: rgba(26, 189, 202, 0.15);
+	border-radius: 999px;
+	overflow: hidden;
+}
+
+#emr-bulk-background .emr-bulk-bar-fill {
+	height: 100%;
+	width: 0;
+	background: #1abdca;
+	border-radius: 999px;
+	transition: width .3s ease;
+}
+
+#emr-bulk-background .emr-bulk-results {
+	display: flex;
+	justify-content: center;
+	flex-wrap: wrap;
+	gap: 24px;
+	margin: 14px 0 18px;
+	font-size: 13px;
+	color: #50575e;
+}
+
+#emr-bulk-background .emr-bulk-result-ok strong {
+	color: #00a32a;
+}
+
+#emr-bulk-background .emr-bulk-result-fail strong {
+	color: #b32d2e;
+}
+
+#emr-bulk-background .emr-bulk-progress-body {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 22px;
+}
+
+#emr-bulk-background .emr-bulk-preview,
+#emr-bulk-background .emr-bulk-history {
+	width: 100%;
+	max-width: 900px;
+}
+
+#emr-bulk-background .emr-bulk-history-title {
+	text-align: center;
+	font-size: 11px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: .08em;
+	color: #6c757d;
+	margin: 0 0 8px;
+}
+
+/* The result opens in a new tab. */
+#emr-bulk-background .is-after .emr-bulk-preview-frame a {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 100%;
+	height: 100%;
+	cursor: zoom-in;
+}
+
+/* ---------- Live preview ---------- */
+#emr-bulk-background .emr-bulk-preview-pair {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 14px;
+}
+
+#emr-bulk-background .emr-bulk-preview-image {
+	margin: 0;
+}
+
+#emr-bulk-background .emr-bulk-preview-image figcaption {
+	text-align: center;
+	font-size: 11px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: .08em;
+	color: #6c757d;
+	margin-bottom: 8px;
+}
+
+#emr-bulk-background .emr-bulk-preview-frame {
+	height: 300px;
+	border: 1px solid #e6e7e9;
+	border-radius: 10px;
+	background: #fafafa;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	overflow: hidden;
+	padding: 12px;
+	box-sizing: border-box;
+	color: #8c8f94;
+	font-size: 13px;
+	text-align: center;
+}
+
+/* Checkerboard behind the result, so transparency is visible. */
+#emr-bulk-background .is-after .emr-bulk-preview-frame {
+	background-color: #fff;
+	background-image:
+		linear-gradient(45deg, #eee 25%, transparent 25%),
+		linear-gradient(-45deg, #eee 25%, transparent 25%),
+		linear-gradient(45deg, transparent 75%, #eee 75%),
+		linear-gradient(-45deg, transparent 75%, #eee 75%);
+	background-size: 20px 20px;
+	background-position: 0 0, 0 10px, 10px -10px, -10px 0;
+}
+
+#emr-bulk-background .emr-bulk-preview-frame img {
+	max-width: 100%;
+	max-height: 100%;
+	width: auto;
+	height: auto;
+	object-fit: contain;
+	display: block;
+}
+
+#emr-bulk-background .emr-bulk-preview-spinner {
+	width: 40px;
+	height: 40px;
+	border-radius: 50%;
+	border: 4px solid rgba(26, 189, 202, 0.18);
+	border-top-color: #1abdca;
+	animation: emr-spin 0.85s cubic-bezier(0.5, 0.1, 0.5, 0.9) infinite;
+}
+
+#emr-bulk-background .emr-bulk-preview-title {
+	text-align: center;
+	font-weight: 600;
+	color: #1d2327;
+	margin: 12px 0 2px;
+}
+
+#emr-bulk-background .emr-bulk-preview-next {
+	text-align: center;
+	color: #646970;
+	font-size: 12px;
+	margin: 0;
+}
+
+/* ---------- Log ---------- */
+#emr-bulk-background .emr-bulk-log {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+	max-height: 360px;
+	overflow-y: auto;
+	border: 1px solid #e6e7e9;
+	border-radius: 10px;
+}
+
+#emr-bulk-background .emr-bulk-log:empty {
+	display: none;
+}
+
+#emr-bulk-background .emr-bulk-log li {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	margin: 0;
+	padding: 8px 12px;
+	border-bottom: 1px solid #f0f0f1;
+	font-size: 13px;
+}
+
+#emr-bulk-background .emr-bulk-log li:last-child {
+	border-bottom: none;
+}
+
+#emr-bulk-background .emr-bulk-log-thumb {
+	flex-shrink: 0;
+	width: 40px;
+	height: 40px;
+	border-radius: 6px;
+	background: #fafafa;
+	border: 1px solid #e6e7e9;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	overflow: hidden;
+}
+
+#emr-bulk-background .emr-bulk-log-thumb img {
+	max-width: 100%;
+	max-height: 100%;
+	object-fit: contain;
+}
+
+#emr-bulk-background .emr-bulk-log li.is-success .dashicons {
+	color: #00a32a;
+}
+
+#emr-bulk-background .emr-bulk-log li.is-error .dashicons {
+	color: #b32d2e;
+}
+
+#emr-bulk-background .emr-bulk-log-text {
+	flex: 1;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+
+#emr-bulk-background .emr-bulk-log-text strong {
+	color: #1d2327;
+	font-weight: 500;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+#emr-bulk-background .emr-bulk-log-message {
+	color: #b32d2e;
+	font-size: 12px;
+}
+
+#emr-bulk-background .emr-bulk-log a {
+	color: #1abdca;
+	text-decoration: none;
+	font-weight: 600;
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 782px) {
+	#emr-bulk-background .emr-bulk-notes,
+	#emr-bulk-background .emr-bulk-stats,
+	#emr-bulk-background .emr-bulk-preview-pair {
+		grid-template-columns: minmax(0, 1fr);
+	}
+	#emr-bulk-background .emr-bulk-preview-frame {
+		height: 220px;
+	}
+}
+
+@keyframes emr-spin {
+	to { transform: rotate(360deg); }
+}
+
+/* Notices moved here by WordPress (see the wp-header-end marker in the view). */
+#emr-bulk-background > .notice,
+#emr-bulk-background > .updated,
+#emr-bulk-background > .error {
+	margin: 5px 0 15px;
+}
