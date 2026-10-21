@@ -86,6 +86,17 @@ class EnableMediaReplacePlugin
         switch ($name) {
             case 'background':
                 $bool = $this->features['background'];
+                if (true == $bool)
+                {
+                	$uiHelper = \emr()->uiHelper();
+                	$author_restricted = $uiHelper->is_author_restricted();
+
+                    if (true === $author_restricted)
+                    {
+                         $bool = false; 
+                    }
+
+                }
                 break;
             case 'remote_notice':
                 $bool = $this->features['remote_notice'];
@@ -360,11 +371,11 @@ class EnableMediaReplacePlugin
             case 'd/m/Y':
             default:
                 return ('dd/mm/yy');
-                break;
+            break;
         }
     }
 
-    public function checkImagePermission($post)
+    public function checkImagePermission($post) : bool
     {
         if (! is_object($post)) {
             return false;

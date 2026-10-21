@@ -93,6 +93,17 @@ class UploadViewController extends \EnableMediaReplace\ViewController
 	 {
 		 $ID = intval($_POST["ID"]); // legacy
 		 $replace_type = isset($_POST["replace_type"]) ? sanitize_text_field($_POST["replace_type"]) : false;
+
+ 		 $uiHelper = \emr()->uiHelper();
+		 $author_restricted = $uiHelper->is_author_restricted();
+
+		 // Only one option here. 
+		 if (true === $author_restricted)
+		 {
+			 $replace_type = 'replace'; 
+		 }
+
+
 		 $timestamp_replace = isset($_POST['timestamp_replace']) ? intval($_POST['timestamp_replace']) : ReplaceController::TIME_UPDATEMODIFIED;
 
 		 $remove_background = ( isset( $_POST['remove_after_progress'] ) ) ? true : false;
