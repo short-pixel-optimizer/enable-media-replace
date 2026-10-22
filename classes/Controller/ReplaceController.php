@@ -506,10 +506,27 @@ class ReplaceController
 			return false;
 		}
 
-		
+		// If multisite, prevent mainsite uploads from ending up in subsites. 
+		// Too solve, check if blog_id 20 for instance, want to overwrite something in blog_id 2, strpos doesn't detect this properly. 
 		if (true === \emr()->env()->is_multisite)
 		{
 			$mainsite = \emr()->env()->is_mainsite; 
+	
+
+			if (strpos($realPath, $basedir) !== 0) {
+				echo "CHEC?";
+			}
+
+			// If Mainsite, it should not accepts a /sites/ path
+			if (true === $mainsite)
+			{
+				if (strpos($realPath, $basedir . '/sites') !== false)	
+				{
+						$this->lastError = self::ERROR_DIRECTORY_SECURITY;
+						$this->lastErrorData = array('path' => $realPath, 'basedir' => $basedir);
+						return false; 
+				}
+			}
 
 		}
 
