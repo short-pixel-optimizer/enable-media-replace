@@ -7,6 +7,7 @@ use EnableMediaReplace\Notices\NoticeController as Notices;
 use EnableMediaReplace\FileSystem\Controller\FileSystemController as FileSystem;
 use EnableMediaReplace\Controller\RemoteNoticeController as RemoteNoticeController;
 use EnableMediaReplace\Ajax;
+use EnableMediaReplace\Helper\EnvHelper;
 
 // Does what a plugin does.
 class EnableMediaReplacePlugin
@@ -54,8 +55,6 @@ class EnableMediaReplacePlugin
         $this->plugin_actions(); // init
     }
 
-    public function init() {}
-
     public function adminInit()
     {
         $this->features['replace']  = true; // does nothing just for completeness
@@ -74,6 +73,11 @@ class EnableMediaReplacePlugin
     public function uiHelper()
     {
         return Uihelper::getInstance();
+    }
+
+    public function env() 
+    {
+        return envHelper::getInstance(); 
     }
 
     public function useFeature($name)

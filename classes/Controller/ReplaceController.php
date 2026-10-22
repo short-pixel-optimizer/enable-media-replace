@@ -187,7 +187,6 @@ class ReplaceController
 		wp_update_attachment_metadata($this->post_id, $target_metadata);
 
 		$Replacer->setTargetMeta($target_metadata);
-		//$this->target_metadata = $metadata;
 
 		/** If author is different from replacer, note this */
 		$post_author = get_post_field('post_author', $this->post_id);
@@ -198,7 +197,6 @@ class ReplaceController
 		} elseif ($author_id) {
 			delete_post_meta($this->post_id, '_emr_replace_author');
 		}
-
 
 		if ($this->replaceType == self::MODE_SEARCHREPLACE) {
 			// Write new image title.
@@ -340,7 +338,6 @@ class ReplaceController
 
 				$path = $targetLocation; // $this->target_location; // if all went well.
 			}
-			//if ($this->sourceFile->getFileName() == $this->targetName)
 			$targetpath = $path . $this->new_filename;
 
 			// If the source and target path AND filename are identical, user has wrong mode, just overwrite the sourceFile.
@@ -507,6 +504,13 @@ class ReplaceController
 			$this->lastError = self::ERROR_DIRECTORY_SECURITY;
 			$this->lastErrorData = array('path' => $realPath, 'basedir' => $basedir);
 			return false;
+		}
+
+		
+		if (true === \emr()->env()->is_multisite)
+		{
+			$mainsite = \emr()->env()->is_mainsite; 
+
 		}
 
 		if (! is_dir($newPath)) {

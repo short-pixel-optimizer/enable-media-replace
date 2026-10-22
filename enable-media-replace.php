@@ -56,10 +56,10 @@ $plugin_path = plugin_dir_path( EMR_ROOT_FILE );
 
 require_once( $plugin_path . 'build/shortpixel/autoload.php' );
 require_once( $plugin_path . 'classes/compat.php' );
-require_once( $plugin_path . 'classes/functions.php' );
 //require_once( $plugin_path . 'classes/replacer.php' );
 require_once( $plugin_path . 'classes/uihelper.php' );
-//require_once( $plugin_path . 'classes/file.php' );
+require_once( $plugin_path . 'classes/Helper/envHelper.php' );
+
 require_once( $plugin_path . 'classes/cache.php' );
 require_once( $plugin_path . 'classes/api.php' );
 require_once( $plugin_path . 'classes/ApiKeyManager.php' );
@@ -83,7 +83,6 @@ require_once( $plugin_path . 'classes/external/upsell_installer.php' );
 require_once( $plugin_path . 'classes/external/siteorigin.php' );
 require_once( $plugin_path . 'classes/external/wp-offload.php' );
 
-require_once( $plugin_path . 'thumbnail_updater.php' );
 
 function emr()
 {

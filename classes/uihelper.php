@@ -20,11 +20,6 @@ class UIHelper
 
 	const NOTICE_NEW_FEATURE = 'EMR001';
 
-  public function __construct()
-  {
-
-  }
-
 	public static function getInstance()
 	{
 		 if (is_null(self::$instance))
@@ -86,7 +81,6 @@ class UIHelper
 
 	public function getBackgroundRemoveRedirect($attach_id)
 	{
-		//if ( isset( $_POST['remove_after_progress'] ) ) {
 		    $url = admin_url("upload.php");
 		    $url = add_query_arg(array(
 		    'page' => 'enable-media-replace/enable-media-replace.php',
@@ -94,9 +88,7 @@ class UIHelper
 		    'attachment_id' => $attach_id,
 		    ), $url);
 
-//		    $redirect_success = $url;
 				return $url;
-	//	  }
 	}
 
   public function getFailedRedirect($attach_id)
@@ -138,7 +130,6 @@ class UIHelper
   public function setSourceSizes($attach_id)
   {
     $data = $this->getImageSizes($attach_id, 'full');  // wp_get_attachment_image_src($attach_id, 'full');
-  //  $file = get_attached_file($attach_id);
 
     if (is_array($data))
     {
@@ -152,7 +143,6 @@ class UIHelper
   protected function getImageSizes($attach_id, $size = 'thumbnail')
   {
 		// We are not using this function, because depending on the theme, it can mess with the dimensions - https://wordpress.stackexchange.com/questions/167525/why-is-wp-get-attachment-image-src-returning-wrong-dimensions
-//    $data = wp_get_attachment_image_src($attach_id, $size);
 		$meta = wp_get_attachment_metadata($attach_id);
 
 		$data = false;
@@ -199,7 +189,7 @@ class UIHelper
       return $data;
 
     $xml = simplexml_load_file($file);
-		//Log::addDebug('XML LOAD FILE', $xml);
+
     if ($xml)
     { // stolen from SVG Upload plugin
       $attr = $xml->attributes();

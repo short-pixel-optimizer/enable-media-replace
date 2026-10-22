@@ -103,9 +103,7 @@ class UploadViewController extends \EnableMediaReplace\ViewController
 			 $replace_type = 'replace'; 
 		 }
 
-
 		 $timestamp_replace = isset($_POST['timestamp_replace']) ? intval($_POST['timestamp_replace']) : ReplaceController::TIME_UPDATEMODIFIED;
-
 		 $remove_background = ( isset( $_POST['remove_after_progress'] ) ) ? true : false;
 
 		 $do_new_location  = isset($_POST['new_location']) ? true : false;
