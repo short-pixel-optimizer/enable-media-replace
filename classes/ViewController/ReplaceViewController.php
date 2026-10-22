@@ -59,7 +59,7 @@ class ReplaceViewController extends \EnableMediaReplace\ViewController
 			$settings = get_option('enable_media_replace', $defaults);
 
 			/******************* TESTING  */
-			$replaceController = new ReplaceController($attachment_id);
+			/*$replaceController = new ReplaceController($attachment_id);
 
 			$defaults['new_location'] = true; 
 			$defaults['new_date'] = time();
@@ -67,8 +67,9 @@ class ReplaceViewController extends \EnableMediaReplace\ViewController
 			$defaults['uploadFile'] = $file;
 			$defaults['replace_type'] = 'replace_and_search';
 			$defaults['location_dir'] = '../2';
-			$check = $replaceController->setupParams($defaults);
 
+			$check = $replaceController->setupParams($defaults);
+			*/
 
 			$this->view->attachment = $attachment;
 			$this->view->sourceFile = $file;

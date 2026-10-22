@@ -511,11 +511,7 @@ class ReplaceController
 		if (true === \emr()->env()->is_multisite)
 		{
 			$mainsite = \emr()->env()->is_mainsite; 
-	
 
-			if (strpos($realPath, $basedir) !== 0) {
-				echo "CHEC?";
-			}
 
 			// If Mainsite, it should not accepts a /sites/ path
 			if (true === $mainsite)
