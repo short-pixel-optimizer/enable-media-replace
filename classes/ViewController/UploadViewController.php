@@ -178,11 +178,15 @@ class UploadViewController extends \EnableMediaReplace\ViewController
 		if (is_uploaded_file($_FILES["userfile"]["tmp_name"])) {
 			Log::addDebug('Uploaded Files', $_FILES['userfile']);
 
+			$uploadFileArray = $_FILES['userfile'];
+
 			// New method for validating that the uploaded file is allowed, using WP:s internal wp_check_filetype_and_ext() function.
-			$filedata = wp_check_filetype_and_ext($_FILES["userfile"]["tmp_name"], $_FILES["userfile"]["name"]);
+			$filedata = wp_check_filetype_and_ext($uploadFileArray["tmp_name"], $uploadFileArray["name"]);
+
+			$uploadFileArray = apply_filters('wp_handle_upload_prefilter', $uploadFileArray); 
 
 			Log::addDebug('Data after check', $filedata);
-			if (isset($_FILES['userfile']['error']) && $_FILES['userfile']['error'] > 0) {
+			if (isset($uploadFilearray['error']) && $uploadFileArray['userfile']['error'] > 0) {
 				$this->viewError(self::ERROR_UPDATE_FAILED);
 			}
 
@@ -190,11 +194,12 @@ class UploadViewController extends \EnableMediaReplace\ViewController
 				$this->viewError(self::ERROR_SECURITY);
 			}
 
+
 			// Here we have the uploaded file
-			$new_filename = $_FILES["userfile"]["name"];
+			$new_filename = $uploadFileArray["name"];
 			$new_filetype = $filedata["type"] ? $filedata["type"] : $_FILES['userfile']['type'];
 
-			return array($_FILES["userfile"]["tmp_name"], $new_filename);
+			return array($uploadFileArray["tmp_name"], $new_filename);
 			// Execute hook actions - thanks rubious for the suggestion!
 		}
 		$this->viewError(self::ERROR_UPLOAD_FAILED);

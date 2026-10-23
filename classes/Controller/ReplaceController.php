@@ -154,6 +154,7 @@ class ReplaceController
 			Log::addError('Update Attached File reports as not updated or same value');
 		}
 
+
 		// Run the filter, so other plugins can hook if needed.
 		$filtered = apply_filters('wp_handle_upload', array(
 			'file' => $this->targetFile->getFullPath(),
@@ -496,8 +497,12 @@ class ReplaceController
 		$new_rel_location = $this->new_location;
 		$newPath = trailingslashit($uploadDir['basedir']) . $new_rel_location;
 
-		$realPath = realpath($newPath);
-		$basedir = realpath($uploadDir['basedir']); // both need to go to realpath, otherwise some servers will have issues with it.
+		//$realPath = realpath($newPath);
+		/** Fix 1  -  Normalize function added because realpath eats non-existing paths
+		 *  Fix 2 - Trailingslashit added, for multisite dir check ( so /2  and /20 won't much on the strpos all the same)
+		 */
+		$realPath = trailingslashit($this->normalizePath($newPath));
+		$basedir = trailingslashit(realpath($uploadDir['basedir'])); // both need to go to realpath, otherwise some servers will have issues with it.
 
 		// Detect traversal by making sure the canonical path starts with uploads' basedir.
 		if (strpos($realPath, $basedir) !== 0) {
@@ -512,7 +517,6 @@ class ReplaceController
 		{
 			$mainsite = \emr()->env()->is_mainsite; 
 
-
 			// If Mainsite, it should not accepts a /sites/ path
 			if (true === $mainsite)
 			{
@@ -523,15 +527,39 @@ class ReplaceController
 						return false; 
 				}
 			}
-
 		}
 
-		if (! is_dir($newPath)) {
+		/*if (! is_dir($realPath)) {
 			$this->lastError = self::ERROR_DIRECTORY_NOTEXIST;
 			return false;
-		}
-		return trailingslashit($newPath);
+		} */
+		return $realPath;
 	}
+
+	private function normalizePath($path)
+	{
+    // Convert all separators to forward slashes
+		$path = str_replace('\\', '/', $path);
+		
+		// Split into parts and filter
+		$parts = explode('/', $path);
+		$resolved = [];
+		
+		foreach ($parts as $part) {
+			if ($part === '' || $part === '.' || $part === '..') {
+				continue;
+			}
+			$resolved[] = $part;
+		}
+		
+		// Preserve leading slash for absolute paths
+		$prefix = ($path[0] === '/') ? '/' : '';
+		
+		return $prefix . implode('/', $resolved);
+
+	}
+
+
 
 
 	private function fs()
