@@ -113,7 +113,7 @@ $uiHelper = emr()->uiHelper();
       ?>
 
 			<p>&nbsp;</p>
-			<?php if ($uiHelper->isBackgroundRemovable($view->attachment)): ?>
+			<?php if ($uiHelper->isBackgroundRemovable($view->attachment) && false === $view->is_author_restricted): ?>
 								  <div>
 
                     <a href="<?php echo wp_nonce_url( $url , 'emr_prepare_remove' ); ?>">
@@ -153,7 +153,13 @@ $uiHelper = emr()->uiHelper();
       </div>
 
           <?php $enabled_replacesearch = apply_filters( 'emr_enable_replace_and_search', true );
+        if (true === $view->is_author_restricted)
+        {
+           $enabled_replacesearch = false;
+        }
         $searchreplace_disabled = (! $enabled_replacesearch) ? 'disabled' : '';
+
+        
       ?>
 
       <div class="option searchreplace <?php echo $searchreplace_disabled ?>">

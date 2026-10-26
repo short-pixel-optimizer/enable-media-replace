@@ -54,18 +54,14 @@ class ShortPixelLogger
     $this->namespace = substr($ns, 0, strpos($ns, '\\')); // try to get first part of namespace
 
     // phpcs:ignore WordPress.Security.NonceVerification.Recommended  -- This is not a form
-    if (isset($_REQUEST['SHORTPIXEL_DEBUG']) && true === $this->checkUserLevel()) // manual takes precedence over constants
+    if (is_multisite() && isset($_REQUEST['SHORTPIXEL_DEBUG']))
     {
-      $this->is_manual_request = true;
-      $this->is_active = true;
-
-      // phpcs:ignore WordPress.Security.NonceVerification.Recommended  -- This is not a form
-      if ($_REQUEST['SHORTPIXEL_DEBUG'] === 'true') {
-        $this->logLevel = DebugItem::LEVEL_INFO;
-      } else {
-        // phpcs:ignore WordPress.Security.NonceVerification.Recommended  -- This is not a form
-        $this->logLevel = intval($_REQUEST['SHORTPIXEL_DEBUG']);
-      }
+       add_action('wp_loaded', [$this, 'msCheckUserLevel']); 
+       return;
+    }
+    elseif (isset($_REQUEST['SHORTPIXEL_DEBUG']) && true === $this->checkUserLevel()) // manual takes precedence over constants
+    {
+        $this->setManualLog(); 
     } else if ((defined('SHORTPIXEL_DEBUG') && SHORTPIXEL_DEBUG > 0)) {
       $this->is_active = true;
       if (SHORTPIXEL_DEBUG === true)
@@ -86,16 +82,37 @@ class ShortPixelLogger
 
     if ($this->is_active) {
       /* Update - always defer to init to build loglink, otherwise logpath is not properly set. */
-      //if (! function_exists('wp_get_current_user'))
         add_action('init', array($this, 'initView'));
-      /*else
-        $this->initView(); */
+
     }
 
     if ($this->is_active && count($this->hooks) > 0)
     {
       $this->monitorHooks();
     }
+  }
+
+  public function msCheckUserLevel()
+  {
+      if (isset($_REQUEST['SHORTPIXEL_DEBUG']) && true === $this->checkUserLevel())
+      {
+         $this->setManualLog();
+      }
+
+  }
+
+  protected function setManualLog()
+  {
+      $this->is_manual_request = true;
+      $this->is_active = true;
+
+      // phpcs:ignore WordPress.Security.NonceVerification.Recommended  -- This is not a form
+      if ($_REQUEST['SHORTPIXEL_DEBUG'] === 'true') {
+        $this->logLevel = DebugItem::LEVEL_INFO;
+      } else {
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended  -- This is not a form
+        $this->logLevel = intval($_REQUEST['SHORTPIXEL_DEBUG']);
+      }
   }
 
   /** Allow only admin users to manually debug 

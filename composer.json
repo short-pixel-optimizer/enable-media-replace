@@ -29,7 +29,7 @@
         "shortpixel/notices":"@dev",
         "shortpixel/build" : "@dev",
         "shortpixel/filesystem" : "@dev",
-        "shortpixel/replacer" : ">=1.0"
+        "shortpixel/replacer2" : ">=1.0"
     },
     "require-dev": {
 	"phpunit/phpunit": "^9",

@@ -1,6 +1,7 @@
 <?php
 namespace EnableMediaReplace\Replacer\Modules;
 
+use ReflectionMethod;
 use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
 
 
@@ -87,6 +88,11 @@ class Breakdance
            return $content;
         }
 
+        if (false === isset($meta_row['post_id']))
+        {
+           return $content; 
+        }
+
         $meta_id = $meta_row['meta_id'];
         $post_id = $meta_row['post_id'];
 
@@ -107,16 +113,21 @@ class Breakdance
          return $content;
       }
 
+      if (false === isset($meta_row['post_id']))
+      {
+         return $content; 
+      }
+
       $global = \Breakdance\Data\get_global_option('global_settings_json_string');
 
       $tree = json_encode($content, JSON_UNESCAPED_SLASHES);
 
+    
      $paramCount = 4; // Default. 
      try 
      {
        $method = new \ReflectionFunction('Breakdance\Data\save_document');
        $paramCount = $method->getNumberOfParameters();
-
      }
      catch (\Exception $e)
      {
@@ -132,12 +143,7 @@ class Breakdance
      {
           \Breakdance\Data\save_document($tree, false, false, false, false, false, false, false, false, $meta_row['post_id']);
      }
-     
-     // \Breakdance\Data\save_document($content, $global, null, $meta_row['post_id']);
-
-      /*  return \Breakdance\Data\encode_before_writing_to_wp([
-          'tree_json_string' => $content,
-        ], true); */
+    
 
        return $content;
     }

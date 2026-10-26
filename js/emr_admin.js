@@ -1,6 +1,7 @@
-
+"use strict";
+  
   // interface for emr.
-  var emrIf = function ($)
+  var emrIf = function ()
   {
     var source_type;
     var source_is_image;
@@ -19,37 +20,65 @@
         this.debug('EMR Debug is active');
       }
 
-      $('input[name="timestamp_replace"]').on('change', $.proxy(this.checkCustomDate, this));
-      $('input[name="replace_type"]').on('change', $.proxy(this.showReplaceOptions, this));
-      $('input[name="userfile"]').on('change', $.proxy(this.handleImage, this));
-			$('.replace_custom_date').on('click', $.proxy(this.updateCustomDate, this));
+      // check for user interface
+      let form = document.querySelector('.emr_upload_form'); 
+      if (null === form) // everything else is just form stuff.
+      {
+         return;
+      }
+
+
+      let timestampReplaceFields = document.querySelectorAll('input[name="timestamp_replace"]');
+      for (let i = 0; i < timestampReplaceFields.length; i++)
+      {
+        timestampReplaceFields[i].addEventListener('change', this.showHideCustomDate.bind(this));
+      }
+
+      let replaceTypeFields = document.querySelectorAll('input[name="replace_type"]'); 
+      for (let i = 0; i < replaceTypeFields.length; i++)
+      {
+          replaceTypeFields[i].addEventListener('change', this.showReplaceOptions.bind(this));
+      }
+
+      let userFileField = document.querySelector('input[name="userfile"]'); 
+      if (null !== userFileField)
+      {
+        userFileField.addEventListener('change', this.handleImage.bind(this)); 
+      }
+
+      let customDateFields = document.querySelectorAll('.replace_custom_date');
+      for (let i = 0; i < customDateFields.length; i++)
+      {
+         customDateFields[i].addEventListener('click', this.updateCustomDate.bind(this));
+      }
 
       // DragDrop
-			//$(document).on('dragover', $.proxy(this.dragOverArea, this));
-			//$(document).on('dragleave', $.proxy(this.dragOutArea, this));
 			document.addEventListener('dragover',  this.dragOverArea.bind(this), false );
 			document.addEventListener('dragleave',  this.dragOutArea.bind(this), false );
 
+      let dropArea = document.querySelector('.emr_drop_area'); 
 
+      if (null !== dropArea)
+      {
+        dropArea.addEventListener('drop', this.fileDrop.bind(this) );
+        document.querySelector('.upload-file-action').addEventListener('click', function () {
+          document.getElementById('upload-file').click();
+        });
+      }
 
-      $('.emr_drop_area').on('drop', $.proxy(this.fileDrop, this));
-			$('.upload-file-action').on('click', function () {
-					var input = document.getElementById('upload-file').click();
-			});
-
-      this.checkCustomDate();
+      this.showHideCustomDate();
       this.loadDatePicker();
 
-      var source = $('.image_placeholder').first();
-      if (typeof( $(source).data('filetype') ) !== 'undefined')
+      var source = document.querySelector('.image_placeholder');
+      if (typeof source.dataset.filetype !== 'undefined')
       {
-        source_type = $(source).data('filetype').trim();
+        source_type = source.dataset.filetype.trim();
         this.debug('detected type - ' + source_type);
       }
       else
         source_type = ''; // error state
 
-      if (source.hasClass('is_image'))
+      if (source.classList.contains('is_image'))
       {
           source_is_image = true;
       }
@@ -62,39 +91,47 @@
 
     this.loadDatePicker = function()
     {
-      $('#emr_datepicker').datepicker({
+      
+      window.jQuery('#emr_datepicker').datepicker({
         dateFormat: emr_options.dateFormat,
         onClose: function() {
-              var date = $(this).datepicker( 'getDate' );
+          var date = window.jQuery(this).datepicker('getDate');
               if (date) {
                   var formattedDate = (date.getFullYear()) + "-" +
                             (date.getMonth()+1) + "-" +
                             date.getDate();
-              $('input[name="custom_date_formatted"]').val(formattedDate);
-              //$('input[name="custom_date"]').val($.datepicker.parseDate( emr_options.dateFormat, date));
+              document.querySelector('input[name="custom_date_formatted"]').value = formattedDate;
               }
         },
       });
     }
 
-    this.checkCustomDate = function()
+    this.showHideCustomDate = function()
     {
-      if ($('input[name="timestamp_replace"]:checked').val() == 3)
+      let checkedField = document.querySelector('input[name="timestamp_replace"]:checked'); 
+      if (null === checkedField)
+      {
+         return; 
+      }
+
+      if (checkedField.value == 3)
         this.showCustomDate();
       else
         this.hideCustomDate();
     }
     this.showCustomDate = function()
     {
-        $('.custom_date').css('visibility', 'visible').fadeTo(100, 1);
+        document.querySelectorAll('.custom_date').forEach(function(element) {
+          element.style.visibility = 'visible';
+          element.style.opacity = '1';
+        });
     }
     this.hideCustomDate = function()
     {
-      $('.custom_date').fadeTo(100,0,
-          function ()
-          {
-            $('.custom_date').css('visibility', 'hidden');
-          });
+      document.querySelectorAll('.custom_date').forEach(function(element) {
+        element.style.opacity = '0';
+        element.style.visibility = 'hidden';
+      });
     }
     this.handleImage = function(e)
     {
@@ -104,7 +141,7 @@
 
         if (! target.files || target.files.length <= 0)  // FileAPI appears to be not present, handle files on backend.
         {
-          if ($('input[name="userfile"]').val().length > 0)
+          if (document.querySelector('input[name="userfile"]').value.length > 0)
             this.checkSubmit();
           console.log('FileAPI not detected');
           return false;
@@ -125,10 +162,11 @@
     }
     this.updatePreview = function(file)
     {
-      var preview = $('.image_placeholder').last();
+      var previews = document.querySelectorAll('.image_placeholder');
+      var preview = previews[previews.length - 1];
 
-      $(preview).find('img').remove();
-      $(preview).removeClass('is_image not_image is_document');
+      preview.querySelectorAll('img').forEach(function(image) { image.remove(); });
+      preview.classList.remove('is_image', 'not_image', 'is_document');
       var is_empty = false;
 
       if (file !== null) /// file is null when empty, or error
@@ -164,22 +202,26 @@
               self.updateFileSize(preview, file);
         });
 
-        $(preview).prepend(img);
-        $(preview).addClass('is_image');
+        preview.prepend(img);
+        preview.classList.add('is_image');
       }
       else if(file === null)
       {
-        $(preview).addClass('not_image');
-        $(preview).find('.dashicons').removeClass().addClass('dashicons dashicons-no');
-        //$(preview).find('.textlayer').text('');
+        preview.classList.add('not_image');
+        preview.querySelectorAll('.dashicons').forEach(function(icon) {
+          icon.className = 'dashicons dashicons-no';
+        });
+
         this.updateTextLayer(preview, '');
         this.updateFileSize(preview, null);
         this.debug('File is null');
       }
       else { // not an image
-        $(preview).addClass('not_image is_document');
-        $(preview).find('.dashicons').removeClass().addClass('dashicons dashicons-media-document');
-        //$(preview).find('.textlayer').text(file.name);
+        preview.classList.add('not_image', 'is_document');
+        preview.querySelectorAll('.dashicons').forEach(function(icon) {
+          icon.className = 'dashicons dashicons-media-document';
+        });
+
         this.updateTextLayer(preview, file.name);
         this.updateFileSize(preview, file);
         this.debug('Not image, media document');
@@ -217,15 +259,18 @@
     // replace the text, check if text is there ( or hide ), and fix the layout.
     this.updateTextLayer = function (preview, newtext)
     {
-        textlayer = $(preview).find('.textlayer');
-        textlayer.css('opacity', '0');
-        if (newtext !== false)
-          textlayer.text(newtext);
-
-        if (textlayer.text() !== '')
+        let textlayer = preview.querySelector('.textlayer');
+        if (null == textlayer) // not always textlayer
         {
-          textlayer.css('opacity', '0.7');
-      //    textlayer.css('margin-left', '-' + (textlayer.width() / 2 ) + 'px');
+           return false; 
+        }
+        textlayer.style.opacity = '0';
+        if (newtext !== false)
+          textlayer.textContent = newtext;
+
+        if (textlayer.textContent !== '')
+        {
+          textlayer.style.opacity = '0.7';
         }
 
     }
@@ -233,7 +278,7 @@
     {
       if (file === null)
       {
-        $(preview).find('.image_size').text('');
+        preview.querySelector('.image_size').textContent = '';
         return;
       }
       var bytes = file.size;
@@ -241,46 +286,47 @@
       var e = Math.floor(Math.log(bytes) / Math.log(1024));
       var size = (bytes/Math.pow(1024, e)).toFixed(2)+' '+' KMGTP'.charAt(e)+'B';
 
-      $(preview).find('.image_size').text(size);
+      preview.querySelector('.image_size').textContent = size;
     }
 		this.updateCustomDate = function(e)
 		{
-				var $target = $(e.target);
-				var min = $target.data('min');
-				var hour = $target.data('hour');
-				var date = $target.data('date');
-				var format = $target.data('format');
+        var target = e.target;
+        var min = target.dataset.min;
+        var hour = target.dataset.hour;
+        var date = target.dataset.date;
+        var format = target.dataset.format;
 
-				$('input[name="custom_date"]').val(date);
-				$('input[name="custom_hour"]').val(hour);
-				$('input[name="custom_minute"]').val(min);
-				$('input[name="custom_date_formatted"]').val(format);
+        document.querySelector('input[name="custom_date"]').value = date;
+        document.querySelector('input[name="custom_hour"]').value = hour;
+        document.querySelector('input[name="custom_minute"]').value = min;
+        document.querySelector('input[name="custom_date_formatted"]').value = format;
 		}
     this.checkSubmit = function()
     {
-       var check = ($('input[name="userfile"]').val().length > 0) ? true : false;
+      var check = (document.querySelector('input[name="userfile"]').value.length > 0) ? true : false;
 
         if (check)
         {
-          $('input[type="submit"]').prop('disabled', false);
+          document.querySelector('input[type="submit"]').disabled = false;
         }
         else {
-          $('input[type="submit"]').prop('disabled', true);
+          document.querySelector('input[type="submit"]').disabled = true;
         }
     }
     this.toggleErrors = function(toggle)
     {
-      $('.form-error').fadeOut();
-      $('.form-warning').fadeOut();
+      document.querySelectorAll('.form-error, .form-warning').forEach(function(element) {
+        element.style.display = 'none';
+      });
     }
     this.checkUpload = function(fileItem)
     {
       var maxsize = emr_options.maxfilesize;
 
-      if ($('input[name="userfile"]').val().length <= 0)
+      if (document.querySelector('input[name="userfile"]').value.length <= 0)
       {
         console.info('[EMR] - Upload file value not set in form. Pick a file');
-        $('input[name="userfile"]').val('');
+        document.querySelector('input[name="userfile"]').value = '';
         return false;
       }
 
@@ -288,25 +334,25 @@
       {
           console.info('[EMR] - File too big for uploading - exceeds upload limits');
           this.errorFileSize(fileItem);
-          $('input[name="userfile"]').val('');
+          document.querySelector('input[name="userfile"]').value = '';
           return false;
       }
       return true;
     }
     this.errorFileSize = function(fileItem)
     {
-      $('.form-error.filesize').find('.fn').text(fileItem.name);
-      $('.form-error.filesize').fadeIn();
+      document.querySelector('.form-error.filesize .fn').textContent = fileItem.name;
+      document.querySelector('.form-error.filesize').style.display = 'block';
     }
     this.warningFileType = function(source_type, target_type)
     {
-      $('.form-warning.filetype').find('.source_type').text(source_type);
-      $('.form-warning.filetype').find('.target_type').text(target_type);
-      $('.form-warning.filetype').fadeIn();
+      document.querySelector('.form-warning.filetype .source_type').textContent = source_type;
+      document.querySelector('.form-warning.filetype .target_type').textContent = target_type;
+      document.querySelector('.form-warning.filetype').style.display = 'block';
     }
     this.warningMimeType = function(fileItem)
     {
-      $('.form-warning.mimetype').fadeIn();
+      document.querySelector('.form-warning.mimetype').style.display = 'block';
     }
     this.debug = function(message)
     {
@@ -314,11 +360,16 @@
     }
     this.showReplaceOptions = function(e)
     {
-        $('section.options .location_option').hide();
-        var replace_option = $('input[name="replace_type"]:checked').val();
+        let locationOption = document.querySelector('section.options .location_option');
+        locationOption.classList.add('hidden'); 
+
+        let replaceType = document.querySelector('input[name="replace_type"]:checked');
+
+        var replace_option = replaceType.value;
         if (replace_option == 'replace_and_search')
         {
-           $('section.options .location_option').show();
+           locationOption.classList.remove('hidden');
+           locationOption.style.display = '';
         }
 
     }
@@ -326,7 +377,6 @@
     {
       e.preventDefault();
       e.stopPropagation();
-			console.log(e);
 
       if (true == this.is_dragging)
         return;
@@ -342,7 +392,6 @@
 			child.addEventListener('dragover', function(event){
 				event.preventDefault();
 			})
-
 
       this.is_dragging = true;
     }
@@ -368,32 +417,36 @@
     }
     this.fileDrop = function (e)
     {
-     // var ev = e.originalEvent;
+
       this.dragOutArea();
-     //ev.preventDefault();
-			e.stopPropagation();
+
+      e.stopPropagation();
       e.preventDefault();
 
       if (e.dataTransfer.items) {
          // Use DataTransferItemList interface to access the file(s)
           document.getElementById('upload-file').files = e.dataTransfer.files;
-           $('input[name="userfile"]').trigger('change');
+           document.querySelector('input[name="userfile"]').dispatchEvent(new Event('change', { bubbles: true }));
        }
     }
   } // emrIf
 
-jQuery(document).ready(function($)
+function initializeMediaReplace()
 {
-  window.enableMediaReplace =  new emrIf($);
+  window.enableMediaReplace =  new emrIf();
   window.enableMediaReplace.init();
-});
+}
 
+if (document.readyState === 'loading')
+  document.addEventListener('DOMContentLoaded', initializeMediaReplace);
+else
+  initializeMediaReplace();
 
   function emrDelayedInit() {
         console.log('Checking delayed init ');
         if(typeof window.enableMediaReplace == "undefined") {
             console.log(emrIf);
-            window.enableMediaReplace =  new emrIf(jQuery);
+            window.enableMediaReplace =  new emrIf();
             window.enableMediaReplace.init();
         }
         else if (typeof window.enableMediaReplace !== 'undefined')

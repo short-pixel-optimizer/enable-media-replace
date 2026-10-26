@@ -20,11 +20,6 @@ class UIHelper
 
 	const NOTICE_NEW_FEATURE = 'EMR001';
 
-  public function __construct()
-  {
-
-  }
-
 	public static function getInstance()
 	{
 		 if (is_null(self::$instance))
@@ -58,7 +53,6 @@ class UIHelper
         }
         $url = add_query_arg('SHORTPIXEL_DEBUG', $spdebug, $url);
       }
-
       return $url;
 
   }
@@ -87,7 +81,6 @@ class UIHelper
 
 	public function getBackgroundRemoveRedirect($attach_id)
 	{
-		//if ( isset( $_POST['remove_after_progress'] ) ) {
 		    $url = admin_url("upload.php");
 		    $url = add_query_arg(array(
 		    'page' => 'enable-media-replace/enable-media-replace.php',
@@ -95,9 +88,7 @@ class UIHelper
 		    'attachment_id' => $attach_id,
 		    ), $url);
 
-//		    $redirect_success = $url;
 				return $url;
-	//	  }
 	}
 
   public function getFailedRedirect($attach_id)
@@ -115,7 +106,20 @@ class UIHelper
     return $url;
   }
 
-
+  // Restrict some functionality on basis of user profile. 
+  public function is_author_restricted()
+  {
+    
+    $bool = current_user_can( 'edit_others_posts' ); 
+    
+    if (true === $bool)
+    {
+       return false; 
+    }
+    
+    
+    return true; 
+  }
 
   public function setPreviewSizes()
   {
@@ -126,7 +130,6 @@ class UIHelper
   public function setSourceSizes($attach_id)
   {
     $data = $this->getImageSizes($attach_id, 'full');  // wp_get_attachment_image_src($attach_id, 'full');
-  //  $file = get_attached_file($attach_id);
 
     if (is_array($data))
     {
@@ -140,7 +143,6 @@ class UIHelper
   protected function getImageSizes($attach_id, $size = 'thumbnail')
   {
 		// We are not using this function, because depending on the theme, it can mess with the dimensions - https://wordpress.stackexchange.com/questions/167525/why-is-wp-get-attachment-image-src-returning-wrong-dimensions
-//    $data = wp_get_attachment_image_src($attach_id, $size);
 		$meta = wp_get_attachment_metadata($attach_id);
 
 		$data = false;
@@ -187,7 +189,7 @@ class UIHelper
       return $data;
 
     $xml = simplexml_load_file($file);
-		//Log::addDebug('XML LOAD FILE', $xml);
+
     if ($xml)
     { // stolen from SVG Upload plugin
       $attr = $xml->attributes();
@@ -263,13 +265,15 @@ class UIHelper
 
 			// SVG's without any helpers return around 0 for width / height. Fix preview.
 
-
 			 // preview width, if source if found, should be set to source.
 			 $this->preview_width = $width;
 			 $this->preview_height = $height;
 
-			$image = "<img src='$url' width='$width' height='$height' class='image' style='max-width:100%; max-height: 100%;' />";
-		//	$image = "<span class='the-image' style='background: url(\"" . $url . "\")';>&nbsp;</span>";
+      $image_width = ($width >= 150) ? $width: 150; 
+      $image_height = ($height >= 150) ? $height : 150;
+
+			$image = sprintf("<img src='%s' width='%d' height='%d' class='image' style='max-width:100%%; max-height: 100%%;' />", 
+        esc_url($url), $image_width, $image_height );
 
 			$defaults = array(
 				'width' => $width,
@@ -428,7 +432,11 @@ class UIHelper
     	$output .= $args['image'];
 		}
     $output .= "<div class='dashicons $icon'>&nbsp;</div>";
-    $output .= "<span class='textlayer'>" . $args['layer'] . "</span>";
+
+    if ($this->full_width > 0 && $this->full_height > 0)
+    {
+      $output .= "<span class='textlayer'>" . $args['layer'] . "</span>";
+    }
 		$output .= $background_remove_ui;
     $output .= "<div class='image_size'>" . $this->convertFileSize($filesize). "</div>";
     $output .= "</div>";

@@ -3,12 +3,11 @@
  * Plugin Name: Enable Media Replace
  * Plugin URI: https://shortpixel.com
  * Description: Enable replacing media files by uploading a new file in the "Edit Media" section of the WordPress Media Library.
- * Version: 4.2.2
+ * Version: 4.2.3
  * Author: ShortPixel
  * Author URI: https://shortpixel.com
  * GitHub Plugin URI: https://github.com/short-pixel-optimizer/enable-media-replace
  * Text Domain: enable-media-replace
- * Domain Path: /languages
  * Dual licensed under the MIT and GPL licenses:
  * License URI: http://www.opensource.org/licenses/mit-license.php
  * License URI: http://www.gnu.org/licenses/gpl.html
@@ -25,7 +24,7 @@
  *
  */
 
-define( 'EMR_VERSION', '4.2.2' );
+define( 'EMR_VERSION', '4.2.3' );
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit; // Exit if accessed directly.
@@ -57,10 +56,10 @@ $plugin_path = plugin_dir_path( EMR_ROOT_FILE );
 
 require_once( $plugin_path . 'build/shortpixel/autoload.php' );
 require_once( $plugin_path . 'classes/compat.php' );
-require_once( $plugin_path . 'classes/functions.php' );
 //require_once( $plugin_path . 'classes/replacer.php' );
 require_once( $plugin_path . 'classes/uihelper.php' );
-//require_once( $plugin_path . 'classes/file.php' );
+require_once( $plugin_path . 'classes/Helper/envHelper.php' );
+
 require_once( $plugin_path . 'classes/cache.php' );
 require_once( $plugin_path . 'classes/api.php' );
 require_once( $plugin_path . 'classes/ApiKeyManager.php' );
@@ -84,7 +83,6 @@ require_once( $plugin_path . 'classes/external/upsell_installer.php' );
 require_once( $plugin_path . 'classes/external/siteorigin.php' );
 require_once( $plugin_path . 'classes/external/wp-offload.php' );
 
-require_once( $plugin_path . 'thumbnail_updater.php' );
 
 function emr()
 {

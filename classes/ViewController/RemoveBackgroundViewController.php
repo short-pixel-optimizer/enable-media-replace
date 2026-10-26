@@ -72,14 +72,14 @@ class RemoveBackGroundViewController extends \EnableMediaReplace\ViewController
 	// When the background has been posted - process.
 	public function loadPost()
 	{
-			if ( ! isset( $_POST['emr_nonce'] )
+		 if ( ! isset( $_POST['emr_nonce'] )
 		 || ! wp_verify_nonce( $_POST['emr_nonce'], 'media_remove_background' ))
 		 {
 			 $this->viewError(self::ERROR_NONCE);
 		 }
 
 		 $key = isset($_POST['key']) ? sanitize_text_field($_POST['key']) : null;
-		 if (is_null($key) || strlen($key) == 0)
+		 if (is_null($key) || strlen($key) === 0)
 		 {
 			 $this->viewError(self::ERROR_KEY);
 		 }
@@ -96,6 +96,16 @@ class RemoveBackGroundViewController extends \EnableMediaReplace\ViewController
 			 $this->viewError(self::ERROR_IMAGE_PERMISSION);
 		   wp_die( esc_html__('You do not have permission to upload files for this author.', 'enable-media-replace') );
 		 }		 
+
+ 		 $uiHelper = \emr()->uiHelper();
+		 $author_restricted = $uiHelper->is_author_restricted();
+
+		 if (true === $author_restricted)
+		 {
+			$this->viewError(self::ERROR_IMAGE_PERMISSION);
+		   wp_die( esc_html__('You do not have permission to upload files for this author.', 'enable-media-replace') );
+		 }
+
 
 		 $this->setView($post_id);
 		 $result = $this->replaceBackground($post_id, $key);
