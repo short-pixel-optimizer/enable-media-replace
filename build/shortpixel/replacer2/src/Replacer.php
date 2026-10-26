@@ -416,6 +416,8 @@ class Replacer
 			$this->setReplaceSettings([]);
 		}
 
+		$isSerialize = is_serialized($content);
+		$array = is_array($content);
 		if (true === is_serialized($content)) {
 			$serialized_content = $content; // use to return content back if incomplete classes are found, prevent destroying the original information
 

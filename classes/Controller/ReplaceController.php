@@ -520,7 +520,7 @@ class ReplaceController
 			// If Mainsite, it should not accepts a /sites/ path
 			if (true === $mainsite)
 			{
-				if (strpos($realPath, $basedir . '/sites') !== false)	
+				if (strpos($realPath, $basedir . 'sites') !== false)	
 				{
 						$this->lastError = self::ERROR_DIRECTORY_SECURITY;
 						$this->lastErrorData = array('path' => $realPath, 'basedir' => $basedir);

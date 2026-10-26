@@ -65,6 +65,7 @@ class ReplaceViewController extends \EnableMediaReplace\ViewController
 
 			$this->view->is_author_restricted = $uiHelper->is_author_restricted(); 
 
+
 			// Override settings here if this happens, because the other option could never show up / be used.
 			if (true === $this->view->is_author_restricted)
 			{
