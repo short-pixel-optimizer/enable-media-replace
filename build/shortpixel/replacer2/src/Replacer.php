@@ -311,36 +311,57 @@ class Replacer
 //		$meta_options = apply_filters('emr/replacer/metadata_tables', array('post', 'comment', 'term', 'user', 'options'));
 		$number_of_updates = 0;
 
+		/*
 		$meta_default = [
 			'id' => 'meta_id',
 			'value' => 'meta_value',
-		];
+		]; */
+
 
 		$table_options = [
-			'postmeta' => $meta_default,
-			'commentmeta' => $meta_default,
-			'termmeta' => $meta_default,
-			'usermeta' => $meta_default,
+			'postmeta' => [
+				'id' => 'meta_id', 
+				'value' => 'meta_value', 
+				'main_id' => 'post_id',
+				'cache_group' => 'post_meta'
+			],
+			'commentmeta' => [
+				'id' => 'meta_id', 
+				'value' => 'meta_value', 
+				'main_id' => 'comment_id',
+				'cache_group' => 'comment_meta'
+			],
+			'termmeta' => [
+				'id' => 'meta_id', 
+				'value' => 'meta_value', 
+				'main_id' => 'term_id',
+				'cache_group' => 'term_meta'
+			],
+			'usermeta' => [
+				'id' => 'umeta_id', 
+				'value' => 'meta_value', 
+				'main_id' => 'user_id',
+				'cache_group' => 'user_meta'
+			],
 			'options' => [
 				'id' => 'option_id',
-				'value' => 'option_value',
+				'value' => 'option_value',		
 			]
 
 		];
 
 		$table_options = apply_filters('emr/replacer/replacement_tables', $table_options);
 
-		// Exeception in user meta table.
-		$table_options['usermeta']['id'] = 'umeta_id';
-
 		foreach ($table_options as $table => $data) {
 			// These must be always defined.
 			$id_field = esc_sql($data['id']);
 			$value_field = esc_sql($data['value']);
+			$main_id = isset($data['main_id']) ? esc_sql($data['main_id']) : 'NULL as main_id'; 
+			
 
 			switch ($table) {
 				case "postmeta": // special case.
-					$sql = "SELECT $id_field, $value_field FROM " . $wpdb->postmeta . '
+					$sql = "SELECT $id_field, $value_field, $main_id FROM " . $wpdb->postmeta . '
 	                WHERE post_id in (SELECT ID from ' . $wpdb->posts . ' where post_status in ("publish", "future", "draft", "pending", "private") ) AND meta_value like %s';
 					$type = 'post';
 
@@ -349,7 +370,7 @@ class Replacer
 				default:
 					$wp_table = $wpdb->{$table};  // termmeta, commentmeta etc
 
-					$sql = "SELECT $id_field , $value_field FROM $wp_table WHERE $value_field like %s";
+					$sql = "SELECT $id_field, $value_field, $main_id FROM $wp_table WHERE $value_field like %s";
 
 					$update_sql = " UPDATE $wp_table set $value_field = %s WHERE $id_field  = %d ";
 					break;
@@ -385,6 +406,20 @@ class Replacer
 						if (true === $this->replace_settings['replacer_do_save']) {
 							$prepared_sql = $wpdb->prepare($update_sql, $content, $id);
 							$wpdb->query($prepared_sql);
+							
+							if ('options' === $table)
+							{
+								wp_cache_delete( 'alloptions', 'options' );         // Clear all options array
+								wp_cache_delete( 'notoptions', 'options' );         // Reset non-existent list
+							} 
+							else 
+							{
+								if (isset($data['cache_group']))
+								{
+									$main_id = $row[$main_id];
+									wp_cache_delete($main_id, $data['cache_group']);
+								}
+							}
 						}
 					}
 				} // Loop
@@ -416,14 +451,12 @@ class Replacer
 			$this->setReplaceSettings([]);
 		}
 
-		$isSerialize = is_serialized($content);
-		$array = is_array($content);
 		if (true === is_serialized($content)) {
 			$serialized_content = $content; // use to return content back if incomplete classes are found, prevent destroying the original information
 
-
+			// Only allow stdClass which can't have magic methods. 
 			$args = array('allowed_classes' => false);
-
+			//$args = array('allowed_classes' => array('stdClass'));
 
 			$content = Unserialize::unserialize($content, $args);
 			// bail directly on incomplete classes. In < PHP 7.2 is_object is false on incomplete objects!

@@ -88,6 +88,11 @@ class Breakdance
            return $content;
         }
 
+        if (false === isset($meta_row['post_id']))
+        {
+           return $content; 
+        }
+
         $meta_id = $meta_row['meta_id'];
         $post_id = $meta_row['post_id'];
 
@@ -106,6 +111,11 @@ class Breakdance
       if ($component !== $this->queryKey)
       {
          return $content;
+      }
+
+      if (false === isset($meta_row['post_id']))
+      {
+         return $content; 
       }
 
       $global = \Breakdance\Data\get_global_option('global_settings_json_string');
