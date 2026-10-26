@@ -64,6 +64,7 @@ class Api {
 	public function request( array $posted_data ) {
 		$bg_remove         = '1';
 		$compression_level = 0; //  intval($posted_data['compression_level']); // off for now.
+		$upscale           = isset($posted_data['upscale']) ? intval($posted_data['upscale']) : 0; // 0 is no upscale, else 2, 3 or 4.
 
 		$attachment_id = isset($_POST['attachment_id']) ? intval($_POST['attachment_id']) : null;
 		$attachment = get_post($attachment_id);
@@ -84,6 +85,14 @@ class Api {
 			return $result;
 	  }
 
+		if (! in_array($upscale, array(0, 2, 3, 4), true))
+		{
+			 $result = $this->getResponseObject();
+			 $result->success = false;
+			 $result->message = __('Invalid upscale factor', 'enable-media-replace');
+			 return $result;
+		}
+
 		$replaceController = new ReplaceController($attachment_id);
 		$url = $replaceController->getSourceUrl();
 
@@ -92,10 +101,12 @@ class Api {
 		$settings['bg_color'] = isset($_POST['background']['color']) ? sanitize_text_field($_POST['background']['color']) : '#ffffff'; // default to white.
 		$settings['bg_transparency'] = isset($_POST['background']['transparency']) ? sanitize_text_field($_POST['background']['transparency']) : false;
 
-		update_option('enable_media_replace', $settings, false);
+		if (0 === $upscale) { // Upscale has no background settings to remember.
+			update_option('enable_media_replace', $settings, false);
+		}
 
 
-		if ( 'solid' === $posted_data['background']['type'] ) {
+		if ( 0 === $upscale && 'solid' === $posted_data['background']['type'] ) {
 			$bg_remove = $posted_data['background']['color'];
 
 			$transparency = isset($posted_data['background']['transparency']) ? intval($posted_data['background']['transparency']) : -1;
@@ -120,8 +131,13 @@ class Api {
 			'refresh'				 => $this->refresh,
 		);
 
+		if ($upscale > 0) {
+			unset($data['bg_remove']);
+			$data['upscale'] = $upscale;
+		}
+
 		$apiKeyManager = ApiKeyManager::getInstance();
-		$apiKey   = $apiKeyManager->getApiKey();
+		$apiKey   = ($upscale > 0) ? '' : $apiKeyManager->getApiKey(); // Upscale only runs on the free reducer for now.
 		$endpoint = $this->url;
 		if ( ! empty( $apiKey ) ) {
 			if ( $this->counter === 0 && ! $apiKeyManager->verifyUnlimitedPlan() ) {
@@ -231,7 +247,9 @@ class Api {
 						// Friendly override + flag when the free-reducer quota is exhausted.
 						if ( ! empty( $result->message ) && stripos( $result->message, 'Quota exceeded' ) !== false ) {
 							$result->quota_exceeded = true;
-							$result->message       = __( 'Quota exceeded. Please purchase the Unlimited or Unlimited AI plan and add your API key to continue removing backgrounds.', 'enable-media-replace' );
+							$result->message       = ($upscale > 0)
+								? __( 'Quota exceeded. The free upscale quota has been used, please try again later.', 'enable-media-replace' )
+								: __( 'Quota exceeded. Please purchase the Unlimited or Unlimited AI plan and add your API key to continue removing backgrounds.', 'enable-media-replace' );
 						}
 					}
 				}
@@ -239,7 +257,9 @@ class Api {
 				$result->message = $e->getMessage();
 			}
 		} else {
-			$result->message = __( 'The background could not be removed in a reasonable amount of time. The file might be too big, or the API could be busy. Please try again later!', 'enable-media-replace' );
+			$result->message = ($upscale > 0)
+				? __( 'The image could not be upscaled in a reasonable amount of time. The file might be too big, or the API could be busy. Please try again later!', 'enable-media-replace' )
+				: __( 'The background could not be removed in a reasonable amount of time. The file might be too big, or the API could be busy. Please try again later!', 'enable-media-replace' );
 		}
 
 		return $result;

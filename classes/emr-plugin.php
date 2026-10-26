@@ -59,6 +59,7 @@ class EnableMediaReplacePlugin
     {
         $this->features['replace']  = true; // does nothing just for completeness
         $this->features['background'] = apply_filters('emr/feature/background', true);
+        $this->features['upscale'] = apply_filters('emr/feature/upscale', true);
         $this->features['remote_notice']  = apply_filters('emr/feature/remote_notice', true);
 
         // Load Submodules
@@ -89,7 +90,8 @@ class EnableMediaReplacePlugin
 
         switch ($name) {
             case 'background':
-                $bool = $this->features['background'];
+            case 'upscale':
+                $bool = $this->features[$name];
                 if (true == $bool)
                 {
                 	$uiHelper = \emr()->uiHelper();
@@ -183,6 +185,7 @@ class EnableMediaReplacePlugin
     {
         $title =  esc_html__("Replace media", "enable-media-replace");
         $title = (isset($_REQUEST['action']) && ($_REQUEST['action'] === 'emr_prepare_remove')) ? esc_html__("Remove background", "enable-media-replace") : $title;
+        $title = (isset($_REQUEST['action']) && ($_REQUEST['action'] === 'emr_prepare_upscale')) ? esc_html__("Upscale image", "enable-media-replace") : $title;
         add_submenu_page('upload.php', $title, $title, 'upload_files', 'enable-media-replace/enable-media-replace.php', array($this, 'route'));
     }
 
@@ -273,6 +276,18 @@ class EnableMediaReplacePlugin
                     $controller->loadPost();
 
                     //	require_once($this->plugin_path . 'views/do-replace-background.php');
+                } elseif ('emr_prepare_upscale' === $action && $this->useFeature('upscale')) {
+                    wp_enqueue_script('emr_upscale');
+
+                    wp_enqueue_style('emr_style');
+                    wp_enqueue_style('emr-remove-background');
+                    wp_enqueue_script('emr_upsell');
+
+                    $controller = \EnableMediaReplace\ViewController\UpscaleViewController::getInstance();
+                    $controller->load();
+                } elseif ('do_upscale_replace' === $action && $this->useFeature('upscale')) {
+                    $controller = \EnableMediaReplace\ViewController\UpscaleViewController::getInstance();
+                    $controller->loadPost();
                 } else {
 
                     exit('Something went wrong loading page, please try again');
@@ -342,6 +357,14 @@ class EnableMediaReplacePlugin
         wp_localize_script('emr_remove_bg', 'emrObject', array(
             'ajax_url' => $ajax_url,
             'nonce'    => wp_create_nonce('emr_remove_background')
+        ));
+
+        $emr_upscale_path = plugin_dir_path(EMR_ROOT_FILE) . 'js/upscale.js';
+        $emr_upscale_ver  = file_exists($emr_upscale_path) ? filemtime($emr_upscale_path) : EMR_VERSION;
+        wp_register_script('emr_upscale', plugins_url('js/upscale.js', EMR_ROOT_FILE), array('jquery'), $emr_upscale_ver, true);
+        wp_localize_script('emr_upscale', 'emrObject', array(
+            'ajax_url' => $ajax_url,
+            'nonce'    => wp_create_nonce('emr_upscale_image')
         ));
 
 
@@ -436,6 +459,18 @@ class EnableMediaReplacePlugin
         return $url;
     }
 
+    protected function getUpscaleURL($attach_id)
+    {
+        $url = admin_url("upload.php");
+        $url = add_query_arg(array(
+            'page' => 'enable-media-replace/enable-media-replace.php',
+            'action' => 'emr_prepare_upscale',
+            'attachment_id' => $attach_id,
+        ), $url);
+
+        return $url;
+    }
+
     public function add_meta_boxes($post)
     {
         // Because some plugins don't like to play by the rules.
@@ -476,6 +511,12 @@ class EnableMediaReplacePlugin
 
         if ($this->uiHelper()->isBackgroundRemovable($post)) {
             echo "<p><a class='button-secondary' $removeBg_link>" . esc_html__("Remove background", "enable-media-replace") . "</a></p><p>" . esc_html__("To remove the background, click the link and select the options.", "enable-media-replace") . "</p>";
+        }
+
+        //Upscale button
+        if ($this->uiHelper()->isUpscalable($post)) {
+            $upscale_link = "href=\"" . wp_nonce_url($this->getUpscaleURL($post->ID), 'emr_prepare_upscale') . "\"";
+            echo "<p><a class='button-secondary' $upscale_link>" . esc_html__("Upscale image", "enable-media-replace") . "</a></p><p>" . esc_html__("To enlarge a small image, click the link and select the options.", "enable-media-replace") . "</p>";
         }
     }
 
@@ -551,6 +592,16 @@ class EnableMediaReplacePlugin
                 "helps" => esc_html__("To remove the background, click the link.", "enable-media-replace")
             );
         }
+
+        if ($uiHelper->isUpscalable($post)) {
+            $link = "href='" . wp_nonce_url($this->getUpscaleURL($post->ID), 'emr_prepare_upscale') . "'";
+            $form_fields["emr-upscale"] = array(
+                "label" => esc_html__("Upscale image", "enable-media-replace"),
+                "input" => "html",
+                "html" => "<a class='button-secondary' $link>" . esc_html__("Upscale image", "enable-media-replace") . "</a>",
+                "helps" => esc_html__("To enlarge a small image, click the link.", "enable-media-replace")
+            );
+        }
         return $form_fields;
     }
 
@@ -581,6 +632,11 @@ class EnableMediaReplacePlugin
 
         if ($uiHelper->isBackgroundRemovable($post) && false === $uiHelper->is_author_restricted()) {
             $newaction['remove_background'] = '<a ' . $background_remove_link . ' aria-label="' . esc_attr__("Remove  background", "enable-media-replace") . '" rel="permalink">' . esc_html__("Remove  background", "enable-media-replace") . '</a>';
+        }
+
+        if ($uiHelper->isUpscalable($post)) {
+            $upscale_link = 'href="' . wp_nonce_url($this->getUpscaleURL($post->ID), 'emr_prepare_upscale') . '"';
+            $newaction['upscale_image'] = '<a ' . $upscale_link . ' aria-label="' . esc_attr__("Upscale image", "enable-media-replace") . '" rel="permalink">' . esc_html__("Upscale image", "enable-media-replace") . '</a>';
         }
         return array_merge($actions, $newaction);
     }

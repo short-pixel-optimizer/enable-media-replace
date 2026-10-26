@@ -75,6 +75,7 @@ require_once( $plugin_path . 'classes/ViewController.php');
 require_once( $plugin_path . 'classes/ViewController/UploadViewController.php');
 require_once( $plugin_path . 'classes/ViewController/ReplaceViewController.php');
 require_once( $plugin_path . 'classes/ViewController/RemoveBackgroundViewController.php');
+require_once( $plugin_path . 'classes/ViewController/UpscaleViewController.php');
 
 require_once( $plugin_path . 'classes/externals.php' );
 require_once( $plugin_path . 'classes/external/elementor.php' );
