@@ -3,9 +3,9 @@ Contributors: ShortPixel
 Donate link: https://www.paypal.me/resizeImage
 Tags: replace, replace image, remove background, replace jpg, change media
 Requires at least: 4.9.7
-Tested up to: 7.0
+Tested up to: 7.1
 Requires PHP: 5.6
-Stable tag: 4.2.2
+Stable tag: 4.2.3
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -92,6 +92,19 @@ If you want more control over the format in which the time is shown, you can use
 Please report security bugs found in the source code of the Enable Media Replace plugin through the [Patchstack Vulnerability Disclosure Program](https://patchstack.com/database/vdp/enable-media-replace). The Patchstack team will assist you with verification, CVE assignment, and notify the developers of this plugin.
 
 == Changelog ==
+
+= 4.2.3 =
+
+Release date: October 26, 2026
+* Fix: Hardened the database replacements against a possible PHP Object Injection, which could be exploited under certain conditions, safely disclosed by the Wordfence, PatchStack and WPScan teams;
+* Fix: Users with the Author role now only see the standard replace option; renaming, changing the location and background removal are limited to Editors and above, following a security report from the Wordfence team;
+* Fix: Strengthened the folder checks when a file is replaced into a new location, including on multisite installations, following a report from Adam Kahlon via the WPScan team;
+* Fix: Uploaded replacement files now go through the same WordPress checks as regular media uploads, following a report from Adam Kahlon via the WPScan team;
+* Fix: The database replacement no longer runs when there is nothing to search for (thanks to @ibeninc for reporting and proposing the fix);
+* Compat: Improved the Breakdance builder integration and the cache purge after a replacement;
+* Tweak: A few interface improvements when the replaced file is an SVG;
+* Tweak: The admin scripts no longer depend on jQuery;
+* Tweak: Removed the outdated bundled translation files, translations are provided through WordPress.org.
 
 = 4.2.2 =
 
