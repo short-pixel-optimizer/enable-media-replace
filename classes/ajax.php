@@ -9,7 +9,6 @@ class Ajax {
 	public function __construct() {
 		$endpoints = array(
 			'remove_background',
-			'upscale_image',
 			'save_api_key',
 			'delete_api_key',
 		);
@@ -23,17 +22,6 @@ class Ajax {
 			$api = new Api;
 			$response = $api->request( $_POST );
             wp_send_json($response);
-		}
-		else {
-				die('Wrong nonce');
-		}
-	}
-
-	public function upscale_image() {
-		if ( $this->check_nonce() ) {
-			$api = new Api;
-			$response = $api->request( $_POST );
-			wp_send_json($response);
 		}
 		else {
 				die('Wrong nonce');

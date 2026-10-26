@@ -101,7 +101,12 @@ $scale_checked = false;
 
 			</div>
 
-			<button type="button" class="button button-primary" id="upscale_button" <?php disabled(! $has_scale_option); ?>><?php esc_html_e('Preview', 'enable-media-replace'); ?></button>
+			<?php
+			$emr_account_feature = 'upscale';
+			include( __DIR__ . '/shortpixel-account.php' );
+			?>
+
+			<button type="button" class="button button-primary" id="remove_background_button" <?php disabled(! $has_scale_option); ?>><?php esc_html_e('Preview', 'enable-media-replace'); ?></button>
 			<button type="submit" class="button button-primary" id="replace_image_button" disabled><?php esc_html_e('Replace', 'enable-media-replace'); ?></button>
 			<a class="button" href="javascript:history.back()"><?php esc_html_e('Cancel', 'enable-media-replace'); ?></a>
 		</div> <!--- editor wrapper -->

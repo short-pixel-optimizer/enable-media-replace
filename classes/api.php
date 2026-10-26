@@ -137,7 +137,7 @@ class Api {
 		}
 
 		$apiKeyManager = ApiKeyManager::getInstance();
-		$apiKey   = ($upscale > 0) ? '' : $apiKeyManager->getApiKey(); // Upscale only runs on the free reducer for now.
+		$apiKey   = $apiKeyManager->getApiKey();
 		$endpoint = $this->url;
 		if ( ! empty( $apiKey ) ) {
 			if ( $this->counter === 0 && ! $apiKeyManager->verifyUnlimitedPlan() ) {
@@ -248,7 +248,7 @@ class Api {
 						if ( ! empty( $result->message ) && stripos( $result->message, 'Quota exceeded' ) !== false ) {
 							$result->quota_exceeded = true;
 							$result->message       = ($upscale > 0)
-								? __( 'Quota exceeded. The free upscale quota has been used, please try again later.', 'enable-media-replace' )
+								? __( 'Quota exceeded. Please purchase the Unlimited or Unlimited AI plan and add your API key to continue upscaling images.', 'enable-media-replace' )
 								: __( 'Quota exceeded. Please purchase the Unlimited or Unlimited AI plan and add your API key to continue removing backgrounds.', 'enable-media-replace' );
 						}
 					}

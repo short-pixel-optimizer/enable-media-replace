@@ -277,9 +277,7 @@ class EnableMediaReplacePlugin
 
                     //	require_once($this->plugin_path . 'views/do-replace-background.php');
                 } elseif ('emr_prepare_upscale' === $action && $this->useFeature('upscale')) {
-                    wp_enqueue_script('emr_upscale');
-
-                    wp_enqueue_style('emr_style');
+                    wp_enqueue_script('emr_remove_bg'); // Same preview flow, sends the upscale factor.
                     wp_enqueue_style('emr-remove-background');
                     wp_enqueue_script('emr_upsell');
 
@@ -357,14 +355,6 @@ class EnableMediaReplacePlugin
         wp_localize_script('emr_remove_bg', 'emrObject', array(
             'ajax_url' => $ajax_url,
             'nonce'    => wp_create_nonce('emr_remove_background')
-        ));
-
-        $emr_upscale_path = plugin_dir_path(EMR_ROOT_FILE) . 'js/upscale.js';
-        $emr_upscale_ver  = file_exists($emr_upscale_path) ? filemtime($emr_upscale_path) : EMR_VERSION;
-        wp_register_script('emr_upscale', plugins_url('js/upscale.js', EMR_ROOT_FILE), array('jquery'), $emr_upscale_ver, true);
-        wp_localize_script('emr_upscale', 'emrObject', array(
-            'ajax_url' => $ajax_url,
-            'nonce'    => wp_create_nonce('emr_upscale_image')
         ));
 
 

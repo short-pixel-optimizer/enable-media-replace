@@ -44,7 +44,8 @@ jQuery(document).ready(function ($) {
         nonce,
         attachment_id,
         background,
-        compression_level : cLvl
+        compression_level : cLvl,
+        upscale: $('input[type=radio][name="upscale"]:checked').val() // Only on the upscale page.
       },
       beforeSend: function () {
         $('html, body').animate({
@@ -86,13 +87,15 @@ jQuery(document).ready(function ($) {
          $('#remove_background_button').attr('disabled', false);
 
 				 var badBg = document.getElementById('bad-background-link');
-				 var href = badBg.dataset.link;
-				 href = href.replace('{url}', response.url);
-				 href = href.replace('{settings}', response.settings);
+				 if (badBg) { // Not on the upscale page.
+					 var href = badBg.dataset.link;
+					 href = href.replace('{url}', response.url);
+					 href = href.replace('{settings}', response.settings);
 
-				 badBg.setAttribute('href', href);
+					 badBg.setAttribute('href', href);
 
-				 badBg.style.visibility = 'visible';
+					 badBg.style.visibility = 'visible';
+				 }
          /* $('#removed_image').html(`
 						<div class="img-comp-container">
   						<div class="img-comp-img">
