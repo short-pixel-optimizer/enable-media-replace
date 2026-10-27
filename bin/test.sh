@@ -427,12 +427,16 @@ fi
 # defaultTestSuite) and forwards the API key into the container. Warn
 # loudly when the key is missing — the tests would all skip.
 if [ "$SMOKE" = "1" ]; then
-    if [ -z "${SHORTPIXEL_SMOKE_KEY:-}" ]; then
+    if [ -z "${SHORTPIXEL_SMOKE_KEY:-}" ] && [ "${EMR_SMOKE_USE_MOCK:-}" != "1" ]; then
         echo "!!! SHORTPIXEL_SMOKE_KEY is not set — every smoke test will SKIP."
         echo "    Run as: SHORTPIXEL_SMOKE_KEY=<your key> bin/test.sh --smoke"
+        echo "    Self-check against the mock instead: EMR_SMOKE_USE_MOCK=1 bin/test.sh --smoke"
+        echo "    A full removal needs a public image: SHORTPIXEL_SMOKE_IMAGE_URL=https://.../image.jpg"
     fi
     "${COMPOSE[@]}" run --rm "${RUN_ENV[@]}" \
         -e SHORTPIXEL_SMOKE_KEY="${SHORTPIXEL_SMOKE_KEY:-}" \
+        -e SHORTPIXEL_SMOKE_IMAGE_URL="${SHORTPIXEL_SMOKE_IMAGE_URL:-}" \
+        -e EMR_SMOKE_USE_MOCK="${EMR_SMOKE_USE_MOCK:-}" \
         php bash -c "$RUN_PHPUNIT_FN"'
         set -eu
         if [ ! -f vendor-tests/autoload.php ]; then
