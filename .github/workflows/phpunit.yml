@@ -1,0 +1,569 @@
+name: EMR PHPUnit Tests
+
+# Every push to `tests` (the branch the test harness is built on) runs the
+# PHPUnit suites, and so does every pull request into `updates` or `master`.
+# Other branches are covered by their pull request; anything else can be run
+# by hand from the Actions tab (workflow_dispatch).
+on:
+  push:
+    branches: [ tests ]
+  pull_request:
+    branches: [ updates, master ]
+  workflow_dispatch:
+
+# Pull requests: one group per PR, so a newer push cancels the stale run.
+# Pushes and manual runs: a unique group per run, so every commit on
+# `tests` keeps its own verdict. (A shared group is not enough even with
+# cancel-in-progress off: GitHub keeps only ONE pending run per group and
+# silently cancels the older pending one when a third arrives.)
+concurrency:
+  group: phpunit-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# Every job below skips pull_request runs whose SOURCE branch is `tests` in
+# this repository: the push to `tests` has already tested that exact commit,
+# so the PR would only run everything a second time. GitHub reports a job
+# skipped by `if` as passing, so it never blocks the PR.
+#
+# Zero-test guard: every PHPUnit invocation below is captured with `tee` and
+# fails the step when (a) PHPUnit exits non-zero, (b) the log contains
+# `No tests executed!` (an unknown, case-mismatched testsuite name or a
+# filter that matches nothing exits 0), or (c) the log has no `OK (` /
+# `Tests:` summary line (code under test called exit() mid-run, which also
+# ends PHPUnit with exit 0). A green job therefore always ran real tests.
+
+jobs:
+  build:
+    name: Run Tests (PHP ${{ matrix.php-version }})
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.ref != 'tests' || github.event.pull_request.head.repo.full_name != github.repository
+    runs-on: ubuntu-latest
+
+    strategy:
+      # Don't cancel other PHP versions when one fails: we want to see
+      # results across the whole matrix, not just the first failure.
+      fail-fast: false
+      matrix:
+        php-version:
+          - '7.4'   # legacy: minimum supported per the readme
+          - '8.3'   # currently most common in production
+          - '8.5'   # upcoming: flag regressions before it ships
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: password
+          MYSQL_DATABASE: wordpress_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "mysqladmin ping --silent"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 3
+
+    env:
+      WP_CORE_DIR: /tmp/wordpress
+      WP_TESTS_DIR: /tmp/wordpress-tests-lib
+      WP_VERSION: latest
+      DB_NAME: wordpress_test
+      DB_USER: root
+      DB_PASS: password
+      DB_HOST: 127.0.0.1
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Set up PHP ${{ matrix.php-version }}
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php-version }}
+          extensions: gd, mbstring, mysqli, json, xml
+          ini-values: post_max_size=256M, memory_limit=512M
+          tools: composer
+
+      - name: Install SVN
+        run: sudo apt-get update && sudo apt-get install -y subversion
+
+      - name: Install WP-CLI
+        run: |
+          curl -O https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar
+          chmod +x wp-cli.phar
+          sudo mv wp-cli.phar /usr/local/bin/wp
+
+      - name: Install Composer dependencies
+        run: |
+          composer clear-cache
+          COMPOSER=composer.tests.json composer install --no-interaction --prefer-dist
+
+      - name: Install WordPress Unit Test Suite
+        run: |
+          mkdir -p "${WP_TESTS_DIR}"
+          bash bin/install-wp-tests.sh "$DB_NAME" "$DB_USER" "$DB_PASS" "$DB_HOST" "${WP_VERSION}"
+
+      - name: Show PHPUnit + config sanity check
+        run: |
+          echo "=== PHPUnit binary + version ==="
+          which vendor-tests/bin/phpunit
+          vendor-tests/bin/phpunit --version
+          echo ""
+          echo "=== Test files discovered on disk ==="
+          find tests -type f -name 'test-*.php' | sort
+          echo ""
+          echo "=== Total: $(find tests -type f -name 'test-*.php' | wc -l) test files ==="
+          echo ""
+          echo "=== Test suites PHPUnit will recognise ==="
+          vendor-tests/bin/phpunit --list-suites
+          echo ""
+          echo "=== Test methods PHPUnit will run (across all suites) ==="
+          vendor-tests/bin/phpunit --list-tests | tee /tmp/phpunit-tests.txt
+          echo ""
+          echo "=== Test method count: $(grep -c ' - ' /tmp/phpunit-tests.txt || echo 0) ==="
+
+      - name: Run each PHPUnit testsuite explicitly
+        run: |
+          # Run each testsuite in its own phpunit invocation so we get a
+          # per-suite exit code + summary. Every suite must run even if
+          # an earlier one fails, so a single broken suite doesn't hide
+          # the state of the rest. Aggregated exit code is checked at
+          # the end.
+          #
+          # GitHub Actions runs `bash --noprofile --norc -eo pipefail`
+          # by default, so `set -e` is active. A bare phpunit failure
+          # would abort the whole step before we could capture $?; the
+          # `if ! ... ; then` construct is the documented escape hatch
+          # (`set -e` explicitly does not fire on a command in a
+          # conditional test).
+          #
+          # Per-suite output is tee-d to $LOGDIR so the end-of-run
+          # summary can extract failing test names + grand totals
+          # without re-invoking phpunit.
+          LOGDIR=$(mktemp -d)
+          trap "rm -rf $LOGDIR" EXIT
+
+          # The names must match phpunit.xml.dist exactly (case-sensitive).
+          SUITES=("Helper" "Replacer" "Modules" "Api" "Controllers" "ViewControllers" "EMR Main")
+
+          FAILED=0
+          FAILED_SUITES=""
+
+          for SUITE in "${SUITES[@]}"; do
+            echo ""
+            echo "=============================================================="
+            echo "=== Running testsuite: $SUITE"
+            echo "=============================================================="
+            SAFE_NAME=$(echo "$SUITE" | tr " " "_")
+            LOG="$LOGDIR/$SAFE_NAME.log"
+            # Pipe through tee for capture. GitHub Actions logs aren't a
+            # TTY, so keep colours off: the captured log stays scannable.
+            if vendor-tests/bin/phpunit --testsuite "$SUITE" --testdox --colors=never 2>&1 | tee "$LOG" && [ "${PIPESTATUS[0]}" -eq 0 ]; then
+              # A testsuite name PHPUnit doesn't recognise (they are matched
+              # case-sensitively) yields "No tests executed!" AND exit 0: a
+              # green run that tested nothing. The list above is a second
+              # copy of the names in phpunit.xml.dist, so guard against it
+              # drifting rather than trusting the exit code alone.
+              if grep -q "No tests executed!" "$LOG"; then
+                FAILED=1
+                FAILED_SUITES="$FAILED_SUITES '$SUITE'(no tests ran)"
+                echo ""
+                echo "=== Testsuite '$SUITE' executed NO TESTS, failing:"
+                echo "    the name must match phpunit.xml.dist exactly (case-sensitive)."
+              # exit() inside the code under test ends PHPUnit with exit 0
+              # and no summary block: treat a missing summary as a failure.
+              elif ! grep -qE "^(OK \(|Tests: )" "$LOG"; then
+                FAILED=1
+                FAILED_SUITES="$FAILED_SUITES '$SUITE'(no summary)"
+                echo ""
+                echo "=== Testsuite '$SUITE' printed no summary line, failing:"
+                echo "    PHPUnit most likely died mid-run (exit() in the code under test)."
+              else
+                echo ""
+                echo "=== Testsuite '$SUITE' passed"
+              fi
+            else
+              FAILED=1
+              FAILED_SUITES="$FAILED_SUITES '$SUITE'"
+              echo ""
+              echo "=== Testsuite '$SUITE' FAILED"
+            fi
+          done
+
+          echo ""
+          echo "=============================================================="
+          echo "=== Summary"
+          echo "=============================================================="
+
+          # Grand totals across all suites.
+          GRAND_TESTS=0
+          GRAND_ASSERTIONS=0
+          GRAND_FAILED=0
+
+          for SUITE in "${SUITES[@]}"; do
+            SAFE_NAME=$(echo "$SUITE" | tr " " "_")
+            LOG="$LOGDIR/$SAFE_NAME.log"
+            # `Tests: 42, Assertions: 99, Failures: 3, ...`: pick the last
+            # one in case a suite emits multiple summary lines.
+            TOTALS=$(grep -E "^(Tests: |OK \(|OK, but incomplete)" "$LOG" | tail -n 1 || true)
+            echo ""
+            echo "-- $SUITE --"
+            if [ -n "$TOTALS" ]; then
+              echo "   $TOTALS"
+              # Two shapes to parse:
+              #   `OK (N tests, M assertions)`               all passed
+              #   `Tests: N, Assertions: M, [Errors: E,] [Failures: F,] ...`
+              # Errors + Failures both count as "failed" for the summary.
+              if [[ "$TOTALS" =~ ^OK\ \(([0-9]+)\ tests?,\ ([0-9]+)\ assertions?\) ]]; then
+                GRAND_TESTS=$((GRAND_TESTS + ${BASH_REMATCH[1]}))
+                GRAND_ASSERTIONS=$((GRAND_ASSERTIONS + ${BASH_REMATCH[2]}))
+              elif [[ "$TOTALS" =~ Tests:\ ([0-9]+),\ Assertions:\ ([0-9]+) ]]; then
+                GRAND_TESTS=$((GRAND_TESTS + ${BASH_REMATCH[1]}))
+                GRAND_ASSERTIONS=$((GRAND_ASSERTIONS + ${BASH_REMATCH[2]}))
+                [[ "$TOTALS" =~ Errors:\ ([0-9]+) ]]   && GRAND_FAILED=$((GRAND_FAILED + ${BASH_REMATCH[1]}))
+                [[ "$TOTALS" =~ Failures:\ ([0-9]+) ]] && GRAND_FAILED=$((GRAND_FAILED + ${BASH_REMATCH[1]}))
+              fi
+            else
+              echo "   (no summary emitted: PHPUnit likely died mid-run)"
+            fi
+            FAILING=$(grep -E "^[0-9]+\) [A-Za-z_]+Test::test_" "$LOG" || true)
+            if [ -n "$FAILING" ]; then
+              echo "   Failing tests:"
+              echo "$FAILING" | sed "s/^/     /"
+            fi
+          done
+
+          GRAND_PASSED=$((GRAND_TESTS - GRAND_FAILED))
+          echo ""
+          echo "-- Grand total --"
+          echo "   Tests:      $GRAND_TESTS"
+          echo "   Assertions: $GRAND_ASSERTIONS"
+          echo "   Passed:     $GRAND_PASSED"
+          echo "   Failed:     $GRAND_FAILED"
+
+          echo ""
+          echo "=============================================================="
+          if [ $FAILED -ne 0 ]; then
+            echo "!!! FAILED testsuites:$FAILED_SUITES"
+            echo "=============================================================="
+            exit 1
+          fi
+          if [ "$GRAND_TESTS" -eq 0 ]; then
+            echo "!!! No test ran across all suites"
+            echo "=============================================================="
+            exit 1
+          fi
+          echo "=== All testsuites passed"
+          echo "=============================================================="
+
+  integration:
+    name: Run Integration Tests (PHP ${{ matrix.php-version }}, WP ${{ matrix.wp-version }})
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.ref != 'tests' || github.event.pull_request.head.repo.full_name != github.repository
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      # Budget decision: PRs run PHP 8.3 / WP latest (the common production
+      # combo) plus WP 5.9, the oldest version the WordPress test library
+      # installs on this setup, on PHP 7.4 and 8.3. Pushes to `tests` and
+      # manual runs run the full PHP 7.4/8.3/8.5 matrix on WP latest, plus
+      # WP 5.9 on PHP 7.4 and 8.3. Old WP + PHP 8.5 is skipped: a WP core
+      # that predates PHP 8.x-era fixes only produces deprecation noise
+      # there, not signal.
+      matrix: ${{ github.event_name == 'pull_request'
+        && fromJSON('{"include":[{"php-version":"8.3","wp-version":"latest"},{"php-version":"7.4","wp-version":"5.9"},{"php-version":"8.3","wp-version":"5.9"}]}')
+        || fromJSON('{"include":[{"php-version":"7.4","wp-version":"latest"},{"php-version":"8.3","wp-version":"latest"},{"php-version":"8.5","wp-version":"latest"},{"php-version":"7.4","wp-version":"5.9"},{"php-version":"8.3","wp-version":"5.9"}]}') }}
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: password
+          MYSQL_DATABASE: wordpress_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "mysqladmin ping --silent"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 3
+
+    env:
+      WP_CORE_DIR: /tmp/wordpress
+      WP_TESTS_DIR: /tmp/wordpress-tests-lib
+      WP_VERSION: ${{ matrix.wp-version }}
+      DB_NAME: wordpress_test
+      DB_USER: root
+      DB_PASS: password
+      DB_HOST: 127.0.0.1
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Set up PHP ${{ matrix.php-version }}
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php-version }}
+          # gd is required: the integration suite creates real attachments
+          # and wp_generate_attachment_metadata() needs a WP image editor.
+          extensions: gd, mbstring, mysqli, json, xml
+          ini-values: post_max_size=256M, memory_limit=512M
+          tools: composer
+
+      - name: Install SVN
+        run: sudo apt-get update && sudo apt-get install -y subversion
+
+      - name: Install WP-CLI
+        run: |
+          curl -O https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar
+          chmod +x wp-cli.phar
+          sudo mv wp-cli.phar /usr/local/bin/wp
+
+      - name: Install Composer dependencies
+        run: |
+          composer clear-cache
+          COMPOSER=composer.tests.json composer install --no-interaction --prefer-dist
+
+      - name: Install WordPress Unit Test Suite
+        run: |
+          mkdir -p "${WP_TESTS_DIR}"
+          bash bin/install-wp-tests.sh "$DB_NAME" "$DB_USER" "$DB_PASS" "$DB_HOST" "${WP_VERSION}"
+
+      - name: Run Integration and IntegrationIsolated testsuites
+        run: |
+          # Two phpunit invocations, the same pair bin/test.sh --integration
+          # makes. The plain run selects the config's default testsuite
+          # (`Integration`, declared as defaultTestSuite in
+          # phpunit-integration.xml); the second run is the file that
+          # define()s EMR_CAPABILITY and friends, which would poison every
+          # test after it if it shared the process. Both always run, so a
+          # failure in the first does not hide the verdict of the second.
+          LOGDIR=$(mktemp -d)
+          trap "rm -rf $LOGDIR" EXIT
+          FAILED=0
+
+          # Zero-test guard, see the comment at the top of this file.
+          check_log() {
+            local NAME="$1" STATUS="$2" LOG="$3"
+            if [ "$STATUS" -ne 0 ]; then
+              echo "!!! $NAME: phpunit exited with $STATUS"; return 1
+            fi
+            if grep -q "No tests executed!" "$LOG"; then
+              echo "!!! $NAME: no tests executed"; return 1
+            fi
+            if ! grep -qE "^(OK \(|Tests: )" "$LOG"; then
+              echo "!!! $NAME: no summary line, PHPUnit died mid-run"; return 1
+            fi
+            echo "=== $NAME passed"
+          }
+
+          echo "=== Running testsuite: Integration (default testsuite)"
+          set +e
+          vendor-tests/bin/phpunit -c phpunit-integration.xml --testdox --colors=never 2>&1 | tee "$LOGDIR/integration.log"
+          STATUS=${PIPESTATUS[0]}
+          set -e
+          check_log "Integration" "$STATUS" "$LOGDIR/integration.log" || FAILED=1
+
+          echo ""
+          echo "=== Running testsuite: IntegrationIsolated"
+          set +e
+          vendor-tests/bin/phpunit -c phpunit-integration.xml --testsuite IntegrationIsolated --testdox --colors=never 2>&1 | tee "$LOGDIR/isolated.log"
+          STATUS=${PIPESTATUS[0]}
+          set -e
+          check_log "IntegrationIsolated" "$STATUS" "$LOGDIR/isolated.log" || FAILED=1
+
+          exit $FAILED
+
+  multisite:
+    # Multisite suite: the WP test framework installs the test database as
+    # a NETWORK install (WP_MULTISITE=1) and the Multisite testsuite covers
+    # per-site uploads, switch_to_blog() round trips, the sites/ guard of
+    # the target location and the permission matrix on a network. It has
+    # its own bootstrap (tests/Multisite/bootstrap.php), the one
+    # bin/test.sh --ms passes. Single PHP 8.3 / WP latest job: the
+    # multisite-specific surface doesn't vary by PHP version, which the
+    # unit/integration matrices already cover.
+    name: Run Multisite Tests (PHP 8.3, WP latest)
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.ref != 'tests' || github.event.pull_request.head.repo.full_name != github.repository
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: password
+          MYSQL_DATABASE: wordpress_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "mysqladmin ping --silent"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 3
+
+    env:
+      WP_CORE_DIR: /tmp/wordpress
+      WP_TESTS_DIR: /tmp/wordpress-tests-lib
+      WP_VERSION: latest
+      DB_NAME: wordpress_test
+      DB_USER: root
+      DB_PASS: password
+      DB_HOST: 127.0.0.1
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Set up PHP 8.3
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: gd, mbstring, mysqli, json, xml
+          ini-values: post_max_size=256M, memory_limit=512M
+          tools: composer
+
+      - name: Install SVN
+        run: sudo apt-get update && sudo apt-get install -y subversion
+
+      - name: Install WP-CLI
+        run: |
+          curl -O https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar
+          chmod +x wp-cli.phar
+          sudo mv wp-cli.phar /usr/local/bin/wp
+
+      - name: Install Composer dependencies
+        run: |
+          composer clear-cache
+          COMPOSER=composer.tests.json composer install --no-interaction --prefer-dist
+
+      - name: Install WordPress Unit Test Suite
+        run: |
+          mkdir -p "${WP_TESTS_DIR}"
+          bash bin/install-wp-tests.sh "$DB_NAME" "$DB_USER" "$DB_PASS" "$DB_HOST" "${WP_VERSION}"
+
+      - name: Run multisite testsuite
+        env:
+          WP_MULTISITE: '1'
+        run: |
+          LOG=$(mktemp)
+          set +e
+          vendor-tests/bin/phpunit -c phpunit-integration.xml --bootstrap tests/Multisite/bootstrap.php --testsuite Multisite --testdox --colors=never 2>&1 | tee "$LOG"
+          STATUS=${PIPESTATUS[0]}
+          set -e
+          # Zero-test guard, see the comment at the top of this file.
+          if [ "$STATUS" -ne 0 ]; then
+            echo "!!! Multisite: phpunit exited with $STATUS"; exit 1
+          fi
+          if grep -q "No tests executed!" "$LOG"; then
+            echo "!!! Multisite: no tests executed"; exit 1
+          fi
+          if ! grep -qE "^(OK \(|Tests: )" "$LOG"; then
+            echo "!!! Multisite: no summary line, PHPUnit died mid-run"; exit 1
+          fi
+          echo "=== Multisite passed"
+
+  compat:
+    # Cross-plugin compatibility suite: runs EMR against the REAL partner
+    # plugins (latest stable from wordpress.org). PHP 8.3 + 8.5 on WP
+    # latest: PHP 7.4 is ruled out by the partner plugins' own requirement
+    # floors (WP Offload Media Lite needs PHP 8.1+); mirrors
+    # bin/test.sh --compat. The commercial plugins (Breakdance, WPBakery,
+    # WPML, WPML Media) come from zips in tests/partner-plugins/, which
+    # are gitignored, so their tests self-skip here.
+    name: Run Compat Tests (PHP ${{ matrix.php }}, WP latest)
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.ref != 'tests' || github.event.pull_request.head.repo.full_name != github.repository
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.3', '8.5']
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: password
+          MYSQL_DATABASE: wordpress_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "mysqladmin ping --silent"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 3
+
+    env:
+      WP_CORE_DIR: /tmp/wordpress
+      WP_TESTS_DIR: /tmp/wordpress-tests-lib
+      WP_VERSION: latest
+      DB_NAME: wordpress_test
+      DB_USER: root
+      DB_PASS: password
+      DB_HOST: 127.0.0.1
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Set up PHP ${{ matrix.php }}
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: gd, mbstring, mysqli, json, xml
+          ini-values: post_max_size=256M, memory_limit=512M
+          tools: composer
+
+      - name: Install SVN
+        run: sudo apt-get update && sudo apt-get install -y subversion
+
+      - name: Install WP-CLI
+        run: |
+          curl -O https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar
+          chmod +x wp-cli.phar
+          sudo mv wp-cli.phar /usr/local/bin/wp
+
+      - name: Install Composer dependencies
+        run: |
+          composer clear-cache
+          COMPOSER=composer.tests.json composer install --no-interaction --prefer-dist
+
+      - name: Install WordPress Unit Test Suite
+        run: |
+          mkdir -p "${WP_TESTS_DIR}"
+          bash bin/install-wp-tests.sh "$DB_NAME" "$DB_USER" "$DB_PASS" "$DB_HOST" "${WP_VERSION}"
+
+      - name: Install partner plugins
+        run: |
+          # Same slugs + source as bin/test.sh --compat. latest-stable
+          # keeps the suite honest against what users actually install.
+          PLUGIN_DIR="$WP_CORE_DIR/wp-content/plugins"
+          mkdir -p "$PLUGIN_DIR"
+          for SLUG in elementor wordpress-seo polylang woocommerce amazon-s3-and-cloudfront siteorigin-panels smart-slider-3 beaver-builder-lite-version shortpixel-image-optimiser envira-gallery-lite; do
+            echo "=== Downloading $SLUG (latest stable)"
+            curl -sSfL "https://downloads.wordpress.org/plugin/$SLUG.latest-stable.zip" -o "/tmp/$SLUG.zip"
+            unzip -qo "/tmp/$SLUG.zip" -d "$PLUGIN_DIR"
+          done
+
+      - name: Run compat testsuite
+        env:
+          EMR_PARTNER_PLUGINS: '1'
+        run: |
+          LOG=$(mktemp)
+          set +e
+          vendor-tests/bin/phpunit -c phpunit-integration.xml --testsuite Compat --testdox --colors=never 2>&1 | tee "$LOG"
+          STATUS=${PIPESTATUS[0]}
+          set -e
+          # Zero-test guard, see the comment at the top of this file. The
+          # zip-backed tests self-skip here; skips still print a `Tests:`
+          # summary line, so they pass the guard.
+          if [ "$STATUS" -ne 0 ]; then
+            echo "!!! Compat: phpunit exited with $STATUS"; exit 1
+          fi
+          if grep -q "No tests executed!" "$LOG"; then
+            echo "!!! Compat: no tests executed"; exit 1
+          fi
+          if ! grep -qE "^(OK \(|Tests: )" "$LOG"; then
+            echo "!!! Compat: no summary line, PHPUnit died mid-run"; exit 1
+          fi
+          echo "=== Compat passed"

@@ -31,10 +31,6 @@
         "shortpixel/filesystem" : "@dev",
         "shortpixel/replacer2" : ">=1.0"
     },
-    "require-dev": {
-	"phpunit/phpunit": "^9",
-	"mikey179/vfsstream": "^1"
-   },
     "scripts": {
         "post-update-cmd" : "\\ShortPixel\\Build\\Build::BuildIt",
         "buildSP" : "\\ShortPixel\\Build\\Build::BuildIt"

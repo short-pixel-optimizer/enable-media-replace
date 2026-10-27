@@ -1,0 +1,55 @@
+# Dependabot VERSION updates: small, regular, grouped PRs instead of one
+# large security bump arriving months late. Only the dependency sets
+# Dependabot can actually resolve are listed; nothing here ships in the
+# plugin zip (test tooling and CI only).
+#
+# GitHub reads this file from the DEFAULT branch (master), so it takes
+# effect after the next release merge. Version-update PRs target `tests`
+# (target-branch below); security-update PRs ignore target-branch and
+# always open against master: retarget those by hand.
+#
+# Deliberately not listed:
+#   - composer: composer.json only requires our own modules through a
+#     `../modules/*` path repository that does not exist in the GitHub
+#     checkout, and the test tools live in composer.tests.json, a file name
+#     Dependabot does not read.
+#   - docker / docker-compose: the WordPress, WP-CLI and MySQL tags float on
+#     purpose (the suite tracks the latest WordPress), and the Playwright
+#     runner image is derived from tests/E2E/package.json by
+#     bin/test-e2e.sh, so the npm entry below already moves it.
+version: 2
+updates:
+  # Browser E2E suite (tests/E2E).
+  # @todo tests/E2E/package.json is added with the E2E stack in a later
+  # phase; until then Dependabot reports this entry as having no manifest.
+  - package-ecosystem: "npm"
+    directory: "/tests/E2E"
+    target-branch: "tests"
+    schedule:
+      interval: "monthly"
+    groups:
+      # Its own PR: a Playwright release can need WebKit skip or visual
+      # baseline follow-ups, which must not hold back the tooling bumps.
+      playwright:
+        patterns: ["@playwright/test"]
+      tooling:
+        patterns: ["@types/node", "typescript"]
+    ignore:
+      # The Node type definitions follow the Node major inside the
+      # Playwright image, not the latest Node release.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
+      # A TypeScript major is adopted on purpose, not by a bot.
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
+
+  # Actions used by .github/workflows/*.yml (runtime deprecations such as
+  # a Node runtime change then arrive as a PR instead of a CI warning).
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    target-branch: "tests"
+    schedule:
+      interval: "monthly"
+    groups:
+      actions:
+        patterns: ["*"]
