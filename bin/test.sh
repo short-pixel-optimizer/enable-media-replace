@@ -513,6 +513,26 @@ if [ "$COMPAT" = "1" ]; then
             fi
         done
 
+        # Commercial partner THEMES (Bricks) — same rules, but extracted
+        # into the themes dir; tests/bootstrap.php activates the theme.
+        # A copy left in the plugins dir by an older layout is removed.
+        THEME_DIR="$WP_CORE_DIR/wp-content/themes"
+        for LOCAL_ZIP in tests/partner-themes/*.zip; do
+            [ -f "$LOCAL_ZIP" ] || continue
+            TOP_DIR=$(unzip -Z1 "$LOCAL_ZIP" | head -1 | cut -d/ -f1)
+            if [ -z "$TOP_DIR" ]; then
+                echo "!!! Skipping $LOCAL_ZIP — could not read its top-level directory."
+                continue
+            fi
+            rm -rf "${PLUGIN_DIR:?}/$TOP_DIR"
+            if [ ! -d "$THEME_DIR/$TOP_DIR" ] || [ "$LOCAL_ZIP" -nt "$THEME_DIR/$TOP_DIR" ]; then
+                echo "==> Extracting local partner theme $LOCAL_ZIP ($TOP_DIR) into the test install"
+                rm -rf "${THEME_DIR:?}/$TOP_DIR"
+                unzip -qo "$LOCAL_ZIP" -d "$THEME_DIR"
+                touch "$THEME_DIR/$TOP_DIR"
+            fi
+        done
+
         echo "==> vendor-tests/bin/phpunit -c phpunit-integration.xml --testsuite Compat $*"
         run_phpunit -c phpunit-integration.xml --testsuite Compat "$@"
     ' bash "$@"

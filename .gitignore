@@ -14,6 +14,8 @@ vendor-tests
 # Commercial partner-plugin zips for bin/test.sh --compat (WPML etc.) —
 # never commit these; drop the zip in and the harness picks it up.
 /tests/partner-plugins/
+# Commercial partner-theme zips (Bricks) — same rule, extracted into themes/.
+/tests/partner-themes/
 # Manual tests, not needed in the repo
 /tests/manual/
 # Browser E2E suite (bin/test-e2e.sh): dependencies + run output.

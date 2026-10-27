@@ -109,6 +109,22 @@ if ( '1' === getenv( 'EMR_PARTNER_PLUGINS' ) ) {
 		'breakdance/plugin.php',
 	);
 
+	/**
+	 * The partner THEME (Bricks, commercial): bin/test.sh --compat extracts
+	 * tests/partner-themes/bricks*.zip into the themes dir. When it is there
+	 * it becomes the active theme for the whole compat run (one theme per
+	 * WordPress load), so the Bricks compat tests run against the real
+	 * theme; without the zip WordPress keeps its default theme and those
+	 * tests self-skip. WP_CONTENT_DIR is defined by the time WP core reads
+	 * these options.
+	 */
+	$emr_partner_theme        = 'bricks';
+	$emr_partner_theme_filter = static function ( $value ) use ( $emr_partner_theme ) {
+		return file_exists( WP_CONTENT_DIR . '/themes/' . $emr_partner_theme . '/style.css' ) ? $emr_partner_theme : $value;
+	};
+	tests_add_filter( 'pre_option_template', $emr_partner_theme_filter );
+	tests_add_filter( 'pre_option_stylesheet', $emr_partner_theme_filter );
+
 	tests_add_filter(
 		'pre_option_active_plugins',
 		function () use ( $emr_partner_plugins ) {
@@ -140,7 +156,7 @@ if ( '1' === getenv( 'EMR_PARTNER_PLUGINS' ) ) {
 	 * These all fire while the plugins load, before PHPUnit installs its
 	 * own error handler, so this never competes with PHPUnit's reporting.
 	 */
-	$emr_partner_dirs = array();
+	$emr_partner_dirs = array( '/themes/' . $emr_partner_theme . '/' );
 	foreach ( $emr_partner_plugins as $emr_partner_plugin ) {
 		$emr_partner_dirs[] = '/plugins/' . strtok( $emr_partner_plugin, '/' ) . '/';
 	}
@@ -203,6 +219,7 @@ if ( '1' === getenv( 'EMR_PARTNER_PLUGINS' ) ) {
 					'wpml-media-translation',
 					'js_composer',
 					'breakdance',
+					'bricks',
 				);
 				foreach ( $partner_domains as $partner_domain ) {
 					if ( false !== strpos( (string) $message, '<code>' . $partner_domain . '</code>' ) ) {

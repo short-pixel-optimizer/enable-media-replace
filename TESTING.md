@@ -196,11 +196,13 @@ The commercial ones have no public download: drop their zips into
 `tests/partner-plugins/` (gitignored) and `--compat` extracts and activates
 them too. Today that is Breakdance (`breakdance-*.zip`), WPBakery
 (`js_composer.zip`), WPML (`sitepress-multilingual-cms*.zip`) and WPML Media
-Translation (`wpml-media-translation*.zip`); Bricks follows the same pattern
-once its zip is added. To update one, replace its zip: the harness
-re-extracts whenever the zip is newer than the extracted copy. Without the
-zip, the tests for that plugin self-skip, and the skip message names the zip
-to drop in.
+Translation (`wpml-media-translation*.zip`). The commercial THEME, Bricks,
+goes into `tests/partner-themes/` (gitignored, `bricks*.zip`): `--compat`
+extracts it into `wp-content/themes/` and `tests/bootstrap.php` makes it the
+active theme for the run when it is there. To update one, replace its zip:
+the harness re-extracts whenever the zip is newer than the extracted copy.
+Without the zip, the tests for that plugin self-skip, and the skip message
+names the zip to drop in.
 
 ```bash
 bin/test.sh --compat
@@ -605,6 +607,25 @@ it should pass on CI.
     test process trips early, so the integration bootstrap forces both
     tables into existence up front; without that every item lookup prints a
     missing-table error.
+  - Some activation hooks call home: WPBakery's runs `wp_update_plugins()`
+    against api.wordpress.org. A failed request raises a warning, the
+    bootstrap's error handler throws, and the run ends before the first
+    test with no summary line. The integration bootstrap answers
+    api.wordpress.org with an empty success for the whole compat process.
+  - The very first `--compat` run against a fresh database prints
+    "Table ... wc_webhooks doesn't exist" and "... shortpixel_postmeta
+    doesn't exist" while the WP test library empties the posts table: the
+    partner tables are created by the activation hooks that run right
+    after. The second run is clean; the messages are not failures.
+  - A compat run leaves the partner plugins extracted in the shared test
+    install (`wp-content/plugins/`, `wp-content/themes/`). They are not
+    activated outside `--compat`, but a later integration run sees their
+    folders on disk: never assert that a plugin folder is absent, assert
+    that a request left it unchanged. `bin/test.sh --clean` removes them.
+  - In production the WP Offload Media integration never subscribes in
+    time (as3cf fires `as3cf_init` before EMR builds `WPOffload`); the
+    compat tests call `WPOffload::init()` by hand to reach the intended
+    state, and one pin documents the ordering.
 - **WP 5.9 is the oldest version the test library installs.** EMR's readme
   floor is lower; versions below 5.9 can't be tested by this harness. On 5.9
   non-image attachments have no metadata (`''` instead of an array, no
@@ -672,9 +693,9 @@ bin/test.sh --clean
 bin/test.sh
 ```
 
-**A compat test skips with "drop ... into tests/partner-plugins/"**
-The commercial plugin's zip is missing. Copy it into `tests/partner-plugins/`
-and rerun `--compat`. On CI this skip is expected.
+**A compat test skips with "drop ... into tests/partner-plugins/" (or `tests/partner-themes/`)**
+The commercial plugin's (or the Bricks theme's) zip is missing. Copy it into
+the named folder and rerun `--compat`. On CI this skip is expected.
 
 **Some tests are labeled `pinned_for_deferred_fix`: should I care?**
 Those tests pin known, not-yet-fixed defects: they assert the current

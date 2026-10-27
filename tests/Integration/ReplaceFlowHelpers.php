@@ -148,8 +148,19 @@ trait EMR_ReplaceFlowHelpers {
 		$image = imagecreatetruecolor( $width, $height );
 		imagefilledrectangle( $image, 0, 0, $width - 1, $height - 1, imagecolorallocate( $image, $rgb[0], $rgb[1], $rgb[2] ) );
 		imagejpeg( $image, $path, 80 );
-		imagedestroy( $image );
+		$this->freeGdImage( $image );
 		return $path;
+	}
+
+	/**
+	 * Frees a GD image on PHP 7.x only: since PHP 8.0 GdImage objects are
+	 * garbage-collected and imagedestroy() is a no-op that PHP 8.5
+	 * deprecates.
+	 */
+	protected function freeGdImage( $image ) {
+		if ( PHP_VERSION_ID < 80000 ) {
+			imagedestroy( $image );
+		}
 	}
 
 	/** Writes a solid-colour PNG of the given size with GD. */
@@ -160,7 +171,7 @@ trait EMR_ReplaceFlowHelpers {
 		$image = imagecreatetruecolor( $width, $height );
 		imagefilledrectangle( $image, 0, 0, $width - 1, $height - 1, imagecolorallocate( $image, 200, 60, 40 ) );
 		imagepng( $image, $path );
-		imagedestroy( $image );
+		$this->freeGdImage( $image );
 		return $path;
 	}
 

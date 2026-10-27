@@ -54,6 +54,35 @@ if ( '1' === getenv( 'EMR_PARTNER_PLUGINS' ) ) {
 	 */
 	$GLOBALS['wpdb']->query( 'DROP TABLE IF EXISTS `' . $GLOBALS['wpdb']->prefix . 'breakdance_icons`' ); // phpcs:ignore WordPress.DB
 
+	/**
+	 * Some activation hooks call home: WPBakery's deletes the update_plugins
+	 * transient and runs wp_update_plugins(), a real request to
+	 * api.wordpress.org. When that request fails, core raises a warning,
+	 * the error handler of tests/bootstrap.php (already installed here)
+	 * throws, and the whole run ends before the first test. The per-test
+	 * baseline (EMR_IntegrationHelpers::emrAnswerWordPressOrgUpdateChecks)
+	 * runs too late for this, so answer api.wordpress.org with an empty
+	 * success for the lifetime of the process. Every other host is still
+	 * refused inside tests by the fail-fast filter.
+	 */
+	add_filter(
+		'pre_http_request',
+		static function ( $preempt, $args, $url ) {
+			if ( false !== $preempt || false === strpos( (string) $url, 'api.wordpress.org' ) ) {
+				return $preempt;
+			}
+			return array(
+				'headers'  => array(),
+				'body'     => '{}',
+				'response' => array( 'code' => 200, 'message' => 'OK' ),
+				'cookies'  => array(),
+				'filename' => null,
+			);
+		},
+		10,
+		3
+	);
+
 	foreach ( wp_get_active_and_valid_plugins() as $_emr_partner_file ) {
 		do_action( 'activate_' . plugin_basename( $_emr_partner_file ) );
 	}

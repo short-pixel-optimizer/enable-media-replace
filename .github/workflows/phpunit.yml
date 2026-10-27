@@ -468,8 +468,9 @@ jobs:
     # latest: PHP 7.4 is ruled out by the partner plugins' own requirement
     # floors (WP Offload Media Lite needs PHP 8.1+); mirrors
     # bin/test.sh --compat. The commercial plugins (Breakdance, WPBakery,
-    # WPML, WPML Media) come from zips in tests/partner-plugins/, which
-    # are gitignored, so their tests self-skip here.
+    # WPML, WPML Media) come from zips in tests/partner-plugins/ and the
+    # Bricks theme from tests/partner-themes/, both gitignored, so their
+    # tests self-skip here.
     name: Run Compat Tests (PHP ${{ matrix.php }}, WP latest)
     if: github.event_name != 'pull_request' || github.event.pull_request.head.ref != 'tests' || github.event.pull_request.head.repo.full_name != github.repository
     runs-on: ubuntu-latest

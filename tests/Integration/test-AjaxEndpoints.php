@@ -404,6 +404,10 @@ class AjaxEndpointsTest extends EMR_AjaxTestCase {
 			'plugin'        => 'spio',
 		);
 
+		// A compat run leaves a real SPIO folder in the shared test install,
+		// so "absent" cannot be assumed: assert the state is unchanged.
+		$spio_present = file_exists( WP_PLUGIN_DIR . '/' . self::SPIO_FOLDER );
+
 		$message = $this->adminAjaxDispatch( $action );
 
 		$this->assertSame( '0', $message, 'admin-ajax.php ends an unhooked nopriv action with wp_die( "0", 400 ).' );
@@ -412,7 +416,7 @@ class AjaxEndpointsTest extends EMR_AjaxTestCase {
 		$this->assertSame( array(), $this->downloads );
 		$this->assertSame( self::API_KEY, get_option( ApiKeyManager::OPTION_NAME ), 'The key is untouched.' );
 		$this->assertSame( $settings, get_option( 'enable_media_replace', 'absent' ), 'The settings are untouched.' );
-		$this->assertFalse( file_exists( WP_PLUGIN_DIR . '/' . self::SPIO_FOLDER ) );
+		$this->assertSame( $spio_present, file_exists( WP_PLUGIN_DIR . '/' . self::SPIO_FOLDER ), 'The plugin folder state is unchanged.' );
 	}
 
 	public function provideEndpoints() {
@@ -656,13 +660,15 @@ class AjaxEndpointsTest extends EMR_AjaxTestCase {
 			$post['nonce'] = wp_create_nonce( $nonceAction );
 		}
 
+		$spio_present = file_exists( WP_PLUGIN_DIR . '/' . self::SPIO_FOLDER );
+
 		$response = $this->post( 'emr_plugin_install', $post );
 
 		$this->assertNull( $response, 'No JSON: check_admin_referer() ends the request through wp_nonce_ays().' );
 		$this->assertIsString( $this->stopMessage );
 		$this->assertStringContainsString( 'The link you followed has expired.', $this->stopMessage );
 		$this->assertSame( array(), $this->downloads );
-		$this->assertFalse( file_exists( WP_PLUGIN_DIR . '/' . self::SPIO_FOLDER ) );
+		$this->assertSame( $spio_present, file_exists( WP_PLUGIN_DIR . '/' . self::SPIO_FOLDER ), 'The plugin folder state is unchanged.' );
 	}
 
 	public function provideBadInstallNonces() {
