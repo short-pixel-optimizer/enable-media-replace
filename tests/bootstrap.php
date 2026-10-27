@@ -242,6 +242,19 @@ require "{$_tests_dir}/includes/bootstrap.php";
  *   - `SplObjectStorage::attach()` / `SplObjectStorage::contains()`
  *     (deprecated 8.5) — emitted from `vendor/sebastian/recursion-context/`,
  *     a PHPUnit transitive dependency. Vendor code; upstream must fix.
+ *
+ * Side effect that this handler has to compensate for: PHPUnit 9 only
+ * installs its own error handler when none is registered yet
+ * (`PHPUnit\Util\ErrorHandler::register()` backs off otherwise). With a
+ * bootstrap-level handler in place, `convertNoticesToExceptions`,
+ * `convertWarningsToExceptions` and `convertErrorsToExceptions` from
+ * phpunit.xml.dist would silently do nothing, and a notice raised by
+ * production code would print and leave the test green. So this handler
+ * performs the same conversion itself: notices, warnings and user errors
+ * that are not suppressed with `@` (checked through error_reporting())
+ * become the matching `PHPUnit\Framework\Error\*` exception, exactly what
+ * PHPUnit's handler throws. Deprecations are left alone, as PHPUnit's
+ * default `convertDeprecationsToExceptions="false"` would.
  */
 $_emr_previous_error_handler = null;
 $_emr_previous_error_handler = set_error_handler(
@@ -260,8 +273,27 @@ $_emr_previous_error_handler = set_error_handler(
 			}
 		}
 		if ( $_emr_previous_error_handler ) {
-			return ( $_emr_previous_error_handler )( $errno, $errstr, $errfile, $errline );
+			$handled = ( $_emr_previous_error_handler )( $errno, $errstr, $errfile, $errline );
+			if ( true === $handled ) {
+				return true;
+			}
 		}
-		return false; // fall through to PHP's default handler.
+		if ( ! ( error_reporting() & $errno ) ) {
+			return false; // Suppressed with @ (or outside error_reporting): PHP default.
+		}
+		switch ( $errno ) {
+			case E_NOTICE:
+			case E_USER_NOTICE:
+			case 2048: // E_STRICT; the constant itself is deprecated since PHP 8.4.
+				throw new \PHPUnit\Framework\Error\Notice( $errstr, $errno, $errfile, $errline );
+			case E_WARNING:
+			case E_USER_WARNING:
+				throw new \PHPUnit\Framework\Error\Warning( $errstr, $errno, $errfile, $errline );
+			case E_DEPRECATED:
+			case E_USER_DEPRECATED:
+				return false; // Printed, not fatal: PHPUnit's own default for deprecations.
+			default:
+				throw new \PHPUnit\Framework\Error\Error( $errstr, $errno, $errfile, $errline );
+		}
 	}
 );
