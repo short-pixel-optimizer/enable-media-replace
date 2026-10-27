@@ -271,6 +271,14 @@ $_emr_previous_error_handler = set_error_handler(
 					return true;
 				}
 			}
+			// Deprecations raised from WordPress core itself (an older core
+			// such as 5.9 on PHP 8.x is not clean) are outside this repo and
+			// would otherwise print into AJAX responses and break their JSON.
+			// Swallowed only when the raising file lives under the core dir;
+			// the plugin's own deprecations stay visible.
+			if ( defined( 'ABSPATH' ) && 0 === strpos( (string) $errfile, ABSPATH ) ) {
+				return true;
+			}
 		}
 		if ( $_emr_previous_error_handler ) {
 			$handled = ( $_emr_previous_error_handler )( $errno, $errstr, $errfile, $errline );

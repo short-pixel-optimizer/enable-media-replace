@@ -606,7 +606,24 @@ it should pass on CI.
     tables into existence up front; without that every item lookup prints a
     missing-table error.
 - **WP 5.9 is the oldest version the test library installs.** EMR's readme
-  floor is lower; versions below 5.9 can't be tested by this harness.
+  floor is lower; versions below 5.9 can't be tested by this harness. On 5.9
+  non-image attachments have no metadata (`''` instead of an array, no
+  `filesize` key, which core adds in 6.0), so assertions on metadata are
+  version-aware; and 5.9 core is not PHP 8-clean, so deprecations raised
+  from core files are swallowed by the bootstrap's error handler (they would
+  otherwise print into AJAX responses and break their JSON). Deprecations
+  from the plugin's own code stay visible.
+- **Core update checks run inside `WP_Upgrader::run()`.** The integration
+  baseline answers `api.wordpress.org` with an empty 200 so
+  `wp_version_check()` and friends are a no-op; without that, 5.9 raises a
+  warning when the request is refused. Every other host is still blocked.
+- **`WP_Ajax_UnitTestCase` masks `E_WARNING`.** Warnings raised inside an
+  AJAX handler are silent on PHP 8 unless the test raises `error_reporting`
+  for the duration of the request.
+- **Notices and warnings fail tests, by design.** PHPUnit's own conversion is
+  inert once a bootstrap error handler exists, so `tests/bootstrap.php`
+  converts them itself. `expectNotice()` / `expectWarning()` work; a stray
+  notice in production code is a finding to pin, not noise to silence.
 
 ## Troubleshooting
 

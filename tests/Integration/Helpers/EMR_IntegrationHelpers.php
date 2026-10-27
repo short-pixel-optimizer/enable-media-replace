@@ -95,7 +95,37 @@ trait EMR_IntegrationHelpers {
 		// clearing it makes every test start from "not fetched yet".
 		delete_transient( 'emr_remote_notice' );
 
+		// Core's update checks (wp_version_check(), wp_update_plugins(),
+		// wp_update_themes()) run from inside WP_Upgrader::run() and on some
+		// admin screens. Older cores (5.9) trigger a warning when the request
+		// fails, which this harness turns into a test error. Answer
+		// api.wordpress.org locally with an empty, successful body so those
+		// checks are a no-op; every other unmocked host is still refused by
+		// emrBlockOutboundHttp().
+		add_filter( 'pre_http_request', array( $this, 'emrAnswerWordPressOrgUpdateChecks' ), 10, 3 );
+
 		$this->resetPluginSingletons();
+	}
+
+	/**
+	 * pre_http_request callback: a benign 200 for api.wordpress.org only.
+	 *
+	 * @param false|array|WP_Error $preempt Existing pre-emption.
+	 * @param array                $args    Request arguments (unused).
+	 * @param string               $url     Request URL.
+	 * @return false|array
+	 */
+	public function emrAnswerWordPressOrgUpdateChecks( $preempt, $args, $url ) {
+		if ( false !== $preempt || false === strpos( (string) $url, 'api.wordpress.org' ) ) {
+			return $preempt;
+		}
+		return array(
+			'headers'  => array(),
+			'body'     => '{}',
+			'response' => array( 'code' => 200, 'message' => 'OK' ),
+			'cookies'  => array(),
+			'filename' => null,
+		);
 	}
 
 	/** Per-test cleanup mirror of emrSetUpBaseline(). Call BEFORE parent::tear_down(). */
