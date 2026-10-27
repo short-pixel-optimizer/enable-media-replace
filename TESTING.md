@@ -248,7 +248,7 @@ admin versus author for `checkImagePermission()` and the AJAX endpoints.
 
 ```bash
 bin/test.sh --ms
-bin/test.sh --ms --filter test_replace_on_a_subsite_uses_its_uploads_dir
+bin/test.sh --ms --filter '^MultisiteReplaceTest'
 ```
 
 How it works:
@@ -260,7 +260,14 @@ How it works:
   network; no separate config file or cache dir is needed, since the install
   is rebuilt on every run anyway.
 - The suite uses the integration helpers (HTTP mock and the
-  `EMR_IntegrationTestCase` base class).
+  `EMR_IntegrationTestCase` base class) plus `tests/Multisite/MultisiteHelpers.php`
+  (trait `EMR_MultisiteHelpers`, not collected by PHPUnit): the single-site
+  skip, subsite creation with its uploads folder, `enterSite()`/`leaveSite()`
+  switching with singleton resets, and a tear-down that unwinds any
+  `switch_to_blog()`, points the debug log back at the main site and
+  removes the `sites/N` folders. Attachments uploaded on a subsite must not
+  go on the base class's deletion list: that list is processed on the main
+  site, where the same id names a different post.
 - Every test self-skips on a single-site install, so selecting the suite
   without the multisite bootstrap yields skips, not failures.
 
