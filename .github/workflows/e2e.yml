@@ -7,11 +7,6 @@
 # screenshot regression project (`visual`, Chromium-only baselines) rides
 # along in the Chromium job. Chromium and Firefox gate the run; the WebKit
 # job reports without blocking (see continue-on-error below).
-#
-# @todo The E2E stack (bin/test-e2e.sh, bin/lib/retry.sh,
-# docker-compose.e2e.yml, tests/E2E/) is ported in a later phase. Until
-# bin/test-e2e.sh exists this workflow is inert: a manual run fails at the
-# first step that calls it.
 name: E2E (browser)
 
 # Manual dispatch only, from the Actions tab. No push or pull_request

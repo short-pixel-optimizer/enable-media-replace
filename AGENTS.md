@@ -29,6 +29,7 @@ bin/test.sh --integration                                # integration suite
 bin/test.sh --ms                                         # multisite suite
 bin/test.sh --compat                                     # cross-plugin compatibility suite
 bin/test.sh --all                                        # unit + integration + multisite + compat
+bin/test-e2e.sh --project chromium                       # browser E2E (Playwright), own stack on :8031, never alongside bin/test.sh
 ```
 
 Three traps, all of which look like success if you are not watching:

@@ -20,8 +20,6 @@
 version: 2
 updates:
   # Browser E2E suite (tests/E2E).
-  # @todo tests/E2E/package.json is added with the E2E stack in a later
-  # phase; until then Dependabot reports this entry as having no manifest.
   - package-ecosystem: "npm"
     directory: "/tests/E2E"
     target-branch: "tests"

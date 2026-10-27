@@ -157,14 +157,25 @@ bin/test.sh --matrix --integration
 ### Real-API smoke tests
 
 The smoke suite (`tests/Smoke/`) unregisters the HTTP mock and calls the
-**live** ShortPixel API: one keyed and one free remove-background request
-with a small fixture, plus a wrong-key `api-status.php` call. It catches
-contract drift a mock can't see. It needs a valid API key and consumes real
-credits, so it is never part of `--integration`, `--all`, `--matrix` or the
-push/PR CI runs; without the key every test self-skips.
+**live** ShortPixel API through EMR's own client classes: a valid-key and a
+wrong-key `api-status.php` verification, then one keyed and one free
+remove-background request. It catches contract drift a mock can't see. It
+needs a valid API key and consumes real credits, so it is never part of
+`--integration`, `--all`, `--matrix` or the push/PR CI runs; without the key
+every test self-skips.
+
+The API fetches the image from the site URL, which is `example.org` inside
+the harness and unreachable from outside, so by default the two reducer
+tests prove the response envelope only (the API refuses, EMR maps the
+refusal). Point `SHORTPIXEL_SMOKE_IMAGE_URL` at a publicly reachable image
+and the keyed test runs the whole path: request, result URL, download of
+the result. `EMR_SMOKE_USE_MOCK=1` runs the same tests against `MockEmrApi`
+to verify the suite itself without quota (that is how it is verified here).
 
 ```bash
 SHORTPIXEL_SMOKE_KEY=<your API key> bin/test.sh --smoke
+SHORTPIXEL_SMOKE_KEY=<key> SHORTPIXEL_SMOKE_IMAGE_URL=https://example.com/photo.jpg bin/test.sh --smoke
+EMR_SMOKE_USE_MOCK=1 bin/test.sh --smoke     # self-check, no key, no quota
 ```
 
 CI: `.github/workflows/smoke.yml` runs the same suite on manual dispatch only
@@ -503,21 +514,171 @@ it should pass on CI.
 
 ## Browser end-to-end tests (Playwright)
 
-<!-- @todo the E2E stack and this section are completed in the E2E phase of docs/TESTING-PLAN.md. -->
+The PHPUnit suites never load a browser, so EMR's screens (the replace
+form, the success and error screens, the remove-background preview, the
+API-key box, the upsell installer) and their JavaScript (`js/`) have no
+coverage there. The E2E suite closes that gap: a REAL served WordPress with
+EMR installed, driven by [Playwright](https://playwright.dev), asserting what
+a user sees and failing on any uncaught JS error. It is ported from SPIO's
+E2E stack.
 
-**@todo:** the browser suite is ported from SPIO in a later phase; until
-`bin/test-e2e.sh` exists, `.github/workflows/e2e.yml` is inert. The plan:
+```bash
+bin/test-e2e.sh                          # provision + run every project (chromium, firefox, webkit, visual)
+bin/test-e2e.sh --project chromium       # one engine: chromium | firefox | webkit | visual (repeatable)
+bin/test-e2e.sh --project visual --update-snapshots   # refresh screenshot baselines after an intended UI change
+bin/test-e2e.sh --grep "replace"         # subset by title
+bin/test-e2e.sh specs/smoke.spec.ts      # one spec (paths relative to tests/E2E)
+bin/test-e2e.sh --headed                 # visible browser, natively on the host (needs Node.js)
+bin/test-e2e.sh --ui                     # Playwright UI mode, natively on the host
+bin/test-e2e.sh --report                 # open the last HTML report
+bin/test-e2e.sh --provision-only         # just bring the site up at http://localhost:8031
+bin/test-e2e.sh --pull-only              # pull the images with retry (CI's first step)
+bin/test-e2e.sh --wp 6.5                 # against an older WordPress (fresh volumes)
+bin/test-e2e.sh --down                   # stop the stack (keeps the volumes)
+bin/test-e2e.sh --clean                  # stop + wipe the DB / core / node_modules volumes
+```
 
-- the same stack as SPIO (`docker-compose.e2e.yml`, `bin/test-e2e.sh`,
-  `tests/E2E/`), fully separate from the PHPUnit stack, served on
-  **http://localhost:8031** (SPIO uses 8030);
-- Playwright with one worker and **zero retries**, locally and on CI: a
-  first failure is red, fix the race instead of retrying past it;
-- hermetic: every external host blocked in the browser and stubbed at the
-  WordPress HTTP layer by the `emr-e2e-mock-api.php` mu-plugin;
-- Chromium and Firefox gate, WebKit reports (`continue-on-error`), one CI job
-  per engine, manual dispatch only, with a zero-test guard that rejects a
-  run reporting `0 passed`.
+The site stays up after a run (admin / password) so you can look at the
+state a test left behind. Bring it down with `--down` when you are done:
+only one test stack runs at a time on a machine (see "One stack at a time").
+
+**Stack** (`docker-compose.e2e.yml`, compose project `emr-e2e`, fully
+separate from the PHPUnit stack and from SPIO's E2E stack: its own database,
+volumes `emr-e2e_*` and port):
+
+| Service | What |
+|---|---|
+| `mysql-e2e` | MySQL 8.0, database `wordpress_e2e` |
+| `wordpress` | official `wordpress:php8.3-apache` image; the repo is bind-mounted as `wp-content/plugins/enable-media-replace`; served on **http://localhost:8031** (SPIO's stack uses 8030) |
+| `wpcli` | one-shot provisioning (`tests/E2E/provision/provision.sh`): core install, theme, EMR activation, seed. Runs as uid 33 (Apache's www-data) so the seed's uploads stay writable for the site |
+| `playwright` | `mcr.microsoft.com/playwright`, its tag derived by `bin/test-e2e.sh` from the exact `@playwright/test` version in `tests/E2E/package.json` (bumping that line is the whole upgrade; `node_modules` are reinstalled whenever `package-lock.json` changes); shares the wordpress container's network, so http://localhost:8031 works inside it too; `tests/fixtures` is mounted at `/fixtures` |
+
+**Test-support mu-plugins** (`tests/E2E/mu-plugins/`, inert unless
+`EMR_E2E` is defined, which only `docker-compose.e2e.yml` does):
+
+- `emr-e2e-mock-api.php`: the PHPUnit `MockEmrApi` ported to a live
+  install. Answers every `api.shortpixel.com` endpoint EMR calls
+  (`free-reducer.php`, `reducer.php`, `cleanup.php`, `api-status.php`,
+  `notices.php`, the `/f/<token>` result downloads) and wordpress.org
+  (`api.wordpress.org`: empty JSON success; `downloads.wordpress.org/plugin/<slug>.zip`:
+  a zip built on the fly with a code-free stub plugin, so the upsell
+  installer installs and activates something real; other wordpress.org
+  URLs: an empty feed). Knobs, round counters and the request log live in
+  options; result images in `uploads/emr-e2e-mock/`. The knobs are the
+  PHPUnit mock's (`forceStatusCode`, `waitingRounds`, `errorMessage`,
+  `quotaExceeded`, `malformedBody`, `wpErrorMessage`, `apiStatusCode`,
+  `apiStatusMessage`, `unlimited`, `notices`, `resultFixture`) plus
+  `downloadsFail`; the file header documents each.
+- `emr-e2e-support.php`: REST namespace `emr-e2e/v1`, every route guarded
+  by the `X-EMR-E2E-TOKEN` header. Routes: `reset`, `seed`, `option`,
+  `fixture` (a file from `tests/fixtures/` or a GD-drawn image of any size,
+  as an attachment), `image` (GD-drawn bytes for a browser upload), `post`,
+  `post/<id>`, `attachment/<id>`, `key`, `feature` (forces
+  `emr/feature/background` / `emr/feature/remote_notice`), `user`, `mock`,
+  `mock/reset`, `mock/requests`. It also turns off the core, plugin and
+  theme update checks, pings and the dashboard news widget.
+
+**Seed and reset.** Every test starts from the same state: the `emr`
+fixture calls `reset` before each test. Reset deletes every attachment
+(with its files), post, page and suite-created user, the EMR options
+(`enable_media_replace`, `emr_shortpixel_api_key`, the
+`EnableMediaReplace-notices` notices option), the `emr_remote_notice` and
+remove-background result transients, the feature overrides, the mock state,
+the stub plugins the upsell installer installed (recognised by a marker in
+their header), and the year/month and `emr-e2e-*` folders under uploads.
+Then it seeds: `emr-seed.jpg` (800x600, so WordPress makes the thumbnail,
+medium and medium_large sizes) and a published post that links the full
+image and embeds its medium size. `emr.seed` holds their ids and URLs.
+
+**Layout** (`tests/E2E/`): `playwright.config.ts` (serial, one worker,
+zero retries: every spec shares one install), `fixtures.ts` (the
+console-error tripwire, hermetic routing, the `emr` support client),
+`helpers/` (`wp-admin.ts` login and admin URLs, `media-list.ts` the media
+list row actions and the edit-attachment meta box, `emr.ts` the support
+client, EMR URLs and the screen objects, `journeys.ts` the shared journey
+steps), `specs/` (`auth.setup.ts` logs in
+once; `smoke.spec.ts` proves the harness).
+
+**Writing E2E specs**
+
+- Import `test`/`expect` from `../fixtures`, never from `@playwright/test`:
+  that is what arms the tripwire, the hermetic routing and the reset.
+- Use the screen objects in `helpers/emr.ts` (`ReplaceScreen`,
+  `SuccessScreen`, `ErrorScreen`, `RemoveBackgroundScreen`, `Upsell`) and
+  `helpers/media-list.ts` (`MediaList`, `EditAttachment`) rather than raw
+  selectors. The replace form's file input is `#upload-file`
+  (`name="userfile"`); there is no "new file name" field: in
+  `replace_and_search` mode the new name is the uploaded file's name.
+- Files for the browser: `fixtureFile('test-image.jpg')` (from
+  `tests/fixtures/`) or `await emr.generatedFile(1024, 768, { format: 'png' })`.
+- Completion signals are DOM states and server state, never a timer: the
+  success screen heading, the redirect to the edit screen with
+  `emr_replaced=1`, the preview `<img>` the remove-background script
+  inserts, then `emr.attachment(id)` / `emr.postContent(id)` for the truth
+  in the database. No `waitForTimeout`, no retries.
+- The success screen redirects by itself after a countdown
+  (`js/emr_success.js`); assert the heading first, then wait for the URL.
+- The remove-background preview shows the mock's result URL
+  (`https://api.shortpixel.com/f/<token>`) in an `<img>`; `fixtures.ts`
+  answers that one request with the stashed bytes, every other shortpixel.com
+  request is aborted. A pending answer (`waitingRounds`) costs real seconds:
+  `Api::request()` sleeps 3 s (with a key) or counter + 3 s (free) per round.
+- The plan-expired state is a stored key plus `unlimited: 'false'`: set the
+  key with `emr.setApiKey(...)` (a save through the screen refuses a
+  non-Unlimited key), then the knob.
+- Never `waitForURL` for a page that reloads the SAME URL (the API-key box
+  reloads after a save or removal): it resolves immediately. Wait for a DOM
+  state of the new document, or use `withSelfReload(page, action)`.
+- A spec that expects JS errors (a pin for a known bug) opts out with
+  `test.use({ allowConsoleErrors: true })` and asserts on `consoleErrors`.
+  Known defects are listed in `KNOWN_JS_DEFECTS` (`helpers/emr.ts`);
+  `expectOnlyKnownErrors(consoleErrors, [...])` accepts those and nothing
+  else. The remove-background screen throws one on every load
+  (`emr_admin.js` `showReplaceOptions()` on a missing `.location_option`,
+  pinned in `smoke.spec.ts`), so every remove-background spec needs it.
+- Node-side HTTP to the container sends `Connection: close`
+  (`NO_KEEPALIVE_HEADERS` in `helpers/emr.ts`): Apache closes idle
+  keep-alive sockets after 5 s, and Node, unlike a browser, does not retry
+  the resulting "socket hang up". Pass the header to any direct
+  `request.get()`/`post()` you add.
+- **The suite never needs the internet.** Browser side, `BLOCKED_HOSTS` in
+  `fixtures.ts` aborts shortpixel.com, wordpress.org, gravatar.com and
+  s.w.org; server side, the mock answers shortpixel.com and wordpress.org
+  and the support plugin turns the update checks off. To find a new outside
+  dependency, add `dns: [127.0.0.1]` to the `wordpress` service, run, and
+  revert the line.
+- Pinned tests follow the PHPUnit rules (`_pinned_for_deferred_fix`, a
+  sentinel that proves the flow ran, how to recognise the fix in the
+  docblock).
+- Artifacts (traces, screenshots, videos, HTML report) land in
+  `tests/E2E/artifacts/` (gitignored); on CI they are uploaded on every run.
+- `bin/test-e2e.sh` passes arguments straight to Playwright, whose
+  `--project` takes several values: put a spec path BEFORE `--project`
+  (`bin/test-e2e.sh specs/x.spec.ts --project webkit`).
+
+**Browser projects** (`playwright.config.ts`): the functional suite runs
+once per engine (`chromium`, `firefox`, `webkit`) at 1366x768. A test must
+pass on all three; an engine difference is either a real EMR cross-browser
+bug (pin it) or a test assumption to fix. Playwright's Linux WebKit can die
+mid-navigation on a starved machine ("WebKit encountered an internal
+error"), so on CI WebKit reports without gating (`continue-on-error`) and
+videos are off; Chromium and Firefox gate.
+
+**Visual regression** (`specs/visual.spec.ts`, project `visual`, Chromium
+only): baselines for the replace screen and the remove-background screen in
+`tests/E2E/snapshots/visual.spec.ts/`, compared only inside the Playwright
+image (`E2E_IN_DOCKER`; no-ops on a native run). Capture EMR's own container,
+not the full page; `helpers/screenshot.css` hides the admin bar, menu and
+footer. The budget is absolute (`maxDiffPixels: 100`). `bin/test-e2e.sh`
+re-provisions the site when the WordPress core in the volume differs from
+the pulled image, because a core change moves the admin CSS. Refresh
+intended changes with `bin/test-e2e.sh --project visual --update-snapshots`.
+
+**CI**: `.github/workflows/e2e.yml` runs the identical Docker stack on
+`ubuntu-latest`, on manual dispatch only, one job per engine (`visual` rides
+in the Chromium job, `fail-fast: false`). Each job fails on a non-zero exit
+and on a log without an `N passed` line or with `0 passed`. Artifacts are
+uploaded per engine.
 
 ## Writing new tests
 
@@ -543,7 +704,7 @@ it should pass on CI.
   keeps a request log for asserting what the plugin sent. The base
   integration case adds a fail-fast `pre_http_request` filter at priority
   9999, so any request the mock doesn't answer fails the test instead of
-  reaching the network. <!-- @todo list the exact knob method names once tests/Integration/Helpers/MockEmrApi.php exists. -->
+  reaching the network. Knobs are set with `setKnob( name, value )` (`forceStatusCode`, `waitingRounds`, `errorMessage`, `quotaExceeded`, `malformedBody`, `wpErrorMessage`, `apiStatusCode`, `apiStatusMessage`, `unlimited`, `notices`, `resultFixture`); the request log is read with `getRequests()`, `lastRequest()` and `requestsTo( pathFragment )`; `stashImage()` registers result bytes under a download URL; `reset()` clears everything.
 - **Snapshot and restore** every option, transient, post meta, user and
   filesystem fixture a test touches: snapshot in `set_up()`, restore in
   `tear_down()`. Singletons (`UIHelper`, `EnvHelper`, `ApiKeyManager`,

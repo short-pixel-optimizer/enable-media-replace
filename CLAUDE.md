@@ -64,6 +64,7 @@ bin/test.sh --all                    # unit + integration + multisite + compat
 bin/test.sh --matrix                 # unit suites on PHP 7.4, 8.3 and 8.5
 bin/test.sh --php 8.5 --integration
 bin/test.sh --testsuite Controllers --filter '^ReplaceControllerTest'   # one file: filter on CLASS name
+bin/test-e2e.sh --project chromium  # browser E2E (Playwright) on http://localhost:8031, separate stack, never together with bin/test.sh
 ```
 
 Testsuite names are **case-sensitive**. The unit suites are `Helper`,
