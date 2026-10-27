@@ -1,4 +1,60 @@
 <?php
+/**
+ * Replace screen: the form for uploading a replacement file.
+ *
+ * Loaded by ReplaceViewController::load() through ViewController::loadView(),
+ * for `upload.php?page=enable-media-replace/enable-media-replace.php&action=media_replace&attachment_id=N`.
+ * The view exits early with wp_die() when the user lacks `upload_files`.
+ *
+ * Variables in scope:
+ * - $controller ReplaceViewController
+ * - $view stdClass set by the controller:
+ *   - attachment (\WP_Post) the attachment being replaced
+ *   - sourceFile (FileModel) current main file (getFileName, getFullPath, getExtension)
+ *   - sourceMime (string) post mime type
+ *   - settings (array) `enable_media_replace` option merged with defaults:
+ *     replace_type, timestamp_replace, custom_date, new_location, new_location_dir
+ *   - is_author_restricted (bool) user lacks `edit_others_posts`; disables
+ *     replace-and-search and remove background
+ *   - is_movable (bool) result of `emr/replace/file_is_movable`; false for offloaded files
+ *   - custom_basedir (string) upload base directory with trailing slash
+ * Globals/constants: FORCE_SSL_ADMIN (rewrites the form URL to https).
+ *
+ * Form: POST, multipart, to UIHelper::getFormUrl() (action
+ * `media_replace_upload`), handled by UploadViewController::load().
+ * Nonce: action `media_replace_upload`, field `emr_nonce`. Inputs:
+ * - ID (hidden) attachment id
+ * - userfile (file input, rendered by UIHelper::getPreviewImage/getPreviewFile with `is_upload`)
+ * - remove_after_progress (checkbox, only when background removal is possible and
+ *   the user is not author restricted) value attachment id; after the replace the
+ *   success screen redirects to the remove-background screen
+ * - replace_type `replace` (keep file name) or `replace_and_search` (new name, update links)
+ * - timestamp_replace 1 = current date (TIME_UPDATEALL), 2 = keep date
+ *   (TIME_UPDATEMODIFIED), 3 = custom date (TIME_CUSTOM)
+ * - custom_date (display date, datepicker), custom_date_formatted (hidden Y-m-d,
+ *   the value actually used), custom_hour, custom_minute
+ * - new_location (checkbox) and location_dir (directory relative to the upload base),
+ *   only when UIHelper::getRelPathNow() is non-empty and the file is movable
+ * - new_title sits inside an HTML comment, so it is never submitted
+ * The submit button starts disabled and is enabled by js/emr_admin.js once a file is chosen.
+ *
+ * Hooks fired:
+ * - action emr_before_replace_type_options
+ * - filter emr_display_replace_type_options (default true; false disables "replace")
+ * - action emr_after_search_type_options
+ * - filter emr_enable_replace_and_search (default true; false disables "replace and search")
+ * - action emr_after_replace_type_options (Externals prints conflict notices here)
+ * - filter emr/upsell, inside the included upsell.php
+ *
+ * Scripts: js/emr_admin.js (`emr_options`: drag and drop, type and size
+ * checks, datepicker, "Now"/"Original" date links), jquery-ui-datepicker,
+ * js/upsell.js for the included views/upsell.php.
+ * Links: the remove-background link goes to `action=emr_prepare_remove`
+ * with a nonce for `emr_prepare_remove`; Cancel calls history.back().
+ *
+ * @todo The "file type does not seem to be allowed" string is passed to __() without the `enable-media-replace` text domain; add the domain.
+ * @todo The source file path in the explainer's `title` attribute and $view->custom_basedir are echoed without escaping; wrap them in esc_attr() / esc_html().
+ */
 namespace EnableMediaReplace;
 
 if (! defined('ABSPATH')) {

@@ -1,21 +1,28 @@
-.gitignore
-*.log
-wp-config.php
-wp-content/advanced-cache.php
-wp-content/backup-db/
-wp-content/backups/
-wp-content/blogs.dir/
-wp-content/cache/
-wp-content/upgrade/
-wp-content/uploads/
-wp-content/wp-cache-config.php
-wp-content/plugins/hello.php
+# Build-tool dependencies (composer.json). composer.lock is not tracked.
 vendor
-/.htaccess
-/license.txt
-/readme.html
-/sitemap.xml
-/sitemap.xml.gz
-.*
-bin
 composer.lock
+# Test-only dependencies (composer.tests.json) — composer.tests.lock IS tracked.
+vendor-tests
+.phpunit.result.cache
+*.log
+.DS_Store
+.env.local
+.env.testing
+/composer.phar
+/.idea
+/wordpress/
+# Commercial partner-plugin zips for bin/test.sh --compat (WPML etc.) —
+# never commit these; drop the zip in and the harness picks it up.
+/tests/partner-plugins/
+# Manual tests, not needed in the repo
+/tests/manual/
+# Browser E2E suite (bin/test-e2e.sh): dependencies + run output.
+# package-lock.json IS tracked (reproducible installs in CI).
+/tests/E2E/node_modules/
+/tests/E2E/artifacts/
+/tests/E2E/test-results/
+/tests/E2E/playwright-report/
+# Claude Code: personal settings and temporary worktrees. A shared
+# .claude/settings.json (if ever added) is meant to be committed.
+/.claude/settings.local.json
+/.claude/worktrees/

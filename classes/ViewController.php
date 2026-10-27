@@ -1,4 +1,9 @@
 <?php
+/**
+ * Base class for the EMR admin screens.
+ *
+ * @package EnableMediaReplace
+ */
 namespace EnableMediaReplace;
 
 if (! defined('ABSPATH')) {
@@ -9,44 +14,123 @@ use EnableMediaReplace as emr;
 use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
 
 
+/**
+ * Abstract base for the screen controllers: view loading and the error / success screens.
+ *
+ * Subclasses (ReplaceViewController, UploadViewController, RemoveBackGroundViewController)
+ * are singletons through their own getInstance() and are called from
+ * EnableMediaReplacePlugin::route(). No hooks are registered here.
+ *
+ * Error codes, turned into messages by viewError():
+ *
+ * | Code | Constant                 | Meaning                                              |
+ * |------|--------------------------|------------------------------------------------------|
+ * | 1    | ERROR_UPLOAD_PERMISSION  | user lacks `upload_files`                            |
+ * | 2    | ERROR_IMAGE_PERMISSION   | checkImagePermission() fails, or author restricted   |
+ * | 3    | ERROR_FORM               | form field (attachment ID) missing                   |
+ * | 4    | ERROR_TIME               | custom date cannot be parsed                         |
+ * | 5    | ERROR_UPDATE_FAILED      | upload array reports an error (see UploadViewController::getUpload()) |
+ * | 6    | ERROR_SECURITY           | file type/extension not allowed                      |
+ * | 7    | ERROR_UPLOAD_FAILED      | no uploaded file                                     |
+ * | 8    | ERROR_NONCE              | nonce missing or invalid                             |
+ * | 9    | ERROR_KEY                | remove-background download key missing               |
+ * | 20-25| ERROR_TARGET_EXISTS ... ERROR_DIRECTORY_NOTEXIST | same values as ReplaceController's constants |
+ * | 31   | ERROR_DOWNLOAD_FAILED    | remove-background result could not be downloaded     |
+ *
+ * Any other code (including null) shows "An unknown error has occured".
+ */
 abstract class ViewController
 {
 
+	  /**
+	   * Handles the request for the screen. Implemented by each subclass.
+	   *
+	   * @return void
+	   */
 	  abstract function load();
 
 
+	 /** @var int User lacks the `upload_files` capability. */
 	 const ERROR_UPLOAD_PERMISSION = 1;
+	 /** @var int User may not edit this attachment (checkImagePermission() or author restriction). */
 	 const ERROR_IMAGE_PERMISSION = 2;
+	 /** @var int Required form field missing. */
 	 const ERROR_FORM = 3;
+	 /** @var int Custom date/time cannot be parsed. */
 	 const ERROR_TIME = 4;
+	 /** @var int The upload reports an error. */
 	 const ERROR_UPDATE_FAILED = 5;
+	 /** @var int File type or extension rejected by wp_check_filetype_and_ext(). */
 	 const ERROR_SECURITY = 6;
+	 /** @var int No uploaded file in the request. */
 	 const ERROR_UPLOAD_FAILED = 7;
+	 /** @var int Nonce missing or invalid. */
 	 const ERROR_NONCE = 8;
+	 /** @var int Download key missing when replacing backgrounds. */
 	 const ERROR_KEY = 9; // Missing key when replacing backgrounds.
 
 	 // These synced with ReplaceController
+	 /** @var int See ReplaceController::ERROR_TARGET_EXISTS. */
 	 const ERROR_TARGET_EXISTS = 20;
+	 /** @var int See ReplaceController::ERROR_DESTINATION_FAIL. */
 	 const ERROR_DESTINATION_FAIL = 21;
+	 /** @var int See ReplaceController::ERROR_COPY_FAILED. */
 	 const ERROR_COPY_FAILED = 22;
+	 /** @var int See ReplaceController::ERROR_UPDATE_POST. */
 	 const ERROR_UPDATE_POST = 23;
+	 /** @var int See ReplaceController::ERROR_DIRECTORY_SECURITY. */
 	 const ERROR_DIRECTORY_SECURITY = 24;
+	 /** @var int See ReplaceController::ERROR_DIRECTORY_NOTEXIST. */
 	 const ERROR_DIRECTORY_NOTEXIST = 25;
 
 	 // Remove Background
+	 /** @var int The remove-background result could not be downloaded or is missing. */
 	 const ERROR_DOWNLOAD_FAILED = 31;
 
+		/**
+		 * Template names already included in this request. Shared by all subclasses
+		 * (static on the base class), used by loadView() to load a template only once.
+		 *
+		 * @var string[]
+		 */
 		protected static $viewsLoaded = array();
 
+		/**
+		 * Data object for the templates; available there as `$view`.
+		 *
+		 * @var \stdClass
+		 */
 		protected $view; // object to use in the view.
+
+		/**
+		 * URL of the page this controller serves, for redirects. Not set or read by the
+		 * current controllers.
+		 *
+		 * @var string|null
+		 */
 	  protected $url; // if controller is home to a page, sets the URL here. For redirects and what not.
 
 
+		/**
+		 * Initialises the empty view data object.
+		 */
 		public function __construct()
 		{
 			 $this->view = new \stdClass;
 		}
 
+		/**
+		 * Includes `views/<template>.php` with `$view` (the view data) and `$controller`
+		 * (this object) in scope.
+		 *
+		 * With $unique true (default), a template already loaded in this request (by any
+		 * controller) is skipped. A missing template file is logged as an error and nothing
+		 * is included.
+		 *
+		 * @param string|null $template Template name without directory and `.php`.
+		 * @param bool        $unique   Whether to skip templates that are already loaded.
+		 * @return false|void False when the template name is null or empty; nothing otherwise.
+		 */
 		protected function loadView($template = null, $unique = true)
 		{
 				if (is_null($template) )
@@ -74,6 +158,24 @@ abstract class ViewController
 				}
 		}
 
+		/**
+		 * Shows the error screen for an error code and ends the request.
+		 *
+		 * Sets `$view->errorMessage` (always) and `$view->errorDescription` (for
+		 * ERROR_TARGET_EXISTS, ERROR_NONCE, and ERROR_DIRECTORY_SECURITY when $errorData has
+		 * both `path` and `basedir`), loads `views/error.php` and calls exit(). Any
+		 * errorMessage set before the call is overwritten. Unknown codes get a generic
+		 * message.
+		 *
+		 * @todo The ERROR_DIRECTORY_SECURITY description ("Path: %s is not within basedir
+		 *       reported as: %s") uses the 'shortpixel-image-optimiser' text domain, so it is
+		 *       never translated through EMR's files. Suggested fix: use 'enable-media-replace'.
+		 *
+		 * @param int|null $errorCode One of the ERROR_* constants.
+		 * @param array    $errorData Optional extra data; `path` and `basedir` are used for
+		 *                            ERROR_DIRECTORY_SECURITY.
+		 * @return never Calls exit().
+		 */
 		protected function viewError($errorCode, $errorData = array())
 		{
 			 $message = $description = false;
@@ -157,6 +259,14 @@ abstract class ViewController
 		}
 
 
+		/**
+		 * Shows the success screen and ends the request.
+		 *
+		 * Enqueues the `emr_success` script (countdown redirect to `$view->postUrl`), loads
+		 * `views/success.php` and calls exit().
+		 *
+		 * @return never Calls exit().
+		 */
 		protected function viewSuccess()
 		{
 			 wp_enqueue_script('emr_success');

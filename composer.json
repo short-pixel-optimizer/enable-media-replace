@@ -25,7 +25,7 @@
         }
     ],
     "require": {
-        "php": ">=5.6.0",
+        "php": ">=7.4",
         "shortpixel/notices":"@dev",
         "shortpixel/build" : "@dev",
         "shortpixel/filesystem" : "@dev",

@@ -1,4 +1,9 @@
 <?php
+/**
+ * The remove-background screen and its POST handler.
+ *
+ * @package EnableMediaReplace\ViewController
+ */
 
 namespace EnableMediaReplace\ViewController;
 
@@ -13,18 +18,46 @@ use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
 use EnableMediaReplace\Controller\ReplaceController as ReplaceController;
 use EnableMediaReplace\Api as Api;
 
+/**
+ * Remove-background screen (`action=emr_prepare_remove`) and the replacement with the
+ * processed image (`action=do_background_replace`).
+ *
+ * The class is declared as `RemoveBackGroundViewController` (capital G) in
+ * `RemoveBackgroundViewController.php`, and getInstance() and the router refer to it as
+ * `RemoveBackgroundViewController`. PHP class names are case-insensitive and the file is
+ * required explicitly, so this works; a case-sensitive autoloader would not find it.
+ *
+ * Lifecycle: singleton via getInstance(), called from EnableMediaReplacePlugin::route()
+ * when the `background` feature is on. Registers no hooks. The background removal itself
+ * runs over AJAX (Ajax::remove_background() -> Api::request()); this class only shows the
+ * screen and, after the user confirms, downloads the result and replaces the file. The
+ * imported `Unserialize` class is not used.
+ */
 class RemoveBackGroundViewController extends \EnableMediaReplace\ViewController
 {
+	/**
+	 * The singleton instance.
+	 *
+	 * @var RemoveBackGroundViewController|null
+	 */
 	static $instance;
 
 	protected $view_name = 'prepare-remove-background';
 	protected $nonce_action = 'media_remove_background';
 
+	/**
+	 * Creates the controller; see ViewController::__construct().
+	 */
 	public function __construct()
 	{
 		parent::__construct();
 	}
 
+	/**
+	 * Returns the singleton.
+	 *
+	 * @return RemoveBackGroundViewController
+	 */
 	public static function getInstance()
 	{
 		if (is_null(self::$instance))
@@ -33,6 +66,19 @@ class RemoveBackGroundViewController extends \EnableMediaReplace\ViewController
 		return self::$instance;
 	}
 
+	/**
+	 * Prepares the view data and loads the remove-background screen.
+	 *
+	 * Requires `upload_files` (ERROR_UPLOAD_PERMISSION) and checkImagePermission()
+	 * (ERROR_IMAGE_PERMISSION; the wp_die() after it is unreachable because viewError()
+	 * exits). Unlike loadPost(), it does not check the author restriction. Sets the preview
+	 * and source sizes on UIHelper and fills `$view` with `attachment`, `sourceFile`
+	 * (untranslated, for display) and `settings`: the `enable_media_replace` option merged
+	 * over the defaults `bg_type` 'transparent', `bg_color` '#ffffff', `bg_transparency` 100.
+	 * Loads `views/prepare-remove-background.php`.
+	 *
+	 * @return void
+	 */
 	public function load()
 	{
 	 if (!current_user_can('upload_files')) {
@@ -73,6 +119,37 @@ class RemoveBackGroundViewController extends \EnableMediaReplace\ViewController
 	}
 
 	// When the background has been posted - process.
+	/**
+	 * Replaces the attachment with the background-removed image and ends the request.
+	 *
+	 * Sequence:
+	 * 1. Nonce `emr_nonce` for action `media_remove_background` (ERROR_NONCE).
+	 * 2. `key` (the transient key returned by Api::request()) must be non-empty (ERROR_KEY).
+	 * 3. `ID` present (ERROR_FORM), checkImagePermission() (ERROR_IMAGE_PERMISSION), and the
+	 *    user must not be author restricted (ERROR_IMAGE_PERMISSION). The wp_die() calls
+	 *    after viewError() are unreachable.
+	 * 4. setView(), then replaceBackground() downloads the stored result to a temp file. A
+	 *    failed download or missing file shows ERROR_DOWNLOAD_FAILED.
+	 * 5. A new ReplaceController runs with MODE_REPLACE, TIME_UPDATEMODIFIED, now as the
+	 *    date, the downloaded temp file as upload and the current source file name as the
+	 *    new name, so the file is overwritten in place. `replace_type` is passed as the
+	 *    integer MODE_REPLACE, which setupParams() also reads as replace mode because it is
+	 *    not 'replace_and_search'.
+	 * 6. viewError() with the controller's last error when setupParams() fails (without the
+	 *    error data); viewSuccess() when run() returns true.
+	 *
+	 * The download key is not bound to the attachment: any key from the current transient
+	 * store can be applied to any attachment that passes the permission checks.
+	 *
+	 * @todo On a failed download, `$this->view->errorMessage = $result->message` is
+	 *       overwritten by viewError(ERROR_DOWNLOAD_FAILED), so the API's message is never
+	 *       shown. Suggested fix: pass the message as error data, or set it as the
+	 *       description after the generic message.
+	 *
+	 * @uses ReplaceController::MODE_REPLACE
+	 * @uses ReplaceController::TIME_UPDATEMODIFIED
+	 * @return void Normally never returns: every path ends in viewSuccess() or viewError().
+	 */
 	public function loadPost()
 	{
 		 if ( ! isset( $_POST['emr_nonce'] )
@@ -158,6 +235,16 @@ class RemoveBackGroundViewController extends \EnableMediaReplace\ViewController
 	}
 
 	// Low init might only be w/ post_id ( error handling et al ), most advanced / nicer with params.
+	/**
+	 * Sets the view data used by the success and error screens.
+	 *
+	 * Sets `post_id`, `postUrl` (success redirect) and `emrUrl` (failure redirect).
+	 * $params is accepted but not used.
+	 *
+	 * @param int|null $post_id Attachment ID.
+	 * @param array    $params  Unused.
+	 * @return void
+	 */
 	protected function setView($post_id, $params = array())
 	{
 		 $uiHelper = \emr()->uiHelper();
@@ -168,6 +255,17 @@ class RemoveBackGroundViewController extends \EnableMediaReplace\ViewController
 	}
 
 
+	/**
+	 * Downloads the processed image stored under the transient key.
+	 *
+	 * Despite the name, this only downloads: it calls Api::handleDownload(). The replacement
+	 * itself happens in loadPost().
+	 *
+	 * @param int    $post_id Attachment ID (unused).
+	 * @param string $key     Transient key returned by Api::request().
+	 * @return \stdClass Result object: `success`, `image` (temp file path on success),
+	 *                   `message` (on failure).
+	 */
 	protected function replaceBackground($post_id, $key)
 	{
 		$api = new Api();

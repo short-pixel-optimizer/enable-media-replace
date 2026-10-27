@@ -1,4 +1,24 @@
 <?php
+/**
+ * Error screen.
+ *
+ * Loaded by ViewController::viewError(), which maps an error code to a
+ * message (and for some codes a description) and exits after the view. The
+ * view ends by requiring wp-admin/admin-footer.php itself.
+ *
+ * Variables in scope:
+ * - $controller the calling ViewController
+ * - $view stdClass with:
+ *   - errorMessage (string) always set by viewError(); printed escaped
+ *   - errorDescription (string, optional) printed only when the property
+ *     exists (ERROR_TARGET_EXISTS, ERROR_NONCE, and ERROR_DIRECTORY_SECURITY
+ *     when path data is passed)
+ *
+ * No form, no hooks. Links: "previous page" calls history.back(); a link to
+ * the plugin documentation on shortpixel.com.
+ *
+ * @todo The ERROR_DIRECTORY_SECURITY description shown here is translated in ViewController::viewError() with the `shortpixel-image-optimiser` text domain; change it to `enable-media-replace`.
+ */
 namespace EnableMediaReplace;
 
 if (! defined('ABSPATH')) {

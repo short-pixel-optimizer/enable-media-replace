@@ -1,5 +1,10 @@
-<?php 
-namespace EnableMediaReplace\Replacer\Classes; 
+<?php
+/**
+ * Finder class of the newer search/replace API.
+ *
+ * @package EnableMediaReplace\Replacer
+ */
+namespace EnableMediaReplace\Replacer\Classes;
 
 
 if (! defined('ABSPATH')) {
@@ -8,13 +13,56 @@ if (! defined('ABSPATH')) {
 
 
 
-class Finder 
+/**
+ * Finds posts and post meta rows that contain a base URL.
+ *
+ * Each query returns the matching rows and, when a callback is set, also
+ * hands them to it. A new object is created per use (Replacer::Finder());
+ * the class fires and listens to no hooks.
+ *
+ * Callback contract: the callback is invoked through call_user_func_array()
+ * with the string-keyed array `['results' => $rows, 'args' => $return_data]`.
+ * On PHP 8 string keys are passed as named arguments, so the callback's
+ * parameters must be named `$results` and `$args` (or be variadic); on
+ * PHP 7 they are passed by position.
+ */
+class Finder
 {
 
-		protected $callback; 
+		/**
+		 * Callable that receives the query results, or null.
+		 *
+		 * @var callable|null
+		 */
+		protected $callback;
+
+		/**
+		 * Fragment searched for with LIKE `%base_url%`. Not passed through
+		 * esc_like().
+		 *
+		 * @var string|false
+		 */
 		protected $base_url;
+
+		/**
+		 * Opaque data passed to the callback as `args`.
+		 *
+		 * @var mixed
+		 */
 		protected $return_data;
 
+		/**
+		 * Creates a finder.
+		 *
+		 * @param array $args {
+		 *     @type callable|null $callback    Receives the results of every
+		 *                                      query. Default null.
+		 *     @type string|false  $base_url    Fragment to search for. Default
+		 *                                      false.
+		 *     @type mixed         $return_data Passed to the callback as
+		 *                                      `args`. Default [].
+		 * }
+		 */
 		public function __construct($args = [])
 		{
 
@@ -32,6 +80,33 @@ class Finder
     
 
 
+		/**
+		 * Finds posts whose content contains the base URL.
+		 *
+		 * SQL: `SELECT <fields> FROM posts WHERE post_status IN (...) AND
+		 * post_content LIKE %base_url%`, plus `AND ID IN (...)` when
+		 * `post_ids` is given. Each field is selected `AS` the alias at the
+		 * same index of `post_results` when there is one. Field names and
+		 * aliases are concatenated into the SQL unescaped, so they must be
+		 * trusted column names. An empty status list falls back to the
+		 * default statuses.
+		 *
+		 * @global \wpdb $wpdb
+		 *
+		 * @param array $args {
+		 *     @type string[]        $post_fields  Columns to select. Default
+		 *                                         `['ID', 'post_content']`.
+		 *     @type string[]        $post_results Aliases, index-matched.
+		 *                                         Default `['post_id', 'content']`.
+		 *     @type int[]           $post_ids     Limit to these post IDs.
+		 *                                         Default [] (no limit).
+		 *     @type string|string[] $post_status  Statuses to include. Default
+		 *                                         publish, future, draft,
+		 *                                         pending, private.
+		 * }
+		 * @return array Result rows as associative arrays (ARRAY_A); the same
+		 *               rows are passed to the callback when one is set.
+		 */
 		public function posts($args = [])
 		{
 			global $wpdb;
@@ -101,6 +176,37 @@ class Finder
 			return $rs;
 		}
 
+		/**
+		 * Finds post meta rows whose value contains the base URL.
+		 *
+		 * SQL: `SELECT <fields> FROM postmeta INNER JOIN posts ON posts.ID =
+		 * postmeta.post_id WHERE posts.post_status IN (...) AND
+		 * postmeta.meta_value LIKE %base_url%`, plus `AND postmeta.post_id
+		 * IN (...)` for `post_ids` and `AND postmeta.post_id NOT IN (...)`
+		 * for `exclude_post_ids`. Fields and aliases are built as in posts()
+		 * and are not qualified with a table name, so a column that exists in
+		 * both tables must be passed qualified.
+		 *
+		 * @global \wpdb $wpdb
+		 *
+		 * @param array $args {
+		 *     @type string[]        $post_fields      Columns to select.
+		 *                                             Default
+		 *                                             `['post_id', 'meta_value']`.
+		 *     @type string[]        $post_results     Aliases, index-matched.
+		 *                                             Default `['post_id', 'content']`.
+		 *     @type int[]           $post_ids         Limit to these post IDs.
+		 *                                             Default [].
+		 *     @type string|string[] $post_status      Statuses of the parent
+		 *                                             post. Default publish,
+		 *                                             future, draft, pending,
+		 *                                             private.
+		 *     @type int[]           $exclude_post_ids Exclude these post IDs.
+		 *                                             Default [].
+		 * }
+		 * @return array Result rows as associative arrays (ARRAY_A); the same
+		 *               rows are passed to the callback when one is set.
+		 */
 		public function postmeta($args = [])
 		{
 			global $wpdb;
