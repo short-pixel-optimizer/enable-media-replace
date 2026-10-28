@@ -59,6 +59,7 @@ jQuery(document).ready(function ($) {
         $('#overlay').css('visibility', 'visible');
 				var preview = $('.image_placeholder').last();
 				preview.find('img').remove();
+				preview.find('.textlayer').text('');
        // $('#preview-area').hide();
       },
       success: function (response) {
@@ -74,6 +75,9 @@ jQuery(document).ready(function ($) {
           $('#replace_image_button').prop('disabled', false);
 
 				 var img = new Image();
+				 img.onload = function () { // Dimensions of the new image, shown on the upscale screen.
+					 preview.find('.textlayer').text(img.naturalWidth + ' x ' + img.naturalHeight);
+				 };
          img.src = response.image;
 				 img.setAttribute('style', 'height: inherit;');
 

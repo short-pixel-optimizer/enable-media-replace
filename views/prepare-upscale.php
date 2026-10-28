@@ -39,7 +39,7 @@ $scale_checked = false;
 	<button type="button" class="notice-dismiss"><span class="screen-reader-text"><?php esc_html_e('Dismiss this notice.', 'enable-media-replace'); ?></span></button>
 </div>
 
-<div class="wrap emr_upload_form" id="remove-background-form">
+<div class="wrap emr_upload_form emr-upscale-form" id="remove-background-form">
 
 	<form id="emr_replace_form" enctype="multipart/form-data" method="POST" action="<?php
 	echo $formurl; ?>" >
