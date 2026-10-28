@@ -21,6 +21,30 @@
 		&.emr-upscale-form .image_placeholder {
 			&.is_image .textlayer { display: block; }
 			.textlayer:empty { display: none; }
+
+			// Title and dimensions on one line, meeting in the middle, so they don't cover the image.
+			.upload-title {
+				width: auto;
+				left: auto;
+				right: 50%;
+				margin-right: 4px;
+			}
+
+			.textlayer {
+				font-size: 12px;
+				line-height: 1;
+				top: 21px; // Centred on the title line ( redesign.css puts the title at 12px + 8px padding ).
+				left: 50%;
+				margin-left: 4px;
+				transform: none;
+				white-space: nowrap;
+				opacity: 1;
+				border: none;
+				border-radius: 4px;
+				padding: 3px 8px;
+				color: #fff;
+				background-color: rgba(0, 0, 0, .45);
+			}
 		}
 
 		.bad-button

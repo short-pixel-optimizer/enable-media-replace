@@ -18,6 +18,27 @@
 #remove-background-form.emr-upscale-form .image_placeholder .textlayer:empty {
   display: none;
 }
+#remove-background-form.emr-upscale-form .image_placeholder .upload-title {
+  width: auto;
+  left: auto;
+  right: 50%;
+  margin-right: 4px;
+}
+#remove-background-form.emr-upscale-form .image_placeholder .textlayer {
+  font-size: 12px;
+  line-height: 1;
+  top: 21px;
+  left: 50%;
+  margin-left: 4px;
+  transform: none;
+  white-space: nowrap;
+  opacity: 1;
+  border: none;
+  border-radius: 4px;
+  padding: 3px 8px;
+  color: #fff;
+  background-color: rgba(0, 0, 0, 0.45);
+}
 #remove-background-form .bad-button {
   text-align: right;
   margin-right: 25px;
