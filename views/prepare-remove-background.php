@@ -72,6 +72,11 @@ $replace_url = add_query_arg(array(
 
 			</section>
 
+			<?php if ($uiHelper->isUpscalable($view->attachment)) : ?>
+			<p><a href="<?php echo esc_attr(wp_nonce_url(add_query_arg('action', 'emr_prepare_upscale', $replace_url), 'emr_prepare_upscale')); ?>">
+					<?php esc_html_e('New! Click here to upscale/enlarge this image using AI!', 'enable-media-replace'); ?>
+			</a></p>
+			<?php endif; ?>
 			<p><a href="<?php echo esc_attr(wp_nonce_url($replace_url, 'media_replace')); ?>">
 					<?php esc_html_e('Replace this image with another one instead!', 'enable-media-replace'); ?>
 			</a></p>
