@@ -357,6 +357,18 @@ class EnableMediaReplacePlugin
             'nonce'    => wp_create_nonce('emr_remove_background')
         ));
 
+        $emr_account_path = plugin_dir_path(EMR_ROOT_FILE) . 'js/shortpixel-account.js';
+        $emr_account_ver  = file_exists($emr_account_path) ? filemtime($emr_account_path) : EMR_VERSION;
+        wp_register_script('emr_shortpixel_account', plugins_url('js/shortpixel-account.js', EMR_ROOT_FILE), array(), $emr_account_ver, true);
+        wp_localize_script('emr_shortpixel_account', 'emrAccount', array(
+            'ajax_url' => $ajax_url,
+            'nonce'    => wp_create_nonce('emr_save_api_key'),
+            'strings'  => array(
+                'verifying'      => __('Verifying…', 'enable-media-replace'),
+                'request_failed' => __('Request failed. Please try again.', 'enable-media-replace'),
+            ),
+        ));
+
 
         if (Log::debugIsActive()) {
             $emr_options['is_debug'] = true;

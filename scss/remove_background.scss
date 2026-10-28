@@ -17,6 +17,12 @@
 				}
 		}
 
+		// Upscale screen shows the dimensions of both images, like the replace screen.
+		&.emr-upscale-form .image_placeholder {
+			&.is_image .textlayer { display: block; }
+			.textlayer:empty { display: none; }
+		}
+
 		.bad-button
 		{
 			 text-align: right;
@@ -163,3 +169,5 @@
 	}
 
 }
+
+@import 'shortpixel-account';

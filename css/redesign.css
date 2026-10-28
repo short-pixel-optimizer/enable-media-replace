@@ -243,14 +243,6 @@ a.emr_upload_form .button,
 	}
 }
 
-/* Upscale screen shows the dimensions of both images, like the replace screen. */
-#remove-background-form.emr-upscale-form .image_placeholder.is_image .textlayer {
-	display: block;
-}
-#remove-background-form.emr-upscale-form .image_placeholder .textlayer:empty {
-	display: none;
-}
-
 /* ---------- Loading overlay ---------- */
 #remove-background-form .overlay {
 	background-color: #fafafa !important;
