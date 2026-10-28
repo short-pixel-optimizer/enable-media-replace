@@ -372,6 +372,7 @@ class UIHelper
         'mime_type' => false,
         'file_size' => false,
 				'remove_bg_ui' => false, // In process icons et al when removing background, for preview pane.
+				'upscale_ui' => false, // Same as remove_bg_ui, but for upscaling.
 
     );
 
@@ -415,6 +416,12 @@ class UIHelper
 
 		$is_backgroundremove_ui = (isset($args['remove_bg_ui']) && $args['remove_bg_ui'] == true);
 		$background_remove_ui = ($is_backgroundremove_ui) ? $this->getBgremoveUI() : '';
+
+		if (isset($args['upscale_ui']) && $args['upscale_ui'] == true)
+		{
+			$is_backgroundremove_ui = true; // Preview pane, same as background removal.
+			$background_remove_ui = $this->getUpscaleUI();
+		}
 
     $output = "<div class='image_placeholder $placeholder_class' $filetype style='width:" . $w . "px; height:". $h ."px'> ";
 		if (true === $args['is_upload'])
@@ -465,12 +472,57 @@ class UIHelper
 
 	}
 
+	// Max source width per upscale factor, synced with ShortPixel Image Optimizer.
+	public function getUpscaleFactors()
+	{
+		return array(
+			2 => 1200,
+			3 => 1200,
+			4 => 1024,
+		);
+	}
+
+	public function isUpscalable($post)
+	{
+		  if (false === wp_attachment_is_image($post))
+				return false;
+
+			if (false === emr()->useFeature('upscale'))
+				return false;
+
+			$meta = wp_get_attachment_metadata($post->ID);
+			if (is_array($meta) && isset($meta['width']) && intval($meta['width']) > max($this->getUpscaleFactors()))
+				return false;
+
+			$extensions = array('jpg', 'png','jpeg');
+
+			$mime = get_post_mime_type($post);
+			foreach($extensions as $extension)
+			{
+				  if (strpos($mime, $extension) !== false )
+						return true;
+			}
+
+			return false;
+	}
+
 	private function getBgremoveUI()
 	{
 		$output = '<div class="overlay" id="overlay">
 										<div class="lds-spinner"><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div></div>';
 
 		$output .=	'<h3>'  .  esc_html__('Removing background...', 'enable-media-replace') . '</h3>';
+		$output .= '</div>';
+
+		return $output;
+	}
+
+	private function getUpscaleUI()
+	{
+		$output = '<div class="overlay" id="overlay">
+										<div class="lds-spinner"><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div></div>';
+
+		$output .=	'<h3>'  .  esc_html__('Upscaling image...', 'enable-media-replace') . '</h3>';
 		$output .= '</div>';
 
 		return $output;

@@ -17,6 +17,9 @@ class RemoveBackGroundViewController extends \EnableMediaReplace\ViewController
 {
 	static $instance;
 
+	protected $view_name = 'prepare-remove-background';
+	protected $nonce_action = 'media_remove_background';
+
 	public function __construct()
 	{
 		parent::__construct();
@@ -65,7 +68,7 @@ class RemoveBackGroundViewController extends \EnableMediaReplace\ViewController
 	 $this->view->settings = $settings;
 	 $this->view->sourceFile = $file;
 
-	 $this->loadView('prepare-remove-background');
+	 $this->loadView($this->view_name);
 
 	}
 
@@ -73,7 +76,7 @@ class RemoveBackGroundViewController extends \EnableMediaReplace\ViewController
 	public function loadPost()
 	{
 		 if ( ! isset( $_POST['emr_nonce'] )
-		 || ! wp_verify_nonce( $_POST['emr_nonce'], 'media_remove_background' ))
+		 || ! wp_verify_nonce( $_POST['emr_nonce'], $this->nonce_action ))
 		 {
 			 $this->viewError(self::ERROR_NONCE);
 		 }

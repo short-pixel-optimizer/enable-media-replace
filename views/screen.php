@@ -110,14 +110,24 @@ $uiHelper = emr()->uiHelper();
         'action' => 'emr_prepare_remove',
         'attachment_id' => $attachment_id,
         ), $url);
+
+        $upscale_url = add_query_arg('action', 'emr_prepare_upscale', $url);
       ?>
 
 			<p>&nbsp;</p>
+			<?php if ($uiHelper->isUpscalable($view->attachment) && false === $view->is_author_restricted): ?>
+								  <div>
+                    <a href="<?php echo wp_nonce_url( $upscale_url , 'emr_prepare_upscale' ); ?>">
+											<?php _e('New! Click here to upscale/enlarge this image using AI!', 'enable-media-replace'); ?></a>
+                    <br>
+                    <br>
+                  </div>
+			 <?php endif; ?>
 			<?php if ($uiHelper->isBackgroundRemovable($view->attachment) && false === $view->is_author_restricted): ?>
 								  <div>
 
                     <a href="<?php echo wp_nonce_url( $url , 'emr_prepare_remove' ); ?>">
-											<?php _e('New! Click here to remove the background of this image!', 'enable-media-replace'); ?></a>
+											<?php _e('Click here to remove the background of this image!', 'enable-media-replace'); ?></a>
                     <br>
                     <br>
                     <input type="checkbox" id="remove_after_progress" name="remove_after_progress" value="<?php echo $attachment_id;?>">
