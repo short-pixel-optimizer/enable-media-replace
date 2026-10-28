@@ -1,4 +1,41 @@
 <?php
+/**
+ * Upscale screen: choose a factor, preview the upscaled image and confirm the replacement.
+ *
+ * Loaded by UpscaleViewController::load() (inherited from
+ * RemoveBackGroundViewController) through ViewController::loadView(), for
+ * `upload.php?page=enable-media-replace/enable-media-replace.php&action=emr_prepare_upscale&attachment_id=N`
+ * (only when the `upscale` feature is enabled).
+ *
+ * Variables in scope:
+ * - $controller UpscaleViewController
+ * - $view stdClass set by the controller:
+ *   - attachment (\WP_Post) the attachment
+ *   - sourceFile (FileModel) current main file, for the previews
+ *   - settings (array) the background settings the inherited load() reads; unused here
+ *
+ * Form `#emr_replace_form`: POST to UIHelper::getFormUrl($id, 'do_upscale_replace'),
+ * handled by the inherited loadPost(). Nonce: action `media_upscale_image`, field
+ * `emr_nonce`. Inputs:
+ * - ID (hidden) attachment id
+ * - key (hidden) empty on load; js/remove_bg.js fills it with the result key
+ *   returned by the `emr_remove_background` AJAX call
+ * - upscale (radio) one of the factors of UIHelper::getUpscaleFactors(); a factor is
+ *   disabled when its maximum width is at or below the metadata width of the image,
+ *   the first enabled one is checked, and with none enabled the help text reads "This
+ *   image is too big to be upscaled" and the Preview button is disabled
+ * The Preview button (`#remove_background_button`, the id the shared script expects)
+ * triggers the AJAX call with the checked factor; the result panel's text layer then
+ * shows the new dimensions. The Replace submit button stays disabled until a preview
+ * succeeds. The result preview is a placeholder with `upscale_ui`.
+ *
+ * Includes views/shortpixel-account.php with `$emr_account_feature` 'upscale' (the API
+ * key box with upscale wording, for users with `manage_options`) and views/upsell.php.
+ * Links: "Replace this image with another one instead" goes to `action=media_replace`
+ * with a nonce for `media_replace`; Cancel calls history.back().
+ *
+ * @todo The form action $formurl is echoed without escaping; wrap it in esc_url().
+ */
 namespace EnableMediaReplace;
 
 use EnableMediaReplace\EnableMediaReplacePlugin;

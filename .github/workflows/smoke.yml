@@ -1,0 +1,96 @@
+name: EMR Real-API Smoke Tests
+
+# Runs the tests/Smoke suite against the LIVE ShortPixel API (the
+# remove-background endpoints and api-status), catching contract drift a
+# mock can never see. Consumes real credits, so it runs only by manual
+# dispatch from the Actions tab: no schedule, never on push/PR. Needs the
+# SHORTPIXEL_SMOKE_KEY repository secret (ShortPixel API key); without it
+# every test self-skips and the job stays green with a warning.
+on:
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    name: Run Smoke Tests (live API, PHP 8.3, WP latest)
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: password
+          MYSQL_DATABASE: wordpress_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "mysqladmin ping --silent"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 3
+
+    env:
+      WP_CORE_DIR: /tmp/wordpress
+      WP_TESTS_DIR: /tmp/wordpress-tests-lib
+      WP_VERSION: latest
+      DB_NAME: wordpress_test
+      DB_USER: root
+      DB_PASS: password
+      DB_HOST: 127.0.0.1
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Set up PHP 8.3
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: gd, mbstring, mysqli, json, xml
+          ini-values: post_max_size=256M, memory_limit=512M
+          tools: composer
+
+      - name: Install SVN
+        run: sudo apt-get update && sudo apt-get install -y subversion
+
+      - name: Install WP-CLI
+        run: |
+          curl -O https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar
+          chmod +x wp-cli.phar
+          sudo mv wp-cli.phar /usr/local/bin/wp
+
+      - name: Install Composer dependencies
+        run: |
+          composer clear-cache
+          COMPOSER=composer.tests.json composer install --no-interaction --prefer-dist
+
+      - name: Install WordPress Unit Test Suite
+        run: |
+          mkdir -p "${WP_TESTS_DIR}"
+          bash bin/install-wp-tests.sh "$DB_NAME" "$DB_USER" "$DB_PASS" "$DB_HOST" "${WP_VERSION}"
+
+      - name: Run smoke testsuite against the live API
+        env:
+          SHORTPIXEL_SMOKE_KEY: ${{ secrets.SHORTPIXEL_SMOKE_KEY }}
+        run: |
+          if [ -z "$SHORTPIXEL_SMOKE_KEY" ]; then
+            echo "::warning::SHORTPIXEL_SMOKE_KEY secret is not set, all smoke tests will self-skip."
+          fi
+          LOG=$(mktemp)
+          set +e
+          vendor-tests/bin/phpunit -c phpunit-integration.xml --testsuite Smoke --testdox --colors=never 2>&1 | tee "$LOG"
+          STATUS=${PIPESTATUS[0]}
+          set -e
+          # Zero-test guard: fail on a non-zero exit, on `No tests executed!`
+          # (unknown or case-mismatched testsuite name, exit 0) and on a
+          # missing `OK (` / `Tests:` summary line (exit() mid-run, exit 0).
+          # Self-skipped tests still print a `Tests:` line and pass.
+          if [ "$STATUS" -ne 0 ]; then
+            echo "!!! Smoke: phpunit exited with $STATUS"; exit 1
+          fi
+          if grep -q "No tests executed!" "$LOG"; then
+            echo "!!! Smoke: no tests executed"; exit 1
+          fi
+          if ! grep -qE "^(OK \(|Tests: )" "$LOG"; then
+            echo "!!! Smoke: no summary line, PHPUnit died mid-run"; exit 1
+          fi
+          echo "=== Smoke passed"

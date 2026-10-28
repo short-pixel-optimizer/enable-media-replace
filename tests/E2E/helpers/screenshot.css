@@ -1,0 +1,27 @@
+/*
+ * Injected into every toHaveScreenshot() capture (playwright.config.ts →
+ * expect.toHaveScreenshot.stylePath). Screenshot-only: never loaded by a
+ * real page. `visibility: hidden` so nothing reflows: the captured layout
+ * stays exactly what a user gets.
+ */
+
+/*
+ * WordPress admin chrome: not EMR's to guard, and position:fixed. An element
+ * capture taller than the viewport scrolls the page, so the fixed admin bar
+ * would be painted INTO the element's pixels, and the admin menu would show
+ * behind it.
+ */
+#wpadminbar,
+#adminmenuback,
+#adminmenuwrap {
+	visibility: hidden !important;
+}
+
+/*
+ * The footer prints the WordPress version ("Version 6.x"), which changes
+ * with every core release and would fail a full-page baseline for no EMR
+ * change.
+ */
+#wpfooter {
+	visibility: hidden !important;
+}

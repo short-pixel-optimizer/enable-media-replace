@@ -1,6 +1,8 @@
 <?php
 /**
  * This page contains api class.
+ *
+ * @package EnableMediaReplace
  */
 namespace EnableMediaReplace;
 
@@ -13,11 +15,27 @@ use Exception;
 use stdClass;
 /**
  * This class contains api methods
+ *
+ * Client for the ShortPixel remove-background service.
+ *
+ * Lifecycle: `new Api` per use (Ajax::remove_background() for the request,
+ * RemoveBackGroundViewController::replaceBackground() for the download). Not a singleton,
+ * registers no hooks. State: a retry counter and the `refresh` flag, both per instance, so
+ * the retry loop in request() lives on one object.
+ *
+ * Two endpoints: without an API key the free reducer (`http://.../free-reducer.php`,
+ * JSON headers, 60 s timeout, max 9 requests); with a key the authenticated reducer
+ * (`https://.../reducer.php`, 15 s timeout, max 29 requests) after an Unlimited-plan check
+ * and a one-time remote cache purge. The result URL is handed to the browser as a
+ * transient key (handleSuccess()) and downloaded later (handleDownload()).
  */
 class Api {
 
 	/**
 	 * Request Counter
+	 *
+	 * Number of request() calls on this instance, used for the back-off and the attempt
+	 * limit. The first call sees 0.
 	 *
 	 * @var int $counter
 	 */
@@ -32,9 +50,17 @@ class Api {
 
 	/**
 	 * ShortPixel authenticated api url — used when a valid API key is configured.
+	 *
+	 * @var string
 	 */
 	private $authenticated_url = 'https://api.shortpixel.com/v2/reducer.php';
 
+	/**
+	 * Remote cache purge endpoint, called once before the first keyed request so the
+	 * reducer does not return a cached result for the same URL.
+	 *
+	 * @var string
+	 */
 	private $cleanup_url = 'https://api.shortpixel.com/v2/cleanup.php';
 
 	/**
@@ -47,10 +73,19 @@ class Api {
 		'Accept: application/json',
 	);
 
+	/**
+	 * Sent as `refresh` in the request body; true only until the first request is sent, so
+	 * retries poll the same job instead of starting a new one. Also gates the cache purge.
+	 *
+	 * @var bool
+	 */
 	private $refresh = true; // only first request should be fresh
 
 
 
+	/**
+	 * Creates the client. No setup.
+	 */
 	public function __construct()
 	{
 
@@ -58,8 +93,62 @@ class Api {
 	/**
 	 * Create ShortPixel api request
 	 *
-	 * @param  array $data
-	 * @return stdClass $result
+	 * Sends the attachment's source URL to the reducer and polls until a result is ready.
+	 *
+	 * Serves both screens: a background removal (the default) or, when
+	 * `$posted_data['upscale']` is 2, 3 or 4, an upscale by that factor.
+	 *
+	 * Sequence:
+	 * 1. Reads `attachment_id` directly from `$_POST` (not from $posted_data); null gives
+	 *    "No attachment ID given", a failed checkImagePermission() "No permission for user".
+	 *    `upscale` is intval() of `$posted_data['upscale']`, 0 when absent; any value other
+	 *    than 0, 2, 3 or 4 gives "Invalid upscale factor" before anything is saved or sent.
+	 * 2. Saves `bg_type`, `bg_color` (default '#ffffff') and `bg_transparency` from
+	 *    `$_POST['background']` into the `enable_media_replace` option before any request is
+	 *    sent, and again on every retry. Skipped for an upscale, which has no background
+	 *    options to remember.
+	 * 3. `bg_remove`: '1' for transparent; for type 'solid' the colour from
+	 *    `$posted_data['background']`, with a two-character alpha suffix when the
+	 *    transparency is 0-100 ('FF' for 100). `background.type` is read without isset(),
+	 *    but only for a background removal: an upscale skips this step, so it accepts
+	 *    posted data without a background.
+	 * 4. Builds the body: `plugin_version`, `bg_remove`, `urllist` (urlencoded esc_url),
+	 *    `lossy` (always 0), `refresh`. For an upscale `bg_remove` is removed from the body
+	 *    and `upscale` (the integer factor) is added instead.
+	 * 5. With an API key: on the first call, verifyUnlimitedPlan() must pass (else a result
+	 *    with `plan_expired` true); adds `key`, `item_id`, a raw `urllist`, uses the
+	 *    authenticated endpoint, and on the first call with refresh purges the remote cache.
+	 * 6. Retries: from the second call on, sleeps 3 s (keyed) or counter+3 s (free) before
+	 *    sending. The counter is incremented before the limit check against 30 (keyed) or
+	 *    10 (free), so at most 29 / 9 requests are sent; past that the result carries a
+	 *    "reasonable amount of time" message. The free path can sleep about 60 s in total on
+	 *    top of 60 s per request timeout, which can hit PHP's max_execution_time.
+	 * 7. Response status (string compare): '2' is done: `image` is the LosslessURL (the
+	 *    LossyURL branch needs `lossy` '1'/'2' and never runs because it is the integer 0),
+	 *    handleSuccess() stores it and returns the `key`, and `url`, `settings` (a
+	 *    "key:value" summary of the body) and a `ts` cache-buster on `image` are added.
+	 *    '1' is still processing: request() calls itself recursively and returns that
+	 *    result. Anything else copies the API message; a message containing
+	 *    "Quota exceeded" is replaced with an upgrade message and `quota_exceeded` true.
+	 *    The quota and the "reasonable amount of time" messages have an upscale wording
+	 *    ("continue upscaling images", "The image could not be upscaled").
+	 *
+	 * @todo The upscale factor is validated against the allowed set only, not against the
+	 *       image: the width limits of UIHelper::getUpscaleFactors(), which the upscale
+	 *       screen enforces by disabling radios, are not checked here, so a crafted request
+	 *       sends a factor the screen would have refused (for instance 4 for an image wider
+	 *       than 1024 px). Suggested fix: refuse a factor whose limit is at or below the
+	 *       attachment's metadata width, with the same message as the invalid factor.
+	 * @todo `plugin_version` is hard-coded to 'EMR4.2.0' here and in purgeRemoteCache().
+	 *       Suggested fix: `'EMR' . EMR_VERSION`.
+	 * @todo The alpha suffix is `str_pad($transparency, 2, '0')` of the decimal 0-99 value,
+	 *       not a hex alpha: 50 becomes '50' (0x50, about 31 %), 5 becomes '05'. Suggested
+	 *       fix: `sprintf('%02X', round($transparency * 255 / 100))`.
+	 *
+	 * @param  array $posted_data The AJAX POST data; only `upscale`, `background.type`,
+	 *                            `.color` and `.transparency` are read from it.
+	 * @return stdClass $result `success`, `image`, `message`, and depending on the outcome
+	 *                          `key`, `url`, `settings`, `plan_expired`, `quota_exceeded`.
 	 */
 	public function request( array $posted_data ) {
 		$bg_remove         = '1';
@@ -265,6 +354,19 @@ class Api {
 		return $result;
 	}
 
+	/**
+	 * Asks the API to drop any cached result for the image, so the first keyed request
+	 * processes it fresh.
+	 *
+	 * Blocking POST (15 s timeout) to the cleanup endpoint with `plugin_version` (hard-coded
+	 * 'EMR4.2.0', see the @todo on request()), `key`, `urllist` and `item_id`. The response
+	 * or error is only logged.
+	 *
+	 * @param string $apiKey   The API key.
+	 * @param string $imageUrl Raw source image URL.
+	 * @param int    $itemId   Attachment ID.
+	 * @return void
+	 */
 	private function purgeRemoteCache( $apiKey, $imageUrl, $itemId = 0 )
 	{
 		$body = array(
@@ -297,6 +399,17 @@ class Api {
 		}
 	}
 
+	/**
+	 * Stores the result image URL in a transient and returns its key.
+	 *
+	 * The key is `wp_hash($nonce . $result->image, 'logged_in')`, where $nonce is
+	 * `$_POST['nonce']` (the AJAX nonce) or, when absent, wp_create_nonce() for action -1.
+	 * The URL is stored as transient `emr_<key>` for 30 minutes (before the `ts`
+	 * cache-buster is added). The browser posts the key back to `do_background_replace`.
+	 *
+	 * @param \stdClass $result Result object with `image` set to the remote URL.
+	 * @return string The transient key (without the `emr_` prefix).
+	 */
 	public function handleSuccess($result)
 	{
 		 // $fs = emr()->filesystem();
@@ -308,6 +421,17 @@ class Api {
 		return $key;
 	}
 
+	/**
+	 * Downloads the result image stored under a transient key to a temporary file.
+	 *
+	 * Reads transient `emr_<key>`; when it has expired, returns a "not available anymore"
+	 * message. Otherwise downloads the URL with FileSystemController::downloadFile() into a
+	 * wp_tempnam() file. The transient is not deleted after use.
+	 *
+	 * @param string $key Transient key from handleSuccess().
+	 * @return \stdClass `success`; `image` is the temp file path on success; `message` on
+	 *                   failure.
+	 */
 	public function handleDownload($key)
 	{
 		$url = get_transient('emr_' . $key);
@@ -335,6 +459,11 @@ class Api {
 		return $result;
 	}
 
+	/**
+	 * Returns an empty result object.
+	 *
+	 * @return \stdClass With `success` false, `image` null and `message` null.
+	 */
 	protected function  getResponseObject()
 	{
 		$result          = new stdClass;

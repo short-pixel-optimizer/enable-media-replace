@@ -1,4 +1,48 @@
 <?php
+/**
+ * Remove-background screen: preview the background removal and confirm the replacement.
+ *
+ * Loaded by RemoveBackGroundViewController::load() through
+ * ViewController::loadView(), for
+ * `upload.php?page=enable-media-replace/enable-media-replace.php&action=emr_prepare_remove&attachment_id=N`
+ * (only when the `background` feature is enabled).
+ *
+ * Variables in scope:
+ * - $controller RemoveBackGroundViewController
+ * - $view stdClass set by the controller:
+ *   - attachment (\WP_Post) the attachment
+ *   - sourceFile (FileModel) current main file, for the previews
+ *   - settings (array) `enable_media_replace` option merged with defaults:
+ *     bg_type (`transparent`|`solid`), bg_color (hex), bg_transparency (0-100)
+ * Uses ApiKeyManager (hasApiKey, getMaskedKey) and current_user_can('manage_options').
+ *
+ * Form `#emr_replace_form`: POST to UIHelper::getFormUrl($id, 'do_background_replace'),
+ * handled by RemoveBackGroundViewController::loadPost(). Nonce: action
+ * `media_remove_background`, field `emr_nonce`. Inputs:
+ * - ID (hidden) attachment id
+ * - key (hidden) empty on load; js/remove_bg.js fills it with the result key
+ *   returned by the `emr_remove_background` AJAX call; loadPost() uses it to
+ *   fetch the processed image
+ * - background_type `transparent` or `solid`
+ * - bg_display_picker (colour picker) and bg_color (hidden hex copy used by the script)
+ * - `#bg_transparency` range has no name and is only read by the script
+ * The Preview button (`#remove_background_button`) triggers the AJAX call
+ * (js/remove_bg.js, localised as `emrObject` with nonce `emr_remove_background`);
+ * the Replace submit button stays disabled until a preview succeeds.
+ *
+ * Includes views/shortpixel-account.php (the ShortPixel API key box, rendered
+ * for users with `manage_options`; see that file) and views/upsell.php
+ * (filter `emr/upsell`).
+ *
+ * Links: "Replace this image with another one instead" goes to
+ * `action=media_replace` with a nonce for `media_replace`; "upscale/enlarge
+ * this image" (only when UIHelper::isUpscalable() is true) goes to
+ * `action=emr_prepare_upscale` with a nonce for `emr_prepare_upscale`; the
+ * report link is a mailto: to support whose {url} and {settings} placeholders
+ * the script fills; Cancel calls history.back().
+ *
+ * @todo The form action $formurl is echoed without escaping; wrap it in esc_url().
+ */
 namespace EnableMediaReplace;
 
 use EnableMediaReplace\EnableMediaReplacePlugin;
