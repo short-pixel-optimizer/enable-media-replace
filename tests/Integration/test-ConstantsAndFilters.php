@@ -45,10 +45,24 @@ class ConstantsAndFiltersTest extends EMR_IntegrationTestCase {
 
 	public function test_feature_filters_default_to_enabled() {
 		$this->assertTrue( apply_filters( 'emr/feature/background', true ) );
+		$this->assertTrue( apply_filters( 'emr/feature/upscale', true ) );
 		$this->assertTrue( apply_filters( 'emr/feature/remote_notice', true ) );
 		$this->assertTrue( emr()->useFeature( 'background' ) );
+		$this->assertTrue( emr()->useFeature( 'upscale' ) );
 		$this->assertTrue( emr()->useFeature( 'remote_notice' ) );
 		$this->assertFalse( emr()->useFeature( 'unknown' ) );
+	}
+
+	public function test_upscale_feature_filter_can_disable_the_feature_on_its_own() {
+		add_filter( 'emr/feature/upscale', '__return_false' );
+
+		emr()->adminInit();
+		$this->assertFalse( emr()->useFeature( 'upscale' ) );
+		$this->assertTrue( emr()->useFeature( 'background' ) );
+
+		remove_filter( 'emr/feature/upscale', '__return_false' );
+		emr()->adminInit();
+		$this->assertTrue( emr()->useFeature( 'upscale' ) );
 	}
 
 	public function test_background_feature_filter_can_disable_the_feature() {

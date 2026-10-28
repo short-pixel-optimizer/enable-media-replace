@@ -238,7 +238,7 @@ export class EmrSupport {
 	}
 
 	/** Force the emr/feature/* filter outcome; null restores the default. */
-	setFeatures(features: { background?: boolean | null; remote_notice?: boolean | null }): Promise<{ ok: boolean }> {
+	setFeatures(features: { background?: boolean | null; upscale?: boolean | null; remote_notice?: boolean | null }): Promise<{ ok: boolean }> {
 		return this.post('feature', features);
 	}
 
@@ -339,6 +339,8 @@ export const emrUrls = {
 	replace: (attachmentId: number): string => `${EMR_PAGE}&action=media_replace&attachment_id=${attachmentId}`,
 	/** Remove-background screen (views/prepare-remove-background.php); needs the `background` feature. */
 	removeBackground: (attachmentId: number): string => `${EMR_PAGE}&action=emr_prepare_remove&attachment_id=${attachmentId}`,
+	/** Upscale screen (views/prepare-upscale.php); needs the `upscale` feature. */
+	upscale: (attachmentId: number): string => `${EMR_PAGE}&action=emr_prepare_upscale&attachment_id=${attachmentId}`,
 } as const;
 
 /** The query arguments of an EMR page URL (absolute or relative), for assertions on links and redirects. */
@@ -442,6 +444,11 @@ export class ReplaceScreen {
 
 	get removeBackgroundLink(): Locator {
 		return this.page.getByRole('link', { name: /remove the background of this image/i });
+	}
+
+	/** "New! Click here to upscale/enlarge this image using AI!" (only when the image is upscalable). */
+	get upscaleLink(): Locator {
+		return this.page.getByRole('link', { name: /upscale\/enlarge this image/i });
 	}
 
 	/** The Upload submit; disabled until a file is chosen (js/emr_admin.js). */
@@ -611,6 +618,39 @@ export class RemoveBackgroundScreen {
 	/** Result of a save or remove; the page reloads on success. */
 	get apiKeyNotice(): Locator {
 		return this.page.locator('#emr-apikey-notice');
+	}
+
+	/** The remove-background screen's link to the upscale screen (only for an upscalable image). */
+	get upscaleLink(): Locator {
+		return this.page.getByRole('link', { name: /upscale\/enlarge this image/i });
+	}
+}
+
+/**
+ * The upscale screen (views/prepare-upscale.php). Same form, previews,
+ * buttons, notice and account box as the remove-background screen (the
+ * ids are shared so js/remove_bg.js serves both); the options are the
+ * factor radios instead of the background type.
+ */
+export class UpscaleScreen extends RemoveBackgroundScreen {
+	async goto(attachmentId: number): Promise<void> {
+		await this.page.goto(emrUrls.upscale(attachmentId));
+		await expect(this.form).toBeVisible();
+	}
+
+	/** The factor radio: `input[name="upscale"][value="N"]`. */
+	factor(value: 2 | 3 | 4): Locator {
+		return this.page.locator(`input[name="upscale"][value="${value}"]`);
+	}
+
+	/** The help text under the radios: the explanation, or "This image is too big to be upscaled." */
+	get factorHelp(): Locator {
+		return this.page.locator('.replace_type .howto');
+	}
+
+	/** The text layer of the result panel; the script writes the result's "W x H" there after a preview. */
+	get resultDimensions(): Locator {
+		return this.resultPreview.locator('.textlayer');
 	}
 }
 

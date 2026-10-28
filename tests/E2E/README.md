@@ -22,7 +22,7 @@ section of [TESTING.md](../../TESTING.md).
 | `fixtures.ts` | `test` / `expect` for every spec: console-error tripwire, hermetic routing, the `emr` support client (reset before each test) |
 | `helpers/wp-admin.ts` | login, plain admin URLs |
 | `helpers/media-list.ts` | Media Library list row actions, the edit-attachment meta boxes |
-| `helpers/emr.ts` | support REST client, EMR page URLs, screen objects (replace, success, error, remove background, upsell) |
+| `helpers/emr.ts` | support REST client, EMR page URLs, screen objects (replace, success, error, remove background, upscale, upsell) |
 | `helpers/journeys.ts` | shared journey steps: a second logged-in user, submit the replace form, success screen + redirect, fetch a file, a padded JPEG of an exact size |
 | `helpers/screenshot.css` | screenshot-only CSS for the `visual` project |
 | `specs/` | `auth.setup.ts` (logs in once), `smoke.spec.ts` (proves the harness), the journey specs |

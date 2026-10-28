@@ -10,7 +10,8 @@
  * controller, and for the other actions the controller singletons are
  * replaced by recording doubles whose load() / loadPost() do nothing else.
  * The default branch (`exit('Something went wrong ...')`, also reached by
- * the two background actions when the feature is off) is never executed.
+ * the background and upscale actions when their feature is off) is never
+ * executed.
  *
  * setScreen() can fetch notices.php through RemoteNoticeController: most
  * tests prime the `emr_remote_notice` transient so no fetch happens, the one
@@ -28,6 +29,7 @@ use EnableMediaReplace\Notices\NoticeModel;
 use EnableMediaReplace\ViewController\ReplaceViewController;
 use EnableMediaReplace\ViewController\UploadViewController;
 use EnableMediaReplace\ViewController\RemoveBackgroundViewController;
+use EnableMediaReplace\ViewController\UpscaleViewController;
 
 /** Records route()'s calls instead of rendering the replace screen. */
 class EMR_Main_RecordingReplaceView extends ReplaceViewController {
@@ -47,6 +49,17 @@ class EMR_Main_RecordingUploadView extends UploadViewController {
 
 /** Records route()'s calls instead of the remove-background screens. */
 class EMR_Main_RecordingRemoveBgView extends RemoveBackgroundViewController {
+	public $calls = array();
+	public function load() {
+		$this->calls[] = 'load';
+	}
+	public function loadPost() {
+		$this->calls[] = 'loadPost';
+	}
+}
+
+/** Records route()'s calls instead of the upscale screens. */
+class EMR_Main_RecordingUpscaleView extends UpscaleViewController {
 	public $calls = array();
 	public function load() {
 		$this->calls[] = 'load';
@@ -155,14 +168,28 @@ class PluginAdminScreensTest extends EMR_MainTestCase {
 		$this->assertSame( 'Remove background', $entry[3] );
 	}
 
-	public function test_menu_title_stays_replace_media_for_other_actions() {
+	public function test_menu_title_is_upscale_image_for_the_prepare_upscale_action() {
 		$GLOBALS['submenu']  = array();
-		$_REQUEST['action'] = 'do_background_replace';
+		$_REQUEST['action'] = 'emr_prepare_upscale';
 		$this->login_as( 'administrator' );
 
 		emr()->menu();
 
-		$this->assertSame( 'Replace media', $this->emr_submenu_entry()[0] );
+		$entry = $this->emr_submenu_entry();
+		$this->assertSame( 'Upscale image', $entry[0] );
+		$this->assertSame( 'Upscale image', $entry[3] );
+	}
+
+	public function test_menu_title_stays_replace_media_for_other_actions() {
+		$this->login_as( 'administrator' );
+		foreach ( array( 'do_background_replace', 'do_upscale_replace', 'media_replace_upload' ) as $action ) {
+			$GLOBALS['submenu']  = array();
+			$_REQUEST['action'] = $action;
+
+			emr()->menu();
+
+			$this->assertSame( 'Replace media', $this->emr_submenu_entry()[0], $action );
+		}
 	}
 
 	public function test_menu_for_a_user_without_upload_files_lands_in_the_nopriv_list() {
@@ -442,6 +469,56 @@ class PluginAdminScreensTest extends EMR_MainTestCase {
 		$this->assertFalse( wp_script_is( 'emr_remove_bg', 'enqueued' ) );
 	}
 
+	public function test_route_emr_prepare_upscale_loads_the_upscale_screen_with_the_remove_background_assets() {
+		$this->login_as( 'administrator' );
+		emr()->adminInit();
+		$upscale                                  = new EMR_Main_RecordingUpscaleView();
+		$remove                                   = new EMR_Main_RecordingRemoveBgView();
+		UpscaleViewController::$instance          = $upscale;
+		RemoveBackgroundViewController::$instance = $remove;
+		$this->prepare_route( 'emr_prepare_upscale', array( 'attachment_id' => '57' ) );
+
+		emr()->route();
+
+		$this->assertSame( array( 'load' ), $upscale->calls );
+		$this->assertSame( array(), $remove->calls, 'The upscale action has its own controller.' );
+		$this->assertTrue( wp_script_is( 'emr_remove_bg', 'enqueued' ), 'The upscale screen reuses the remove-background script.' );
+		$this->assertTrue( wp_script_is( 'emr_upsell', 'enqueued' ) );
+		$this->assertTrue( wp_style_is( 'emr-remove-background', 'enqueued' ) );
+		$this->assertTrue( wp_style_is( 'emr_style', 'enqueued' ) );
+	}
+
+	public function test_route_do_upscale_replace_calls_load_post_on_the_upscale_controller() {
+		$this->login_as( 'administrator' );
+		emr()->adminInit();
+		$upscale                                  = new EMR_Main_RecordingUpscaleView();
+		$remove                                   = new EMR_Main_RecordingRemoveBgView();
+		UpscaleViewController::$instance          = $upscale;
+		RemoveBackgroundViewController::$instance = $remove;
+		$this->prepare_route( 'do_upscale_replace' );
+
+		emr()->route();
+
+		$this->assertSame( array( 'loadPost' ), $upscale->calls );
+		$this->assertSame( array(), $remove->calls );
+		$this->assertFalse( wp_script_is( 'emr_remove_bg', 'enqueued' ) );
+	}
+
+	public function test_route_background_actions_do_not_touch_the_upscale_controller() {
+		$this->login_as( 'administrator' );
+		emr()->adminInit();
+		$upscale                                  = new EMR_Main_RecordingUpscaleView();
+		$remove                                   = new EMR_Main_RecordingRemoveBgView();
+		UpscaleViewController::$instance          = $upscale;
+		RemoveBackgroundViewController::$instance = $remove;
+		$this->prepare_route( 'emr_prepare_remove', array( 'attachment_id' => '57' ) );
+
+		emr()->route();
+
+		$this->assertSame( array( 'load' ), $remove->calls );
+		$this->assertSame( array(), $upscale->calls );
+	}
+
 	/**
 	 * route() enqueues the style handle `jquery-ui-datepicker`, which neither
 	 * WordPress core nor EMR registers. WordPress parks the handle in the
@@ -479,7 +556,7 @@ class PluginAdminScreensTest extends EMR_MainTestCase {
 			$this->assertTrue( wp_style_is( $handle, 'registered' ), $handle );
 			$this->assertFalse( wp_style_is( $handle, 'enqueued' ), $handle );
 		}
-		foreach ( array( 'emr_admin', 'emr_upsell', 'emr_remove_bg', 'emr_success' ) as $handle ) {
+		foreach ( array( 'emr_admin', 'emr_upsell', 'emr_remove_bg', 'emr_shortpixel_account', 'emr_success' ) as $handle ) {
 			$this->assertTrue( wp_script_is( $handle, 'registered' ), $handle );
 			$this->assertFalse( wp_script_is( $handle, 'enqueued' ), $handle );
 		}
@@ -520,6 +597,10 @@ class PluginAdminScreensTest extends EMR_MainTestCase {
 		$this->assertSame( filemtime( dirname( EMR_ROOT_FILE ) . '/js/remove_bg.js' ), $scripts['emr_remove_bg']->ver );
 		$this->assertSame( array(), $scripts['emr_success']->deps );
 		$this->assertSame( 1, wp_scripts()->get_data( 'emr_admin', 'group' ), 'Registered for the footer.' );
+		$this->assertSame( plugins_url( 'js/shortpixel-account.js', EMR_ROOT_FILE ), $scripts['emr_shortpixel_account']->src );
+		$this->assertSame( array(), $scripts['emr_shortpixel_account']->deps, 'The account script does not use jQuery.' );
+		$this->assertSame( filemtime( dirname( EMR_ROOT_FILE ) . '/js/shortpixel-account.js' ), $scripts['emr_shortpixel_account']->ver );
+		$this->assertSame( 1, wp_scripts()->get_data( 'emr_shortpixel_account', 'group' ), 'Registered for the footer.' );
 	}
 
 	/**
@@ -556,6 +637,18 @@ class PluginAdminScreensTest extends EMR_MainTestCase {
 		$this->assertSame( admin_url( 'admin-ajax.php' ), $data['ajax_url'] );
 		$this->assertSame( 1, wp_verify_nonce( $data['nonce'], 'emr_remove_background' ) );
 		$this->assertFalse( wp_verify_nonce( $data['nonce'], 'media_replace' ) );
+	}
+
+	public function test_admin_scripts_localises_the_account_data_with_a_valid_save_key_nonce() {
+		$this->login_as( 'administrator' );
+
+		emr()->admin_scripts();
+		$data = $this->localized( 'emr_shortpixel_account', 'emrAccount' );
+
+		$this->assertSame( admin_url( 'admin-ajax.php' ), $data['ajax_url'] );
+		$this->assertSame( 1, wp_verify_nonce( $data['nonce'], 'emr_save_api_key' ) );
+		$this->assertFalse( wp_verify_nonce( $data['nonce'], 'emr_remove_background' ) );
+		$this->assertSame( array( 'verifying' => 'Verifying…', 'request_failed' => 'Request failed. Please try again.' ), $data['strings'] );
 	}
 
 	public function test_admin_scripts_success_timeout_defaults_to_five_and_is_filterable() {

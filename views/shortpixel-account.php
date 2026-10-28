@@ -1,4 +1,28 @@
 <?php
+/**
+ * ShortPixel Account box: shows, saves, changes and removes the ShortPixel API key.
+ *
+ * Included by views/prepare-remove-background.php and views/prepare-upscale.php, inside
+ * their form. Rendered only for users with `manage_options`; for them it also enqueues
+ * `emr_shortpixel_account` (js/shortpixel-account.js, localised as `emrAccount`), which
+ * posts to the `emr_save_api_key` and `emr_delete_api_key` AJAX actions (nonce
+ * `emr_save_api_key`) and reloads the page on success.
+ *
+ * Variables in scope:
+ * - $emr_account_feature (string, optional) 'upscale' selects the upscale wording of the
+ *   intro text and of the remove confirmation (`data-confirm-remove`); anything else, or
+ *   unset, gives the background-removal wording. Set it before the include.
+ *
+ * With a stored key: the masked key (ApiKeyManager::getMaskedKey()), "Change Key"
+ * (`#emr-change-key-toggle`, reveals `#emr-change-key-form`) and "Remove Key"
+ * (`#emr-remove-key`, asks for confirmation). Without one: the `#emr-new-api-key` input
+ * (20 characters), the "Activate" button (`#emr-update-api-key`) and the sign-up link.
+ * `#emr-apikey-notice` receives the result of a save or removal.
+ *
+ * @todo ApiKeyManager's answers ("You now have unlimited background removal", "unlock
+ *       unlimited background removal") are shown unchanged on the upscale screen, where
+ *       they describe the wrong feature. Word them per feature, or neutrally.
+ */
 namespace EnableMediaReplace;
 
 use EnableMediaReplace\ApiKeyManager;

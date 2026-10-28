@@ -17,9 +17,11 @@
  *     so with the default settings the reducer request can only prove the
  *     contract: the endpoint answers in the documented envelope, EMR maps
  *     it into its result object, and nothing crashes. A full background
- *     removal, including the download of the result, runs when
+ *     removal or upscale, including the download of the result, runs when
  *     SHORTPIXEL_SMOKE_IMAGE_URL names a publicly reachable image: the
  *     test points wp_get_attachment_url() at it for the seeded attachment.
+ *     The upscale requests send the `upscale` factor the upscale screen
+ *     posts (2, 3 or 4) instead of `bg_remove`.
  *
  * Self-check without a key: EMR_SMOKE_USE_MOCK=1 keeps MockEmrApi
  * registered and runs the same test bodies against it, so the suite can
@@ -121,6 +123,36 @@ class RealRemoveBackgroundSmokeTest extends EMR_IntegrationTestCase {
 		return $_POST;
 	}
 
+	/** The upscale POST as js/remove_bg.js sends it from the upscale screen. */
+	private function upscalePost( $factor = '2' ): array {
+		$_POST = array(
+			'attachment_id' => (string) $this->attachmentId,
+			'upscale'       => (string) $factor,
+			'nonce'         => wp_create_nonce( 'emr_remove_background' ),
+		);
+		return $_POST;
+	}
+
+	/** Runs the request and, when the API could fetch the image, downloads and checks the result. */
+	private function assertRequestAndDownload( $result, string $what ): void {
+		$this->assertResultEnvelope( $result );
+
+		if ( null === $this->publicImageUrl && ! $this->mockMode ) {
+			$this->assertFalse( $result->success, 'The API cannot fetch the test install URL; the refusal is the documented envelope: ' . $result->message );
+			return;
+		}
+
+		$this->assertTrue( $result->success, $what . ' succeeds: ' . $result->message );
+		$key = ( new Api() )->handleSuccess( $result );
+		$this->assertIsString( $key );
+		$download = ( new Api() )->handleDownload( $key );
+		$this->assertTrue( $download->success, 'The result downloads: ' . $download->message );
+		$this->tmpFiles[] = $download->image;
+		$this->assertFileExists( $download->image );
+		$this->assertGreaterThan( 0, filesize( $download->image ) );
+		$this->assertNotFalse( getimagesize( $download->image ), 'The downloaded result is an image.' );
+	}
+
 	/** Asserts the envelope Api::request() documents, whatever the outcome. */
 	private function assertResultEnvelope( $result ): void {
 		$this->assertInstanceOf( 'stdClass', $result );
@@ -205,5 +237,52 @@ class RealRemoveBackgroundSmokeTest extends EMR_IntegrationTestCase {
 			return;
 		}
 		$this->assertTrue( $result->success, 'Free removal succeeds: ' . $result->message );
+	}
+
+	// -------------------------------------------------------------------
+	// reducer.php / free-reducer.php with the `upscale` factor
+	// -------------------------------------------------------------------
+
+	/**
+	 * Keyed upscale by 2x. With SHORTPIXEL_SMOKE_IMAGE_URL set the whole
+	 * path runs and the downloaded result is an image; without it the test
+	 * proves the envelope only. The result's `settings` summary names the
+	 * factor and no `bg_remove`, which shows the upscale body was sent.
+	 */
+	public function test_keyed_upscale_answers_in_the_documented_envelope() {
+		$this->storeVerifiedKey();
+
+		$result = ( new Api() )->request( $this->upscalePost( '2' ) );
+
+		$this->assertRequestAndDownload( $result, 'Upscale' );
+		if ( $result->success ) {
+			$this->assertStringContainsString( ' upscale:2 ', $result->settings );
+			$this->assertStringNotContainsString( 'bg_remove', $result->settings );
+		}
+	}
+
+	/** Free (unkeyed) upscale: same envelope, no key sent. */
+	public function test_free_upscale_answers_in_the_documented_envelope() {
+		$this->resetSingleton( 'EnableMediaReplace\ApiKeyManager' );
+		$this->assertFalse( ApiKeyManager::getInstance()->hasApiKey(), 'Precondition: no key stored.' );
+
+		$result = ( new Api() )->request( $this->upscalePost( '3' ) );
+		$this->assertResultEnvelope( $result );
+
+		if ( null === $this->publicImageUrl && ! $this->mockMode ) {
+			$this->assertFalse( $result->success, 'The API cannot fetch the test install URL: ' . $result->message );
+			return;
+		}
+		$this->assertTrue( $result->success, 'Free upscale succeeds: ' . $result->message );
+		$this->assertStringContainsString( ' upscale:3 ', $result->settings );
+	}
+
+	/** The factor check runs locally: nothing is sent for a factor the screens never offer. */
+	public function test_an_invalid_upscale_factor_is_refused_before_the_api_is_called() {
+		$result = ( new Api() )->request( $this->upscalePost( '7' ) );
+
+		$this->assertResultEnvelope( $result );
+		$this->assertFalse( $result->success );
+		$this->assertSame( 'Invalid upscale factor', $result->message );
 	}
 }

@@ -28,7 +28,10 @@ use EnableMediaReplace\Helper\EnvHelper;
  * router route(), the media row actions, the attachment edit meta boxes, the
  * attachment-fields button, the "Revised" / "Replaced By" lines, script and
  * style registration, notices on the media screens, and the image cache
- * busting after a replacement.
+ * busting after a replacement. The row actions, meta box and attachment
+ * fields offer up to three operations per attachment: replace (always),
+ * remove background (UIHelper::isBackgroundRemovable()) and upscale
+ * (UIHelper::isUpscalable()).
  *
  * checkImagePermission() is the per-attachment permission gate used by the
  * UI here, the view controllers and the API.
@@ -63,8 +66,8 @@ class EnableMediaReplacePlugin
 
     /**
      * @var array<string,bool> Feature flags filled by adminInit(): 'replace'
-     *                         (always true, unused), 'background' and
-     *                         'remote_notice'. Read through useFeature().
+     *                         (always true, unused), 'background', 'upscale'
+     *                         and 'remote_notice'. Read through useFeature().
      */
     private $features = array();
 
@@ -139,6 +142,7 @@ class EnableMediaReplacePlugin
      *
      * @hook action admin_init (listened to, via the constructor)
      * @hook filter emr/feature/background    Enables the remove-background feature. Default true.
+     * @hook filter emr/feature/upscale       Enables the upscale feature. Default true.
      * @hook filter emr/feature/remote_notice Enables the remote notices. Default true.
      *
      * @todo Each call creates a new Ajax instance, which registers every
@@ -204,6 +208,8 @@ class EnableMediaReplacePlugin
      * `admin_init`, or on front-end requests).
      * - 'background': the `emr/feature/background` flag, forced to false for
      *   author-restricted users (UIHelper::is_author_restricted()).
+     * - 'upscale': the `emr/feature/upscale` flag, with the same author
+     *   restriction as 'background'.
      * - 'remote_notice': the `emr/feature/remote_notice` flag.
      * - anything else: false.
      *
@@ -355,9 +361,10 @@ class EnableMediaReplacePlugin
      *
      * The page is registered under upload.php with the slug
      * 'enable-media-replace/enable-media-replace.php' and route() as its
-     * callback. Its title is "Replace media", or "Remove background" when
-     * the request action is 'emr_prepare_remove'. The menu title is not
-     * empty; hide_sub_menu() removes the entry instead.
+     * callback. Its title is "Replace media", "Remove background" when the
+     * request action is 'emr_prepare_remove' or "Upscale image" when it is
+     * 'emr_prepare_upscale'. The menu title is not empty; hide_sub_menu()
+     * removes the entry instead.
      *
      * @return void
      *
@@ -453,8 +460,15 @@ class EnableMediaReplacePlugin
      *   emr-remove-background and emr_upsell.
      * - 'do_background_replace', when useFeature('background'):
      *   RemoveBackgroundViewController::loadPost().
-     * - anything else (including the two background actions with the
-     *   feature off): exit() with a plain "Something went wrong" message.
+     * - 'emr_prepare_upscale', when useFeature('upscale'):
+     *   UpscaleViewController::load(), plus the same emr_remove_bg,
+     *   emr-remove-background and emr_upsell assets (the upscale screen
+     *   reuses the remove-background script and stylesheet).
+     * - 'do_upscale_replace', when useFeature('upscale'):
+     *   UpscaleViewController::loadPost().
+     * - anything else (including the background and upscale actions with
+     *   their feature off): exit() with a plain "Something went wrong"
+     *   message.
      *
      * No nonce or permission check happens here; the view controllers do
      * their own.
@@ -583,7 +597,14 @@ class EnableMediaReplacePlugin
      * - emr_upsell (js/upsell.js) -> `emr_upsell`: ajax URL and the
      *   "Installing ..." label.
      * - emr_remove_bg (js/remove_bg.js, versioned by file mtime) ->
-     *   `emrObject`: ajax_url and a nonce for 'emr_remove_background'.
+     *   `emrObject`: ajax_url and a nonce for 'emr_remove_background'. The
+     *   same script serves the upscale screen, where it also posts the
+     *   selected `upscale` factor.
+     * - emr_shortpixel_account (js/shortpixel-account.js, versioned by file
+     *   mtime, no dependencies) -> `emrAccount`: ajax_url, a nonce for
+     *   'emr_save_api_key' and the strings `verifying` / `request_failed`.
+     *   Enqueued by views/shortpixel-account.php for users with
+     *   `manage_options`.
      * - emr_success (js/emr_success.js) -> `emr_success_options`: timeout.
      *
      * @return void
@@ -784,6 +805,15 @@ class EnableMediaReplacePlugin
         return $url;
     }
 
+    /**
+     * Get the URL to the upscale page (action 'emr_prepare_upscale').
+     *
+     * The URL carries no nonce; every caller wraps it in wp_nonce_url()
+     * with the action 'emr_prepare_upscale'.
+     *
+     * @param int $attach_id Attachment ID.
+     * @return string Admin URL to the page.
+     */
     protected function getUpscaleURL($attach_id)
     {
         $url = admin_url("upload.php");
@@ -831,8 +861,10 @@ class EnableMediaReplacePlugin
      * Prints the "Replace Media" meta box.
      *
      * An "Upload a new file" button to the replace screen (nonce
-     * 'media_replace'), and a "Remove background" button (nonce
-     * 'emr_prepare_remove') when UIHelper::isBackgroundRemovable() is true.
+     * 'media_replace'), a "Remove background" button (nonce
+     * 'emr_prepare_remove') when UIHelper::isBackgroundRemovable() is true,
+     * and an "Upscale image" button (nonce 'emr_prepare_upscale') when
+     * UIHelper::isUpscalable() is true.
      *
      * @param \WP_Post $post Attachment being edited.
      * @return void
@@ -936,7 +968,9 @@ class EnableMediaReplacePlugin
      * and, when the background is removable and the user is not author
      * restricted, the `emr-remove-background` field (nonce
      * 'emr_prepare_remove'). The author check repeats the one already
-     * inside isBackgroundRemovable().
+     * inside isBackgroundRemovable(). When UIHelper::isUpscalable() is true
+     * it also adds the `emr-upscale` field (nonce 'emr_prepare_upscale');
+     * that check carries the author restriction through useFeature().
      *
      * @param array    $form_fields Attachment form fields.
      * @param \WP_Post $post        Attachment.
@@ -1000,12 +1034,14 @@ class EnableMediaReplacePlugin
      * Function called by filter 'media_row_actions'
      * Enables linking to EMR straight from the media library
      *
-     * Adds a "Replace media" row action (when checkImagePermission() passes)
-     * and a "Remove background" row action (when the background is
-     * removable and the user is not author restricted). The replace link has
-     * no nonce ($media_replace_action is set but unused); the replace screen
-     * does not check one. The remove-background link carries the
-     * 'emr_prepare_remove' nonce.
+     * Adds a "Replace media" row action (when checkImagePermission() passes),
+     * a "Remove background" row action (when the background is removable
+     * and the user is not author restricted) and an "Upscale image" row
+     * action `upscale_image` (when UIHelper::isUpscalable() is true). The
+     * replace link has no nonce ($media_replace_action is set but unused);
+     * the replace screen does not check one. The remove-background link
+     * carries the 'emr_prepare_remove' nonce, the upscale link the
+     * 'emr_prepare_upscale' nonce.
      *
      * @param array    $actions Row actions.
      * @param \WP_Post $post    Attachment of the row.

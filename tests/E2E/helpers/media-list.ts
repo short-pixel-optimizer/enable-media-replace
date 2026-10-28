@@ -35,7 +35,7 @@ export class MediaList {
 	}
 
 	/** A row action link ('media_replace' or 'remove_background'), revealed by hovering the row. */
-	async rowAction(id: number, action: 'media_replace' | 'remove_background'): Promise<Locator> {
+	async rowAction(id: number, action: 'media_replace' | 'remove_background' | 'upscale_image'): Promise<Locator> {
 		const row = this.row(id);
 		await expect(row).toBeVisible();
 		await row.hover();
@@ -43,7 +43,7 @@ export class MediaList {
 	}
 
 	/** Locator only (no hover): for presence / absence checks. */
-	rowActionLink(id: number, action: 'media_replace' | 'remove_background'): Locator {
+	rowActionLink(id: number, action: 'media_replace' | 'remove_background' | 'upscale_image'): Locator {
 		return this.row(id).locator(`.row-actions .${action} a`);
 	}
 }
@@ -67,6 +67,10 @@ export class EditAttachment {
 
 	get removeBackgroundButton(): Locator {
 		return this.replaceBox.getByRole('link', { name: 'Remove background' });
+	}
+
+	get upscaleButton(): Locator {
+		return this.replaceBox.getByRole('link', { name: 'Upscale image' });
 	}
 
 	/** "Replaced Thumbnails Preview", shown after a replace (emr_replaced=1). */

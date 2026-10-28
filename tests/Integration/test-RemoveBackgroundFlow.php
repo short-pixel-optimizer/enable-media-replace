@@ -540,6 +540,7 @@ class RemoveBackgroundFlowTest extends EMR_AjaxTestCase {
 		list( $controller, $exit ) = $this->apply( $id, 'authorkey' );
 
 		$this->assertFalse( emr()->useFeature( 'background' ) );
+		$this->assertFalse( emr()->useFeature( 'upscale' ), 'The author restriction covers upscale as well.' );
 		$this->assertSame( array( 'media_replace' ), array_keys( $actions ) );
 		$this->assertStringContainsString( 'Upload a new file', $box );
 		$this->assertStringNotContainsString( 'Remove background', $box );
@@ -578,7 +579,8 @@ class RemoveBackgroundFlowTest extends EMR_AjaxTestCase {
 	/**
 	 * Not driven through route(): with the feature off, route() sends
 	 * `emr_prepare_remove` and `do_background_replace` to its default
-	 * branch, which calls exit().
+	 * branch, which calls exit(). The upscale entry points stay: they are
+	 * governed by `emr/feature/upscale`.
 	 */
 	public function test_with_the_feature_filter_off_no_entry_point_offers_remove_background() {
 		list( $id ) = $this->image();
@@ -590,9 +592,10 @@ class RemoveBackgroundFlowTest extends EMR_AjaxTestCase {
 		$actions = emr()->add_media_action( array(), $post );
 
 		$this->assertFalse( emr()->useFeature( 'background' ) );
+		$this->assertTrue( emr()->useFeature( 'upscale' ) );
 		$this->assertFalse( emr()->uiHelper()->isBackgroundRemovable( $post ) );
-		$this->assertSame( array( 'enable-media-replace' ), array_keys( $fields ) );
-		$this->assertSame( array( 'media_replace' ), array_keys( $actions ) );
+		$this->assertSame( array( 'enable-media-replace', 'emr-upscale' ), array_keys( $fields ) );
+		$this->assertSame( array( 'media_replace', 'upscale_image' ), array_keys( $actions ) );
 	}
 
 	/**

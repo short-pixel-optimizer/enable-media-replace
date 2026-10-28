@@ -7,7 +7,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Enable Media Replace (EMR) is a WordPress plugin that replaces an existing
 attachment with a newly uploaded file, either in place (same file name) or
 with a new name while rewriting every reference in the database, and that
-removes image backgrounds through the ShortPixel API. For the current
+removes image backgrounds or upscales small images (2x, 3x, 4x) through the
+ShortPixel API. For the current
 version read the `Version:` header in `enable-media-replace.php` (also
 defined as `EMR_VERSION`) and the `Stable tag:` in `readme.txt`; the number
 is deliberately not duplicated here. The PHP and WordPress floors are the
@@ -113,11 +114,13 @@ is in progress.
    (default: `upload_files`). For allowed users it instantiates `Externals`
    (the third-party integrations) and registers the admin UI hooks.
 3. `admin_init`: `adminInit()` resolves the feature flags
-   (`emr/feature/background`, `emr/feature/remote_notice`) and instantiates
-   `Ajax`.
+   (`emr/feature/background`, `emr/feature/upscale`,
+   `emr/feature/remote_notice`) and instantiates `Ajax`.
 4. Requests to the hidden `upload.php?page=enable-media-replace/enable-media-replace.php`
    page are dispatched by `EnableMediaReplacePlugin::route()` on the `action`
-   query argument to a view controller.
+   query argument to a view controller (`media_replace`,
+   `media_replace_upload`, `emr_prepare_remove`, `do_background_replace`,
+   `emr_prepare_upscale`, `do_upscale_replace`).
 
 ### Namespace & Autoloading
 
@@ -142,17 +145,20 @@ classes/
     ReplaceViewController.php          - the replace screen
     UploadViewController.php           - the replace POST handler
     RemoveBackgroundViewController.php - the remove-background screen and POST handler
-  ajax.php                 - wp_ajax_emr_remove_background / _save_api_key / _delete_api_key
-  api.php                  - the remove-background API client
+    UpscaleViewController.php          - the upscale screen and POST handler (subclass: own template and nonce)
+  ajax.php                 - wp_ajax_emr_remove_background (also the upscale preview) / _save_api_key / _delete_api_key
+  api.php                  - the remove-background and upscale API client
   ApiKeyManager.php        - the ShortPixel API key option and plan check
   cache.php                - emrCache: cache-plugin detection and flushing
-  uihelper.php             - UIHelper: screen URLs, previews, placeholders, author restriction
+  uihelper.php             - UIHelper: screen URLs, previews, placeholders, author restriction,
+                             isBackgroundRemovable() / isUpscalable() and the upscale factor table
   Helper/envHelper.php     - EnvHelper: multisite/ajax/cron flags
   externals.php            - Externals: loads the integrations below
   external/                - Elementor, WPBakery, SiteOrigin, WP Offload Media, the upsell installer
   installHelper.php        - deactivation and uninstall
   compat.php               - polyfills for old WordPress versions
-views/                     - PHP templates (screen, prepare-remove-background, success, error, upsell)
+views/                     - PHP templates (screen, prepare-remove-background, prepare-upscale,
+                             shortpixel-account (the API key box both screens include), success, error, upsell)
 js/, css/, scss/, img/     - assets, no build step
 build/shortpixel/          - bundled modules (generated, do not edit)
 tests/                     - PHPUnit suites, E2E stack, fixtures (see TESTING.md)
@@ -178,7 +184,15 @@ docs/                      - the documentation and test plan
   range is shared between them).
 - **Permissions:** `EnableMediaReplacePlugin::checkImagePermission($post)`
   is the single gate. Users without `edit_others_posts` are "author
-  restricted": no remove background and no replace-and-search.
+  restricted": no remove background, no upscale and no replace-and-search.
+- **Remove background and upscale share one flow:** the same AJAX endpoint
+  (`emr_remove_background`), `Api::request()` (an `upscale` factor of 2, 3
+  or 4 in the posted data replaces `bg_remove` in the reducer body), the
+  same script (`js/remove_bg.js`) and stylesheet, and the same
+  `loadPost()`; `UpscaleViewController` only swaps the template and the
+  nonce action (`media_upscale_image`). `UIHelper::getUpscaleFactors()` maps
+  each factor to the widest source it accepts; `isUpscalable()` hides the
+  entry points above the largest one.
 - **Hooks for other plugins:** `wp_handle_replace` (before the swap),
   `enable-media-replace-upload-done` (after it), `emr/replace/*`,
   `emr/replacer/*` (from the module), `emr/feature/*`, `emr/upsell`,

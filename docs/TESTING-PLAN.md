@@ -73,11 +73,13 @@ returns early unless the current user passes the `EMR_CAPABILITY` check
 (falls back to `upload_files`). Only then does it instantiate `Externals` and
 register the admin UI: hidden submenu page under `upload.php` routed by
 `route()` on the `action` query argument (`media_replace`,
-`media_replace_upload`, `emr_prepare_remove`, `do_background_replace`), the
+`media_replace_upload`, `emr_prepare_remove`, `do_background_replace`,
+`emr_prepare_upscale`, `do_upscale_replace`), the
 media row action, the attachment edit meta box, the attachment-fields button,
 the "Revised"/"Replaced By" sub-box, script and style registration, the
 cache-busting filter on `wp_get_attachment_image_src` after a replace, and
-the feature flags (`emr/feature/background`, `emr/feature/remote_notice`).
+the feature flags (`emr/feature/background`, `emr/feature/upscale`,
+`emr/feature/remote_notice`).
 `checkImagePermission()` is the single permission gate used by every
 controller and view.
 
@@ -92,11 +94,12 @@ controller and view.
 | `ViewController/ReplaceViewController.php` | `ReplaceViewController` | the replace screen (`views/screen.php`) |
 | `ViewController/UploadViewController.php` | `UploadViewController` | the POST handler: nonce, caps, form parsing, date modes, upload validation, runs `ReplaceController`, saves settings |
 | `ViewController/RemoveBackgroundViewController.php` | `RemoveBackGroundViewController` | the remove-background screen and its POST handler |
+| `ViewController/UpscaleViewController.php` | `UpscaleViewController` | the upscale screen and its POST handler: a subclass that only swaps the template (`prepare-upscale`) and the nonce action (`media_upscale_image`) |
 | `ajax.php` | `Ajax` | `wp_ajax_emr_remove_background`, `wp_ajax_emr_save_api_key`, `wp_ajax_emr_delete_api_key` |
-| `api.php` | `Api` | remove-background request to the free or authenticated reducer, retry loop with `sleep()`, cleanup call, transient hand-off, download |
+| `api.php` | `Api` | remove-background or upscale request (`upscale` factor 2/3/4 replaces `bg_remove`) to the free or authenticated reducer, retry loop with `sleep()`, cleanup call, transient hand-off, download |
 | `ApiKeyManager.php` | `ApiKeyManager` | option `emr_shortpixel_api_key`, 20-char validation, `api-status.php` call, Unlimited-plan check |
 | `cache.php` | `emrCache` | detects ten cache plugins and flushes them after a replace |
-| `uihelper.php` | `UIHelper` | URLs for the screens, preview sizing, placeholders, `is_author_restricted()`, `isBackgroundRemovable()`, feature notice |
+| `uihelper.php` | `UIHelper` | URLs for the screens, preview sizing, placeholders, `is_author_restricted()`, `isBackgroundRemovable()`, `isUpscalable()` and `getUpscaleFactors()`, feature notice |
 | `Helper/envHelper.php` | `Helper\EnvHelper` | multisite / main-site / network-admin / ajax / json / cron flags |
 | `externals.php` | `Externals` | loads the four EMR-side integrations, filters the replace-type options |
 | `external/elementor.php` | `Externals\Elementor` | adds an Elementor query to `emr/replacer/custom_replace_query`, clears the Elementor CSS cache |
@@ -121,7 +124,9 @@ anywhere).
 | View | Loaded by | Content |
 |---|---|---|
 | `views/screen.php` | `ReplaceViewController::load()` | the replace form: `ID`, `replace_type` (`replace` / `replace_and_search`), `timestamp_replace` (1/2/3), `custom_date`, `custom_date_formatted`, `custom_hour`, `custom_minute`, `new_title`, `new_location`, `location_dir`, `remove_after_progress`, nonce `emr_nonce` for `media_replace_upload`; hooks `emr_before_replace_type_options`, `emr_display_replace_type_options`, `emr_after_search_type_options`, `emr_enable_replace_and_search`, `emr_after_replace_type_options`; includes `upsell.php` |
-| `views/prepare-remove-background.php` | `RemoveBackGroundViewController::load()` | preview, background type/colour/transparency, API-key form, nonce `emr_nonce` for `media_remove_background`; includes `upsell.php` |
+| `views/prepare-remove-background.php` | `RemoveBackGroundViewController::load()` | preview, background type/colour/transparency, nonce `emr_nonce` for `media_remove_background`; includes `shortpixel-account.php` and `upsell.php` |
+| `views/prepare-upscale.php` | `UpscaleViewController::load()` | preview, the factor radios (disabled by image width), nonce `emr_nonce` for `media_upscale_image`; includes `shortpixel-account.php` (upscale wording) and `upsell.php` |
+| `views/shortpixel-account.php` | the two screens above | the ShortPixel API-key box (save, change, remove) for `manage_options` users; `js/shortpixel-account.js` |
 | `views/success.php` | `ViewController::viewSuccess()` | success screen with countdown redirect (`emr_success.js`), SPIO upsell line |
 | `views/error.php` | `ViewController::viewError()` | error message and description |
 | `views/upsell.php` | included by the two screens | SPIO / SPAI / FastPixel / Envira install and activate buttons, gated by `emr/upsell` |
@@ -129,9 +134,11 @@ anywhere).
 
 Scripts: `js/emr_admin.js` (replace form: drag and drop, type checks, size
 check, datepicker, localised through `emr_options`), `js/remove_bg.js`
-(remove-background AJAX and API-key AJAX, localised through `emrObject`),
-`js/upsell.js` (install/activate AJAX, `emr_upsell`), `js/emr_success.js`
-(countdown redirect, `emr_success_options`). All are plain jQuery; there is
+(the preview AJAX of both the remove-background and the upscale screen, the
+latter posting the checked `upscale` factor, localised through `emrObject`),
+`js/shortpixel-account.js` (API-key AJAX, plain JavaScript, localised
+through `emrAccount`), `js/upsell.js` (install/activate AJAX, `emr_upsell`),
+`js/emr_success.js` (countdown redirect, `emr_success_options`). There is
 no build step for JS.
 
 ### 1.5 Bundled modules
@@ -202,8 +209,8 @@ and once in `adminInit()`, so each endpoint is registered twice.
 
 | Endpoint | Caller | When |
 |---|---|---|
-| `http://api.shortpixel.com/v2/free-reducer.php` | `Api::request()` | remove background without an API key |
-| `https://api.shortpixel.com/v2/reducer.php` | `Api::request()` | remove background with a key |
+| `http://api.shortpixel.com/v2/free-reducer.php` | `Api::request()` | remove background or upscale without an API key |
+| `https://api.shortpixel.com/v2/reducer.php` | `Api::request()` | remove background or upscale with a key |
 | `https://api.shortpixel.com/v2/cleanup.php` | `Api::purgeRemoteCache()` | first keyed request |
 | `https://api.shortpixel.com/v2/api-status.php` | `ApiKeyManager::callApi()` | key save, and every keyed remove-background request |
 | the `LosslessURL` returned by the reducer | `Api::handleDownload()` via `FileSystemController::downloadFile()` | after the user confirms |
@@ -222,7 +229,18 @@ the screen posts `key` and `ID` to `do_background_replace` ->
 path and runs a `MODE_REPLACE` / `TIME_UPDATEMODIFIED` replacement with the
 same filename. The key is stored in plain text in the `emr_shortpixel_api_key`
 option and masked for display. Users without `edit_others_posts` are
-"author restricted": no remove background and no replace-and-search.
+"author restricted": no remove background, no upscale and no
+replace-and-search.
+
+Upscale reuses the whole flow: `emr_prepare_upscale` screen -> the same
+AJAX action with an `upscale` factor (2, 3 or 4; `Api::request()` then sends
+`upscale` instead of `bg_remove`, skips the background settings and words
+its quota and timeout messages for upscaling) -> `do_upscale_replace` ->
+the inherited `loadPost()` with the `media_upscale_image` nonce.
+`UIHelper::getUpscaleFactors()` gives the widest source each factor accepts
+(2x and 3x up to 1200 px, 4x up to 1024 px); the screen disables a factor
+at or above its limit and `isUpscalable()` hides every entry point above the
+largest one. The feature has its own flag, `emr/feature/upscale`.
 
 ### 1.11 Multisite-aware code
 
@@ -565,7 +583,8 @@ specs across 7-8 files.
 ### 4.6 Smoke (opt-in)
 
 `tests/Smoke/test-RealRemoveBackgroundSmoke.php`: one keyed and one free
-remove-background call against the real API with a small fixture, plus a
+remove-background call and one keyed and one free upscale call against the
+real API with a small fixture, plus a
 wrong-key `api-status.php` call. Skips without `SHORTPIXEL_SMOKE_KEY`. Built
 and verified against the mock path; run for real only when you hand over a
 key.

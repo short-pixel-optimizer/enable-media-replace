@@ -225,14 +225,16 @@ class PluginRuntimeTest extends EMR_MainTestCase {
 			array(
 				'replace'       => true,
 				'background'    => true,
+				'upscale'       => true,
 				'remote_notice' => true,
 			),
 			$this->plugin_prop( 'features' )
 		);
 	}
 
-	public function test_admin_init_reads_the_two_feature_filters() {
+	public function test_admin_init_reads_the_three_feature_filters() {
 		$this->add_test_filter( 'emr/feature/background', '__return_false' );
+		$this->add_test_filter( 'emr/feature/upscale', '__return_false' );
 		$this->add_test_filter( 'emr/feature/remote_notice', '__return_false' );
 
 		emr()->adminInit();
@@ -240,7 +242,25 @@ class PluginRuntimeTest extends EMR_MainTestCase {
 		$features = $this->plugin_prop( 'features' );
 		$this->assertTrue( $features['replace'] );
 		$this->assertFalse( $features['background'] );
+		$this->assertFalse( $features['upscale'] );
 		$this->assertFalse( $features['remote_notice'] );
+	}
+
+	public function test_admin_init_reads_the_background_and_upscale_filters_independently() {
+		$this->add_test_filter( 'emr/feature/background', '__return_false' );
+
+		emr()->adminInit();
+		$features = $this->plugin_prop( 'features' );
+		$this->assertFalse( $features['background'] );
+		$this->assertTrue( $features['upscale'] );
+
+		remove_filter( 'emr/feature/background', '__return_false' );
+		$this->add_test_filter( 'emr/feature/upscale', '__return_false' );
+
+		emr()->adminInit();
+		$features = $this->plugin_prop( 'features' );
+		$this->assertTrue( $features['background'] );
+		$this->assertFalse( $features['upscale'] );
 	}
 
 	public function test_admin_init_registers_the_ajax_endpoints_again_on_every_call() {
@@ -265,7 +285,7 @@ class PluginRuntimeTest extends EMR_MainTestCase {
 
 		$this->assertTrue( emr()->useFeature( 'remote_notice' ) );
 
-		$this->assertCount( 3, $this->plugin_prop( 'features' ) );
+		$this->assertCount( 4, $this->plugin_prop( 'features' ) );
 		$this->assertSame( $before + 1, $this->callback_count( 'wp_ajax_emr_remove_background' ), 'The lazy adminInit() also creates an Ajax instance.' );
 	}
 
@@ -307,8 +327,42 @@ class PluginRuntimeTest extends EMR_MainTestCase {
 		emr()->adminInit();
 		$this->assertFalse( emr()->useFeature( 'remote_notice' ) );
 
-		$this->set_plugin_prop( 'features', array( 'replace' => true, 'background' => true, 'remote_notice' => true ) );
+		$this->set_plugin_prop( 'features', array( 'replace' => true, 'background' => true, 'upscale' => true, 'remote_notice' => true ) );
 		$this->assertTrue( emr()->useFeature( 'remote_notice' ) );
+	}
+
+	public function test_use_feature_upscale_is_true_for_an_administrator() {
+		$this->login_as( 'administrator' );
+		emr()->adminInit();
+
+		$this->assertTrue( emr()->useFeature( 'upscale' ) );
+	}
+
+	public function test_use_feature_upscale_is_false_for_an_author_restricted_user() {
+		$this->login_as( 'author' );
+		emr()->adminInit();
+		$this->assertTrue( UIHelper::getInstance()->is_author_restricted() );
+		$this->assertTrue( $this->plugin_prop( 'features' )['upscale'], 'The flag itself stays on; the restriction is applied by useFeature().' );
+
+		$this->assertFalse( emr()->useFeature( 'upscale' ) );
+	}
+
+	public function test_use_feature_upscale_follows_the_filter_for_an_administrator() {
+		$this->login_as( 'administrator' );
+		$this->add_test_filter( 'emr/feature/upscale', '__return_false' );
+		emr()->adminInit();
+
+		$this->assertFalse( emr()->useFeature( 'upscale' ) );
+		$this->assertTrue( emr()->useFeature( 'background' ), 'The background feature is not affected.' );
+	}
+
+	public function test_use_feature_upscale_stays_on_when_only_the_background_filter_is_off() {
+		$this->login_as( 'administrator' );
+		$this->add_test_filter( 'emr/feature/background', '__return_false' );
+		emr()->adminInit();
+
+		$this->assertFalse( emr()->useFeature( 'background' ) );
+		$this->assertTrue( emr()->useFeature( 'upscale' ) );
 	}
 
 	public function test_use_feature_returns_false_for_an_unknown_or_the_replace_feature() {

@@ -30,15 +30,16 @@
  * (js/remove_bg.js, localised as `emrObject` with nonce `emr_remove_background`);
  * the Replace submit button stays disabled until a preview succeeds.
  *
- * For users with `manage_options` it also renders the ShortPixel API key
- * section with an inline script that posts to `emr_save_api_key` and
- * `emr_delete_api_key` (nonce `emr_save_api_key`, field `nonce`) and reloads
- * the page on success.
+ * Includes views/shortpixel-account.php (the ShortPixel API key box, rendered
+ * for users with `manage_options`; see that file) and views/upsell.php
+ * (filter `emr/upsell`).
  *
  * Links: "Replace this image with another one instead" goes to
- * `action=media_replace` with a nonce for `media_replace`; the report link is a
- * mailto: to support whose {url} and {settings} placeholders the script fills;
- * Cancel calls history.back(). Includes views/upsell.php (filter `emr/upsell`).
+ * `action=media_replace` with a nonce for `media_replace`; "upscale/enlarge
+ * this image" (only when UIHelper::isUpscalable() is true) goes to
+ * `action=emr_prepare_upscale` with a nonce for `emr_prepare_upscale`; the
+ * report link is a mailto: to support whose {url} and {settings} placeholders
+ * the script fills; Cancel calls history.back().
  *
  * @todo The form action $formurl is echoed without escaping; wrap it in esc_url().
  */

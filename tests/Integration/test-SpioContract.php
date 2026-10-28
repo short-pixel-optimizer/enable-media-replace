@@ -516,9 +516,30 @@ class SpioContractTest extends EMR_IntegrationTestCase {
 		emr()->replace_meta_box( $post );
 		$box = ob_get_clean();
 
-		$this->assertSame( array( 'edit', 'media_replace' ), array_keys( $actions ) );
+		$this->assertSame( array( 'edit', 'media_replace', 'upscale_image' ), array_keys( $actions ), 'The upscale action has its own filter and stays.' );
 		$this->assertStringNotContainsString( 'emr_prepare_remove', implode( '', $actions ) );
 		$this->assertStringContainsString( 'Upload a new file', $box );
 		$this->assertStringNotContainsString( 'Remove background', $box );
+		$this->assertStringContainsString( 'Upscale image', $box );
+	}
+
+	public function test_upscale_feature_filter_off_removes_the_row_action_and_the_meta_box_button() {
+		list( $id ) = $this->image();
+		$post       = get_post( $id );
+		emr()->adminInit();
+		$on_actions = emr()->add_media_action( array(), $post );
+		$this->assertArrayHasKey( 'upscale_image', $on_actions, 'Sentinel: offered by default for a JPEG.' );
+
+		$this->addHook( 'emr/feature/upscale', '__return_false' );
+		emr()->adminInit();
+		$actions = emr()->add_media_action( array( 'edit' => '<a>Edit</a>' ), $post );
+		ob_start();
+		emr()->replace_meta_box( $post );
+		$box = ob_get_clean();
+
+		$this->assertSame( array( 'edit', 'media_replace', 'remove_background' ), array_keys( $actions ) );
+		$this->assertStringNotContainsString( 'emr_prepare_upscale', implode( '', $actions ) );
+		$this->assertStringContainsString( 'Remove background', $box );
+		$this->assertStringNotContainsString( 'Upscale image', $box );
 	}
 }

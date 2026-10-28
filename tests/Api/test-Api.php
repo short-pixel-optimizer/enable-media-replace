@@ -3,7 +3,9 @@
  * Tests for EnableMediaReplace\Api (classes/api.php).
  *
  * request() is called directly with $_POST populated the way the
- * remove-background AJAX handler receives it. The reducer, cleanup,
+ * remove-background AJAX handler receives it, for a background removal
+ * (the default) and for an upscale (`upscale` 2, 3 or 4 in the posted
+ * data). The reducer, cleanup,
  * api-status and result-download endpoints are answered by MockEmrApi
  * (priority 10 on `pre_http_request`); a fail-fast filter at priority 9999
  * refuses and records anything else, and tear_down() asserts nothing was
@@ -35,6 +37,7 @@ class ApiTest extends WP_UnitTestCase {
 	const KEYED_URL       = 'https://api.shortpixel.com/v2/reducer.php';
 	const CLEANUP_URL     = 'https://api.shortpixel.com/v2/cleanup.php';
 	const LIMIT_MESSAGE   = 'The background could not be removed in a reasonable amount of time. The file might be too big, or the API could be busy. Please try again later!';
+	const UPSCALE_LIMIT_MESSAGE = 'The image could not be upscaled in a reasonable amount of time. The file might be too big, or the API could be busy. Please try again later!';
 
 	/**
 	 * @var MockEmrApi
@@ -202,6 +205,30 @@ class ApiTest extends WP_UnitTestCase {
 
 	private function run_request( array $posted ) {
 		return ( new Api() )->request( $posted );
+	}
+
+	/**
+	 * Fills $_POST like js/remove_bg.js sends it from the upscale screen:
+	 * the factor and no background options.
+	 */
+	private function upscale_post( $factor, $attachment_id = null ) {
+		$_POST = array(
+			'attachment_id' => (string) ( null === $attachment_id ? $this->attachment_id : $attachment_id ),
+			'upscale'       => (string) $factor,
+		);
+		return $_POST;
+	}
+
+	/** Uploads a GD-drawn JPEG of the given size; returns the attachment ID. */
+	private function upload_jpeg( $width, $height ) {
+		$path  = get_temp_dir() . 'emr-api-' . wp_generate_password( 8, false, false ) . '.jpg';
+		$image = imagecreatetruecolor( $width, $height );
+		imagefilledrectangle( $image, 0, 0, $width - 1, $height - 1, imagecolorallocate( $image, 40, 90, 160 ) );
+		imagejpeg( $image, $path, 80 );
+		$this->files[] = $path;
+		$id            = self::factory()->attachment->create_upload_object( $path );
+		$this->attachments[] = $id;
+		return $id;
 	}
 
 	private function reducer_body( $index = 0 ) {
@@ -488,6 +515,201 @@ class ApiTest extends WP_UnitTestCase {
 		$this->assertSame( array( urlencode( esc_url( $this->source_url ) ) ), $body['urllist'] );
 		$this->assertSame( '#222222FF', $body['bg_remove'] );
 		$this->assertSame( '#111111', get_option( self::SETTINGS_OPTION )['bg_color'] );
+	}
+
+	/*
+	 * Request building: upscale.
+	 */
+
+	public function test_upscale_replaces_bg_remove_with_the_factor_in_the_free_body() {
+		$this->run_request( $this->upscale_post( 2 ) );
+
+		$requests = $this->mock->getRequests();
+		$this->assertCount( 1, $requests );
+		$this->assertSame( self::FREE_URL, $requests[0]['url'] );
+		$this->assertSame(
+			array(
+				'plugin_version' => 'EMR4.2.0',
+				'urllist'        => array( urlencode( esc_url( $this->source_url ) ) ),
+				'lossy'          => 0,
+				'refresh'        => true,
+				'upscale'        => 2,
+			),
+			$requests[0]['request']
+		);
+		$this->assertArrayNotHasKey( 'bg_remove', $requests[0]['request'] );
+	}
+
+	public function test_upscale_accepts_the_factors_two_three_and_four_as_integers() {
+		foreach ( array( '2', '3', '4' ) as $i => $factor ) {
+			$result = $this->run_request( $this->upscale_post( $factor ) );
+
+			$this->assertTrue( $result->success, 'Factor ' . $factor );
+			$this->assertSame( (int) $factor, $this->reducer_body( $i )['upscale'] );
+			$this->track_transient( $result );
+		}
+		$this->assertCount( 3, $this->mock->requestsTo( 'reducer.php' ) );
+	}
+
+	public function test_upscale_with_a_factor_outside_the_set_is_refused_before_any_request() {
+		update_option( self::SETTINGS_OPTION, array( 'bg_type' => 'kept' ) );
+
+		foreach ( array( '1', '5', '-2', '8' ) as $factor ) {
+			$result = $this->run_request( $this->upscale_post( $factor ) );
+
+			$this->assertInstanceOf( stdClass::class, $result, 'Factor ' . $factor );
+			$this->assertFalse( $result->success, 'Factor ' . $factor );
+			$this->assertNull( $result->image );
+			$this->assertSame( 'Invalid upscale factor', $result->message );
+		}
+		$this->assertSame( array(), $this->mock->getRequests() );
+		$this->assertSame( array( 'bg_type' => 'kept' ), get_option( self::SETTINGS_OPTION ), 'Nothing is saved for a refused factor.' );
+	}
+
+	public function test_upscale_factor_zero_or_a_non_numeric_value_is_a_background_removal() {
+		foreach ( array( '0', 'abc' ) as $i => $factor ) {
+			$posted               = $this->upscale_post( $factor );
+			$posted['background'] = array( 'type' => 'transparent' );
+			$_POST                = $posted;
+
+			$result = $this->run_request( $posted );
+
+			$this->assertTrue( $result->success, 'Factor ' . $factor );
+			$body = $this->reducer_body( $i );
+			$this->assertSame( '1', $body['bg_remove'], 'Factor ' . $factor );
+			$this->assertArrayNotHasKey( 'upscale', $body );
+			$this->track_transient( $result );
+		}
+	}
+
+	public function test_upscale_runs_the_permission_check_before_the_factor_check() {
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'subscriber' ) ) );
+
+		$result = $this->run_request( $this->upscale_post( 7 ) );
+
+		$this->assertSame( 'No permission for user', $result->message );
+	}
+
+	public function test_upscale_does_not_save_the_background_settings() {
+		update_option( self::SETTINGS_OPTION, array( 'bg_type' => 'solid', 'bg_color' => '#123456' ) );
+		$posted               = $this->upscale_post( 3 );
+		$posted['background'] = array( 'type' => 'transparent', 'color' => '#ffffff', 'transparency' => '100' );
+		$_POST                = $posted;
+
+		$result = $this->run_request( $posted );
+
+		$this->assertTrue( $result->success );
+		$this->assertSame( array( 'bg_type' => 'solid', 'bg_color' => '#123456' ), get_option( self::SETTINGS_OPTION ), 'The remove-background choice is left alone.' );
+		$this->track_transient( $result );
+	}
+
+	public function test_upscale_ignores_a_posted_solid_background() {
+		$posted               = $this->upscale_post( 4 );
+		$posted['background'] = array( 'type' => 'solid', 'color' => '#ff0000', 'transparency' => '100' );
+		$_POST                = $posted;
+
+		$result = $this->run_request( $posted );
+
+		$this->assertTrue( $result->success );
+		$body = $this->reducer_body();
+		$this->assertArrayNotHasKey( 'bg_remove', $body );
+		$this->assertSame( 4, $body['upscale'] );
+		$this->assertStringNotContainsString( '#ff0000', wp_json_encode( $body ) );
+		$this->track_transient( $result );
+	}
+
+	public function test_upscale_settings_summary_lists_the_factor_instead_of_bg_remove() {
+		$result = $this->run_request( $this->upscale_post( 2 ) );
+
+		$this->assertTrue( $result->success );
+		$this->assertSame( ' plugin_version:EMR4.2.0  lossy:0  upscale:2 ', $result->settings );
+		$this->assertStringNotContainsString( 'bg_remove', $result->settings );
+		$this->track_transient( $result );
+	}
+
+	public function test_upscale_with_key_sends_key_item_id_and_the_factor_to_the_authenticated_endpoint() {
+		$this->use_key();
+
+		$result = $this->run_request( $this->upscale_post( 3 ) );
+
+		$this->assertTrue( $result->success );
+		$paths = wp_list_pluck( $this->mock->getRequests(), 'path' );
+		$this->assertSame( array( '/v2/api-status.php', '/v2/cleanup.php', '/v2/reducer.php' ), $paths );
+		$requests = $this->mock->requestsTo( 'reducer.php' );
+		$this->assertSame( self::KEYED_URL, $requests[0]['url'] );
+		$this->assertSame(
+			array(
+				'plugin_version' => 'EMR4.2.0',
+				'urllist'        => array( esc_url_raw( $this->source_url ) ),
+				'lossy'          => 0,
+				'refresh'        => true,
+				'upscale'        => 3,
+				'key'            => self::API_KEY,
+				'item_id'        => $this->attachment_id,
+			),
+			$requests[0]['request']
+		);
+		$this->track_transient( $result );
+	}
+
+	public function test_upscale_quota_exceeded_message_names_upscaling() {
+		$this->mock->setKnob( 'quotaExceeded', true );
+
+		$result = $this->run_request( $this->upscale_post( 2 ) );
+
+		$this->assertFalse( $result->success );
+		$this->assertTrue( $result->quota_exceeded );
+		$this->assertSame( 'Quota exceeded. Please purchase the Unlimited or Unlimited AI plan and add your API key to continue upscaling images.', $result->message );
+	}
+
+	public function test_upscale_attempt_limit_message_names_upscaling_without_request() {
+		$this->use_key();
+		$api = new Api();
+		$this->set_counter( $api, 29 );
+
+		$result = $api->request( $this->upscale_post( 2 ) );
+
+		$this->assertFalse( $result->success );
+		$this->assertSame( self::UPSCALE_LIMIT_MESSAGE, $result->message );
+		$this->assertNotSame( self::LIMIT_MESSAGE, $result->message );
+		$this->assertSame( array(), $this->mock->getRequests() );
+	}
+
+	public function test_upscale_error_status_copies_the_api_message() {
+		$this->mock->setKnob( 'forceStatusCode', '-102' );
+		$this->mock->setKnob( 'errorMessage', 'Image too large to upscale' );
+
+		$result = $this->run_request( $this->upscale_post( 4 ) );
+
+		$this->assertFalse( $result->success );
+		$this->assertSame( 'Image too large to upscale', $result->message );
+		$this->assertCount( 1, $this->mock->requestsTo( 'reducer.php' ) );
+	}
+
+	/**
+	 * The upscale screen disables a factor whose maximum source width
+	 * (UIHelper::getUpscaleFactors(): 4x up to 1024 px) is at or below the
+	 * image width, but request() only checks that the factor is 2, 3 or 4.
+	 * A crafted request therefore sends 4x for an 1100 px wide image to the
+	 * reducer. request() should refuse a factor the screen would not offer.
+	 *
+	 * How to recognise the fix: the result is a failure without a reducer
+	 * request (the assertions on success and on the sent body fail).
+	 */
+	public function test_upscale_factor_above_the_width_limit_is_sent_pinned_for_deferred_fix() {
+		$wide = $this->upload_jpeg( 1100, 80 );
+		$meta = wp_get_attachment_metadata( $wide );
+		$this->assertSame( 1100, $meta['width'], 'Precondition: the image is 1100 px wide.' );
+		$limits = emr()->uiHelper()->getUpscaleFactors();
+		$this->assertLessThan( 1100, $limits[4], 'Precondition: the screen disables 4x for this image.' );
+		$this->assertGreaterThan( 1100, $limits[2], 'Precondition: the screen still offers 2x.' );
+
+		$result = $this->run_request( $this->upscale_post( 4, $wide ) );
+
+		$this->assertTrue( $result->success );
+		$this->assertSame( 4, $this->reducer_body()['upscale'] );
+		$this->assertSame( array( urlencode( esc_url( wp_get_original_image_url( $wide ) ) ) ), $this->reducer_body()['urllist'] );
+		$this->track_transient( $result );
 	}
 
 	/*

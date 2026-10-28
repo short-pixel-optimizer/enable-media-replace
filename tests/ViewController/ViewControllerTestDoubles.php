@@ -18,7 +18,7 @@
  * viewError() and viewSuccess() are additionally overridden to record the
  * call (code, data, the errorMessage present before the call) and then
  * delegate to the parent. Every other template ('screen',
- * 'prepare-remove-background', 'upsell', ...) goes to the real loadView()
+ * 'prepare-remove-background', 'prepare-upscale', 'upsell', ...) goes to the real loadView()
  * and is included for real; renderView() reaches the real loadView() for
  * 'error' and 'success' as well, to render those views on purpose.
  *
@@ -28,6 +28,7 @@
 use EnableMediaReplace\ViewController\UploadViewController;
 use EnableMediaReplace\ViewController\ReplaceViewController;
 use EnableMediaReplace\ViewController\RemoveBackGroundViewController;
+use EnableMediaReplace\ViewController\UpscaleViewController;
 
 if ( ! class_exists( 'EMR_ViewExit', false ) ) {
 
@@ -184,6 +185,21 @@ if ( ! class_exists( 'EMR_ViewExit', false ) ) {
 	 * RemoveBackGroundViewController with public wrappers.
 	 */
 	class EMR_TestRemoveBackgroundViewController extends RemoveBackGroundViewController {
+		use EMR_RecordsViewExits;
+
+		public function callSetView( $post_id, $params = array() ) {
+			$this->setView( $post_id, $params );
+		}
+
+		public function callReplaceBackground( $post_id, $key ) {
+			return $this->replaceBackground( $post_id, $key );
+		}
+	}
+
+	/**
+	 * UpscaleViewController with public wrappers.
+	 */
+	class EMR_TestUpscaleViewController extends UpscaleViewController {
 		use EMR_RecordsViewExits;
 
 		public function callSetView( $post_id, $params = array() ) {

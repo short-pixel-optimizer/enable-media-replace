@@ -95,17 +95,26 @@ class Api {
 	 *
 	 * Sends the attachment's source URL to the reducer and polls until a result is ready.
 	 *
+	 * Serves both screens: a background removal (the default) or, when
+	 * `$posted_data['upscale']` is 2, 3 or 4, an upscale by that factor.
+	 *
 	 * Sequence:
 	 * 1. Reads `attachment_id` directly from `$_POST` (not from $posted_data); null gives
 	 *    "No attachment ID given", a failed checkImagePermission() "No permission for user".
+	 *    `upscale` is intval() of `$posted_data['upscale']`, 0 when absent; any value other
+	 *    than 0, 2, 3 or 4 gives "Invalid upscale factor" before anything is saved or sent.
 	 * 2. Saves `bg_type`, `bg_color` (default '#ffffff') and `bg_transparency` from
 	 *    `$_POST['background']` into the `enable_media_replace` option before any request is
-	 *    sent, and again on every retry.
+	 *    sent, and again on every retry. Skipped for an upscale, which has no background
+	 *    options to remember.
 	 * 3. `bg_remove`: '1' for transparent; for type 'solid' the colour from
 	 *    `$posted_data['background']`, with a two-character alpha suffix when the
-	 *    transparency is 0-100 ('FF' for 100). `background.type` is read without isset().
+	 *    transparency is 0-100 ('FF' for 100). `background.type` is read without isset(),
+	 *    but only for a background removal: an upscale skips this step, so it accepts
+	 *    posted data without a background.
 	 * 4. Builds the body: `plugin_version`, `bg_remove`, `urllist` (urlencoded esc_url),
-	 *    `lossy` (always 0), `refresh`.
+	 *    `lossy` (always 0), `refresh`. For an upscale `bg_remove` is removed from the body
+	 *    and `upscale` (the integer factor) is added instead.
 	 * 5. With an API key: on the first call, verifyUnlimitedPlan() must pass (else a result
 	 *    with `plan_expired` true); adds `key`, `item_id`, a raw `urllist`, uses the
 	 *    authenticated endpoint, and on the first call with refresh purges the remote cache.
@@ -121,15 +130,23 @@ class Api {
 	 *    '1' is still processing: request() calls itself recursively and returns that
 	 *    result. Anything else copies the API message; a message containing
 	 *    "Quota exceeded" is replaced with an upgrade message and `quota_exceeded` true.
+	 *    The quota and the "reasonable amount of time" messages have an upscale wording
+	 *    ("continue upscaling images", "The image could not be upscaled").
 	 *
+	 * @todo The upscale factor is validated against the allowed set only, not against the
+	 *       image: the width limits of UIHelper::getUpscaleFactors(), which the upscale
+	 *       screen enforces by disabling radios, are not checked here, so a crafted request
+	 *       sends a factor the screen would have refused (for instance 4 for an image wider
+	 *       than 1024 px). Suggested fix: refuse a factor whose limit is at or below the
+	 *       attachment's metadata width, with the same message as the invalid factor.
 	 * @todo `plugin_version` is hard-coded to 'EMR4.2.0' here and in purgeRemoteCache().
 	 *       Suggested fix: `'EMR' . EMR_VERSION`.
 	 * @todo The alpha suffix is `str_pad($transparency, 2, '0')` of the decimal 0-99 value,
 	 *       not a hex alpha: 50 becomes '50' (0x50, about 31 %), 5 becomes '05'. Suggested
 	 *       fix: `sprintf('%02X', round($transparency * 255 / 100))`.
 	 *
-	 * @param  array $posted_data The AJAX POST data; only `background.type`, `.color` and
-	 *                            `.transparency` are read from it.
+	 * @param  array $posted_data The AJAX POST data; only `upscale`, `background.type`,
+	 *                            `.color` and `.transparency` are read from it.
 	 * @return stdClass $result `success`, `image`, `message`, and depending on the outcome
 	 *                          `key`, `url`, `settings`, `plan_expired`, `quota_exceeded`.
 	 */

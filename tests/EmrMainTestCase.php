@@ -15,7 +15,7 @@
  * - the script and style registries (wp_scripts() / wp_styles() start from
  *   a fresh instance in every test and are dropped afterwards);
  * - the static state of the notices module, RemoteNoticeController and the
- *   three view controller singletons;
+ *   four view controller singletons;
  * - the text direction of $wp_locale;
  * - the current user.
  * Hooks registered by runtime() / plugin_actions() / setScreen() are
@@ -33,6 +33,7 @@ use EnableMediaReplace\Controller\RemoteNoticeController;
 use EnableMediaReplace\ViewController\ReplaceViewController;
 use EnableMediaReplace\ViewController\UploadViewController;
 use EnableMediaReplace\ViewController\RemoveBackgroundViewController;
+use EnableMediaReplace\ViewController\UpscaleViewController;
 
 if ( ! function_exists( 'add_meta_box' ) ) {
 	require_once ABSPATH . 'wp-admin/includes/template.php';
@@ -120,6 +121,7 @@ abstract class EMR_MainTestCase extends WP_UnitTestCase {
 			ReplaceViewController::class          => ReplaceViewController::$instance,
 			UploadViewController::class           => UploadViewController::$instance,
 			RemoveBackgroundViewController::class => RemoveBackgroundViewController::$instance,
+			UpscaleViewController::class          => UpscaleViewController::$instance,
 		);
 		$this->saved_remote_instance  = $this->remote_instance();
 		$this->saved_text_direction   = isset( $GLOBALS['wp_locale'] ) ? $GLOBALS['wp_locale']->text_direction : null;
@@ -167,6 +169,7 @@ abstract class EMR_MainTestCase extends WP_UnitTestCase {
 		ReplaceViewController::$instance          = $this->saved_view_instances[ ReplaceViewController::class ];
 		UploadViewController::$instance           = $this->saved_view_instances[ UploadViewController::class ];
 		RemoveBackgroundViewController::$instance = $this->saved_view_instances[ RemoveBackgroundViewController::class ];
+		UpscaleViewController::$instance          = $this->saved_view_instances[ UpscaleViewController::class ];
 		$this->set_remote_instance( $this->saved_remote_instance );
 		if ( null !== $this->saved_text_direction ) {
 			$GLOBALS['wp_locale']->text_direction = $this->saved_text_direction;

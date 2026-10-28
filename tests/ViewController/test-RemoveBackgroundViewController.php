@@ -143,6 +143,7 @@ class RemoveBackgroundViewControllerTest extends WP_UnitTestCase {
 		RemoveBackGroundViewController::$instance = $this->saved_instance;
 
 		wp_dequeue_script( 'emr_success' );
+		wp_dequeue_script( 'emr_shortpixel_account' );
 		wp_set_current_user( $this->saved_user );
 
 		$blocked       = $this->blocked;
@@ -407,9 +408,12 @@ class RemoveBackgroundViewControllerTest extends WP_UnitTestCase {
 
 		list( , $output ) = $this->load( $id );
 
-		$this->assertStringContainsString( '<section class="emr-sp-account wrapper">', $output );
+		$this->assertMatchesRegularExpression( '/<section class="emr-sp-account wrapper" data-confirm-remove="[^"]+">/', $output );
+		$this->assertStringContainsString( 'data-confirm-remove="Remove the saved ShortPixel API Key? Background removal will fall back to the Free plan (100 image limit)."', $output );
+		$this->assertStringContainsString( 'Background Removal is limited to 100 images on the Free plan.', $output );
 		$this->assertStringContainsString( 'id="emr-new-api-key"', $output );
 		$this->assertStringContainsString( 'Activate', $output );
+		$this->assertStringNotContainsString( '<script', $output, 'The key box is driven by js/shortpixel-account.js, not an inline script.' );
 		$this->assertStringContainsString( 'https://shortpixel.com/free-sign-up', $output );
 		$this->assertStringNotContainsString( '<span class="emr-sp-key-value">', $output );
 	}
@@ -439,6 +443,47 @@ class RemoveBackgroundViewControllerTest extends WP_UnitTestCase {
 		$this->assertStringContainsString( 'id="remove_background_button"', $output );
 		$this->assertStringNotContainsString( 'emr-sp-account', $output );
 		$this->assertStringNotContainsString( 'emr_save_api_key', $output );
+		$this->assertFalse( wp_script_is( 'emr_shortpixel_account', 'enqueued' ), 'The account script is only enqueued with the box.' );
+	}
+
+	public function test_prepare_screen_enqueues_the_account_script_for_an_administrator() {
+		$id = $this->upload();
+		emr()->admin_scripts();
+		$this->assertFalse( wp_script_is( 'emr_shortpixel_account', 'enqueued' ), 'Precondition.' );
+
+		$this->load( $id );
+
+		$this->assertTrue( wp_script_is( 'emr_shortpixel_account', 'enqueued' ) );
+	}
+
+	public function test_prepare_screen_links_to_the_upscale_screen_for_an_upscalable_image() {
+		$id = $this->upload();
+		$this->assertTrue( emr()->uiHelper()->isUpscalable( get_post( $id ) ), 'Precondition: a 50x50 JPEG is upscalable.' );
+
+		list( , $output ) = $this->load( $id );
+
+		$this->assertStringContainsString( 'New! Click here to upscale/enlarge this image using AI!', $output );
+		$this->assertSame( 1, preg_match( '/href="([^"]*action=emr_prepare_upscale[^"]*)"/', $output, $link ) );
+		$this->assertSame( 1, preg_match( '/_wpnonce=([0-9a-f]+)/', html_entity_decode( $link[1] ), $nonce ) );
+		$this->assertSame( 1, wp_verify_nonce( $nonce[1], 'emr_prepare_upscale' ) );
+		$this->assertStringContainsString( 'attachment_id=' . $id, $link[1] );
+	}
+
+	public function test_prepare_screen_has_no_upscale_link_when_the_upscale_feature_is_off() {
+		$id = $this->upload();
+		$this->add_hook( 'emr/feature/upscale', '__return_false' );
+		emr()->adminInit();
+		$this->assertFalse( emr()->useFeature( 'upscale' ), 'Precondition.' );
+
+		try {
+			list( , $output ) = $this->load( $id );
+
+			$this->assertStringContainsString( 'id="remove_background_button"', $output );
+			$this->assertStringNotContainsString( 'emr_prepare_upscale', $output );
+		} finally {
+			remove_filter( 'emr/feature/upscale', '__return_false' );
+			emr()->adminInit();
+		}
 	}
 
 	/**

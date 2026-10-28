@@ -591,9 +591,10 @@ class UIHelper
    * 'upload-file-action' when those flags are set. With `is_upload` strictly
    * true it contains the "New" title, the `userfile` file input and the
    * drag-and-drop label; otherwise a "Current" title (or "Preview" with
-   * `remove_bg_ui`) and the given image HTML. Then the icon, the text layer
-   * (only when setSourceSizes() found full dimensions above zero), the
-   * remove-background overlay when requested, and the formatted file size.
+   * `remove_bg_ui` or `upscale_ui`) and the given image HTML. Then the icon,
+   * the text layer (only when setSourceSizes() found full dimensions above
+   * zero), the remove-background or upscale overlay when requested, and the
+   * formatted file size.
    *
    * @param array $args {
    *     @type int|float   $width        Box width; default 150, minimum 150.
@@ -607,6 +608,8 @@ class UIHelper
    *     @type string|bool $mime_type    Written to data-filetype; default false (omitted).
    *     @type int|bool    $file_size    Bytes, shown through size_format(); default false (empty).
    *     @type bool        $remove_bg_ui Adds the "Removing background..." overlay; default false.
+   *     @type bool        $upscale_ui   Adds the "Upscaling image..." overlay instead, with the same
+   *                                     "Preview" title; wins over `remove_bg_ui`; default false.
    * }
    * @return string HTML.
    *
@@ -740,6 +743,16 @@ class UIHelper
 	}
 
 	// Max source width per upscale factor, synced with ShortPixel Image Optimizer.
+	/**
+	 * Returns the upscale factors the API offers and the widest source each one accepts.
+	 *
+	 * Keys are the factors (2, 3, 4), values the maximum source width in
+	 * pixels for that factor; the same table as ShortPixel Image Optimizer.
+	 * The upscale screen disables a factor when the image is at least that
+	 * wide, and isUpscalable() uses the largest value as the overall limit.
+	 *
+	 * @return array<int,int> factor => maximum source width.
+	 */
 	public function getUpscaleFactors()
 	{
 		return array(
@@ -749,6 +762,31 @@ class UIHelper
 		);
 	}
 
+	/**
+	 * Tells whether "Upscale image" is offered for an attachment.
+	 *
+	 * All of these must hold: the attachment is an image
+	 * (wp_attachment_is_image()), \emr()->useFeature('upscale') is true (the
+	 * `emr/feature/upscale` filter, and the user is not author restricted),
+	 * the metadata width, when known, is not above the largest value of
+	 * getUpscaleFactors() (1200 px; the height is not considered, and an
+	 * attachment without metadata passes), and the post MIME type contains
+	 * 'jpg', 'png' or 'jpeg' (substring match).
+	 *
+	 * @todo Unlike isBackgroundRemovable(), only a \WP_Post is accepted:
+	 *       `$post->ID` is read directly, so an attachment ID raises
+	 *       "Attempt to read property "ID" on int" and the width check runs
+	 *       against the global post instead. Suggested fix: resolve the
+	 *       argument with get_post() first.
+	 * @todo The width limit is exclusive (`>`), while views/prepare-upscale.php
+	 *       disables a factor when the width is at least its limit (`<=`), so
+	 *       an image exactly 1200 px wide gets the entry points but a screen
+	 *       with every factor disabled. Suggested fix: use the same comparison
+	 *       in both places.
+	 *
+	 * @param \WP_Post $post Attachment post.
+	 * @return bool
+	 */
 	public function isUpscalable($post)
 	{
 		  if (false === wp_attachment_is_image($post))
@@ -789,6 +827,11 @@ class UIHelper
 		return $output;
 	}
 
+	/**
+	 * Returns the "Upscaling image..." overlay with its CSS spinner.
+	 *
+	 * @return string HTML.
+	 */
 	private function getUpscaleUI()
 	{
 		$output = '<div class="overlay" id="overlay">

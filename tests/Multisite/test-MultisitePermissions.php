@@ -232,8 +232,8 @@ class MultisitePermissionsTest extends EMR_IntegrationTestCase {
 		$own    = $this->attachmentOf( 'author' );
 
 		$expected = array(
-			array( 'super', $admins, array( 'media_replace', 'remove_background' ) ),
-			array( 'admin', $own, array( 'media_replace', 'remove_background' ) ),
+			array( 'super', $admins, array( 'media_replace', 'remove_background', 'upscale_image' ) ),
+			array( 'admin', $own, array( 'media_replace', 'remove_background', 'upscale_image' ) ),
 			array( 'author', $own, array( 'media_replace' ) ),
 			array( 'author', $admins, array() ),
 			array( 'stranger', $admins, array() ),

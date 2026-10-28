@@ -15,7 +15,7 @@
  *   - settings (array) `enable_media_replace` option merged with defaults:
  *     replace_type, timestamp_replace, custom_date, new_location, new_location_dir
  *   - is_author_restricted (bool) user lacks `edit_others_posts`; disables
- *     replace-and-search and remove background
+ *     replace-and-search, remove background and upscale
  *   - is_movable (bool) result of `emr/replace/file_is_movable`; false for offloaded files
  *   - custom_basedir (string) upload base directory with trailing slash
  * Globals/constants: FORCE_SSL_ADMIN (rewrites the form URL to https).
@@ -49,8 +49,11 @@
  * Scripts: js/emr_admin.js (`emr_options`: drag and drop, type and size
  * checks, datepicker, "Now"/"Original" date links), jquery-ui-datepicker,
  * js/upsell.js for the included views/upsell.php.
- * Links: the remove-background link goes to `action=emr_prepare_remove`
- * with a nonce for `emr_prepare_remove`; Cancel calls history.back().
+ * Links: the upscale link (only when UIHelper::isUpscalable() is true and
+ * the user is not author restricted) goes to `action=emr_prepare_upscale`
+ * with a nonce for `emr_prepare_upscale`; the remove-background link goes to
+ * `action=emr_prepare_remove` with a nonce for `emr_prepare_remove`; Cancel
+ * calls history.back().
  *
  * @todo The "file type does not seem to be allowed" string is passed to __() without the `enable-media-replace` text domain; add the domain.
  * @todo The source file path in the explainer's `title` attribute and $view->custom_basedir are echoed without escaping; wrap them in esc_attr() / esc_html().

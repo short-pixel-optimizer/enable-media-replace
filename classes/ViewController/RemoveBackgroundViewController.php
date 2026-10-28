@@ -32,6 +32,10 @@ use EnableMediaReplace\Api as Api;
  * runs over AJAX (Ajax::remove_background() -> Api::request()); this class only shows the
  * screen and, after the user confirms, downloads the result and replaces the file. The
  * imported `Unserialize` class is not used.
+ *
+ * The screen template and the form nonce action are the properties `$view_name` and
+ * `$nonce_action`, so that UpscaleViewController can reuse load() and loadPost() unchanged
+ * with its own template and nonce; the two controllers differ in nothing else.
  */
 class RemoveBackGroundViewController extends \EnableMediaReplace\ViewController
 {
@@ -42,7 +46,19 @@ class RemoveBackGroundViewController extends \EnableMediaReplace\ViewController
 	 */
 	static $instance;
 
+	/**
+	 * Template under views/ that load() renders.
+	 *
+	 * @var string
+	 */
 	protected $view_name = 'prepare-remove-background';
+
+	/**
+	 * Nonce action loadPost() verifies `emr_nonce` against; the view creates the field
+	 * with the same action.
+	 *
+	 * @var string
+	 */
 	protected $nonce_action = 'media_remove_background';
 
 	/**
@@ -75,7 +91,7 @@ class RemoveBackGroundViewController extends \EnableMediaReplace\ViewController
 	 * and source sizes on UIHelper and fills `$view` with `attachment`, `sourceFile`
 	 * (untranslated, for display) and `settings`: the `enable_media_replace` option merged
 	 * over the defaults `bg_type` 'transparent', `bg_color` '#ffffff', `bg_transparency` 100.
-	 * Loads `views/prepare-remove-background.php`.
+	 * Loads the `$view_name` template (`views/prepare-remove-background.php` here).
 	 *
 	 * @return void
 	 */
@@ -123,7 +139,8 @@ class RemoveBackGroundViewController extends \EnableMediaReplace\ViewController
 	 * Replaces the attachment with the background-removed image and ends the request.
 	 *
 	 * Sequence:
-	 * 1. Nonce `emr_nonce` for action `media_remove_background` (ERROR_NONCE).
+	 * 1. Nonce `emr_nonce` for the `$nonce_action` action (`media_remove_background` here)
+	 *    (ERROR_NONCE).
 	 * 2. `key` (the transient key returned by Api::request()) must be non-empty (ERROR_KEY).
 	 * 3. `ID` present (ERROR_FORM), checkImagePermission() (ERROR_IMAGE_PERMISSION), and the
 	 *    user must not be author restricted (ERROR_IMAGE_PERMISSION). The wp_die() calls

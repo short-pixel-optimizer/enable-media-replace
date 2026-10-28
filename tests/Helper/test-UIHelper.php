@@ -139,9 +139,30 @@ class UIHelperTest extends WP_UnitTestCase {
 			array(
 				'replace'       => true,
 				'background'    => $enabled,
+				'upscale'       => true,
 				'remote_notice' => true,
 			)
 		);
+	}
+
+	/** Sets the plugin's feature flags with the given upscale (and background) value. */
+	private function set_upscale_feature( $enabled, $background = true ) {
+		$this->set_features(
+			array(
+				'replace'       => true,
+				'background'    => $background,
+				'upscale'       => $enabled,
+				'remote_notice' => true,
+			)
+		);
+	}
+
+	/** An image attachment post with the given metadata width (no file on disk). */
+	private function image_of_width( $width, $file = 'emr-up.jpg', $mime = 'image/jpeg' ) {
+		$id = $this->attachment_object( $file, $mime );
+		wp_update_attachment_metadata( $id, array( 'width' => $width, 'height' => 100, 'file' => $file, 'sizes' => array() ) );
+		$this->assertSame( $width, wp_get_attachment_metadata( $id )['width'], 'Precondition: the width is stored.' );
+		return $id;
 	}
 
 	/**
@@ -807,6 +828,32 @@ class UIHelperTest extends WP_UnitTestCase {
 		$this->assertStringContainsString( "<span class='upload-title'>Preview</span>", $html );
 	}
 
+	public function test_placeholder_upscale_ui_adds_the_upscaling_overlay_and_preview_title() {
+		$html = UIHelper::getInstance()->getPlaceHolder( array( 'upscale_ui' => true ) );
+
+		$this->assertStringContainsString( '<div class="overlay" id="overlay">', $html );
+		$this->assertStringContainsString( 'lds-spinner', $html );
+		$this->assertStringContainsString( '<h3>Upscaling image...</h3>', $html );
+		$this->assertStringNotContainsString( 'Removing background', $html );
+		$this->assertStringContainsString( "<span class='upload-title'>Preview</span>", $html );
+		$this->assertStringNotContainsString( "<span class='upload-title'>Current</span>", $html );
+	}
+
+	public function test_placeholder_upscale_ui_wins_over_remove_bg_ui() {
+		$html = UIHelper::getInstance()->getPlaceHolder( array( 'remove_bg_ui' => true, 'upscale_ui' => true ) );
+
+		$this->assertSame( 1, substr_count( $html, 'id="overlay"' ), 'One overlay.' );
+		$this->assertStringContainsString( '<h3>Upscaling image...</h3>', $html );
+		$this->assertStringNotContainsString( 'Removing background', $html );
+	}
+
+	public function test_placeholder_without_either_ui_flag_has_no_overlay() {
+		$html = UIHelper::getInstance()->getPlaceHolder( array( 'upscale_ui' => false, 'remove_bg_ui' => false ) );
+
+		$this->assertStringNotContainsString( 'id="overlay"', $html );
+		$this->assertStringContainsString( "<span class='upload-title'>Current</span>", $html );
+	}
+
 	public function test_placeholder_formats_the_file_size() {
 		$helper = UIHelper::getInstance();
 
@@ -936,6 +983,147 @@ class UIHelperTest extends WP_UnitTestCase {
 		$id = $this->attachment_object( 'emr-bg-author.jpg', 'image/jpeg' );
 
 		$this->assertFalse( UIHelper::getInstance()->isBackgroundRemovable( $id ) );
+	}
+
+	/* ------------------------------------------------------------------
+	 * getUpscaleFactors() / isUpscalable()
+	 * ------------------------------------------------------------------ */
+
+	public function test_upscale_factors_map_each_factor_to_its_maximum_source_width() {
+		$factors = UIHelper::getInstance()->getUpscaleFactors();
+
+		$this->assertSame( array( 2 => 1200, 3 => 1200, 4 => 1024 ), $factors );
+		$this->assertSame( 1200, max( $factors ), 'The overall limit isUpscalable() applies.' );
+	}
+
+	public function test_upscalable_for_jpeg_and_png_images_below_the_width_limit() {
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
+		$this->set_upscale_feature( true );
+		$helper = UIHelper::getInstance();
+
+		foreach ( array( 'emr-up.jpg' => 'image/jpeg', 'emr-up.jpeg' => 'image/jpeg', 'emr-up.png' => 'image/png', 'emr-up-legacy.jpg' => 'image/jpg' ) as $file => $mime ) {
+			$id = $this->image_of_width( 800, $file, $mime );
+			$this->assertTrue( wp_attachment_is_image( $id ), 'Precondition: ' . $file . ' is an image.' );
+
+			$this->assertTrue( $helper->isUpscalable( get_post( $id ) ), $mime . ' must be upscalable.' );
+		}
+	}
+
+	public function test_not_upscalable_for_gif_webp_and_non_images() {
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
+		$this->set_upscale_feature( true );
+		$helper = UIHelper::getInstance();
+
+		foreach ( array( 'emr-up.gif' => 'image/gif', 'emr-up.webp' => 'image/webp' ) as $file => $mime ) {
+			$id = $this->image_of_width( 300, $file, $mime );
+			$this->assertTrue( wp_attachment_is_image( $id ), 'Precondition: ' . $file . ' is an image.' );
+
+			$this->assertFalse( $helper->isUpscalable( get_post( $id ) ), $mime . ' must not be upscalable.' );
+		}
+		$pdf = $this->attachment_object( 'emr-up.pdf', 'application/pdf' );
+		$this->assertFalse( $helper->isUpscalable( get_post( $pdf ) ) );
+	}
+
+	public function test_not_upscalable_when_the_upscale_feature_is_off() {
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
+		$this->set_upscale_feature( false );
+		$id = $this->image_of_width( 300 );
+
+		$this->assertFalse( UIHelper::getInstance()->isUpscalable( get_post( $id ) ) );
+		$this->assertTrue( UIHelper::getInstance()->isBackgroundRemovable( $id ), 'The background flag is independent.' );
+	}
+
+	public function test_upscalable_when_only_the_background_feature_is_off() {
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
+		$this->set_upscale_feature( true, false );
+		$id = $this->image_of_width( 300 );
+
+		$this->assertTrue( UIHelper::getInstance()->isUpscalable( get_post( $id ) ) );
+		$this->assertFalse( UIHelper::getInstance()->isBackgroundRemovable( $id ) );
+	}
+
+	public function test_not_upscalable_for_an_author_restricted_user() {
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'author' ) ) );
+		$this->set_upscale_feature( true );
+		$id = $this->image_of_width( 300 );
+
+		$this->assertFalse( UIHelper::getInstance()->isUpscalable( get_post( $id ) ) );
+	}
+
+	public function test_not_upscalable_above_the_largest_factor_width() {
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
+		$this->set_upscale_feature( true );
+		$helper = UIHelper::getInstance();
+
+		$this->assertFalse( $helper->isUpscalable( get_post( $this->image_of_width( 1201 ) ) ) );
+		$this->assertFalse( $helper->isUpscalable( get_post( $this->image_of_width( 4000, 'emr-up-4k.jpg' ) ) ) );
+		$this->assertTrue( $helper->isUpscalable( get_post( $this->image_of_width( 1199, 'emr-up-1199.jpg' ) ) ) );
+		$this->assertTrue( $helper->isUpscalable( get_post( $this->image_of_width( 1100, 'emr-up-1100.jpg' ) ) ), 'Only 4x is unavailable at 1100 px; the image is still upscalable.' );
+	}
+
+	public function test_upscalable_only_looks_at_the_width_and_passes_without_metadata() {
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
+		$this->set_upscale_feature( true );
+		$helper = UIHelper::getInstance();
+
+		$tall = $this->attachment_object( 'emr-up-tall.jpg', 'image/jpeg' );
+		wp_update_attachment_metadata( $tall, array( 'width' => 300, 'height' => 5000, 'file' => 'emr-up-tall.jpg', 'sizes' => array() ) );
+		$this->assertTrue( $helper->isUpscalable( get_post( $tall ) ), 'The height is not limited.' );
+
+		$bare = $this->attachment_object( 'emr-up-bare.jpg', 'image/jpeg' );
+		$this->assertFalse( wp_get_attachment_metadata( $bare ), 'Precondition: no metadata.' );
+		$this->assertTrue( $helper->isUpscalable( get_post( $bare ) ) );
+	}
+
+	/**
+	 * isUpscalable() uses `>` against the largest factor width (1200), while
+	 * views/prepare-upscale.php disables a factor when its width is `<=` the
+	 * image width: for an image exactly 1200 px wide every entry point is
+	 * offered, but the screen has every factor disabled and says the image
+	 * is too big. Both should agree, so the entry points disappear at 1200.
+	 *
+	 * How to recognise the fix: isUpscalable() returns false at 1200 px and
+	 * the assertTrue below fails.
+	 */
+	public function test_upscalable_at_exactly_the_width_limit_pinned_for_deferred_fix() {
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
+		$this->set_upscale_feature( true );
+		$helper = UIHelper::getInstance();
+		$id     = $this->image_of_width( 1200 );
+		foreach ( $helper->getUpscaleFactors() as $factor => $max_width ) {
+			$this->assertLessThanOrEqual( 1200, $max_width, 'Precondition: the screen disables ' . $factor . 'x at 1200 px.' );
+		}
+
+		$this->assertTrue( $helper->isUpscalable( get_post( $id ) ) );
+	}
+
+	/**
+	 * isBackgroundRemovable() accepts an attachment ID or a WP_Post;
+	 * isUpscalable() reads `$post->ID` directly, so an ID raises
+	 * "Attempt to read property "ID" on int" (PHP 8; a notice on 7.4) and
+	 * the metadata lookup then runs against the global post. It should
+	 * resolve the argument with get_post() like the rest of the helper.
+	 *
+	 * How to recognise the fix: no error is raised and isUpscalable( $id )
+	 * returns true like isUpscalable( get_post( $id ) ).
+	 */
+	public function test_upscalable_rejects_an_attachment_id_pinned_for_deferred_fix() {
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
+		$this->set_upscale_feature( true );
+		$helper = UIHelper::getInstance();
+		$id     = $this->image_of_width( 300 );
+		$this->assertTrue( $helper->isUpscalable( get_post( $id ) ), 'Sentinel: the post object form works.' );
+		$this->assertTrue( $helper->isBackgroundRemovable( $id ), 'Sentinel: the sibling check accepts an ID.' );
+
+		$error = null;
+		try {
+			$helper->isUpscalable( $id );
+		} catch ( \PHPUnit\Framework\Error\Error $e ) {
+			$error = $e;
+		}
+
+		$this->assertInstanceOf( PHP_VERSION_ID >= 80000 ? \PHPUnit\Framework\Error\Warning::class : \PHPUnit\Framework\Error\Notice::class, $error );
+		$this->assertMatchesRegularExpression( '/property.*ID/', $error->getMessage() );
 	}
 
 	/* ------------------------------------------------------------------

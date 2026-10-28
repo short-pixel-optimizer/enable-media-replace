@@ -159,7 +159,9 @@ bin/test.sh --matrix --integration
 The smoke suite (`tests/Smoke/`) unregisters the HTTP mock and calls the
 **live** ShortPixel API through EMR's own client classes: a valid-key and a
 wrong-key `api-status.php` verification, then one keyed and one free
-remove-background request. It catches contract drift a mock can't see. It
+remove-background request and one keyed and one free upscale request (the
+`upscale` factor instead of `bg_remove`). It catches contract drift a mock
+can't see. It
 needs a valid API key and consumes real credits, so it is never part of
 `--integration`, `--all`, `--matrix` or the push/PR CI runs; without the key
 every test self-skips.
@@ -515,8 +517,9 @@ it should pass on CI.
 ## Browser end-to-end tests (Playwright)
 
 The PHPUnit suites never load a browser, so EMR's screens (the replace
-form, the success and error screens, the remove-background preview, the
-API-key box, the upsell installer) and their JavaScript (`js/`) have no
+form, the success and error screens, the remove-background and upscale
+previews, the API-key box, the upsell installer) and their JavaScript
+(`js/`) have no
 coverage there. The E2E suite closes that gap: a REAL served WordPress with
 EMR installed, driven by [Playwright](https://playwright.dev), asserting what
 a user sees and failing on any uncaught JS error. It is ported from SPIO's
@@ -574,7 +577,8 @@ volumes `emr-e2e_*` and port):
   `fixture` (a file from `tests/fixtures/` or a GD-drawn image of any size,
   as an attachment), `image` (GD-drawn bytes for a browser upload), `post`,
   `post/<id>`, `attachment/<id>`, `key`, `feature` (forces
-  `emr/feature/background` / `emr/feature/remote_notice`), `user`, `mock`,
+  `emr/feature/background` / `emr/feature/upscale` /
+  `emr/feature/remote_notice`), `user`, `mock`,
   `mock/reset`, `mock/requests`. It also turns off the core, plugin and
   theme update checks, pings and the dashboard news widget.
 
@@ -604,7 +608,8 @@ once; `smoke.spec.ts` proves the harness).
 - Import `test`/`expect` from `../fixtures`, never from `@playwright/test`:
   that is what arms the tripwire, the hermetic routing and the reset.
 - Use the screen objects in `helpers/emr.ts` (`ReplaceScreen`,
-  `SuccessScreen`, `ErrorScreen`, `RemoveBackgroundScreen`, `Upsell`) and
+  `SuccessScreen`, `ErrorScreen`, `RemoveBackgroundScreen`, `UpscaleScreen`
+  (the same form and buttons plus the factor radios), `Upsell`) and
   `helpers/media-list.ts` (`MediaList`, `EditAttachment`) rather than raw
   selectors. The replace form's file input is `#upload-file`
   (`name="userfile"`); there is no "new file name" field: in
@@ -635,7 +640,9 @@ once; `smoke.spec.ts` proves the harness).
   `expectOnlyKnownErrors(consoleErrors, [...])` accepts those and nothing
   else. The remove-background screen throws one on every load
   (`emr_admin.js` `showReplaceOptions()` on a missing `.location_option`,
-  pinned in `smoke.spec.ts`), so every remove-background spec needs it.
+  pinned in `smoke.spec.ts`), so every remove-background spec needs it; the
+  upscale screen enqueues the same script and the upscale specs accept the
+  same error.
 - Node-side HTTP to the container sends `Connection: close`
   (`NO_KEEPALIVE_HEADERS` in `helpers/emr.ts`): Apache closes idle
   keep-alive sockets after 5 s, and Node, unlike a browser, does not retry
@@ -697,7 +704,8 @@ uploaded per engine.
   attachment and its files in `tear_down()`.
 - **HTTP mock:** `MockEmrApi` intercepts `pre_http_request` for
   `api.shortpixel.com` and `downloads.wordpress.org`. Its knobs cover the
-  remove-background endpoints (`free-reducer.php`, `reducer.php`: status 1
+  reducer endpoints shared by remove background and upscale
+  (`free-reducer.php`, `reducer.php`: status 1
   then 2, a `LosslessURL` result, quota exceeded, malformed body,
   `WP_Error`), `cleanup.php`, `api-status.php` (`Code` 2 with `Unlimited`
   true/false, wrong key), `notices.php` and the result download URL, and it

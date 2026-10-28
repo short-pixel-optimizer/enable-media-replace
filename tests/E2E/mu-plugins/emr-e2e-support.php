@@ -33,7 +33,7 @@
  *   GET  post/<id>        raw post_content, title, status
  *   GET  attachment/<id>  file, metadata, mime, dates, backup sizes
  *   POST key              { key } store the API key option, { key: null } delete it
- *   POST feature          { background?, remote_notice? } force the
+ *   POST feature          { background?, upscale?, remote_notice? } force the
  *                         emr/feature/* filter outcome (true/false), null = default
  *   POST user             { role[, login] } a user with password "password"
  *   GET  mock             the mock knobs
@@ -106,7 +106,8 @@ add_action( 'wp_dashboard_setup', 'emr_e2e_dashboard_setup', 99 );
 
 /**
  * Feature overrides: the `feature` route stores the wanted outcome of
- * `emr/feature/background` and `emr/feature/remote_notice`; these filters
+ * `emr/feature/background`, `emr/feature/upscale` and
+ * `emr/feature/remote_notice`; these filters
  * apply it (late, so they win over any other callback).
  */
 function emr_e2e_feature_background( $enabled ) {
@@ -115,11 +116,15 @@ function emr_e2e_feature_background( $enabled ) {
 function emr_e2e_feature_remote_notice( $enabled ) {
 	return emr_e2e_feature_value( 'remote_notice', $enabled );
 }
+function emr_e2e_feature_upscale( $enabled ) {
+	return emr_e2e_feature_value( 'upscale', $enabled );
+}
 function emr_e2e_feature_value( $name, $default ) {
 	$features = (array) get_option( EMR_E2E_FEATURE_OPTION, array() );
 	return array_key_exists( $name, $features ) ? (bool) $features[ $name ] : $default;
 }
 add_filter( 'emr/feature/background', 'emr_e2e_feature_background', 999 );
+add_filter( 'emr/feature/upscale', 'emr_e2e_feature_upscale', 999 );
 add_filter( 'emr/feature/remote_notice', 'emr_e2e_feature_remote_notice', 999 );
 
 // -----------------------------------------------------------------------
@@ -609,11 +614,11 @@ function emr_e2e_route_key( WP_REST_Request $request ) {
 	return rest_ensure_response( array( 'ok' => true, 'key' => (string) $key ) );
 }
 
-/** { background?: bool|null, remote_notice?: bool|null }: null removes the override. */
+/** { background?: bool|null, upscale?: bool|null, remote_notice?: bool|null }: null removes the override. */
 function emr_e2e_route_feature( WP_REST_Request $request ) {
 	$features = (array) get_option( EMR_E2E_FEATURE_OPTION, array() );
 	foreach ( (array) $request->get_json_params() as $name => $value ) {
-		if ( ! in_array( $name, array( 'background', 'remote_notice' ), true ) ) {
+		if ( ! in_array( $name, array( 'background', 'upscale', 'remote_notice' ), true ) ) {
 			return new WP_Error( 'emr_e2e_bad_request', 'Unknown feature: ' . $name, array( 'status' => 400 ) );
 		}
 		if ( null === $value ) {
