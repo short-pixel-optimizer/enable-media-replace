@@ -7,11 +7,63 @@
 		.image_chooser.wrapper {
 				min-height: 0;
 		}
+		.image_previews {
+				display: grid;
+				grid-template-columns: 1fr 1fr;
+				gap: 20px;
+				align-items: stretch;
+		}
+		// !important: the placeholder gets an inline width / height.
+		.image_placeholder
+		{
+				width: 100% !important;
+				max-width: none !important;
+				height: 360px !important;
+				min-height: 280px;
+				margin: 0 !important;
+				padding: 38px 14px 38px;
+				border: none !important;
+				border-radius: 10px;
+				background: #fafafa;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				position: relative;
+				overflow: hidden;
+				box-sizing: border-box;
+
+				img {
+					max-width: 100%;
+					max-height: 100%;
+					width: auto;
+					height: auto;
+					object-fit: contain;
+					display: block;
+					margin: 0 auto;
+				}
+
+				.upload-title {
+					position: absolute;
+					top: 12px;
+					left: 0;
+					right: 0;
+					text-align: center;
+					font-size: 11px;
+					font-weight: 600;
+					text-transform: uppercase;
+					letter-spacing: .08em;
+					color: #6c757d;
+					z-index: 2;
+				}
+
+				.image_size {
+					bottom: 8px;
+					font-size: 11px;
+					color: #6c757d;
+				}
+		}
 		.image_placeholder.is_image
 		{
-				border:none;
-				width:45%;
-				height:auto;
 				.textlayer, .image_size {
 					 display: none;
 				}
@@ -33,7 +85,7 @@
 			.textlayer {
 				font-size: 12px;
 				line-height: 1;
-				top: 21px; // Centred on the title line ( redesign.css puts the title at 12px + 8px padding ).
+				top: 21px; // Centred on the title line ( the title sits at 12px + 8px padding, see .upload-title above ).
 				left: 50%;
 				margin-left: 4px;
 				transform: none;
@@ -47,10 +99,20 @@
 			}
 		}
 
+		@media (max-width: 720px) {
+				.image_previews {
+					grid-template-columns: 1fr;
+				}
+				.image_placeholder {
+					height: 300px !important;
+				}
+		}
+
 		.bad-button
 		{
 			 text-align: right;
 			 margin-right: 25px;
+			 margin-top: 12px;
 			 a {
 			 	visibility: hidden;
 		 		}
@@ -62,89 +124,50 @@
 			flex-direction: column;
 			justify-content: center;
 			align-items: center;
+			gap: 18px;
 			width: 100%;
 			height: 100%;
-			background-color: rgba(0,0,0,0.2);
+			background-color: #fafafa;
+			border-radius: 10px;
 			position: absolute;
 			top: 0;
+			right: 0;
+			bottom: 0;
+			left: 0;
+
+			h3 {
+				margin: 0;
+				color: #1d2327;
+				font-size: 15px;
+				font-weight: 600;
+				letter-spacing: .01em;
+				text-align: center;
+
+				&::after {
+					content: '';
+					display: block;
+					margin-top: 6px;
+					font-size: 12px;
+					font-weight: 400;
+					color: #6c757d;
+					letter-spacing: 0;
+				}
+			}
 		}
 		.lds-spinner {
-				color: official;
 				display: inline-block;
 				position: relative;
 				width: 80px;
 				height: 80px;
+				border-radius: 50%;
+				border: 4px solid rgba(26, 189, 202, 0.18);
+				border-top-color: #1abdca;
+				animation: emr-spin 0.85s cubic-bezier(0.5, 0.1, 0.5, 0.9) infinite;
+
+				div { display: none; }
 		}
-		.lds-spinner div {
-				transform-origin: 40px 40px;
-				animation: lds-spinner 1.2s linear infinite;
-		}
-		.lds-spinner div:after {
-				content: " ";
-				display: block;
-				position: absolute;
-				top: 3px;
-				left: 37px;
-				width: 6px;
-				height: 18px;
-				border-radius: 20%;
-				background: #fff;
-		}
-		.lds-spinner div:nth-child(1) {
-				transform: rotate(0deg);
-				animation-delay: -1.1s;
-		}
-		.lds-spinner div:nth-child(2) {
-				transform: rotate(30deg);
-				animation-delay: -1s;
-		}
-		.lds-spinner div:nth-child(3) {
-				transform: rotate(60deg);
-				animation-delay: -0.9s;
-		}
-		.lds-spinner div:nth-child(4) {
-				transform: rotate(90deg);
-				animation-delay: -0.8s;
-		}
-		.lds-spinner div:nth-child(5) {
-				transform: rotate(120deg);
-				animation-delay: -0.7s;
-		}
-		.lds-spinner div:nth-child(6) {
-				transform: rotate(150deg);
-				animation-delay: -0.6s;
-		}
-		.lds-spinner div:nth-child(7) {
-				transform: rotate(180deg);
-				animation-delay: -0.5s;
-		}
-		.lds-spinner div:nth-child(8) {
-				transform: rotate(210deg);
-				animation-delay: -0.4s;
-		}
-		.lds-spinner div:nth-child(9) {
-				transform: rotate(240deg);
-				animation-delay: -0.3s;
-		}
-		.lds-spinner div:nth-child(10) {
-				transform: rotate(270deg);
-				animation-delay: -0.2s;
-		}
-		.lds-spinner div:nth-child(11) {
-				transform: rotate(300deg);
-				animation-delay: -0.1s;
-		}
-		.lds-spinner div:nth-child(12) {
-				transform: rotate(330deg);
-				animation-delay: 0s;
-		}
-		@keyframes lds-spinner {
-			0% {
-				opacity: 1;
-			}
-			100% {
-				opacity: 0;
-			}
+		@keyframes emr-spin {
+			to { transform: rotate(360deg); }
 		}
 
 
