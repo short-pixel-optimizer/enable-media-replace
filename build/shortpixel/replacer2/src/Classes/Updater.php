@@ -1,10 +1,5 @@
-<?php
-/**
- * Updater class of the newer search/replace API.
- *
- * @package EnableMediaReplace\Replacer
- */
-namespace EnableMediaReplace\Replacer\Classes;
+<?php 
+namespace EnableMediaReplace\Replacer\Classes; 
 
 
 if (! defined('ABSPATH')) {
@@ -14,38 +9,11 @@ if (! defined('ABSPATH')) {
 use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
 
 
-/**
- * Writes replaced content back to posts.
- *
- * A new object is created per use (Replacer::Updater()). It fires no hooks
- * itself; wp_update_post() fires the usual post hooks.
- */
 class Updater
 {
 
-    /**
-     * Number of successful updatePost() calls in this request, shared by all
-     * instances. Not read anywhere in the module.
-     *
-     * @var int
-     */
-    protected static $updatesNumber = 0;
+    protected static $updatesNumber = 0; 
 
-    /**
-     * Replaces the content of a post, keeping its modified date.
-     *
-     * Saves through wp_update_post() (with wp_slash() applied to the
-     * content), so post hooks, revisions and cache invalidation run. Then
-     * writes the original `post_modified` and `post_modified_gmt` back with
-     * a direct `$wpdb` update and calls clean_post_cache().
-     *
-     * @global \wpdb $wpdb
-     *
-     * @param int    $post_id Post ID.
-     * @param string $content New, unslashed post content.
-     * @return bool True on success, false when the post does not exist or
-     *              wp_update_post() returns a WP_Error.
-     */
     public function updatePost($post_id, $content)
     {
         global $wpdb;
