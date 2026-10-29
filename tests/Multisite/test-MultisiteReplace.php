@@ -12,9 +12,7 @@
  *
  * The single-site suite already covers the shapes of the rewrite (srcset,
  * blocks, serialized meta, statuses); here each test seeds the minimum
- * needed to tell the two sites apart. At most one matching row per meta
- * table is seeded (see the note on Replacer::handleMetaData() in
- * test-ReplaceFlow.php).
+ * needed to tell the two sites apart: one matching row per meta table.
  *
  * The guard: ReplaceController::getNewTargetLocation() refuses, on the main
  * site of a network, any new location that resolves to `<basedir>sites...`

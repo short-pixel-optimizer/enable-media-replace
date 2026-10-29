@@ -24,12 +24,11 @@
  *   - A same-name replace (MODE_REPLACE) with other dimensions renames the
  *     medium size; a layout showing the medium size keeps the old size URL
  *     the same way.
- *   - A real Beaver Builder page carries both rows. Two matching postmeta
- *     rows in one replace hit the cache-key defect of
- *     Replacer::handleMetaData() (pinned in the Replacer unit suite): the
- *     second row raises an undefined-index warning. Pinned below with the
- *     real Beaver Builder shape; the other replace tests seed one layout
- *     row each so the outcome on that row can be observed.
+ *   - A real Beaver Builder page carries both rows. A rename over both
+ *     rows in one replace completes cleanly and clears the page's meta
+ *     cache (covered below with the real Beaver Builder shape); the
+ *     other replace tests seed one layout row each so the outcome on
+ *     that row can be observed.
  *   - Externals::check() holds a commented-out Beaver Builder block that
  *     would disable replace-and-search. With the real plugin loaded, the
  *     replace screen's filters still offer replace-and-search and no notice
@@ -273,35 +272,32 @@ class CompatBeaverBuilderTest extends EMR_IntegrationTestCase {
 
 	/**
 	 * A rename of an image shown on a real Beaver Builder page (published
-	 * layout and editor draft, two matching postmeta rows) raises an
-	 * undefined-index warning in Replacer::handleMetaData(): inside the row
-	 * loop `$main_id = $row[$main_id]` overwrites the column name with the
-	 * first row's post id, so the second row reads `$row['<post id>']`. The
-	 * correct behaviour is to keep the column name and clear the post meta
-	 * cache of each row's post. The Replacer unit suite pins the defect
-	 * itself; this pins that every Beaver Builder page reaches it.
+	 * layout and editor draft, two matching postmeta rows in one replace)
+	 * completes without a notice or warning: Replacer::handleMetaData()
+	 * keeps the selected column name apart from each row's post id, so the
+	 * second row clears the meta cache of its own post. The layout rows
+	 * themselves still come back unchanged (the allowed_classes pin above),
+	 * so the cleared cache is observed through a plain string row on the
+	 * same page, which the replacer does rewrite.
 	 *
-	 * How to recognise the fix: the rename completes without a warning and
-	 * the expected warning below is not raised.
+	 * The harness turns a notice or warning into an exception, so a
+	 * regression fails on the rename call itself.
 	 */
-	public function test_rename_on_a_beaver_builder_page_raises_the_meta_cache_key_warning_pinned_for_deferred_fix() {
-		list( $id, $url ) = $this->standardCompatImage( 'emr-bb-warn' );
+	public function test_rename_on_a_beaver_builder_page_clears_the_meta_cache_of_every_row() {
+		list( $id, $url ) = $this->standardCompatImage( 'emr-bb-cache' );
 		$post_id          = $this->beaverBuilderPage( $id, $url, array( 'published', 'draft' ) );
 		$this->assertGreaterThan( 0, $this->metaIdOf( $post_id, '_fl_builder_data' ), 'Sentinel: the published layout row exists.' );
 		$this->assertGreaterThan( 0, $this->metaIdOf( $post_id, '_fl_builder_draft' ), 'Sentinel: the draft row exists.' );
+		add_post_meta( $post_id, '_emr_bb_plain', 'image:' . $url );
+		$this->assertSame( 'image:' . $url, get_post_meta( $post_id, '_emr_bb_plain', true ), 'Sentinel: the meta cache of the page is primed.' );
 
-		$raised = null;
-		try {
-			$this->searchReplaceMode( $id, $this->tmpJpeg( 400, 300 ), 'emr-bb-warn-new-' . $this->token() . '.jpg' );
-		} catch ( \PHPUnit\Framework\Error\Error $e ) {
-			// A warning on PHP 8 ("Undefined array key"), a notice on PHP 7.4 ("Undefined index").
-			$raised = $e;
-		}
+		$this->searchReplaceMode( $id, $this->tmpJpeg( 400, 300 ), 'emr-bb-cache-new-' . $this->token() . '.jpg' );
 
-		$this->assertInstanceOf( \PHPUnit\Framework\Error\Error::class, $raised, 'Pinned: the rename raises an undefined-index error.' );
-		$this->assertMatchesRegularExpression( '/Undefined (array key|index)/', $raised->getMessage() );
-		$this->assertStringContainsString( (string) $post_id, $raised->getMessage(), 'Pinned: the missing key is the first row\'s post id.' );
-		$this->assertStringEndsWith( '/replacer2/src/Replacer.php', $raised->getFile(), 'Pinned: raised in the bundled Replacer.' );
+		$new_url = wp_get_attachment_url( $id );
+		$this->assertNotSame( $url, $new_url, 'Sentinel: the attachment was renamed.' );
+		$this->assertSame( 'image:' . $new_url, $this->rawPostMeta( $post_id, '_emr_bb_plain' ), 'Sentinel: the plain row was rewritten in the database.' );
+		$this->assertSame( 'image:' . $new_url, get_post_meta( $post_id, '_emr_bb_plain', true ), 'The page reads the rewritten row without a manual cache clean.' );
+		$this->assertStringContainsString( $url, $this->rawPostMeta( $post_id, '_fl_builder_data' ), 'Sentinel: the layout row still carries the old URL (allowed_classes pin).' );
 	}
 
 	// -------------------------------------------------------------------
