@@ -1,0 +1,372 @@
+/**
+ * Enable Media Replace - ShortPixel design-language redesign.
+ *
+ * Self-contained override layer. Loaded after admin.css and remove_background.css.
+ * To revert: dequeue this file in classes/emr-plugin.php and delete it.
+ */
+
+$emr-teal: #1abdca;
+$emr-teal-dark: #15a8b4;
+$emr-teal-darker: #138c96;
+$emr-text: #1d2327;
+$emr-muted: #646970;
+$emr-label: #6c757d;
+$emr-border: #e6e7e9;
+$emr-button-border: #d6d8db;
+$emr-preview-bg: #fafafa;
+$emr-card-shadow: 0 1px 3px rgba(16, 24, 40, 0.06), 0 1px 2px rgba(16, 24, 40, 0.04);
+
+/* ---------- Page-level ---------- */
+.emr_upload_form {
+	color: $emr-text;
+
+	h1 {
+		font-size: 23px;
+		font-weight: 600;
+		margin: 18px 0 18px;
+		color: $emr-text;
+	}
+
+	form {
+		gap: 20px;
+	}
+
+	// ---------- Card-ify every .wrapper ----------
+	.wrapper {
+		background: #fff;
+		border: 1px solid $emr-border;
+		border-radius: 10px;
+		box-shadow: $emr-card-shadow;
+		padding: 22px 24px;
+		margin-bottom: 18px;
+	}
+
+	// Override harsh inner borders that admin.css adds on individual cards
+	.replace_type.wrapper,
+	.options.wrapper,
+	.image_chooser.wrapper,
+	.form_controls.wrapper {
+		border: 1px solid $emr-border;
+		margin-top: 0;
+	}
+
+	.form_controls.wrapper {
+		box-shadow: none;
+		border: none;
+		background: transparent;
+		padding: 4px 0 0;
+	}
+
+	// Add a little gap between side-by-side cards in option-flex
+	.option-flex-wrapper {
+		gap: 18px;
+
+		.options.wrapper {
+			margin-left: 0;
+		}
+	}
+
+	// ---------- Section headers ----------
+	.wrapper .section-header {
+		font-size: 15px;
+		font-weight: 600;
+		color: $emr-text;
+		border-bottom: 1px solid #f0f0f1;
+		padding: 0 0 12px;
+		margin: 0 0 16px;
+		letter-spacing: 0;
+	}
+
+	// ---------- Image previews ----------
+	.image_chooser.wrapper .image_previews .image_placeholder {
+		border: 1px solid $emr-border;
+		border-radius: 8px;
+		background: $emr-preview-bg;
+		overflow: hidden;
+	}
+
+	// ---------- Form controls (radio rows, helpers) ----------
+	.replace_type.wrapper .option,
+	.replace_type.wrapper .option:last-child {
+		padding: 4px 0;
+	}
+
+	.replace_type.wrapper .option label {
+		font-size: 14px;
+		font-weight: 500;
+	}
+
+	.replace_type.wrapper .option .howto,
+	.options.wrapper .option .howto {
+		color: $emr-muted;
+		font-size: 13px;
+		line-height: 1.55;
+		margin: 6px 0 14px 24px;
+	}
+
+	.options.wrapper .small {
+		color: $emr-muted;
+	}
+
+	// ---------- Action buttons (ShortPixel teal) ----------
+	.button,
+	.button-primary,
+	input[type=submit].button,
+	input[type=submit].button-primary {
+		border-radius: 6px;
+		font-weight: 600;
+		padding: 0 18px;
+		height: 36px !important;
+		min-height: 36px !important;
+		line-height: 34px;
+		min-width: 110px;
+		text-align: center;
+		box-sizing: border-box;
+		vertical-align: middle;
+		text-shadow: none;
+		box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04);
+	}
+}
+
+a.emr_upload_form .button,
+.emr_upload_form a.button,
+.emr_upload_form button.button,
+.emr_upload_form button.button-primary {
+	display: inline-flex !important;
+	align-items: center !important;
+	justify-content: center !important;
+	line-height: 1 !important;
+}
+
+.emr_upload_form {
+	.button-primary,
+	input[type=submit].button-primary {
+		background: $emr-teal;
+		border-color: $emr-teal-dark;
+		color: #fff;
+	}
+	.button-primary:hover,
+	input[type=submit].button-primary:hover {
+		background: $emr-teal-dark;
+		border-color: $emr-teal-darker;
+		color: #fff;
+	}
+	.button-primary:focus,
+	.button-primary:active {
+		background: $emr-teal-dark;
+		border-color: $emr-teal-darker;
+		box-shadow: 0 0 0 1px #fff, 0 0 0 3px rgba(26, 189, 202, 0.4);
+	}
+	.button-primary[disabled],
+	input[type=submit][disabled] {
+		background: #c8cdd1 !important;
+		border-color: #c8cdd1 !important;
+		color: #fff !important;
+	}
+
+	.button:not(.button-primary) {
+		border-color: $emr-button-border;
+		background: #fff;
+		color: #50575e;
+
+		&:hover {
+			border-color: $emr-teal;
+			color: $emr-teal;
+		}
+	}
+
+	// ---------- Inline notices inside form ----------
+	.form-error,
+	.form-warning {
+		border-radius: 6px;
+		padding: 10px 14px;
+	}
+}
+
+/* ---------- Remove background screen specifics ---------- */
+#remove-background-form {
+	.image_chooser.wrapper {
+		min-height: 0;
+	}
+
+	.image_previews {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 20px;
+		align-items: stretch;
+	}
+
+	.image_placeholder,
+	.image_placeholder.is_image {
+		width: 100% !important;
+		max-width: none !important;
+		height: 360px !important;
+		min-height: 280px;
+		margin: 0 !important;
+		padding: 38px 14px 38px;
+		border: none !important;
+		border-radius: 10px;
+		background: $emr-preview-bg;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		position: relative;
+		overflow: hidden;
+		box-sizing: border-box;
+	}
+
+	.image_placeholder {
+		img {
+			max-width: 100%;
+			max-height: 100%;
+			width: auto;
+			height: auto;
+			object-fit: contain;
+			display: block;
+			margin: 0 auto;
+		}
+
+		.upload-title {
+			position: absolute;
+			top: 12px;
+			left: 0;
+			right: 0;
+			text-align: center;
+			font-size: 11px;
+			font-weight: 600;
+			text-transform: uppercase;
+			letter-spacing: .08em;
+			color: $emr-label;
+			z-index: 2;
+		}
+
+		.image_size {
+			bottom: 8px;
+			font-size: 11px;
+			color: $emr-label;
+		}
+	}
+
+	.bad-button {
+		margin-top: 12px;
+	}
+
+	@media (max-width: 720px) {
+		.image_previews {
+			grid-template-columns: 1fr;
+		}
+		.image_placeholder,
+		.image_placeholder.is_image {
+			height: 300px !important;
+		}
+	}
+
+	// ---------- Loading overlay ----------
+	.overlay {
+		background-color: $emr-preview-bg !important;
+		border-radius: 10px;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		gap: 18px;
+		left: 0;
+		right: 0;
+		top: 0;
+		bottom: 0;
+		width: 100%;
+		height: 100%;
+
+		h3 {
+			margin: 0;
+			color: $emr-text;
+			font-size: 15px;
+			font-weight: 600;
+			letter-spacing: .01em;
+			text-align: center;
+
+			&::after {
+				content: '';
+				display: block;
+				margin-top: 6px;
+				font-size: 12px;
+				font-weight: 400;
+				color: $emr-label;
+				letter-spacing: 0;
+			}
+		}
+	}
+
+	// Hide the legacy 12-spoke spinner and replace with a clean teal ring
+	.lds-spinner {
+		width: 52px;
+		height: 52px;
+		border-radius: 50%;
+		border: 4px solid rgba(26, 189, 202, 0.18);
+		border-top-color: $emr-teal;
+		animation: emr-spin 0.85s cubic-bezier(0.5, 0.1, 0.5, 0.9) infinite;
+
+		div { display: none; }
+	}
+}
+
+@keyframes emr-spin {
+	to { transform: rotate(360deg); }
+}
+
+.emr_upload_form {
+	// ---------- ShortPixel offer/upsell boxes ----------
+	.shortpixel-offer,
+	.shortpixel-offer.spio,
+	.shortpixel-offer.fp,
+	.shortpixel-offer.spai,
+	.shortpixel-offer.envira-shortpixel-install,
+	.shortpixel-offer.theme-offer {
+		border: 1px solid $emr-border;
+		border-radius: 10px;
+		box-shadow: $emr-card-shadow;
+		overflow: hidden;
+	}
+
+	.shortpixel-offer .button-wrapper a {
+		border-radius: 6px;
+	}
+}
+
+/* ---------- ShortPixel Account panel ---------- */
+.emr-sp-account {
+	&.wrapper {
+		background: #f8fafb;
+		border: 1px solid #e2e8ea;
+	}
+
+	.emr-sp-intro {
+		font-size: 13px;
+	}
+
+	.emr-sp-key-card {
+		background: #fff;
+		border-color: $emr-border;
+		border-radius: 8px;
+	}
+
+	.emr-sp-edit-form {
+		border-radius: 8px;
+	}
+}
+
+.emr_upload_form {
+	// ---------- Datepicker fields ----------
+	.options.wrapper .custom_date input[type=text] {
+		border-radius: 6px;
+		border-color: $emr-button-border;
+	}
+
+	// ---------- Spacing fix for the form footer ----------
+	.editor-wrapper > button,
+	.editor-wrapper > .button,
+	.editor-wrapper > a.button {
+		margin-top: 8px;
+		margin-right: 6px;
+	}
+}
