@@ -1,0 +1,123 @@
+// ShortPixel Account panel ( API key ), on the remove background and upscale screens.
+.emr-sp-account {
+	margin-top: 16px;
+	margin-bottom: 24px;
+
+	.emr-sp-account-body { padding: 12px 0 4px; }
+	.emr-sp-intro { margin: 0 0 12px; color: #50575e; }
+
+	.emr-sp-key-card {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		background: #f8f8f8;
+		border: 1px solid #e2e2e2;
+		border-radius: 6px;
+		padding: 12px 16px;
+		gap: 12px;
+	}
+
+	.emr-sp-key-status { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
+
+	.emr-sp-status-dot {
+		width: 9px;
+		height: 9px;
+		border-radius: 50%;
+		background: #46b450;
+		flex-shrink: 0;
+		box-shadow: 0 0 0 3px rgba(70, 180, 80, .15);
+	}
+
+	.emr-sp-key-label {
+		font-size: 11px;
+		text-transform: uppercase;
+		letter-spacing: .05em;
+		color: #888;
+		display: block;
+		margin-bottom: 2px;
+	}
+
+	.emr-sp-key-value { font-size: 13px; color: #333; }
+	.emr-sp-key-actions { display: flex; gap: 8px; flex-shrink: 0; align-items: center; }
+
+	.emr-sp-change-btn,
+	.emr-sp-remove-btn {
+		display: inline-flex !important;
+		align-items: center !important;
+		justify-content: center !important;
+		font-size: 12px !important;
+		padding: 0 14px !important;
+		height: 32px !important;
+		min-height: 32px !important;
+		line-height: 1 !important;
+		min-width: 0 !important;
+		box-sizing: border-box !important;
+
+		&[hidden] { display: none !important; }
+	}
+
+	.emr-sp-remove-btn {
+		color: #b32d2e !important;
+		border-color: #b32d2e !important;
+
+		&:hover {
+			background: #b32d2e !important;
+			color: #fff !important;
+		}
+	}
+
+	.emr-sp-edit-form {
+		margin-top: 12px;
+		background: #fff;
+		border: 1px solid #e2e2e2;
+		border-radius: 6px;
+		padding: 16px;
+
+		label {
+			display: block;
+			font-size: 12px;
+			font-weight: 600;
+			color: #555;
+			margin-bottom: 8px;
+			text-transform: uppercase;
+			letter-spacing: .04em;
+		}
+
+		&[hidden] { display: none; }
+	}
+
+	.emr-sp-edit-row {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		flex-wrap: wrap;
+
+		input[type="text"] { flex: 1; min-width: 180px; max-width: 280px; }
+	}
+
+	.emr-sp-save-btn {
+		background: #1abdca !important;
+		border-color: #15a8b4 !important;
+		color: #fff !important;
+		font-weight: 600 !important;
+
+		&:hover { background: #15a8b4 !important; }
+		&:disabled { background: #ccc !important; border-color: #bbb !important; }
+	}
+
+	.emr-sp-cancel-link {
+		font-size: 12px;
+		color: #888;
+		text-decoration: none;
+
+		&:hover { color: #555; }
+	}
+
+	#emr-apikey-notice {
+		border-radius: 4px;
+		margin-top: 12px;
+		padding: 8px 12px;
+
+		p { margin: 0; }
+	}
+}

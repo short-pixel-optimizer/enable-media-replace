@@ -356,12 +356,12 @@ class Replacer
 			// These must be always defined.
 			$id_field = esc_sql($data['id']);
 			$value_field = esc_sql($data['value']);
-			$main_id = isset($data['main_id']) ? esc_sql($data['main_id']) : 'NULL as main_id'; 
+			$main_field = isset($data['main_id']) ? esc_sql($data['main_id']) : 'NULL as main_id'; 
 			
 
 			switch ($table) {
 				case "postmeta": // special case.
-					$sql = "SELECT $id_field, $value_field, $main_id FROM " . $wpdb->postmeta . '
+					$sql = "SELECT $id_field, $value_field, $main_field FROM " . $wpdb->postmeta . '
 	                WHERE post_id in (SELECT ID from ' . $wpdb->posts . ' where post_status in ("publish", "future", "draft", "pending", "private") ) AND meta_value like %s';
 					$type = 'post';
 
@@ -370,7 +370,7 @@ class Replacer
 				default:
 					$wp_table = $wpdb->{$table};  // termmeta, commentmeta etc
 
-					$sql = "SELECT $id_field, $value_field, $main_id FROM $wp_table WHERE $value_field like %s";
+					$sql = "SELECT $id_field, $value_field, $main_field FROM $wp_table WHERE $value_field like %s";
 
 					$update_sql = " UPDATE $wp_table set $value_field = %s WHERE $id_field  = %d ";
 					break;
@@ -416,7 +416,7 @@ class Replacer
 							{
 								if (isset($data['cache_group']))
 								{
-									$main_id = $row[$main_id];
+									$main_id = $row[$main_field];
 									wp_cache_delete($main_id, $data['cache_group']);
 								}
 							}

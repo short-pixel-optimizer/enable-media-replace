@@ -1,4 +1,32 @@
 <?php
+/**
+ * Upsell box offering to install or activate related plugins.
+ *
+ * Included with include_once by views/screen.php and
+ * views/prepare-remove-background.php (inside their forms), so it inherits
+ * their scope. Returns without output unless the filter `emr/upsell`
+ * (default current_user_can('install_plugins')) is truthy.
+ *
+ * Checks, through get_plugins() and is_plugin_active(), the basenames:
+ * - shortpixel-image-optimiser/wp-shortpixel.php (slug `spio`)
+ * - shortpixel-adaptive-images/short-pixel-ai.php (slug `spai`)
+ * - fastpixel-website-accelerator/fastpixel.php (slug `fp`)
+ * - envira-gallery-lite/envira-gallery-lite.php and envira-gallery/envira-gallery.php
+ *   (computed but no Envira block is rendered)
+ * A block is shown for SPIO and FastPixel when the plugin is not active; it
+ * offers INSTALL NOW when not installed, ACTIVATE when installed but inactive.
+ * The SPAI block is inside an HTML comment, so it is sent to the browser but
+ * not displayed.
+ *
+ * Hidden inputs (no name, read by id from js/upsell.js, localised as `emr_upsell`):
+ * - `#upsell-nonce` nonce for `emr-plugin-install`
+ * - `#upsell-nonce-activate` nonce for `emr-plugin-activate`
+ * Buttons carry `data-action` and `data-plugin` (slug); the script posts them
+ * to the AJAX actions `emr_plugin_install` / `emr_plugin_activate`
+ * (classes/external/upsell_installer.php).
+ *
+ * @hook filter emr/upsell
+ */
 namespace EnableMediaReplace;
 
 //use \EnableMediaReplace\UIHelper;

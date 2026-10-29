@@ -1,4 +1,28 @@
 <?php
+/**
+ * Success screen shown after a replacement, with a countdown redirect.
+ *
+ * Loaded by ViewController::viewSuccess() (from UploadViewController and
+ * RemoveBackGroundViewController::loadPost()), which enqueues js/emr_success.js
+ * and exits after the view. The view ends by requiring
+ * wp-admin/admin-footer.php itself.
+ *
+ * Variables in scope:
+ * - $controller the calling ViewController
+ * - $view stdClass with:
+ *   - postUrl (string) redirect target: the attachment edit screen
+ *     (`post.php?action=edit&post=N&emr_replaced=1`), or the remove-background
+ *     screen when the upload form had `remove_after_progress` checked
+ *   - post_id (int) and emrUrl (string) are also set, but unused here
+ *
+ * Countdown: js/emr_success.js writes the remaining seconds into
+ * `#redirect_counter` and navigates to the href of `#redirect_url` when it
+ * reaches zero; the timeout comes from `emr_success_options.timeout`
+ * (filter `emr/success/timeout`, default 5).
+ *
+ * Hooks fired: filter `emr/upsell` (default current_user_can('install_plugins'))
+ * gates the ShortPixel Image Optimizer recommendation line.
+ */
 namespace EnableMediaReplace;
 
 if (! defined('ABSPATH')) {

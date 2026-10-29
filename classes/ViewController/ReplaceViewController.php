@@ -1,4 +1,9 @@
 <?php
+/**
+ * The replace screen.
+ *
+ * @package EnableMediaReplace\ViewController
+ */
 namespace EnableMediaReplace\ViewController;
 
 if (! defined('ABSPATH')) {
@@ -9,15 +14,34 @@ use EnableMediaReplace as emr;
 use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
 use EnableMediaReplace\Controller\ReplaceController as ReplaceController;
 
+/**
+ * Renders the replace form (`views/screen.php`) for `action=media_replace`.
+ *
+ * Lifecycle: singleton via getInstance(), called from EnableMediaReplacePlugin::route()
+ * when `attachment_id` is a positive integer. Registers no hooks.
+ */
 class ReplaceViewController extends \EnableMediaReplace\ViewController
 {
+	 /**
+	  * The singleton instance.
+	  *
+	  * @var ReplaceViewController|null
+	  */
 	 static $instance;
 
+	 /**
+	  * Creates the controller; see ViewController::__construct().
+	  */
 	 public function __construct()
 	 {
 		 parent::__construct();
 	 }
 
+	 /**
+	  * Returns the singleton.
+	  *
+	  * @return ReplaceViewController
+	  */
 	 public static function getInstance()
 	 {
 		 	if (is_null(self::$instance))
@@ -26,6 +50,29 @@ class ReplaceViewController extends \EnableMediaReplace\ViewController
 			return self::$instance;
 	 }
 
+	 /**
+	  * Prepares the view data and loads the replace screen.
+	  *
+	  * Shows ERROR_IMAGE_PERMISSION (which exits, so the wp_die() after it is unreachable)
+	  * when checkImagePermission() fails. Sets the preview and source sizes on UIHelper and
+	  * fills `$view` with:
+	  * - `attachment` (WP_Post), `sourceFile` (untranslated source file, for the preview),
+	  *   `sourceMime`;
+	  * - `settings`: the `enable_media_replace` option merged over the defaults
+	  *   (`replace_type` 'replace', `timestamp_replace` TIME_UPDATEMODIFIED, `custom_date`
+	  *   now in server time via date(), `new_location` false, `new_location_dir` false);
+	  * - `is_author_restricted`: when true, `settings['replace_type']` is forced to
+	  *   'replace' because search-replace is not offered to these users;
+	  * - `settings['replace_type']` then passes through `emr/replace/default_type`, which
+	  *   runs after the author restriction and can override it;
+	  * - `is_movable`: `emr/replace/file_is_movable` (default true; false for offloaded files);
+	  * - `custom_basedir`: the uploads basedir with trailing slash.
+	  *
+	  * @hook filter emr/replace/default_type
+	  * @hook filter emr/replace/file_is_movable
+	  * @uses ReplaceController::TIME_UPDATEMODIFIED
+	  * @return void
+	  */
 	 public function load()
 	 {
 		 	$attachment_id = intval($_GET['attachment_id']);

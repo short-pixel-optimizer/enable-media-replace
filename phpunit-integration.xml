@@ -1,0 +1,63 @@
+<?xml version="1.0"?>
+<!--
+	Integration-config suites. The bootstrap is tests/Integration/bootstrap.php
+	for every suite here, because PHPUnit allows one bootstrap per config
+	file. The Multisite suite needs WP_MULTISITE set before the WP test
+	library loads, so bin/test.sh with the ms flag passes PHPUnit the
+	bootstrap option with tests/Multisite/bootstrap.php on the command line
+	(a command-line bootstrap overrides the one below); that file sets the
+	multisite switches and then requires tests/Integration/bootstrap.php.
+-->
+<phpunit
+	bootstrap="tests/Integration/bootstrap.php"
+	backupGlobals="false"
+	colors="true"
+	convertErrorsToExceptions="true"
+	convertNoticesToExceptions="true"
+	convertWarningsToExceptions="true"
+	defaultTestSuite="Integration"
+	>
+	<testsuites>
+		<testsuite name="Integration">
+			<directory prefix="test-" suffix=".php">./tests/Integration</directory>
+			<!-- Excluded: define()s EMR constants (EMR_CAPABILITY and
+			     friends) that would poison every test running after it in
+			     the same process. Runs as the IntegrationIsolated suite
+			     (second phpunit invocation made by the integration mode of
+			     bin/test.sh). -->
+			<exclude>./tests/Integration/test-ConstantsAndFilters.php</exclude>
+		</testsuite>
+		<!-- Constant-defining tests: must run in their own PHP process
+		     (see the exclude above). -->
+		<testsuite name="IntegrationIsolated">
+			<file>./tests/Integration/test-ConstantsAndFilters.php</file>
+		</testsuite>
+		<!-- Live-API smoke tests: cost real quota credits and need
+		     SHORTPIXEL_SMOKE_KEY. Excluded from plain runs by
+		     defaultTestSuite above; opt in via the smoke flag of
+		     bin/test.sh (= phpunit with the Smoke testsuite). -->
+		<testsuite name="Smoke">
+			<directory prefix="test-" suffix=".php">./tests/Smoke</directory>
+		</testsuite>
+		<!-- Cross-plugin compatibility tests: need the partner plugins
+		     (Elementor, Yoast SEO, Polylang, WooCommerce, WP Offload Media
+		     Lite, the page builders and the commercial zips in
+		     tests/partner-plugins) extracted + activated in the test
+		     install. Excluded from plain runs by defaultTestSuite above;
+		     opt in via the compat flag of bin/test.sh, which prepares the
+		     plugins and sets EMR_PARTNER_PLUGINS=1. -->
+		<testsuite name="Compat">
+			<directory prefix="test-" suffix=".php">./tests/Compat</directory>
+		</testsuite>
+		<!-- Multisite tests: need a multisite WP test install, which the
+		     WP test bootstrap only builds when WP_MULTISITE=1 is in the
+		     environment. Excluded from plain runs by defaultTestSuite
+		     above; opt in via the ms flag of bin/test.sh, which sets the
+		     env var and passes tests/Multisite/bootstrap.php as the
+		     bootstrap (see the comment at the top of this file). Tests
+		     self-skip on a single-site install. -->
+		<testsuite name="Multisite">
+			<directory prefix="test-" suffix=".php">./tests/Multisite</directory>
+		</testsuite>
+	</testsuites>
+</phpunit>

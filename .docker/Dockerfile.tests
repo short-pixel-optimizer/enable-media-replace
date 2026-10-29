@@ -1,0 +1,138 @@
+# EMR test runner — matches the PHP + extensions the GitHub Actions
+# workflow at .github/workflows/phpunit.yml installs via shivammathur/setup-php.
+#
+# PHP version is a build arg so the same Dockerfile builds an image for
+# each supported PHP version (7.4 / 8.3 / 8.5). The build arg is
+# parameterised from docker-compose.tests.yml via the PHP_VERSION env var.
+#
+# Multi-arch: works on both linux/amd64 and linux/arm64 (Apple Silicon)
+# because official php:*-cli images publish both architectures for all
+# currently-supported PHP versions.
+#
+# The image contents are deliberately identical to the ShortPixel Image
+# Optimizer harness, so docker-compose.tests.yml tags it spio-tests:php<v>
+# and both plugins share the same built images. The only difference is the
+# name of the tuning ini file below; the settings in it are the same.
+
+ARG PHP_VERSION=8.3
+FROM php:${PHP_VERSION}-cli
+
+# System dependencies:
+#   - subversion:            bin/install-wp-tests.sh does `svn checkout` of the
+#                            WordPress test framework.
+#   - default-mysql-client:  the install script uses `mysql -h ...` to create
+#                            the test database.
+#   - git + unzip:           composer prefers them for some source packages.
+#   - libzip-dev + libxml2-dev + libonig-dev:  headers for the PHP zip / xml /
+#                            mbstring extensions we install below.
+#   - libjpeg/libpng/libwebp/libfreetype dev headers: for the GD extension —
+#                            the integration suite generates real thumbnails
+#                            via wp_generate_attachment_metadata(), which
+#                            needs a WP image editor (GD).
+#   - curl / ca-certificates: WP-CLI download + HTTPS to the SVN endpoint.
+#
+# ARCHIVED BASE (PHP 7.4): php:7.4-cli is built on Debian 11 "bullseye",
+# whose long-term support has ended. deb.debian.org still lists
+# bullseye-security package versions but returns 404 for the files
+# (e.g. ca-certificates, curl), so `apt-get install` fails and the
+# PHP 7.4 image cannot be built. For bullseye only, apt is pointed at
+# archive.debian.org, which carries `bullseye` + `bullseye-updates` (it has
+# NO bullseye-security yet — listing it would make `apt-get update` fail).
+# Archived Release files are past their Valid-Until date, hence
+# Check-Valid-Until=false. Fine for a disposable test runner; images on
+# newer Debian releases (PHP 8.x) are left untouched. The sources file is
+# written from scratch rather than edited in place.
+RUN . /etc/os-release \
+    && if [ "$VERSION_CODENAME" = "bullseye" ]; then \
+        printf '%s\n' \
+            'deb http://archive.debian.org/debian bullseye main' \
+            'deb http://archive.debian.org/debian bullseye-updates main' \
+            > /etc/apt/sources.list \
+        && rm -f /etc/apt/sources.list.d/* \
+        && echo 'Acquire::Check-Valid-Until "false";' > /etc/apt/apt.conf.d/99archived-release; \
+    fi \
+    && apt-get update && apt-get install -y --no-install-recommends \
+        subversion \
+        default-mysql-client \
+        git \
+        unzip \
+        curl \
+        ca-certificates \
+        libzip-dev \
+        libxml2-dev \
+        libonig-dev \
+        libjpeg-dev \
+        libpng-dev \
+        libwebp-dev \
+        libfreetype6-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# PHP extensions the plugin + test harness need. `json` is bundled in PHP 8+
+# so it's not in the install list — the workflow's `extensions:` value is a
+# no-op for it too.
+#
+# GD configure syntax differs between PHP 7.4 (--with-jpeg etc. on
+# docker-php-ext-configure) and needs jpeg+webp+freetype enabled explicitly.
+RUN docker-php-ext-configure gd --with-jpeg --with-webp --with-freetype \
+    && docker-php-ext-install \
+        gd \
+        mbstring \
+        mysqli \
+        xml \
+        zip
+
+# Composer — copied from the official Composer image to avoid a manual
+# curl-verify-checksum dance. Pin to Composer 2 (matches most CI defaults).
+COPY --from=composer:2 /usr/bin/composer /usr/local/bin/composer
+
+# WP-CLI phar + a small wrapper that always passes --allow-root, because
+# the test container runs as root and WP-CLI refuses to run as root
+# without that flag (bin/install-wp-tests.sh calls `wp core download`,
+# `wp config create`, `wp core install` and would otherwise fail).
+RUN curl -sSL https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar \
+        -o /usr/local/bin/wp.phar \
+    && chmod +x /usr/local/bin/wp.phar \
+    && printf '#!/bin/sh\nphp /usr/local/bin/wp.phar --allow-root "$@"\n' > /usr/local/bin/wp \
+    && chmod +x /usr/local/bin/wp
+
+# MySQL 8 auto-generates a self-signed TLS cert at startup and offers TLS
+# on every incoming connection. The mysql client shipped by Debian's
+# `default-mysql-client` package is actually MariaDB 11.x's client
+# (mariadb-client-core), which tries to negotiate TLS and rejects the
+# self-signed cert with:
+#
+#     ERROR 2026 (HY000): TLS/SSL error: self-signed certificate in certificate chain
+#
+# This kills bin/install-wp-tests.sh at the "create test database" step.
+#
+# Fix: wrap /usr/bin/mysql with a shim at /usr/local/bin/mysql that
+# always injects --skip-ssl before the caller's arguments. Why a wrapper
+# and not a /root/.my.cnf override?
+#
+#   * my.cnf works, but MariaDB's client aborts with exit 7 the moment
+#     it sees an option name it doesn't recognise (e.g. `ssl-mode=`,
+#     which is a MySQL-8-client option). Adding both names for
+#     cross-compat is a trap.
+#   * The wrapper is explicit — `mysql` inside this container always
+#     connects without TLS, regardless of which package version is
+#     installed. Survives a swap to mysql-community-client too, because
+#     --skip-ssl is understood by both MariaDB's and MySQL's clients.
+#
+# The wrapper lives in /usr/local/bin (earlier in PATH than /usr/bin)
+# and calls /usr/bin/mysql by absolute path, so there's no shell-lookup
+# loop. Safe because the connection never leaves the Docker internal
+# network — no MITM risk.
+#
+# Not needed on the CI runner because shivammathur/setup-php installs a
+# mysql client that handles the TLS handshake with MySQL 8 gracefully.
+RUN printf '#!/bin/sh\nexec /usr/bin/mysql --skip-ssl "$@"\n' > /usr/local/bin/mysql \
+    && chmod +x /usr/local/bin/mysql
+
+# PHP tuning to match what shivammathur/setup-php uses in the CI:
+#   post_max_size=256M, memory_limit=512M
+RUN { \
+        echo 'post_max_size=256M'; \
+        echo 'memory_limit=512M'; \
+    } > /usr/local/etc/php/conf.d/emr-test-tuning.ini
+
+WORKDIR /opt/plugin

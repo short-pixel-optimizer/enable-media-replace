@@ -1,4 +1,22 @@
 <?php
+/**
+ * Legacy POST handler for the remove-background replacement.
+ *
+ * Not loaded by anything: the `do_background_replace` route runs
+ * RemoveBackGroundViewController::loadPost(), which duplicates and replaces
+ * this file. Kept as it is for reference; it does not work if included:
+ * - it verifies no nonce;
+ * - it calls $replacer->getSourceFile() while only $replaceController is defined;
+ * - it uses \EnableMediaReplace\Replacer::MODE_REPLACE / TIME_UPDATEMODIFIED,
+ *   constants that live on ReplaceController;
+ * - it passes `updateFile` instead of `uploadFile` to setupParams().
+ *
+ * Expected input when it was used: POST `key` (remove-background result key)
+ * and `ID` (attachment id). Redirects to UIHelper::getSuccesRedirect() on
+ * success or UIHelper::getFailedRedirect() when run() returns null.
+ *
+ * @todo This view is dead code superseded by RemoveBackGroundViewController::loadPost(); remove the file.
+ */
 namespace EnableMediaReplace;
 
 use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
