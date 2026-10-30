@@ -749,6 +749,11 @@ class WPQ implements Queue
    * is never done automatically.
    *
    * @return void
+      *
+   * @todo The static $itemCache is not cleared here (nor by removeItems()),
+   *       so getItem() keeps returning Items for rows this call deleted
+   *       until the request ends. Suggested fix: reset $itemCache in
+   *       resetQueue() and clear the removed ids in removeItems().
    */
   public function resetQueue()
   {

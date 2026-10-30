@@ -150,6 +150,16 @@ classes/
   Controller/
     ReplaceController.php  - the replace flow (source/target, copy, metadata, replacer, dates, cache)
     RemoteNoticeController.php - remote notices from api.shortpixel.com
+    Bulk/                  - the bulk queue, ported from SPIO's queue layer (PSR-4, autoloaded)
+      BulkQueue.php        - the ShortQ queue (slug emr, name bulk): prepare / dequeue lifecycle, stats
+      QueueController.php  - one tick: key and plan gates, run the queue, process the items
+      BulkController.php   - create / start / finish a bulk run, the bulk logs (option emr_bulk_logs)
+      ActionController.php - sends an item to the API, applies the result through ReplaceController, restores
+      BulkApi.php          - reducer / cleanup client for remove_background and scale_image
+      BackupController.php - originals under uploads/EMR_Backups/<yyyy>/<mm>/ before the swap
+      ResponseController.php - per-item messages for the bulk screen and the log
+  Model/Bulk/              - QueueItem (attachment + action + data + result), QueueItemData, QueueItemResult,
+                             BulkImage (attachment adapter: file, URL, width, upscale factor, _emr_bulk marker)
   ViewController.php       - abstract base: view loading, error codes, viewError()/viewSuccess()
   ViewController/
     ReplaceViewController.php          - the replace screen
@@ -209,6 +219,26 @@ docs/                      - the documentation and test plan
   `emr_returnurl`, `emr_unique_filename`, `enable_media_replace_title`.
 - **Remote API:** only `api.shortpixel.com` (reducer, cleanup, api-status,
   notices). Tests stub it at the `pre_http_request` boundary.
+- **Bulk queue:** `Controller/Bulk/` is a port of SPIO's queue layer on the
+  bundled ShortQ module and keeps SPIO's class and method names so fixes
+  port one-to-one. One queue (`InstallHelper::QUEUE_SLUG` / `QUEUE_NAME`)
+  runs one operation at a time: `background` or `upscale`, or the
+  `bulk-restore` custom operation. `BulkController::createNewBulk()` stores
+  the operation and its options in the queue's custom_data and flags
+  `preparing`; `QueueController::processQueue()` is one tick (prepare a page
+  of IDs, or dequeue and process `numitems`); `startBulk()` moves to
+  `running`; `finishBulk()` logs and resets. Results are applied in place
+  through `ReplaceController` with the single flow's parameters, after the
+  original was copied to `EMR_Backups`; the attachment then carries the
+  `_emr_bulk` post meta (operation data and backup path), which a later run
+  of the same operation skips and a restore consumes. The selectors that
+  feed the prepare phase (WooCommerce product images, media library) hook
+  `emr/bulk/source_ids`; without one, the explicit `items` list of the bulk
+  options is used. Other hooks: `emr/bulk/queue_options`,
+  `emr/bulk/custom_options`, `emr/bulk/backup_dir`, `emr/bulk/api/request`,
+  `emr/bulk/api/timeout`, `emr/bulk/plan_check_ttl`, `emr/bulk/prepare_items`,
+  `emr/bulk/item/done`, `emr/bulk/item/failed`. The bulk needs an API key
+  on an Unlimited plan (checked once per hour, transient `emr_bulk_plan_ok`).
 
 ## Git workflow (no commits, no branches, no worktrees unless asked)
 

@@ -7,7 +7,8 @@
 namespace EnableMediaReplace;
 use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
 use EnableMediaReplace\Notices\NoticeController as Notices;
-use EnableMediaReplace\ShortQ\ShortQ;
+use EnableMediaReplace\Controller\Bulk\BulkController;
+use EnableMediaReplace\Controller\Bulk\QueueController;
 
 /**
  * Deactivation and uninstall routines.
@@ -41,10 +42,11 @@ class InstallHelper
 		 *
 		 * Deletes `enable_media_replace` (the last-used replace and
 		 * remove-background form settings), and `emr_news` and `emr_url_cache`,
-		 * which no current code reads or writes. Then removes EMR's queue: its
-		 * rows in the shared `shortpixel_queue` table and the `shortqwp_emr`
-		 * option. ShortQ drops the table itself only when no rows of any
-		 * plugin remain, so an active SPIO or RTA install keeps its queue.
+		 * which no current code reads or writes. Then removes the bulk state:
+		 * the queue (its rows in the shared `shortpixel_queue` table and the
+		 * `shortqwp_emr` option; ShortQ drops the table itself only when no
+		 * rows of any plugin remain, so an active SPIO or RTA install keeps
+		 * its queue), the bulk logs option and the cached plan check.
 		 *
 		 * Registered from the root file as 'uninstallPlugin'; the declared name
 		 * differs only in case, which PHP resolves.
@@ -65,8 +67,9 @@ class InstallHelper
 			delete_option( 'emr_news' );
 			delete_option( 'emr_url_cache');
 
-			$shortQ = new ShortQ( self::QUEUE_SLUG );
-			$shortQ->getQueue( self::QUEUE_NAME )->unInstall();
+			QueueController::uninstallPlugin();
+			BulkController::uninstallPlugin();
+			delete_transient( QueueController::PLAN_TRANSIENT );
 		}
 
 		/**
