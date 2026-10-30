@@ -33,9 +33,19 @@
 // The main form.
 .emr_upload_form
 {
+	color: #1d2327;
+
+	h1 {
+		font-size: 23px;
+		font-weight: 600;
+		margin: 18px 0 18px;
+		color: #1d2327;
+	}
+
   form
   {
     display: flex; //editor and upsell
+    gap: 20px;
     .upsell-wrapper
     {
       margin-left: 10px;
@@ -45,6 +55,11 @@
 	.editor-wrapper
 	{
 		width: 100%;
+
+		> button, > .button, > a.button {
+			margin-top: 8px;
+			margin-right: 6px;
+		}
 	}
 	.emr_drop_area {
 		display: none;
@@ -53,16 +68,23 @@
 	.wrapper
   {
 //    margin: 15px 0;
-    padding: 18px;
-    border: 1px solid #ccc;
+    padding: 22px 24px;
+    margin-bottom: 18px;
+    border: 1px solid #e6e7e9;
+    border-radius: 10px;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(16, 24, 40, 0.06), 0 1px 2px rgba(16, 24, 40, 0.04);
 
     .section-header
     {
-      font-size: 18px;
+      font-size: 15px;
+      font-weight: 600;
+      color: #1d2327;
       //text-align: center;
-      border-bottom: 1px solid #ccc;
-      padding: 6px 0;
-      margin: 0 0 15px 0;
+      border-bottom: 1px solid #f0f0f1;
+      padding: 0 0 12px;
+      margin: 0 0 16px;
+      letter-spacing: 0;
     }
   }
 
@@ -95,10 +117,12 @@
         display: inline-block;
         margin-right: 25px;
         margin-bottom: 10px;
-        border: 1px solid #ddd;
+        border: 1px solid #e6e7e9;
+        border-radius: 8px;
+        overflow: hidden;
         vertical-align: top;
 				box-sizing: border-box;
-				background: #fff;
+				background: #fafafa;
 				max-width: calc(50% - 25px);
 
 				img { object-fit: contain; }
@@ -199,7 +223,8 @@
   .form-error, .form-warning
   {
     background: #fff;
-    padding: 8px;
+    padding: 10px 14px;
+    border-radius: 6px;
     border-left: 4px solid #ff0000;
   //  display: inline-block;
     margin: 10px 0;
@@ -219,24 +244,38 @@
   .option-flex-wrapper
   {
     display: flex;
+    gap: 18px;
+
+    .options.wrapper {
+      margin-left: 0;
+    }
   }
 
   .replace_type.wrapper
   {
     flex: 1;
-    border: 1px solid #ccc;
-    margin: 15px 0;
+    border: 1px solid #e6e7e9;
+    margin: 0 0 15px 0;
     .option
     {
       position: relative;
       z-index: 1;
+      padding: 4px 0;
       &.disabled
       {
       //  color: #eee;
       }
       label
       {
-        font-size: 1.2em;
+        font-size: 14px;
+        font-weight: 500;
+      }
+      .howto
+      {
+        color: #646970;
+        font-size: 13px;
+        line-height: 1.55;
+        margin: 6px 0 14px 24px;
       }
       .nofeature-notice
       {
@@ -264,9 +303,9 @@
   .options.wrapper
   {
     flex: 1;
-    border: 1px solid #ccc;
+    border: 1px solid #e6e7e9;
     padding: 15px;
-    margin: 15px 0 15px 35px;
+    margin: 0 0 15px 35px;
     .custom_date
     {
       .emr_datepicker {
@@ -298,9 +337,17 @@
     .option
     {
       label { vertical-align: top; }
+      .howto
+      {
+        color: #646970;
+        font-size: 13px;
+        line-height: 1.55;
+        margin: 6px 0 14px 24px;
+      }
     }
     .small
     {
+      color: #646970;
       font-size: 10px;
       vertical-align: top;
       margin-left: 8px;
@@ -310,6 +357,10 @@
       margin: 8px 0 0 25px;
       visibility: hidden;
       opacity: 0;
+      input[type=text] {
+        border-radius: 6px;
+        border-color: #d6d8db;
+      }
       span.field-title {
         display: inline-block;
         margin-bottom: 4px;
@@ -343,9 +394,11 @@
   .form_controls.wrapper
   {
     clear: both;
-    margin: 8px 0 15px 0;
-    border: 0;
-    padding: 0;
+    margin: 0 0 15px 0;
+    border: none;
+    padding: 4px 0 0;
+    box-shadow: none;
+    background: transparent;
     .button
     {
       padding-left: 20px;
@@ -364,7 +417,10 @@
     background: #fff;
     width: 250px;
     min-height: 270px;
-    border: 1px solid #ccc;
+    border: 1px solid #e6e7e9;
+    border-radius: 10px;
+    box-shadow: 0 1px 3px rgba(16, 24, 40, 0.06), 0 1px 2px rgba(16, 24, 40, 0.04);
+    overflow: hidden;
     padding: 10px;
     //margin: 0 0 10px 25px;
     margin-bottom: 10px;
@@ -411,6 +467,7 @@
         font-size: 20px;
 				text-transform: uppercase;
 				border: 0;
+				border-radius: 6px;
       }
     }
 		.hidden { display: none !important; }
@@ -445,6 +502,70 @@
 			 }
 		}
   }
+
+	// *** Action buttons ( ShortPixel teal )
+	.button,
+	.button-primary,
+	input[type=submit].button,
+	input[type=submit].button-primary {
+		border-radius: 6px;
+		font-weight: 600;
+		padding: 0 18px;
+		height: 36px !important;
+		min-height: 36px !important;
+		line-height: 34px;
+		min-width: 110px;
+		text-align: center;
+		box-sizing: border-box;
+		vertical-align: middle;
+		text-shadow: none;
+		box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04);
+	}
+
+	a.button,
+	button.button,
+	button.button-primary {
+		display: inline-flex !important;
+		align-items: center !important;
+		justify-content: center !important;
+		line-height: 1 !important;
+	}
+
+	.button-primary,
+	input[type=submit].button-primary {
+		background: #1abdca;
+		border-color: #15a8b4;
+		color: #fff;
+
+		&:hover {
+			background: #15a8b4;
+			border-color: #138c96;
+			color: #fff;
+		}
+	}
+	.button-primary:focus,
+	.button-primary:active {
+		background: #15a8b4;
+		border-color: #138c96;
+		box-shadow: 0 0 0 1px #fff, 0 0 0 3px rgba(26, 189, 202, 0.4);
+	}
+	.button-primary[disabled],
+	input[type=submit][disabled] {
+		background: #c8cdd1 !important;
+		border-color: #c8cdd1 !important;
+		color: #fff !important;
+	}
+
+	.button:not(.button-primary) {
+		border-color: #d6d8db;
+		background: #fff;
+		color: #50575e;
+
+		&:hover {
+			border-color: #1abdca;
+			color: #1abdca;
+		}
+	}
 
   @media( max-width: 1200px)
   {

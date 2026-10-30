@@ -363,7 +363,6 @@ class PluginAdminScreensTest extends EMR_MainTestCase {
 		$this->assertSame( '', $output );
 		$this->assertTrue( wp_script_is( 'emr_admin', 'enqueued' ) );
 		$this->assertTrue( wp_style_is( 'emr_style', 'enqueued' ) );
-		$this->assertTrue( wp_style_is( 'emr-redesign', 'enqueued' ) );
 		$this->assertTrue( wp_script_is( 'jquery-ui-datepicker', 'enqueued' ) );
 		$this->assertFalse( wp_script_is( 'emr_upsell', 'enqueued' ) );
 		$this->assertSame( array(), $double->calls );
@@ -552,10 +551,11 @@ class PluginAdminScreensTest extends EMR_MainTestCase {
 
 		$this->assertNull( emr()->admin_scripts() );
 
-		foreach ( array( 'emr_style', 'emr_edit-attachment', 'emr-remove-background', 'emr-redesign' ) as $handle ) {
+		foreach ( array( 'emr_style', 'emr_edit-attachment', 'emr-remove-background' ) as $handle ) {
 			$this->assertTrue( wp_style_is( $handle, 'registered' ), $handle );
 			$this->assertFalse( wp_style_is( $handle, 'enqueued' ), $handle );
 		}
+		$this->assertFalse( wp_style_is( 'emr-redesign', 'registered' ), 'The redesign rules live in the SCSS sources, no separate stylesheet.' );
 		foreach ( array( 'emr_admin', 'emr_upsell', 'emr_remove_bg', 'emr_shortpixel_account', 'emr_success' ) as $handle ) {
 			$this->assertTrue( wp_script_is( $handle, 'registered' ), $handle );
 			$this->assertFalse( wp_script_is( $handle, 'enqueued' ), $handle );
@@ -575,15 +575,14 @@ class PluginAdminScreensTest extends EMR_MainTestCase {
 		$this->assertFileExists( dirname( EMR_ROOT_FILE ) . '/css/rtl/admin.css' );
 	}
 
-	public function test_admin_scripts_style_sources_and_redesign_version() {
+	public function test_admin_scripts_style_sources() {
 		emr()->admin_scripts();
 		$styles = wp_styles()->registered;
 
 		$this->assertSame( plugins_url( 'css/edit_attachment.css', EMR_ROOT_FILE ), $styles['emr_edit-attachment']->src );
 		$this->assertSame( plugins_url( 'css/remove_background.css', EMR_ROOT_FILE ), $styles['emr-remove-background']->src );
-		$this->assertSame( plugins_url( 'css/redesign.css', EMR_ROOT_FILE ), $styles['emr-redesign']->src );
-		$this->assertSame( array( 'emr_style' ), $styles['emr-redesign']->deps );
-		$this->assertSame( filemtime( dirname( EMR_ROOT_FILE ) . '/css/redesign.css' ), $styles['emr-redesign']->ver );
+		$this->assertArrayNotHasKey( 'emr-redesign', $styles );
+		$this->assertFileDoesNotExist( dirname( EMR_ROOT_FILE ) . '/css/redesign.css' );
 	}
 
 	public function test_admin_scripts_script_sources_versions_and_dependencies() {

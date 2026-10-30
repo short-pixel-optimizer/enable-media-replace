@@ -4,15 +4,15 @@
 	margin-bottom: 24px;
 
 	.emr-sp-account-body { padding: 12px 0 4px; }
-	.emr-sp-intro { margin: 0 0 12px; color: #50575e; }
+	.emr-sp-intro { margin: 0 0 12px; color: #50575e; font-size: 13px; }
 
 	.emr-sp-key-card {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		background: #f8f8f8;
-		border: 1px solid #e2e2e2;
-		border-radius: 6px;
+		background: #fff;
+		border: 1px solid #e6e7e9;
+		border-radius: 8px;
 		padding: 12px 16px;
 		gap: 12px;
 	}
@@ -70,7 +70,7 @@
 		margin-top: 12px;
 		background: #fff;
 		border: 1px solid #e2e2e2;
-		border-radius: 6px;
+		border-radius: 8px;
 		padding: 16px;
 
 		label {
@@ -120,4 +120,10 @@
 
 		p { margin: 0; }
 	}
+}
+
+// Tinted panel. .emr_upload_form is needed to outrank `.emr_upload_form .wrapper` ( admin.scss ).
+.emr_upload_form .emr-sp-account.wrapper {
+	background: #f8fafb;
+	border: 1px solid #e2e8ea;
 }
