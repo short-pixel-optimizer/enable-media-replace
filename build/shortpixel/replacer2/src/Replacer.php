@@ -507,15 +507,16 @@ class Replacer
 			}
 		}
 
-		if ($isJson && $in_deep === false) // convert back to JSON, if this was JSON. Different than serialize which does WP automatically.
-		{
-
-			// wp-slash -> WP does stripslashes_deep which destroys JSON
-			$json_flags = $this->replace_settings['json_flags'];
-			Log::addDebug('Value was found to be JSON, encoding with flag: ' . $json_flags);
-			$content = json_encode($content, $json_flags);
-			Log::addDebug('Content returning (array ours) ', array($content));
-		} elseif (
+		// Fix removed is_deep check here to encode each time json was found.  It can happen in serialized array where subdata is in json format
+	    if ($isJson) // convert back to JSON, if this was JSON. Different than serialize which does WP automatically.
+	    {
+	      // wp-slash -> WP does stripslashes_deep which destroys JSON
+				$json_flags = $this->replace_settings['json_flags'];
+		  //	Log::addDebug('Value was found to be JSON, encoding with flag: ' . $json_flags);
+				$content = json_encode($content, $json_flags);
+	     // Log::addDebug('Content returning (array ours) ', array($content));
+	    }
+		 elseif (
 			$this->replace_settings['replace_no_serialize'] === false &&
 			$in_deep === false && (is_array($content) || is_object($content))
 		) {
