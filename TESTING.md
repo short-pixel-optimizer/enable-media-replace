@@ -486,11 +486,11 @@ empty filter prints `No tests executed!` and exits 0. Always read the count.
 
 The CI configuration lives in `.github/workflows/`:
 
-`phpunit.yml` ("EMR PHPUnit Tests") runs on every push to `updates` or
-`tests` and on pull requests into `updates` or `master`; any branch can be
-run by hand (Actions -> "Run workflow"). Pull requests whose source branch is
-`updates` or `tests` in this repository are skipped, because the push already
-tested that commit. Stale runs of the same pull request are cancelled; every
+`phpunit.yml` ("EMR PHPUnit Tests") runs on every push to `updates`,
+`tests` or `bulk` and on pull requests into `updates` or `master`; any branch
+can be run by hand (Actions -> "Run workflow"). Pull requests whose source
+branch is `updates`, `tests` or `bulk` in this repository are skipped, because
+the push already tested that commit. Stale runs of the same pull request are cancelled; every
 pushed commit keeps its own run. Four jobs, all on `ubuntu-latest` with MySQL 8.0 as a service
 container on port 3306 and PHP from `shivammathur/setup-php@v2`:
 
