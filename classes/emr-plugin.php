@@ -449,7 +449,7 @@ class EnableMediaReplacePlugin
     /** Load EMR views based on request
      *
      * Page callback of the hidden EMR page. Enqueues the shared styles and
-     * scripts (emr_style, emr-redesign, jquery-ui-datepicker, emr_admin),
+     * scripts (emr_style, jquery-ui-datepicker, emr_admin),
      * queues the feature notice, then dispatches on `$_GET['action']`:
      * - 'media_replace' with an `attachment_id` > 0:
      *   ReplaceViewController::load() (the replace form), plus emr_upsell.
@@ -585,8 +585,7 @@ class EnableMediaReplacePlugin
      * they need.
      *
      * Styles registered: emr_style (css/admin.css, or css/rtl/admin.css for
-     * RTL), emr_edit-attachment, emr-remove-background, and emr-redesign
-     * (depends on emr_style; versioned by file mtime).
+     * RTL), emr_edit-attachment and emr-remove-background.
      *
      * Scripts registered and their localised objects:
      * - emr_admin (js/emr_admin.js) -> `emr_options`: dateFormat (from

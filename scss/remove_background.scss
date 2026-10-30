@@ -108,6 +108,11 @@
 				}
 		}
 
+		// Hex code of the solid background colour.
+		#color_range {
+				text-transform: uppercase;
+		}
+
 		.bad-button
 		{
 			 text-align: right;
@@ -157,8 +162,8 @@
 		.lds-spinner {
 				display: inline-block;
 				position: relative;
-				width: 80px;
-				height: 80px;
+				width: 52px;
+				height: 52px;
 				border-radius: 50%;
 				border: 4px solid rgba(26, 189, 202, 0.18);
 				border-top-color: #1abdca;
