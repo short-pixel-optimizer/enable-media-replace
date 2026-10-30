@@ -136,6 +136,88 @@ class PackageLoaderTest extends WP_UnitTestCase {
 		return $uses;
 	}
 
+	/**
+	 * The closure the root file registered for the plugin's own classes
+	 * (classes/plugin.json): namespace EnableMediaReplace, dir = plugin root.
+	 *
+	 * @return array|null array( closure, static variables )
+	 */
+	private function plugin_loader() {
+		$root = dirname( dirname( __DIR__ ) );
+		foreach ( spl_autoload_functions() as $function ) {
+			if ( ! $function instanceof Closure ) {
+				continue;
+			}
+			$vars = ( new ReflectionFunction( $function ) )->getStaticVariables();
+			if ( isset( $vars['namespace'], $vars['dir'] ) && $root === $vars['dir'] && 'EnableMediaReplace' === $vars['namespace'] ) {
+				return array( $function, $vars );
+			}
+		}
+		return null;
+	}
+
+	/*
+	 * The plugin's own PSR-4 registration (classes/plugin.json).
+	 */
+
+	public function test_root_file_registers_one_psr4_loader_for_the_classes_directory() {
+		$loader = $this->plugin_loader();
+
+		$this->assertNotNull( $loader, 'No autoloader for EnableMediaReplace with the plugin root as dir.' );
+		$this->assertSame( array( 'classes' ), $loader[1]['classpaths'] );
+		$this->assertTrue( $loader[1]['psr4'] );
+	}
+
+	public function test_plugin_json_maps_the_namespace_to_classes_without_a_files_list() {
+		$json = json_decode( file_get_contents( dirname( dirname( __DIR__ ) ) . '/classes/plugin.json' ), true );
+
+		$this->assertSame( array( 'EnableMediaReplace' => 'classes' ), $json['autoload']['psr-4'] );
+		$this->assertArrayNotHasKey( 'files', $json['autoload'] );
+	}
+
+	/**
+	 * A probe class file is written under classes/ for the duration of the
+	 * test (unique name per run, removed in the finally block) so the
+	 * registered closure is exercised against the real directory.
+	 */
+	public function test_plugin_loader_includes_a_psr4_class_under_classes() {
+		$loader = $this->plugin_loader();
+		$this->assertNotNull( $loader );
+		$suffix = 'Probe' . substr( md5( uniqid( '', true ) ), 0, 8 );
+		$dir    = dirname( dirname( __DIR__ ) ) . '/classes/Controller/Bulk';
+		$made   = ! is_dir( $dir );
+		if ( $made ) {
+			mkdir( $dir, 0755, true );
+		}
+		$file  = $dir . '/' . $suffix . '.php';
+		$class = 'EnableMediaReplace\\Controller\\Bulk\\' . $suffix;
+		file_put_contents( $file, "<?php\nnamespace EnableMediaReplace\\Controller\\Bulk;\nclass {$suffix} { const PROBE = 'emr-psr4'; }\n" );
+		try {
+			$this->assertFalse( class_exists( $class, false ), 'Precondition: the probe is not loaded.' );
+
+			$this->assertTrue( class_exists( $class ), 'class_exists() with autoload must find the probe through the registered loader.' );
+			$this->assertSame( 'emr-psr4', constant( $class . '::PROBE' ) );
+			$this->assertContains( $file, get_included_files() );
+		} finally {
+			unlink( $file );
+			if ( $made ) {
+				rmdir( $dir );
+			}
+		}
+	}
+
+	public function test_plugin_loader_ignores_classes_outside_the_namespace_and_missing_files() {
+		$loader = $this->plugin_loader();
+		$this->assertNotNull( $loader );
+		$before = get_included_files();
+
+		$this->assertNull( $loader[0]( 'Some\\Vendor\\Thing' ) );
+		$this->assertNull( $loader[0]( 'EnableMediaReplace\\Controller\\Bulk\\NoSuchClassAnywhere' ) );
+
+		$this->assertSame( array(), array_values( array_diff( get_included_files(), $before ) ) );
+		$this->assertFalse( class_exists( 'EnableMediaReplace\\Controller\\Bulk\\NoSuchClassAnywhere', false ) );
+	}
+
 	/*
 	 * The bundled registration.
 	 */
@@ -148,10 +230,11 @@ class PackageLoaderTest extends WP_UnitTestCase {
 		$loaders = $this->module_loaders();
 
 		$this->assertEqualsCanonicalizing(
-			array( 'EnableMediaReplace\FileSystem', 'EnableMediaReplace\Notices', 'EnableMediaReplace\ShortPixelLogger', 'EnableMediaReplace\Replacer' ),
+			array( 'EnableMediaReplace\FileSystem', 'EnableMediaReplace\Notices', 'EnableMediaReplace\ShortPixelLogger', 'EnableMediaReplace\Replacer', 'EnableMediaReplace\ShortQ' ),
 			array_keys( $loaders )
 		);
-		$this->assertCount( 4, $loaders );
+		$this->assertCount( 5, $loaders );
+		$this->assertSame( array( 'shortq/src' ), $loaders['EnableMediaReplace\ShortQ'][1]['classpaths'] );
 		$this->assertSame( array( 'filesystem/src' ), $loaders['EnableMediaReplace\FileSystem'][1]['classpaths'] );
 		$this->assertSame( array( 'replacer2/src' ), $loaders['EnableMediaReplace\Replacer'][1]['classpaths'] );
 		$this->assertTrue( $loaders['EnableMediaReplace\Notices'][1]['psr4'] );

@@ -1,7 +1,45 @@
 <?php
+/**
+ * Directory model of the FileSystem module.
+ *
+ * @package EnableMediaReplace\FileSystem
+ */
 namespace EnableMediaReplace\FileSystem\Model\File;
 use EnableMediaReplace\ShortpixelLogger\ShortPixelLogger as Log;
 
+/**
+ * One directory, existing or not, with lazy status checks and the
+ * low-level operations on it.
+ *
+ * Obtain instances through FileSystemController::getDirectory() or
+ * FileModel::getFileDir(); `new DirectoryModel($path)` is equivalent. The
+ * constructor normalises the path once: a URL marks the model virtual, a
+ * path outside PHP's open_basedir marks it restricted (and non-existent),
+ * a path that ends in a file name is reduced to its directory, a path that
+ * does not exist is passed through realpath() in case it is a symlink, and
+ * the result is stored with a trailing slash. The name is taken with
+ * SplFileInfo because basename() mishandles non-latin names.
+ *
+ * `exists`, `is_writable` and `is_readable` are checked on first use and
+ * cached for the life of the object; check() resets them after creating
+ * the directory. getFiles() and getSubDirectories() build new models for
+ * every entry, so prefer FileSystemController::getFilesRecursive() with
+ * filters for large trees.
+ *
+ * Hooks fired by this class:
+ * - filter `shortpixel/file/basedir_check` (fileIsRestricted())
+ *
+ * @todo check() calls `chmod($this->path, $this->permission)` when the
+ *       directory exists but is not writable; the property is named
+ *       $new_directory_permission, so chmod() receives null and sets mode
+ *       0 before the following chmod() restores 0755. It then re-reads
+ *       the cached is_writable value, so the method reports failure even
+ *       when the chmod helped. Suggested fix: use $new_directory_permission
+ *       and reset $is_writable before testing again.
+ * @todo getPermissionRecursive() calls exists() on the result of
+ *       getParent(), which is false at the file system root. Suggested
+ *       fix: return false when there is no parent.
+ */
 /* Model for Directories
 *
 * For all low-level operations on directories
@@ -12,20 +50,79 @@ use EnableMediaReplace\ShortpixelLogger\ShortPixelLogger as Log;
 class DirectoryModel
 {
   // Directory info
+
+  /**
+   * Full path with trailing slash.
+   *
+   * @var string
+   */
   protected $path;
+
+  /**
+   * Last path segment (the directory's own name).
+   *
+   * @var string
+   */
   protected $name;
 
   // Directory status
+
+  /**
+   * Cached result of exists(); null until checked.
+   *
+   * @var bool|null
+   */
   protected $exists = null;
+
+  /**
+   * Cached result of is_writable(); null until checked.
+   *
+   * @var bool|null
+   */
   protected $is_writable = null;
+
+  /**
+   * Cached result of is_readable(); null until checked.
+   *
+   * @var bool|null
+   */
   protected $is_readable = null;
+
+  /**
+   * True when the path is a URL. Set in the constructor.
+   *
+   * @var bool|null
+   */
   protected $is_virtual = null;
+
+  /**
+   * True when the path is outside open_basedir. Set in the constructor.
+   *
+   * @var bool
+   */
   protected $is_restricted = false;
 
+  /**
+   * Unused.
+   *
+   * @var array
+   */
   protected $fields = array();
 
+  /**
+   * Mode for directories created by check(), when the parent's mode
+   * cannot be read.
+   *
+   * @var int
+   */
   protected $new_directory_permission = 0755;
 
+  /**
+   * Normalises the path and records what can be known without touching
+   * the directory; see the class description for the steps.
+   *
+   * @param string $path Full path to a directory or to a file in it.
+   */
   /** Creates a directory model object. DirectoryModel directories don't need to exist on FileSystem
   *
   * When a filepath is given, it  will remove the file part.
@@ -108,17 +205,32 @@ class DirectoryModel
     //  }
   }
 
+  /**
+   * Returns a new FileSystemController for the helpers the model needs.
+   *
+   * @return \EnableMediaReplace\FileSystem\Controller\FileSystemController
+   */
 	private function getFS()
 	{
 		return new \EnableMediaReplace\FileSystem\Controller\FileSystemController();
 	}
 
 
+  /**
+   * Returns the path with trailing slash.
+   *
+   * @return string
+   */
   public function __toString()
   {
     return (string) $this->path;
   }
 
+  /**
+   * Returns the full path, with trailing slash.
+   *
+   * @return string
+   */
   /** Returns path *with* trailing slash
   *
   * @return String Path with trailing slash
@@ -128,11 +240,21 @@ class DirectoryModel
     return $this->path;
   }
 
+  /**
+   * Returns the modification time of the directory.
+   *
+   * @return int|false Unix timestamp, false when it cannot be read.
+   */
   public function getModified()
   {
     return filemtime($this->path);
   }
 
+  /**
+   * Returns the directory's own name, without the path.
+   *
+   * @return string
+   */
   /**
   * Get basename of the directory. Without path
   */
@@ -141,6 +263,12 @@ class DirectoryModel
     return $this->name;
   }
 
+  /**
+   * Tells whether the directory exists. Cached after the first check;
+   * always true for virtual and false for restricted directories.
+   *
+   * @return bool
+   */
   public function exists()
   {
 		if (is_null($this->exists))
@@ -150,6 +278,11 @@ class DirectoryModel
     return $this->exists;
   }
 
+  /**
+   * Tells whether the directory is writable. Cached after the first check.
+   *
+   * @return bool
+   */
   public function is_writable()
   {
 		if (is_null($this->is_writable))
@@ -160,6 +293,11 @@ class DirectoryModel
   }
 
 
+  /**
+   * Tells whether the directory is readable. Cached after the first check.
+   *
+   * @return bool
+   */
   public function is_readable()
   {
 		if (is_null($this->is_readable))
@@ -170,10 +308,29 @@ class DirectoryModel
     return $this->is_readable;
   }
 
+  /**
+   * Tells whether the model was created from a URL.
+   *
+   * @return bool|null Null only while the constructor is still running.
+   */
   public function is_virtual()
   {
       return $this->is_virtual;
   }
+
+  /**
+   * Returns the path relative to the WordPress installation.
+   *
+   * The installation directory is get_home_path(), or the content root
+   * from FileSystemController::getWPAbsPath() when that is `/`. When
+   * stripping it does not leave an existing directory, the path is rebuilt
+   * from its last segments upwards until one exists under the install
+   * directory (reverseConstructPath()) and, failing that, cut at
+   * `wp-content` or `uploads` (constructUsualDirectories()).
+   *
+   * @return string|false Relative path with trailing slash and without
+   *                      leading slash, or false when nothing was stripped.
+   */
   /** Try to obtain the path, minus the installation directory.
   * @return Mixed False if this didn't work, Path as string without basedir if it did. With trailing slash, without starting slash.
   */
@@ -218,6 +375,15 @@ class DirectoryModel
   }
 
 
+  /**
+   * Finds the longest tail of $path that exists under $install_path, by
+   * adding segments from the end one at a time.
+   *
+   * @param string $path         Absolute path.
+   * @param string $install_path Installation directory with trailing slash.
+   * @return string|false Relative tail without slashes at either end, or
+   *                      false when no tail exists there.
+   */
   private function reverseConstructPath($path, $install_path)
   {
     // Array value to reset index
@@ -242,6 +408,15 @@ class DirectoryModel
 
   }
 
+  /**
+   * Tells whether a path falls outside PHP's open_basedir, in which case
+   * file functions would raise warnings. Without open_basedir nothing is
+   * restricted. The result passes through `shortpixel/file/basedir_check`
+   * so hosts with symlinked layouts can override a false positive.
+   *
+   * @param string $path Path to test.
+   * @return bool
+   */
   /** Check if path is allowed within openbasedir restrictions. This is an attempt to limit notices in file funtions if so.  Most likely the path will be relative in that case.
   * @param String Path as String
   */
@@ -274,6 +449,13 @@ class DirectoryModel
   }
 
 
+  /**
+   * Cuts a path at its `wp-content` segment, or else at `uploads`, as a
+   * last resort for getRelativePath().
+   *
+   * @param string $path Absolute path.
+   * @return string|false Relative path from that segment on, or false.
+   */
   /* Last Resort function to just reduce path to various known WorPress paths. */
   private function constructUsualDirectories($path)
   {
@@ -291,6 +473,19 @@ class DirectoryModel
     return $testpath;
   }
 
+  /**
+   * Makes sure the directory exists and, optionally, is writable.
+   *
+   * Creates the directory recursively with the mode of the nearest
+   * existing ancestor (0755 when that cannot be read) and resets the
+   * cached status. When it exists but is not writable and
+   * $check_writable is set, tries to fix the mode; see the class @todo.
+   * Failures are logged.
+   *
+   * @param bool $check_writable True to also require write access.
+   * @return bool True when the directory exists (and is writable, when
+   *              required).
+   */
   /** Checks the directory into working order
   * Tries to create directory if it doesn't exist
   * Tries to fix file permission if writable is needed
@@ -347,6 +542,12 @@ class DirectoryModel
     return true;
   }
 
+  /**
+   * Returns the mode of the nearest existing ancestor, used as the mode
+   * for directories created by check().
+   *
+   * @return int|false fileperms() value (including type bits) or false.
+   */
 	public function getPermissionRecursive()
 	{
 		 $parent = $this->getParent();
@@ -361,6 +562,25 @@ class DirectoryModel
 
 	}
 
+  /**
+   * Lists the files directly in the directory as FileModels.
+   *
+   * Entries are matched with case-insensitive substring tests on the raw
+   * path, so filters work on file names as well as on directory parts.
+   *
+   * @param array $args {
+   *     Optional filters; an entry that is null is not applied.
+   *
+   *     @type int      $date_newer    Keep files modified at or after this
+   *                                   Unix timestamp.
+   *     @type string[] $exclude_files Drop files whose path contains any
+   *                                   of these strings.
+   *     @type string[] $include_files Keep only files whose path contains
+   *                                   at least one of these strings.
+   * }
+   * @return FileModel[]|false False when the directory does not exist or
+   *                           is not readable.
+   */
   /* Get files from directory
   * @returns Array|boolean Returns false if something wrong w/ directory, otherwise a files array of FileModel Object.
   */
@@ -413,6 +633,13 @@ class DirectoryModel
     return $fileArray;
   }
 
+  /**
+   * Applies the getFiles() filters to one file.
+   *
+   * @param FileModel $file File to test.
+   * @param array     $args Parsed filter arguments.
+   * @return bool True to keep the file.
+   */
   // @return boolean true if it should be kept in array, false if not.
   private function fileFilter(FileModel $file, $args)
   {
@@ -449,6 +676,18 @@ class DirectoryModel
      return $filter;
   }
 
+  /**
+   * Lists the readable subdirectories as DirectoryModels, resolved through
+   * their real path. The isDot() test runs first so that open_basedir does
+   * not complain about `..`.
+   *
+   * The branch for 'EnableMediaReplace\Model\File\DirectoryOtherMediaModel' is a
+   * leftover from the plugin that this module was extracted from and
+   * never matches here.
+   *
+   * @return DirectoryModel[]|false False when the directory does not exist
+   *                                or is not readable.
+   */
   /** Get subdirectories from directory
   * * @returns Array|boolean Returns false if something wrong w/ directory, otherwise a files array of DirectoryModel Object.
   */
@@ -483,6 +722,13 @@ class DirectoryModel
     return $dirArray;
   }
 
+  /**
+   * Tells whether this directory lies inside another one. A directory is
+   * not a subfolder of itself. Pure string comparison of the paths.
+   *
+   * @param DirectoryModel $dir Candidate parent.
+   * @return bool
+   */
   /** Check if this dir is a subfolder
   * @param DirectoryModel The directoryObject that is tested as the parent */
   public function isSubFolderOf(DirectoryModel $dir)
@@ -499,6 +745,12 @@ class DirectoryModel
     return false;
   }
 
+  /**
+   * Sums the sizes of all files in the tree. Recursive and expensive;
+   * use sparingly.
+   *
+   * @return int Bytes; 0 when the directory cannot be listed.
+   */
   //** Note, use sparingly, recursive function
   public function getFolderSize()
   {
@@ -527,6 +779,11 @@ class DirectoryModel
         return $size;
   }
 
+  /**
+   * Returns the parent directory.
+   *
+   * @return DirectoryModel|false False at the file system root.
+   */
   /** Get this paths parent */
   public function getParent()
   {
@@ -542,6 +799,12 @@ class DirectoryModel
       return $parentDir;
   }
 
+  /**
+   * Returns the raw fileperms() value of the directory. Logs a warning and
+   * returns false when the directory does not exist.
+   *
+   * @return int|false
+   */
 	public function getPermissions()
 	{
 			if (! $this->exists())
@@ -560,11 +823,26 @@ class DirectoryModel
 
 	}
 
+  /**
+   * Removes the directory, which must be empty. The cached status is not
+   * reset.
+   *
+   * @return bool
+   */
   public function delete()
   {
      return rmdir($this->getPath());
   }
 
+  /**
+   * Deletes the directory with everything in it.
+   *
+   * Refuses when the directory does not exist, is not writable, or is not
+   * inside the uploads base directory; the last rule is the guard against
+   * wiping something unintended. Used to clear backup folders.
+   *
+   * @return false|void False when refused, nothing otherwise.
+   */
   /** This will try to remove the whole structure. Use with care.
   *  This is mostly used to clear the backups.
   */

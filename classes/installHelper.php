@@ -7,6 +7,7 @@
 namespace EnableMediaReplace;
 use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
 use EnableMediaReplace\Notices\NoticeController as Notices;
+use EnableMediaReplace\ShortQ\ShortQ;
 
 /**
  * Deactivation and uninstall routines.
@@ -17,13 +18,33 @@ use EnableMediaReplace\Notices\NoticeController as Notices;
  */
 class InstallHelper
 {
+		/**
+		 * ShortQ plugin slug under which EMR stores its rows in the shared
+		 * `{prefix}shortpixel_queue` table. SPIO uses 'SPIO', RTA uses 'rta';
+		 * rows are scoped by (plugin_slug, queue_name), so the three plugins
+		 * share the table without touching each other's items. Also the suffix
+		 * of the queue status option, `shortqwp_emr`.
+		 *
+		 * @var string
+		 */
+		const QUEUE_SLUG = 'emr';
+
+		/**
+		 * Name of the single EMR queue (bulk operations).
+		 *
+		 * @var string
+		 */
+		const QUEUE_NAME = 'bulk';
 
 	 	/**
 		 * Uninstall callback: deletes the plugin's options.
 		 *
 		 * Deletes `enable_media_replace` (the last-used replace and
 		 * remove-background form settings), and `emr_news` and `emr_url_cache`,
-		 * which no current code reads or writes.
+		 * which no current code reads or writes. Then removes EMR's queue: its
+		 * rows in the shared `shortpixel_queue` table and the `shortqwp_emr`
+		 * option. ShortQ drops the table itself only when no rows of any
+		 * plugin remain, so an active SPIO or RTA install keeps its queue.
 		 *
 		 * Registered from the root file as 'uninstallPlugin'; the declared name
 		 * differs only in case, which PHP resolves.
@@ -43,6 +64,9 @@ class InstallHelper
 			delete_option( 'enable_media_replace' );
 			delete_option( 'emr_news' );
 			delete_option( 'emr_url_cache');
+
+			$shortQ = new ShortQ( self::QUEUE_SLUG );
+			$shortQ->getQueue( self::QUEUE_NAME )->unInstall();
 		}
 
 		/**

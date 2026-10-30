@@ -1,4 +1,12 @@
 <?php
+/**
+ * FileSystem module entry point.
+ *
+ * Holds the FileSystemController, the factory and helper class through
+ * which consumers obtain FileModel and DirectoryModel objects.
+ *
+ * @package EnableMediaReplace\FileSystem
+ */
 namespace EnableMediaReplace\FileSystem\Controller;
 use EnableMediaReplace\ShortpixelLogger\ShortPixelLogger as Log;
 
@@ -6,6 +14,48 @@ use EnableMediaReplace\FileSystem\Model\File\DirectoryModel as DirectoryModel;
 use EnableMediaReplace\FileSystem\Model\File\FileModel as FileModel;
 
 
+/**
+ * Factory and helpers for compound file system operations.
+ *
+ * The module models a single file (FileModel) and a single directory
+ * (DirectoryModel); this controller creates them and hosts the operations
+ * that need WordPress context or more than one model: resolving the
+ * upload and installation directories, turning a path into a URL,
+ * downloading a remote file, walking a directory tree. Models call back
+ * into it for pathIsUrl(), getWPAbsPath() and getWPUploadBase().
+ *
+ * Lifecycle: stateless, `new FileSystemController()` per use. Consumers
+ * usually expose it through an accessor (Enable Media Replace:
+ * `emr()->filesystem()`); the models create their own instance when they
+ * need one. Nothing is cached between calls.
+ *
+ * Paths handed to getFile() and getDirectory() do not have to exist; a
+ * FileModel for a path that is not there yet is the normal way to prepare
+ * a write. Both models normalise what they are given (URLs of this site
+ * become local paths, relative paths are resolved against the WordPress
+ * root), see FileModel::processPath().
+ *
+ * Hooks fired by this class:
+ * - filter `shortpixel/filesystem/abspath` (getWPAbsPath())
+ *
+ * Bundling: this source is written with the ShortPixel namespace and the
+ * `shortpixel/*` hook prefix. The build tool that bundles the module into a
+ * plugin rewrites the namespace and the hook prefix mechanically, so each
+ * consuming plugin sees its own namespace (for example
+ * `EnableMediaReplace\FileSystem`) and its own hook prefix. Hook names in
+ * these docblocks are given in the source's terms.
+ *
+ * @todo sortFiles() detects files by comparing the class name with
+ *       'EnableMediaReplace\FileModel', which is not the class of this module
+ *       (\EnableMediaReplace\FileSystem\Model\File\FileModel), so an array of
+ *       FileModels is sorted with getName(), a method FileModel does not
+ *       have. Suggested fix: use `instanceof FileModel`.
+ * @todo getFilesRecursive() merges the result of DirectoryModel::getFiles()
+ *       and iterates getSubDirectories(); both return false for a
+ *       directory that exists but is not readable, which makes
+ *       array_merge() throw. Suggested fix: skip when the result is not an
+ *       array.
+ */
 /** Controller for FileSystem operations
 *
 * This controller is used for -compound- ( complex ) FS operations, using the provided models File en Directory.
@@ -14,11 +64,21 @@ use EnableMediaReplace\FileSystem\Model\File\FileModel as FileModel;
 Class FileSystemController
 {
 
+    /**
+     * Nothing to set up; the controller is stateless.
+     */
     public function __construct()
     {
 
     }
 
+    /**
+     * Returns a FileModel for a path or URL. The file does not have to
+     * exist.
+     *
+     * @param string $path Full path, or a URL of this site.
+     * @return FileModel
+     */
     /** Get FileModel for a certain path. This can exist or not
     *
     * @param String Path Full Path to the file
@@ -31,6 +91,13 @@ Class FileSystemController
 
 
 
+    /**
+     * Returns a DirectoryModel for a path. The directory does not have to
+     * exist; a file path yields the model of its directory.
+     *
+     * @param string $path Full path to the directory (or to a file in it).
+     * @return DirectoryModel
+     */
     /** Get DirectoryModel for a certain path. This can exist or not
     *
     * @param String $path Full Path to the Directory.
@@ -44,6 +111,13 @@ Class FileSystemController
 
 
 
+    /**
+     * Returns the uploads base directory (wp_upload_dir() `basedir`,
+     * without the year/month part). Normally `wp-content/uploads`; on a
+     * multisite sub-site it includes `sites/{id}`.
+     *
+     * @return DirectoryModel
+     */
     /** This function returns the WordPress Basedir for uploads ( without date and such )
     * Normally this would point to /wp-content/uploads.
     * @returns DirectoryModel
@@ -55,6 +129,16 @@ Class FileSystemController
       return $this->getDirectory($upload_dir['basedir']);
     }
 
+    /**
+     * Returns the directory that holds the content directory.
+     *
+     * Normally ABSPATH, but when WP_CONTENT_DIR lives elsewhere its parent
+     * is used instead, because paths of uploads are resolved against it.
+     * When the UPLOADS constant is defined, ABSPATH plus UPLOADS wins. The
+     * result passes through the `shortpixel/filesystem/abspath` filter.
+     *
+     * @return DirectoryModel
+     */
     /** This function returns the Absolute Path of the WordPress installation where the **CONTENT** directory is located.
     * Normally this would be the same as ABSPATH, but there are installations out there with -cough- alternative approaches
     * @returns DirectoryModel  Either the ABSPATH or where the WP_CONTENT_DIR is located
@@ -75,6 +159,13 @@ Class FileSystemController
         return $this->getDirectory($abspath);
     }
 
+    /**
+     * Unfinished: computes the file's path and the WordPress root and
+     * returns nothing. Not called by the module.
+     *
+     * @param FileModel $file File to resolve.
+     * @return void
+     */
 		public function getFullPathForWP(FileModel $file)
 		{
 				$fullpath = $file->getFullPath();
@@ -88,6 +179,27 @@ Class FileSystemController
 		}
 
 
+    /**
+     * Converts a local file path to a URL.
+     *
+     * Prefer WordPress functions (wp_get_attachment_url()) when the file
+     * is an attachment; this is the fallback for files WordPress does not
+     * know about, such as backups and conversions. Follows the logic of
+     * wp_get_attachment_url(): files under the uploads `basedir` map to
+     * `baseurl`; on a multisite sub-site, files under the network uploads
+     * root (two levels up from the site's basedir) are mapped against the
+     * network base URL, falling back to home_url() for `blogs.dir`
+     * layouts; paths containing `wp-content/uploads` use the relative
+     * attachment path; anything else is treated as relative to the
+     * uploads base. A result that still contains the WordPress root is
+     * rebuilt from the site URL (or the site's uploads URL on a multisite
+     * sub-site) because the file lives outside the uploads directory. A
+     * scheme-less result gets the current scheme, or the home URL when it
+     * is only a path.
+     *
+     * @param FileModel $file File to convert.
+     * @return string|false URL, or false when no usable URL results.
+     */
     /** Utility function that tries to convert a file-path to a webURL.
     *
     * If possible, rely on other better methods to find URL ( e.g. via WP functions ).
@@ -184,6 +296,17 @@ Class FileSystemController
         return false;
     }
 
+    /**
+     * Tells whether a path looks like a URL: starts with `http`, `//`, or
+     * contains `://` (offloaded files on `s3://` and similar).
+     *
+     * Cheap string test, no network or file system access; the models call
+     * it before touching the path so that stream wrappers are not
+     * triggered for remote files.
+     *
+     * @param string $path Path or URL.
+     * @return bool
+     */
     /** Utility function to check if a path is an URL
     *  Checks if this path looks like an URL.
     * @param $path String  Path to check
@@ -202,6 +325,14 @@ Class FileSystemController
         return false;
     }
 
+    /**
+     * Sorts models by name, ascending. Meant for arrays of FileModels or
+     * DirectoryModels; see the class @todo about file detection.
+     *
+     * @param FileModel[]|DirectoryModel[] $array Models of one kind.
+     * @param array                        $args  Reserved for sort options.
+     * @return array The sorted array.
+     */
     /** Sort files / directories in a certain way.
     * Future dev to include options via arg.
     */
@@ -228,6 +359,20 @@ Class FileSystemController
 
     }
 
+    /**
+     * Downloads a URL to a local path.
+     *
+     * First streams the response straight into the destination with
+     * wp_remote_get(). When that fails (logged), retries with
+     * download_url(), which writes a temporary file that is then moved to
+     * the destination; the timeout for that is PHP's max_execution_time,
+     * clamped to 60 seconds when unlimited and 30 when negative. Success
+     * means the destination exists afterwards; the content is not checked.
+     *
+     * @param string $url             Remote URL.
+     * @param string $destinationPath Full local path to write.
+     * @return bool
+     */
     public function downloadFile($url, $destinationPath)
     {
 
@@ -278,6 +423,20 @@ Class FileSystemController
 
 
 
+    /**
+     * Collects the files of a directory and all its subdirectories.
+     *
+     * Creates a FileModel per file, so it is costly on large trees;
+     * FileModel::$TRUSTED_MODE can be enabled by the consumer to keep the
+     * per-file checks cheap.
+     *
+     * @param DirectoryModel $dir     Root of the walk.
+     * @param array          $filters Filters as accepted by
+     *                                DirectoryModel::getFiles()
+     *                                (`date_newer`, `exclude_files`,
+     *                                `include_files`).
+     * @return FileModel[] Empty when the directory does not exist.
+     */
     /** Get all files from a directory tree, starting at given dir.
     * @param DirectoryModel $dir to recursive into
     * @param Array $filters Collection of optional filters as accepted by FileFilter in directoryModel
@@ -303,6 +462,13 @@ Class FileSystemController
         return $fileArray;
     }
 
+    /**
+     * Tells whether a URL answers 200 to a HEAD request. A network round
+     * trip per call: use sparingly.
+     *
+     * @param string $url URL to probe.
+     * @return bool|null Null when the curl extension is missing.
+     */
 		// Url very sparingly.
 		public function url_exists($url)
 		{

@@ -35,8 +35,11 @@ module into `build/shortpixel/` and rewrites the namespace to
 hook prefixes (`shortpixel/replacer/*` becomes `emr/replacer/*`, see the
 `extra` block of `composer.json`). `build/shortpixel/` is generated output:
 never edit it by hand. The bundled modules are `filesystem`, `log`,
-`notices` and `replacer2`; the latter three are shared with ShortPixel Image
-Optimizer (SPIO), which bundles them under its own namespace.
+`notices`, `replacer2` and `shortq`; all but `filesystem` are shared with
+ShortPixel Image Optimizer (SPIO), which bundles them under its own
+namespace. `buildSP` copies whatever is checked out in `../modules`, so
+check `git diff build/` after a rebuild and keep only the module changes you
+meant to ship.
 
 There is no JavaScript build step. `js/` and `css/` are shipped as they are;
 `scss/` holds the stylesheet sources.
@@ -125,11 +128,18 @@ is in progress.
 ### Namespace & Autoloading
 
 Plugin classes use the `EnableMediaReplace\` namespace with sub-namespaces
-`Controller\`, `ViewController\`, `Externals\` and `Helper\`. They are
-required explicitly from the root file. The bundled modules are autoloaded by
+`Controller\`, `ViewController\`, `Externals\` and `Helper\`. Two loading
+schemes coexist. The legacy files, whose names do not match their class names
+(`uihelper.php`, `ajax.php`, `emr-plugin.php`, `cache.php`, ...), are
+required explicitly from the root file. Files whose path matches their class
+name (PSR-4, for example `classes/Controller/Bulk/BulkQueue.php`) are
+autoloaded: the root file creates a second `PackageLoader` with
+`classes/plugin.json`, which maps `EnableMediaReplace` to `classes/`, the
+same way SPIO's `class/plugin.json` works. New classes go into the PSR-4
+scheme and need no `require_once`. The bundled modules are autoloaded by
 `build/shortpixel/PackageLoader.php` under `EnableMediaReplace\Replacer\`,
-`EnableMediaReplace\FileSystem\`, `EnableMediaReplace\ShortPixelLogger\` and
-`EnableMediaReplace\Notices\`.
+`EnableMediaReplace\FileSystem\`, `EnableMediaReplace\ShortPixelLogger\`,
+`EnableMediaReplace\Notices\` and `EnableMediaReplace\ShortQ\`.
 
 ### Code Structure
 
