@@ -10,6 +10,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+use EnableMediaReplace\Controller\Bulk\Selector\Selector;
 use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
 
 /**
@@ -118,6 +119,37 @@ class BulkController
 		$Q->createNewBulk($args);
 
 		return $Q->getStats();
+	}
+
+	/**
+	 * Whether an operation can run on this site: its selector is available.
+	 *
+	 * @param string $operation
+	 * @return true|\WP_Error The reason when it cannot.
+	 */
+	public function canRun($operation)
+	{
+		$selector = Selector::forOperation($operation);
+		if (is_null($selector)) {
+			return new \WP_Error('emr_bulk_unknown_operation', __('Unknown bulk operation', 'enable-media-replace'));
+		}
+		if (false === $selector->isAvailable()) {
+			return new \WP_Error('emr_bulk_unavailable', $selector->getUnavailableReason());
+		}
+		return true;
+	}
+
+	/**
+	 * How many source rows an operation would scan (products, attachments),
+	 * for the selection panel. 0 when the operation cannot run.
+	 *
+	 * @param string $operation
+	 * @return int
+	 */
+	public function countSource($operation)
+	{
+		$selector = Selector::forOperation($operation);
+		return is_null($selector) ? 0 : $selector->countSource();
 	}
 
 	/**

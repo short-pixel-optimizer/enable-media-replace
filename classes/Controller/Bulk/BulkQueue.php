@@ -10,6 +10,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+use EnableMediaReplace\Controller\Bulk\Selector\Selector;
 use EnableMediaReplace\InstallHelper;
 use EnableMediaReplace\Model\Bulk\BulkImage;
 use EnableMediaReplace\Model\Bulk\QueueItem;
@@ -31,10 +32,13 @@ use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
  *
  * What a bulk works on is stored in the queue's custom_data as
  * `queueOptions`: `operation` ('background' or 'upscale'), the
- * remove-background colour options, `threshold` (upscale), and `items`,
- * an explicit list of attachment IDs. The selectors that query WooCommerce
- * products and the media library plug into `emr/bulk/source_ids`; without a
- * selector only the explicit list is used.
+ * remove-background colour options, `threshold` (upscale), and optionally
+ * `items`, an explicit list of attachment IDs. The source of a prepare
+ * page is, in this order: the explicit `items` list when given, the
+ * `emr/bulk/source_ids` filter when it returns an array, otherwise the
+ * operation's Selector (Selector::forOperation(): WooCommerce product
+ * images for the background removal, the media library for the upscale),
+ * which keeps its position in custom_data (`selectorCursor`).
  *
  * ShortQ options: numitems 5, mode wait, process_timeout 10000 ms,
  * retry_limit 30, enqueue_limit 200. Option names passed to
@@ -44,8 +48,9 @@ use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
  * Lifecycle: `new` per use; QueueController::getQueue() creates one per
  * request. Hooks:
  * - filter `emr/bulk/queue_options` (array): the ShortQ options.
- * - filter `emr/bulk/source_ids` (int[] ids, string operation, BulkQueue): attachment IDs
- *   for the next prepare page; `last_item_id` and the enqueue limit tell the selector where to resume.
+ * - filter `emr/bulk/source_ids` (null, string operation, BulkQueue): return attachment IDs
+ *   for the next prepare page to replace the selector; getSelectorCursor() / setSelectorCursor()
+ *   and the enqueue limit tell the callback where to resume. Null keeps the selector.
  * - action `emr/bulk/prepare_items` (int[] ids): before a page of ids is turned into items.
  */
 class BulkQueue
@@ -293,11 +298,13 @@ class BulkQueue
 	}
 
 	/**
-	 * The next page of attachment IDs, newest first, below `last_item_id`.
+	 * The next page of attachment IDs, newest first.
 	 *
-	 * Without a selector on `emr/bulk/source_ids` the explicit `items` list
-	 * of the bulk options is paged. For a restore, the attachments carrying a
-	 * bulk marker for the operation are the source.
+	 * For a restore, the attachments carrying a bulk marker for the operation
+	 * are the source (paged by `last_item_id`). Otherwise the explicit `items`
+	 * list of the bulk options is paged when one was given, the
+	 * `emr/bulk/source_ids` filter may answer, and the operation's Selector
+	 * answers last.
 	 *
 	 * @return int[]
 	 */
@@ -313,17 +320,45 @@ class BulkQueue
 		}
 
 		$explicit = (is_array($options) && isset($options['items']) && is_array($options['items'])) ? array_map('intval', $options['items']) : array();
-		$ids      = apply_filters('emr/bulk/source_ids', null, $operation, $this);
-
-		if (! is_array($ids)) {
+		if (count($explicit) > 0) {
 			rsort($explicit);
 			$ids = array_filter($explicit, function ($id) use ($last_id) {
 				return $id > 0 && ($last_id <= 0 || $id < $last_id);
 			});
-			$ids = array_slice(array_values($ids), 0, $limit);
+			return array_values(array_unique(array_slice(array_values($ids), 0, $limit)));
 		}
 
-		return array_values(array_unique(array_map('intval', $ids)));
+		$ids = apply_filters('emr/bulk/source_ids', null, $operation, $this);
+		if (! is_array($ids)) {
+			$selector = Selector::forOperation($operation);
+			$ids      = is_null($selector) ? array() : $selector->getIds($this);
+		}
+
+		return array_values(array_unique(array_map('intval', (array) $ids)));
+	}
+
+	/**
+	 * The selector's position in its source (a post ID; 0 at the start).
+	 *
+	 * @return int
+	 */
+	public function getSelectorCursor()
+	{
+		$cursor = $this->getCustomDataItem('selectorCursor');
+		return is_numeric($cursor) ? (int) $cursor : 0;
+	}
+
+	/**
+	 * Stores the selector's position; createNewBulk() starts from 0 again.
+	 *
+	 * @param int $cursor
+	 * @return void
+	 */
+	public function setSelectorCursor($cursor)
+	{
+		$customData                 = $this->getStatus('custom_data');
+		$customData->selectorCursor = (int) $cursor;
+		$this->q->setStatus('custom_data', $customData, false);
 	}
 
 	/**
@@ -801,6 +836,7 @@ class BulkQueue
 		$data                  = new \stdClass();
 		$data->imageCount      = 0;
 		$data->customOperation = false;
+		$data->selectorCursor  = 0;
 		return $data;
 	}
 }

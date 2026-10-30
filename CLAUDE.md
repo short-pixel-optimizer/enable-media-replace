@@ -158,6 +158,7 @@ classes/
       BulkApi.php          - reducer / cleanup client for remove_background and scale_image
       BackupController.php - originals under uploads/EMR_Backups/<yyyy>/<mm>/ before the swap
       ResponseController.php - per-item messages for the bulk screen and the log
+      Selector/            - the prepare-phase sources: WooCommerceProductImages (background), UpscaleCandidates (upscale)
   Model/Bulk/              - QueueItem (attachment + action + data + result), QueueItemData, QueueItemResult,
                              BulkImage (attachment adapter: file, URL, width, upscale factor, _emr_bulk marker)
   ViewController.php       - abstract base: view loading, error codes, viewError()/viewSuccess()
@@ -231,10 +232,16 @@ docs/                      - the documentation and test plan
   through `ReplaceController` with the single flow's parameters, after the
   original was copied to `EMR_Backups`; the attachment then carries the
   `_emr_bulk` post meta (operation data and backup path), which a later run
-  of the same operation skips and a restore consumes. The selectors that
-  feed the prepare phase (WooCommerce product images, media library) hook
-  `emr/bulk/source_ids`; without one, the explicit `items` list of the bulk
-  options is used. Other hooks: `emr/bulk/queue_options`,
+  of the same operation skips and a restore consumes. The prepare phase
+  takes its IDs from the explicit `items` list of the bulk options when one
+  is given, else from the `emr/bulk/source_ids` filter, else from the
+  operation's `Selector` (`Selector::forOperation()`, replaceable through
+  `emr/bulk/selector`): `WooCommerceProductImages` reads `_thumbnail_id` and
+  `_product_image_gallery` of products and variations (not trashed), paged
+  by product, and is unavailable without the `product` post type
+  (`BulkController::canRun()`); `UpscaleCandidates` pages the JPEG/PNG
+  attachments and leaves the width threshold to `prepareItems()`. Other hooks:
+  `emr/bulk/background/post_types`, `emr/bulk/queue_options`,
   `emr/bulk/custom_options`, `emr/bulk/backup_dir`, `emr/bulk/api/request`,
   `emr/bulk/api/timeout`, `emr/bulk/plan_check_ttl`, `emr/bulk/prepare_items`,
   `emr/bulk/item/done`, `emr/bulk/item/failed`. The bulk needs an API key

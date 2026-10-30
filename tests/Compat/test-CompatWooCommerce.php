@@ -29,6 +29,14 @@
 
 require_once dirname( __DIR__ ) . '/Integration/ReplaceFlowHelpers.php';
 
+use EnableMediaReplace\Controller\Bulk\BackupController;
+use EnableMediaReplace\Controller\Bulk\BulkController;
+use EnableMediaReplace\Controller\Bulk\BulkQueue;
+use EnableMediaReplace\Controller\Bulk\QueueController;
+use EnableMediaReplace\Controller\Bulk\Selector\WooCommerceProductImages;
+use EnableMediaReplace\InstallHelper;
+use EnableMediaReplace\Model\Bulk\BulkImage;
+
 class CompatWooCommerceTest extends EMR_IntegrationTestCase {
 
 	use EMR_ReplaceFlowHelpers;
@@ -181,4 +189,122 @@ class CompatWooCommerceTest extends EMR_IntegrationTestCase {
 		$this->assertSame( '<img src="' . $this->sizeUrl( $id, 'woocommerce_single' ) . '" />', $this->rawContent( $product_id ), 'The description follows the renamed single size.' );
 		$this->assertSame( (string) $id, $this->rawPostMeta( $product_id, '_thumbnail_id' ), '_thumbnail_id is untouched.' );
 	}
+
+	// -------------------------------------------------------------------
+	// The bulk remove-background selector on real WooCommerce products.
+	// -------------------------------------------------------------------
+
+	/** Drops the EMR queue rows, the status option, the plan transient and the backups. */
+	private function cleanBulkState() {
+		global $wpdb;
+		$table = $wpdb->prefix . 'shortpixel_queue';
+		$wpdb->query( $wpdb->prepare( "DELETE FROM {$table} WHERE plugin_slug = %s", InstallHelper::QUEUE_SLUG ) );
+		delete_option( 'shortqwp_' . InstallHelper::QUEUE_SLUG );
+		delete_option( BulkController::LOG_OPTION );
+		delete_transient( QueueController::PLAN_TRANSIENT );
+		$backup = BackupController::getBackupPath();
+		if ( is_dir( $backup ) ) {
+			$this->removeTree( $backup );
+		}
+		foreach ( array( 'EnableMediaReplace\\Controller\\Bulk\\BulkApi' => 'instance', 'EnableMediaReplace\\Controller\\Bulk\\BulkController' => 'instance' ) as $class => $property ) {
+			$this->resetSingleton( $class, $property );
+		}
+		foreach ( array( 'EnableMediaReplace\\Controller\\Bulk\\ActionController' => 'instances', 'EnableMediaReplace\\Controller\\Bulk\\BulkQueue' => 'isInQueue' ) as $class => $property ) {
+			$prop = new ReflectionProperty( $class, $property );
+			$prop->setAccessible( true );
+			$prop->setValue( null, array() );
+		}
+	}
+
+	/** A variation of $parent with its own featured image. */
+	private function makeVariation( $parent, $image_id ) {
+		$variation = new WC_Product_Variation();
+		$variation->set_parent_id( $parent );
+		$variation->set_regular_price( '12' );
+		$variation->set_image_id( $image_id );
+		$id = $variation->save();
+		$this->assertGreaterThan( 0, $id );
+		return $id;
+	}
+
+	public function test_bulk_selector_collects_the_images_woocommerce_products_and_variations_use() {
+		$this->cleanBulkState();
+		try {
+			$featured  = $this->uploadJpeg( 'emr-wc-bulk-f-' . $this->token() . '.jpg', 300, 200 );
+			$gallery1  = $this->uploadJpeg( 'emr-wc-bulk-g1-' . $this->token() . '.jpg', 300, 200 );
+			$gallery2  = $this->uploadJpeg( 'emr-wc-bulk-g2-' . $this->token() . '.jpg', 300, 200 );
+			$variation = $this->uploadJpeg( 'emr-wc-bulk-v-' . $this->token() . '.jpg', 300, 200 );
+			$library   = $this->uploadJpeg( 'emr-wc-bulk-x-' . $this->token() . '.jpg', 300, 200 );
+			$product   = $this->makeProduct( $featured, array( $gallery1, $gallery2 ), 'A product' );
+			$this->makeVariation( $product, $variation );
+			$draft = new WC_Product_Simple();
+			$draft->set_name( 'EMR draft ' . $this->token() );
+			$draft->set_status( 'draft' );
+			$draft->set_image_id( $gallery1 ); // shared with the published product
+			$draft->save();
+
+			$selector = new WooCommerceProductImages();
+			$this->assertTrue( $selector->isAvailable(), 'WooCommerce registers the product post type.' );
+			$this->assertTrue( BulkController::getInstance()->canRun( 'background' ) );
+
+			$q = new BulkQueue();
+			$q->createNewBulk( array( 'operation' => 'background' ) );
+			$ids = $selector->getIds( $q );
+
+			$this->assertEqualsCanonicalizing( array( $featured, $gallery1, $gallery2, $variation ), $ids );
+			$this->assertNotContains( $library, $ids, 'A library image no product uses is not selected.' );
+		} finally {
+			$this->cleanBulkState();
+		}
+	}
+
+	public function test_bulk_remove_background_replaces_the_product_images_and_the_product_keeps_showing_them() {
+		$this->cleanBulkState();
+		update_option( 'emr_shortpixel_api_key', 'abcdEFGHIJKLMNOPwxyz' );
+		try {
+			$featured = $this->uploadJpeg( 'emr-wc-bulk-run-f-' . $this->token() . '.jpg', 400, 300 );
+			$gallery  = $this->uploadJpeg( 'emr-wc-bulk-run-g-' . $this->token() . '.jpg', 400, 300 );
+			$product  = $this->makeProduct( $featured, array( $gallery ), 'Bulk product' );
+			$original = file_get_contents( get_attached_file( $featured ) );
+
+			$bulk = BulkController::getInstance();
+			$bulk->createNewBulk( array( 'operation' => 'background' ) );
+			$c = new QueueController();
+			for ( $i = 0; $i < 20; $i++ ) {
+				$json = $c->processQueue();
+				$this->assertSame( 1, $json->status, wp_json_encode( $json ) );
+				if ( BulkQueue::RESULT_PREPARING_DONE === $json->media->qstatus ) {
+					break;
+				}
+			}
+			$this->assertSame( '2', $json->media->stats->total );
+			$bulk->startBulk();
+			for ( $i = 0; $i < 20; $i++ ) {
+				$json = $c->processQueue();
+				$this->assertSame( 1, $json->status, wp_json_encode( $json ) );
+				if ( BulkQueue::RESULT_QUEUE_EMPTY === $json->media->qstatus ) {
+					break;
+				}
+			}
+			$this->assertSame( '2', $json->media->stats->done );
+
+			$wc = wc_get_product( $product );
+			$this->assertSame( $featured, (int) $wc->get_image_id(), 'The product still points at the same attachment id.' );
+			$this->assertSame( array( $gallery ), array_map( 'intval', $wc->get_gallery_image_ids() ) );
+			foreach ( array( $featured, $gallery ) as $id ) {
+				$this->assertSame( 50, wp_get_attachment_metadata( $id )['width'], 'Replaced in place by the result image.' );
+				$this->assertTrue( BackupController::hasBackup( BulkImage::getById( $id ) ) );
+				foreach ( $this->wcSizes() as $size ) {
+					$this->assertFalse( image_get_intermediate_size( $id, $size ), "WordPress makes no $size for a 50 px source; the old 400 px one must be gone from the metadata." );
+				}
+			}
+			$this->assertSame( $original, file_get_contents( BackupController::getBackupFile( BulkImage::getById( $featured )->getMarker()['backup'] )->getFullPath() ) );
+			$html = $wc->get_image();
+			$this->assertStringContainsString( basename( get_attached_file( $featured ), '.jpg' ), $html, 'The product renders the replaced featured image.' );
+			$bulk->finishBulk();
+		} finally {
+			$this->cleanBulkState();
+		}
+	}
+
 }

@@ -282,23 +282,33 @@ class BulkQueueTest extends WP_UnitTestCase {
 		$this->assertCount( 3, $this->queueRows() );
 	}
 
-	public function test_source_ids_filter_replaces_the_explicit_list() {
+	public function test_source_ids_filter_replaces_the_selector_but_not_an_explicit_list() {
 		$a = $this->makeImageAttachment( 100, 100 );
 		$b = $this->makeImageAttachment( 100, 100 );
 		$seen = array();
 		add_filter( 'emr/bulk/source_ids', function ( $ids, $operation, $queue ) use ( $b, &$seen ) {
-			$seen[] = array( $operation, (int) $queue->getShortQ()->getStatus( 'last_item_id' ) );
-			return ( (int) $queue->getShortQ()->getStatus( 'last_item_id' ) > 0 ) ? array() : array( $b );
+			$seen[] = array( $operation, $queue->getSelectorCursor() );
+			if ( $queue->getSelectorCursor() > 0 ) {
+				return array();
+			}
+			$queue->setSelectorCursor( $b );
+			return array( $b );
 		}, 10, 3 );
 
 		$q = new BulkQueue();
-		$q->createNewBulk( array( 'operation' => 'upscale', 'items' => array( $a ) ) );
+		$q->createNewBulk( array( 'operation' => 'upscale' ) );
 		$this->prepareAll( $q );
 
-		$this->assertSame( array( $b ), array_map( 'intval', wp_list_pluck( $this->queueRows(), 'item_id' ) ) );
+		$this->assertSame( array( $b ), array_map( 'intval', wp_list_pluck( $this->queueRows(), 'item_id' ) ), 'The filter replaced the media library selector.' );
 		$this->assertSame( 'upscale', $seen[0][0] );
 		$this->assertSame( 0, $seen[0][1] );
-		$this->assertSame( $b, $seen[1][1], 'The second page resumes after the last enqueued id.' );
+		$this->assertSame( $b, $seen[1][1], 'The cursor the callback stored is handed back.' );
+
+		$seen = array();
+		$q->createNewBulk( array( 'operation' => 'upscale', 'items' => array( $a ) ) );
+		$this->prepareAll( $q );
+		$this->assertSame( array( $a ), array_map( 'intval', wp_list_pluck( $this->queueRows(), 'item_id' ) ), 'An explicit list is not filtered.' );
+		$this->assertSame( array(), $seen );
 	}
 
 	public function test_restore_prepare_queues_the_marked_attachments_with_a_backup() {
