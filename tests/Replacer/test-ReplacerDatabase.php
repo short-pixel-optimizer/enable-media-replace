@@ -648,16 +648,11 @@ class ReplacerDatabaseTest extends WP_UnitTestCase {
 	/**
 	 * Bricks-shaped builder data in postmeta and in an option: a nested
 	 * slider keeps its options as a JSON string next to the image element.
-	 * replaceContent() decodes every nested JSON string but only re-encodes
-	 * the top level, so after the replace the untouched slider options are
-	 * stdClass objects in both rows; Bricks then fatals on every page that
-	 * renders the element. The correct behaviour is to keep nested JSON
-	 * strings as strings.
-	 *
-	 * How to recognise the fix: both `options` values are still the original
-	 * JSON string and the assertInstanceOf() calls below fail.
+	 * After the replace the image URL follows in both rows and the untouched
+	 * slider options are still the original JSON string, which Bricks
+	 * passes to stripslashes().
 	 */
-	public function test_json_strings_in_builder_data_turn_into_objects_pinned_for_deferred_fix() {
+	public function test_json_strings_in_builder_data_stay_json_strings() {
 		list( $replacer, $source_id, , $source_url, $target_url ) = $this->pair();
 		$elements = array(
 			array(
@@ -681,7 +676,7 @@ class ReplacerDatabaseTest extends WP_UnitTestCase {
 		$components = get_option( 'emr_test_components' );
 		$this->assertSame( $target_url, $page[1]['settings']['image']['url'], 'Sentinel: the page image URL follows.' );
 		$this->assertSame( $target_url, $components[0]['elements'][1]['settings']['image']['url'], 'Sentinel: the component image URL follows.' );
-		$this->assertInstanceOf( stdClass::class, $page[0]['settings']['options'], 'Pinned: the page slider options are an object.' );
-		$this->assertInstanceOf( stdClass::class, $components[0]['elements'][0]['settings']['options'], 'Pinned: the component slider options are an object.' );
+		$this->assertSame( '{"type":"loop","perPage":3}', $page[0]['settings']['options'], 'The page slider options are the JSON string.' );
+		$this->assertSame( '{"type":"loop","perPage":3}', $components[0]['elements'][0]['settings']['options'], 'The component slider options are the JSON string.' );
 	}
 }

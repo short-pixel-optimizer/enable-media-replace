@@ -291,44 +291,34 @@ class ReplacerTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * A JSON string nested inside serialized data comes back as a stdClass
-	 * object. replaceContent() json_decode()s every JSON-looking string it
-	 * meets but only re-encodes at the top level ($in_deep false), so a
-	 * builder that reads the nested value as a string (Bricks passes it to
-	 * stripslashes()) fatals, even though the options never held the URL.
-	 * The correct behaviour is to re-encode the nested value to a JSON
-	 * string, or to leave a JSON string without any search value untouched.
-	 *
-	 * How to recognise the fix: `options` is still the original JSON string
-	 * and the assertInstanceOf() below fails.
+	 * A JSON string nested inside serialized data stays a JSON string.
+	 * replaceContent() decodes every JSON-looking string it meets and
+	 * encodes it back at the same level, so a builder that reads the nested
+	 * value as a string (Bricks passes it to stripslashes()) keeps working.
+	 * A JSON string without any search value comes back unchanged.
 	 */
-	public function test_json_string_nested_in_serialized_data_comes_back_as_an_object_pinned_for_deferred_fix() {
+	public function test_json_string_nested_in_serialized_data_stays_the_same_json_string() {
 		$options = '{"type":"loop","perPage":3,"gap":"1em"}';
 		$content = serialize( $this->bricksPageContent( $options ) );
 
 		$result = unserialize( $this->replaceContent( $content, false ) );
 
 		$this->assertSame( self::NEW_URL, $result[1]['settings']['image']['url'], 'Sentinel: the image URL was replaced.' );
-		$this->assertInstanceOf( stdClass::class, $result[0]['settings']['options'], 'Pinned: the untouched nested JSON string is now an object.' );
-		$this->assertSame( 3, $result[0]['settings']['options']->perPage );
+		$this->assertSame( $options, $result[0]['settings']['options'], 'The untouched nested JSON string is unchanged.' );
 	}
 
 	/**
-	 * Same defect for a nested JSON string that does carry the URL: the URL
-	 * is replaced, but the value is returned as an object instead of a JSON
-	 * string.
-	 *
-	 * How to recognise the fix: `options` is a JSON string holding the new
-	 * URL and the assertInstanceOf() below fails.
+	 * A nested JSON string that carries the URL is a JSON string with the
+	 * new URL after the replace, encoded with the default json_flags
+	 * (JSON_UNESCAPED_SLASHES).
 	 */
-	public function test_json_string_with_the_url_nested_in_serialized_data_comes_back_as_an_object_pinned_for_deferred_fix() {
+	public function test_json_string_with_the_url_nested_in_serialized_data_stays_a_json_string() {
 		$options = wp_json_encode( array( 'cover' => self::OLD_URL ), JSON_UNESCAPED_SLASHES );
 		$content = serialize( $this->bricksPageContent( $options ) );
 
 		$result = unserialize( $this->replaceContent( $content, false ) );
 
-		$this->assertInstanceOf( stdClass::class, $result[0]['settings']['options'], 'Pinned: the nested JSON string is now an object.' );
-		$this->assertSame( self::NEW_URL, $result[0]['settings']['options']->cover, 'The URL inside it was replaced.' );
+		$this->assertSame( '{"cover":"' . self::NEW_URL . '"}', $result[0]['settings']['options'], 'A JSON string with the URL replaced.' );
 	}
 
 	// ---------------------------------------------------------------------
@@ -440,32 +430,27 @@ class ReplacerTest extends WP_UnitTestCase {
 		$this->assertSame( '{"src":"' . str_replace( '/', '\/', self::NEW_URL ) . '"}', $result );
 	}
 
-	public function test_json_string_in_deep_is_returned_decoded() {
+	/** Below the top level a JSON string is encoded back too, not returned decoded. */
+	public function test_json_string_in_deep_is_returned_as_a_json_string() {
 		$result = $this->replaceFresh( '{"src":"' . self::OLD_URL . '"}', true );
 
-		$this->assertInstanceOf( stdClass::class, $result );
-		$this->assertSame( self::NEW_URL, $result->src );
+		$this->assertSame( '{"src":"' . self::NEW_URL . '"}', $result );
 	}
 
 	/**
-	 * A JSON string inside a JSON document is decoded at the inner level but
-	 * only the outer level is encoded back, so the inner string turns into a
-	 * nested JSON object and the document changes shape. The correct
-	 * behaviour is to encode the inner value back to a string.
-	 *
-	 * How to recognise the fix: the result is the original document with
-	 * only the URL changed, `inner` is still a string, and the
-	 * assertSame() on the object shape below fails.
+	 * A JSON string inside a JSON document is encoded back at its own level,
+	 * so the document keeps its shape: `inner` is still a string, holding
+	 * the new URL.
 	 */
-	public function test_json_string_inside_json_changes_shape_pinned_for_deferred_fix() {
+	public function test_json_string_inside_json_keeps_its_shape() {
 		$inner = '{"u":"' . self::OLD_URL . '"}';
 		$json  = wp_json_encode( array( 'inner' => $inner ), JSON_UNESCAPED_SLASHES );
 		$this->assertIsString( json_decode( $json )->inner, 'Sentinel: inner is a string in the input.' );
 
 		$result = $this->replaceFresh( $json );
 
-		$this->assertIsString( $result );
-		$this->assertSame( '{"inner":{"u":"' . self::NEW_URL . '"}}', $result, 'Pinned: the inner JSON string is now a nested object.' );
+		$this->assertSame( wp_json_encode( array( 'inner' => '{"u":"' . self::NEW_URL . '"}' ), JSON_UNESCAPED_SLASHES ), $result );
+		$this->assertSame( '{"u":"' . self::NEW_URL . '"}', json_decode( $result )->inner, 'inner is still a JSON string.' );
 	}
 
 	public function test_replace_no_serialize_returns_arrays_and_objects_as_they_are() {
