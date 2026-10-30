@@ -13,6 +13,9 @@ use EnableMediaReplace\FileSystem\Controller\FileSystemController as FileSystem;
 use EnableMediaReplace\Controller\RemoteNoticeController as RemoteNoticeController;
 use EnableMediaReplace\Ajax;
 use EnableMediaReplace\Helper\EnvHelper;
+use EnableMediaReplace\Controller\Bulk\BulkAjaxController;
+use EnableMediaReplace\Controller\Bulk\QueueController;
+use EnableMediaReplace\ViewController\BulkViewController;
 
 // Does what a plugin does.
 /**
@@ -40,6 +43,9 @@ use EnableMediaReplace\Helper\EnvHelper;
  */
 class EnableMediaReplacePlugin
 {
+    /** Slug of the bulk page under Media (`upload.php?page=emr-bulk`). */
+    const BULK_PAGE_SLUG = 'emr-bulk';
+
 
     /**
      * @var string|null Plugin directory with trailing slash. Set in
@@ -146,12 +152,13 @@ class EnableMediaReplacePlugin
      * @hook filter emr/feature/remote_notice Enables the remote notices. Default true.
      *
      * @todo Each call creates a new Ajax instance, which registers every
-     *       `wp_ajax_emr_*` endpoint again; classes/ajax.php already
-     *       instantiates Ajax at require time, so on admin requests each
-     *       handler is hooked twice. When useFeature() runs this method
-     *       (flags still empty), the side effect also happens there.
-     *       Instantiate Ajax once and keep the feature-flag setup separate
-     *       from it.
+     *       `wp_ajax_emr_*` endpoint again (the bulk ones included);
+     *       classes/ajax.php already instantiates Ajax at require time, so
+     *       on admin requests each handler is hooked twice. When
+     *       useFeature() runs this method (flags still empty), the side
+     *       effect also happens there. The first callback ends the request,
+     *       so the duplicate never runs. Instantiate Ajax once and keep the
+     *       feature-flag setup separate from it.
      */
     public function adminInit()
     {
@@ -381,6 +388,9 @@ class EnableMediaReplacePlugin
         $title = (isset($_REQUEST['action']) && ($_REQUEST['action'] === 'emr_prepare_remove')) ? esc_html__("Remove background", "enable-media-replace") : $title;
         $title = (isset($_REQUEST['action']) && ($_REQUEST['action'] === 'emr_prepare_upscale')) ? esc_html__("Upscale image", "enable-media-replace") : $title;
         add_submenu_page('upload.php', $title, $title, 'upload_files', 'enable-media-replace/enable-media-replace.php', array($this, 'route'));
+
+        // The visible bulk page (Media > Bulk). Administrators only; hide_sub_menu() leaves it alone.
+        add_submenu_page('upload.php', esc_html__('Bulk', 'enable-media-replace'), esc_html__('Bulk', 'enable-media-replace'), BulkAjaxController::CAPABILITY, self::BULK_PAGE_SLUG, array(BulkViewController::getInstance(), 'load'));
     }
 
     /**
@@ -676,6 +686,57 @@ class EnableMediaReplacePlugin
         wp_localize_script('emr_success', 'emr_success_options', array(
             'timeout' => apply_filters('emr/success/timeout', 5),
         ));
+
+        // Bulk page: processor, worker and screen (no jQuery), and its stylesheet.
+        $emr_bulk_ver = EMR_VERSION;
+        wp_register_style('emr_bulk', plugins_url('css/bulk.css', EMR_ROOT_FILE), array(), $emr_bulk_ver);
+        wp_register_script('emr_bulk_processor', plugins_url('js/bulk/emr-processor.js', EMR_ROOT_FILE), array(), $emr_bulk_ver, true);
+        wp_register_script('emr_bulk_screen', plugins_url('js/bulk/emr-bulk-screen.js', EMR_ROOT_FILE), array('emr_bulk_processor'), $emr_bulk_ver, true);
+        wp_localize_script('emr_bulk_processor', 'emrBulk', $this->bulkScriptData());
+    }
+
+    /**
+     * The data the bulk screen scripts read (`emrBulk`): URLs, nonces, the
+     * processor key, the queue stats on load, timings, settings and strings.
+     *
+     * @hook filter emr/bulk/interval       Poll interval in ms while items are processed. Default 3000.
+     * @hook filter emr/bulk/defer_interval Poll interval in ms while the queue is idle. Default 60000.
+     *
+     * @return array
+     */
+    public function bulkScriptData()
+    {
+        $ajax     = new BulkAjaxController();
+        $queue    = new QueueController(array('is_bulk' => true));
+        $isBulk   = (isset($_GET['page']) && self::BULK_PAGE_SLUG === sanitize_key(wp_unslash($_GET['page'])));
+        $settings = \EnableMediaReplace\Controller\Bulk\BulkController::getSettings();
+
+        return array(
+            'ajaxUrl'        => admin_url('admin-ajax.php'),
+            'workerURL'      => plugins_url('js/bulk/emr-worker.js', EMR_ROOT_FILE),
+            'bulkSecret'     => $ajax->getProcessorKey(),
+            'isBulkPage'     => $isBulk,
+            'nonce_process'  => wp_create_nonce('emr_bulk_process'),
+            'nonce_request'  => wp_create_nonce('emr_bulk_request'),
+            'nonce_settings' => wp_create_nonce('emr_bulk_settings'),
+            'startData'      => $isBulk ? $queue->getStartupData() : false,
+            'interval'       => (int) apply_filters('emr/bulk/interval', 3000),
+            'deferInterval'  => (int) apply_filters('emr/bulk/defer_interval', 60000),
+            'debug'          => (defined('WP_DEBUG') && WP_DEBUG) ? 'true' : 'false',
+            'reloadURL'      => admin_url('upload.php?page=' . self::BULK_PAGE_SLUG),
+            'settings'       => $settings,
+            'strings'        => array(
+                'fatalError'      => __('The bulk ran into an error', 'enable-media-replace'),
+                'fatalError500'   => __('The server answered with a fatal error (500). Check the server error log.', 'enable-media-replace'),
+                'fatalErrorStop'  => __('The bulk stopped after repeated errors', 'enable-media-replace'),
+                'fatalErrorStopText' => __('Reload the page to continue. If this keeps happening, contact support.', 'enable-media-replace'),
+                'endBulk'         => __('This stops the bulk and takes you back to the start. Items already processed stay processed. Continue?', 'enable-media-replace'),
+                'processorActive' => __('The bulk is being processed in another window.', 'enable-media-replace'),
+                'noQuota'         => __('Your ShortPixel quota is exhausted. The bulk is paused.', 'enable-media-replace'),
+                'noKey'           => __('The bulk needs an API key on an Unlimited plan.', 'enable-media-replace'),
+                'restoreLabel'    => __('Restore originals', 'enable-media-replace'),
+            ),
+        );
     }
 
     /** Utility function for the Jquery UI Datepicker

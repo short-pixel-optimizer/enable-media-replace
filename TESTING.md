@@ -886,3 +886,32 @@ Something in the code under test called `exit()` mid-test, see Known traps.
 Common culprits in EMR: `ViewController::viewError()`, the success redirect
 in the upload view controller, `wp_die()` and `wp_send_json*()` in
 `classes/ajax.php`.
+
+## Tests that touch the ShortQ queue table
+
+The bundled ShortQ module creates the shared `{prefix}shortpixel_queue` table
+on first use with `CREATE TABLE` plus an `ALTER TABLE ... ADD CONSTRAINT`.
+Inside a test, WP_UnitTestCase rewrites `CREATE TABLE` into a TEMPORARY
+table (invisible to `SHOW TABLES`, gone with the connection) and the
+`ALTER TABLE` is DDL, so it commits the test transaction: every option or
+row written before it in that test survives the rollback and leaks into the
+next tests (`emr_shortpixel_api_key` was the visible one). On a developer
+machine the table usually already exists, so nothing shows; on CI's fresh
+database the whole run goes red. Every test class that constructs a
+`BulkQueue`, a `ShortQ` queue or calls `InstallHelper::unInstallPlugin()`
+therefore installs the table once in `set_up_before_class()`, outside the
+transaction:
+
+```php
+public static function set_up_before_class() {
+	parent::set_up_before_class();
+	( new \EnableMediaReplace\ShortQ\ShortQ( \EnableMediaReplace\InstallHelper::QUEUE_SLUG ) )->getQueue( \EnableMediaReplace\InstallHelper::QUEUE_NAME )->install();
+}
+```
+
+To reproduce CI locally, drop the table first:
+
+```bash
+docker compose -f docker-compose.tests.yml exec -T mysql mysql -uroot -ppassword wordpress_test \
+  -e "DROP TABLE IF EXISTS wptests_shortpixel_queue; DELETE FROM wptests_options WHERE option_name LIKE 'shortqwp_%';"
+```

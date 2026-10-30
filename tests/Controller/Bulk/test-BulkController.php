@@ -16,6 +16,20 @@ use EnableMediaReplace\Controller\Bulk\BulkQueue;
 
 class BulkControllerTest extends WP_UnitTestCase {
 
+	/**
+	 * Creates the shared `shortpixel_queue` table once, outside the test
+	 * transaction. ShortQ installs it with CREATE TABLE and ALTER TABLE on
+	 * first use; inside a test WP_UnitTestCase rewrites the CREATE into a
+	 * TEMPORARY table (invisible to SHOW TABLES, dropped per connection) and
+	 * the ALTER commits the transaction, which leaks every option written
+	 * before it into later tests. Installed up front, the in-test install is
+	 * a no-op (dbDelta sees the table, the unique key exists).
+	 */
+	public static function set_up_before_class() {
+		parent::set_up_before_class();
+		( new \EnableMediaReplace\ShortQ\ShortQ( \EnableMediaReplace\InstallHelper::QUEUE_SLUG ) )->getQueue( \EnableMediaReplace\InstallHelper::QUEUE_NAME )->install();
+	}
+
 	use EMR_BulkTestHelpers;
 
 	/** @var string */

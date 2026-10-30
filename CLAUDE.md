@@ -151,6 +151,7 @@ classes/
     ReplaceController.php  - the replace flow (source/target, copy, metadata, replacer, dates, cache)
     RemoteNoticeController.php - remote notices from api.shortpixel.com
     Bulk/                  - the bulk queue, ported from SPIO's queue layer (PSR-4, autoloaded)
+      BulkAjaxController.php - wp_ajax_emr_bulk_process / _request / _settings, the two-tab processor key
       BulkQueue.php        - the ShortQ queue (slug emr, name bulk): prepare / dequeue lifecycle, stats
       QueueController.php  - one tick: key and plan gates, run the queue, process the items
       BulkController.php   - create / start / finish a bulk run, the bulk logs (option emr_bulk_logs)
@@ -167,7 +168,9 @@ classes/
     UploadViewController.php           - the replace POST handler
     RemoveBackgroundViewController.php - the remove-background screen and POST handler
     UpscaleViewController.php          - the upscale screen and POST handler (subclass: own template and nonce)
-  ajax.php                 - wp_ajax_emr_remove_background (also the upscale preview) / _save_api_key / _delete_api_key
+    BulkViewController.php             - the visible Media > Bulk page (slug emr-bulk, manage_options)
+  ajax.php                 - wp_ajax_emr_remove_background (also the upscale preview) / _save_api_key / _delete_api_key;
+                             instantiates BulkAjaxController for the bulk actions
   api.php                  - the remove-background and upscale API client
   ApiKeyManager.php        - the ShortPixel API key option and plan check
   cache.php                - emrCache: cache-plugin detection and flushing
@@ -179,8 +182,10 @@ classes/
   installHelper.php        - deactivation and uninstall
   compat.php               - polyfills for old WordPress versions
 views/                     - PHP templates (screen, prepare-remove-background, prepare-upscale,
-                             shortpixel-account (the API key box both screens include), success, error, upsell)
-js/, css/, scss/, img/     - assets, no build step
+                             shortpixel-account (the API key box both screens include), success, error, upsell,
+                             bulk/ (view-bulk + the dashboard, selection, summary, process, finished, restore panels))
+js/, css/, scss/, img/     - assets, no build step; js/bulk/ holds the bulk processor, worker and screen
+                             (vanilla JS, no jQuery); scss/bulk.scss compiles to css/bulk.css with `sass`
 build/shortpixel/          - bundled modules (generated, do not edit)
 tests/                     - PHPUnit suites, E2E stack, fixtures (see TESTING.md)
 docs/                      - the documentation and test plan
@@ -244,8 +249,25 @@ docs/                      - the documentation and test plan
   `emr/bulk/background/post_types`, `emr/bulk/queue_options`,
   `emr/bulk/custom_options`, `emr/bulk/backup_dir`, `emr/bulk/api/request`,
   `emr/bulk/api/timeout`, `emr/bulk/plan_check_ttl`, `emr/bulk/prepare_items`,
-  `emr/bulk/item/done`, `emr/bulk/item/failed`. The bulk needs an API key
-  on an Unlimited plan (checked once per hour, transient `emr_bulk_plan_ok`).
+  `emr/bulk/item/done`, `emr/bulk/item/failed`, `emr/bulk/interval`,
+  `emr/bulk/defer_interval`. The bulk needs an API key on an Unlimited plan
+  (checked once per hour, transient `emr_bulk_plan_ok`).
+- **Bulk screen:** `upload.php?page=emr-bulk` (`BulkViewController`,
+  `manage_options`). The browser drives the queue like SPIO's bulk page:
+  `js/bulk/emr-processor.js` posts ticks through the Web Worker
+  `js/bulk/emr-worker.js` to `wp_ajax_emr_bulk_process` and hands the
+  answers to `js/bulk/emr-bulk-screen.js`, which switches the panels and
+  writes the stats into `data-stats-media` / `data-stats-total` elements.
+  Screen actions go to `wp_ajax_emr_bulk_request` (`screen_action`:
+  createBulk, startBulk, finishBulk, startRestore, getStatus,
+  skipPreparing, recheckActive, loadLogFile), settings to
+  `wp_ajax_emr_bulk_settings`. Every action needs its own nonce and
+  `manage_options`. The first processor claims the `emr_bulk_secret`
+  transient (2 min, renewed per tick); other tabs get PROCESSOR_ACTIVE and
+  recheck after three minutes. Everything the scripts need is localized as
+  `emrBulk` (`EnableMediaReplacePlugin::bulkScriptData()`); nothing is
+  inline. Settings live in `enable_media_replace` under `bulk_*` keys
+  (`BulkController::getSettings()`).
 
 ## Git workflow (no commits, no branches, no worktrees unless asked)
 

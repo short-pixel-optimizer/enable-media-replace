@@ -37,6 +37,12 @@ class BulkController
 	/** Option holding the log entries. */
 	const LOG_OPTION = 'emr_bulk_logs';
 
+	/** The plugin option the bulk settings live in (shared with the single flows). */
+	const SETTINGS_OPTION = 'enable_media_replace';
+
+	/** Default upscale threshold: images narrower than this many pixels are upscaled. */
+	const DEFAULT_THRESHOLD = 1200;
+
 	/** @var static|null */
 	protected static $instance;
 
@@ -56,6 +62,73 @@ class BulkController
 			static::$instance = new static();
 		}
 		return static::$instance;
+	}
+
+	/**
+	 * The bulk settings with their defaults: `background_process` (bool,
+	 * cron-driven ticks), `upscale_threshold` (int px), `bg_type`
+	 * ('transparent' or 'solid'), `bg_color` (hex), `bg_transparency` (0-100).
+	 * Stored under `bulk_*` keys of the `enable_media_replace` option.
+	 *
+	 * @return array
+	 */
+	public static function getSettings()
+	{
+		$option   = get_option(self::SETTINGS_OPTION, array());
+		$option   = is_array($option) ? $option : array();
+		$defaults = array(
+			'background_process' => false,
+			'upscale_threshold'  => (int) apply_filters('emr/bulk/upscale/threshold', self::DEFAULT_THRESHOLD),
+			'bg_type'            => 'transparent',
+			'bg_color'           => '#ffffff',
+			'bg_transparency'    => 0,
+		);
+		$settings = array();
+		foreach ($defaults as $key => $default) {
+			$settings[ $key ] = array_key_exists('bulk_' . $key, $option) ? $option[ 'bulk_' . $key ] : $default;
+		}
+		$settings['background_process'] = (bool) $settings['background_process'];
+		$settings['upscale_threshold']  = self::sanitizeThreshold($settings['upscale_threshold']);
+		return $settings;
+	}
+
+	/**
+	 * Stores the bulk settings (only the known keys) next to the other plugin settings.
+	 *
+	 * @param array $settings
+	 * @return void
+	 */
+	public static function saveSettings($settings)
+	{
+		$option = get_option(self::SETTINGS_OPTION, array());
+		$option = is_array($option) ? $option : array();
+		foreach (array('background_process', 'upscale_threshold', 'bg_type', 'bg_color', 'bg_transparency') as $key) {
+			if (array_key_exists($key, $settings)) {
+				$option[ 'bulk_' . $key ] = $settings[ $key ];
+			}
+		}
+		update_option(self::SETTINGS_OPTION, $option, false);
+	}
+
+	/**
+	 * A valid threshold: an integer between 1 and the widest source the
+	 * factor table accepts (UIHelper::getUpscaleFactors()); anything else
+	 * falls back to the default.
+	 *
+	 * @param mixed $value
+	 * @return int
+	 */
+	public static function sanitizeThreshold($value)
+	{
+		$max = max(\emr()->uiHelper()->getUpscaleFactors());
+		if (! is_numeric($value)) {
+			return min(self::DEFAULT_THRESHOLD, $max);
+		}
+		$value = (int) $value;
+		if ($value < 1) {
+			return min(self::DEFAULT_THRESHOLD, $max);
+		}
+		return min($value, $max);
 	}
 
 	/**

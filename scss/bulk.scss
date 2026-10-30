@@ -1,0 +1,263 @@
+// Bulk processing page (Media > Bulk). Compiled to css/bulk.css.
+.emr-bulk-wrapper {
+	max-width: 960px;
+
+	h1 { margin-bottom: 16px; }
+
+	.hidden { display: none; }
+	[hidden] { display: none !important; }
+
+	nav {
+		display: flex;
+		gap: 10px;
+		margin-top: 20px;
+		flex-wrap: wrap;
+
+		.button .dashicons { vertical-align: text-bottom; }
+	}
+
+	.description { color: #50575e; }
+}
+
+.emr-bulk-panel {
+	background: #fff;
+	border: 1px solid #dcdcde;
+	border-radius: 8px;
+	padding: 24px;
+	margin-bottom: 20px;
+	opacity: 0;
+	transition: opacity .3s ease;
+
+	&.active { opacity: 1; }
+
+	h2 { margin-top: 0; }
+}
+
+// Banners above the panels.
+.emr-bulk-banner {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 12px 16px;
+	margin-bottom: 16px;
+	border-radius: 6px;
+	border: 1px solid #dcdcde;
+	background: #f6f7f7;
+
+	&.emr-bulk-banner-paused { cursor: pointer; }
+	&.emr-bulk-banner-error { border-color: #d63638; background: #fcf0f1; flex-wrap: wrap; }
+}
+
+// Dashboard.
+.emr-bulk-operations {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+	gap: 20px;
+}
+
+.emr-bulk-operation {
+	border: 1px solid #e6e7e9;
+	border-radius: 8px;
+	padding: 20px;
+	background: #fafafa;
+
+	&[data-available="0"] { opacity: .7; }
+
+	.emr-bulk-operation-title { margin-top: 0; }
+	.emr-bulk-count { font-size: 15px; }
+	.emr-bulk-unavailable { color: #996800; }
+}
+
+.emr-bulk-account { margin-top: 24px; }
+
+.emr-bulk-history {
+	margin-top: 32px;
+
+	h2 { font-size: 16px; }
+}
+
+// Selection.
+.emr-bulk-selection {
+	&[data-status="loading"] {
+		.emr-bulk-selection-form { display: none; }
+		.emr-bulk-loading { display: block; }
+	}
+
+	.emr-bulk-loading {
+		display: none;
+		text-align: center;
+		padding: 20px;
+
+		.spinner { float: none; margin: 0 auto 12px; display: block; }
+	}
+
+	.emr-bulk-radio,
+	.emr-bulk-checkbox {
+		display: block;
+		margin: 6px 0;
+
+		em { margin-left: 8px; color: #996800; font-style: normal; }
+	}
+
+	.emr-bulk-options {
+		margin-top: 20px;
+		padding-top: 16px;
+		border-top: 1px solid #e6e7e9;
+
+		h3 { margin: 0 0 8px; }
+	}
+
+	.emr-bulk-color-row {
+		display: flex;
+		gap: 10px;
+		align-items: center;
+		margin: 8px 0;
+
+		input[type="number"] { width: 80px; }
+	}
+
+	#emr-bulk-threshold { width: 100px; }
+}
+
+// Process.
+.emr-bulk-progress {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	margin: 16px 0;
+
+	.emr-bulk-progress-bar {
+		flex: 1;
+		height: 14px;
+		border-radius: 7px;
+		background: #e6e7e9;
+		overflow: hidden;
+	}
+
+	.emr-bulk-progress-done {
+		display: block;
+		height: 100%;
+		width: 0;
+		background: #2271b1;
+		transition: width .4s ease;
+	}
+
+	.emr-bulk-progress-text { min-width: 48px; text-align: right; font-weight: 600; }
+
+	.emr-bulk-spinner.spin { animation: emr-bulk-rotate 1.2s linear infinite; }
+}
+
+@keyframes emr-bulk-rotate {
+	from { transform: rotate(0deg); }
+	to { transform: rotate(360deg); }
+}
+
+.emr-bulk-stats {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px 24px;
+	margin: 12px 0;
+
+	.error { color: #d63638; }
+	.emr-bulk-show-errors { margin-left: 8px; }
+}
+
+.emr-bulk-errorbox {
+	margin: 8px 0;
+	padding: 10px 14px;
+	border-radius: 6px;
+	background: #fcf0f1;
+	border: 1px solid #f0b3b6;
+	max-height: 240px;
+	overflow: auto;
+	font-size: 12px;
+
+	.fatal { padding: 2px 0; }
+}
+
+.emr-bulk-preview {
+	margin-top: 28px;
+
+	h3 { font-size: 14px; }
+}
+
+.emr-bulk-preview-images {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 20px;
+	opacity: 1;
+
+	&.emr-bulk-fade { animation: emr-bulk-fadein .6s ease; }
+
+	.image {
+		background: #fafafa;
+		border: 1px solid #e6e7e9;
+		border-radius: 8px;
+		padding: 12px;
+		text-align: center;
+
+		img { max-width: 100%; max-height: 320px; height: auto; }
+		p { margin: 8px 0 0; color: #50575e; }
+	}
+}
+
+@keyframes emr-bulk-fadein {
+	from { opacity: .2; }
+	to { opacity: 1; }
+}
+
+// Restore.
+.emr-bulk-restore {
+	.emr-bulk-warning { color: #d63638; font-weight: 600; }
+	.emr-bulk-restore-choice {
+		margin: 16px 0;
+		padding: 12px 16px;
+		border: 1px solid #e6e7e9;
+		border-radius: 8px;
+
+		.button { margin-top: 10px; }
+	}
+}
+
+// Log modal.
+.emr-bulk-modal {
+	position: fixed;
+	inset: 0;
+	background: rgba(0, 0, 0, .5);
+	z-index: 100000;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+
+	.emr-bulk-modal-inner {
+		background: #fff;
+		border-radius: 8px;
+		padding: 24px;
+		width: min(900px, 92vw);
+		max-height: 80vh;
+		overflow: auto;
+		position: relative;
+	}
+
+	.emr-bulk-modal-close {
+		position: absolute;
+		top: 8px;
+		right: 12px;
+		border: 0;
+		background: none;
+		font-size: 22px;
+		cursor: pointer;
+	}
+
+	.emr-bulk-log-table {
+		display: grid;
+		grid-template-columns: auto 1fr auto 2fr;
+
+		> div {
+			display: contents;
+
+			span { padding: 6px 8px; border-bottom: 1px solid #e6e7e9; }
+			&.heading span { font-weight: 600; background: #f6f7f7; }
+		}
+	}
+}
