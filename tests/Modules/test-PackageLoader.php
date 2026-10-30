@@ -140,13 +140,18 @@ class PackageLoaderTest extends WP_UnitTestCase {
 	 * The bundled registration.
 	 */
 
+	/**
+	 * The order of the PSR-4 map follows the build tool's directory walk
+	 * and changes between rebuilds, so only the set of modules is asserted.
+	 */
 	public function test_autoload_registers_one_psr4_loader_per_module() {
 		$loaders = $this->module_loaders();
 
-		$this->assertSame(
+		$this->assertEqualsCanonicalizing(
 			array( 'EnableMediaReplace\FileSystem', 'EnableMediaReplace\Notices', 'EnableMediaReplace\ShortPixelLogger', 'EnableMediaReplace\Replacer' ),
 			array_keys( $loaders )
 		);
+		$this->assertCount( 4, $loaders );
 		$this->assertSame( array( 'filesystem/src' ), $loaders['EnableMediaReplace\FileSystem'][1]['classpaths'] );
 		$this->assertSame( array( 'replacer2/src' ), $loaders['EnableMediaReplace\Replacer'][1]['classpaths'] );
 		$this->assertTrue( $loaders['EnableMediaReplace\Notices'][1]['psr4'] );

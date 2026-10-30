@@ -492,23 +492,19 @@ class ReplacerDatabaseTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Inside the row loop of handleMetaData() `$main_id = $row[$main_id];`
-	 * overwrites the column name (`post_id`) with the first row's value, so
-	 * for the second matching row of a table the cache key is read from
-	 * `$row[<first post id>]`, an undefined offset (a notice on PHP 7.4, a
-	 * warning on PHP 8), and wp_cache_delete() receives null: the second
-	 * post's meta cache keeps the old URL. The correct behaviour is to keep
-	 * the row value in its own variable and clear the cache of every owner.
+	 * Every matching row of a meta table clears the meta cache of its own
+	 * owner. handleMetaData() keeps the selected column name (`post_id`)
+	 * apart from the value it reads from each row, so the second and later
+	 * rows of a table hand their own owner id to wp_cache_delete(): no
+	 * undefined-index error is raised and every primed cache reads the new
+	 * URL after the replace.
 	 *
-	 * The error is captured with a local error handler: the harness's own
-	 * handler in tests/bootstrap.php keeps PHPUnit from converting notices
-	 * and warnings into exceptions.
-	 *
-	 * How to recognise the fix: no undefined-index error is raised, both
-	 * cached reads return the new URL, and the assertions on the captured
-	 * error below fail.
+	 * Notices and warnings are captured with a local error handler so that
+	 * a regression fails on the captured error (the harness's own handler
+	 * in tests/bootstrap.php keeps PHPUnit from converting them into
+	 * exceptions).
 	 */
-	public function test_second_postmeta_row_reads_the_cache_key_from_a_wrong_index_pinned_for_deferred_fix() {
+	public function test_every_matching_postmeta_row_clears_the_meta_cache_of_its_owner() {
 		list( $replacer, , , $source_url, $target_url ) = $this->pair();
 		$first  = self::factory()->post->create( array( 'post_status' => 'draft' ) );
 		$second = self::factory()->post->create( array( 'post_status' => 'draft' ) );
@@ -518,10 +514,6 @@ class ReplacerDatabaseTest extends WP_UnitTestCase {
 		add_post_meta( $second, '_emr_test_builder', 'image:' . $source_url );
 		$this->assertSame( 'image:' . $source_url, get_post_meta( $first, '_emr_test_builder', true ), 'Sentinel: first cache primed.' );
 		$this->assertSame( 'image:' . $source_url, get_post_meta( $second, '_emr_test_builder', true ), 'Sentinel: second cache primed.' );
-		if ( version_compare( get_bloginfo( 'version' ), '6.1', '>=' ) ) {
-			// WordPress 6.1+ flags wp_cache_delete() with an empty key.
-			$this->setExpectedIncorrectUsage( 'WP_Object_Cache::delete' );
-		}
 
 		$errors = array();
 		set_error_handler(
@@ -539,13 +531,12 @@ class ReplacerDatabaseTest extends WP_UnitTestCase {
 			restore_error_handler();
 		}
 
-		$this->assertSame( 2, $result, 'Sentinel: both rows matched.' );
-		$this->assertSame( 'image:' . $target_url, $this->rawPostMeta( $second, '_emr_test_builder' ), 'Sentinel: both rows are rewritten in the database.' );
-		$this->assertCount( 1, $errors, 'Pinned: one undefined-index error, raised on the second row.' );
-		$this->assertSame( PHP_VERSION_ID >= 80000 ? E_WARNING : E_NOTICE, $errors[0][0] );
-		$this->assertMatchesRegularExpression( '/^Undefined (array key|offset:) (' . $first . '|' . $second . ')$/', $errors[0][1], 'Pinned: the key is the first row\'s post id.' );
-		$stale = get_post_meta( $first, '_emr_test_builder', true ) === 'image:' . $source_url ? $first : $second;
-		$this->assertSame( 'image:' . $source_url, get_post_meta( $stale, '_emr_test_builder', true ), 'Pinned: one post still reads the old URL from the cache.' );
+		$this->assertSame( 2, $result, 'Both rows matched.' );
+		$this->assertSame( array(), $errors, 'No notice or warning is raised on the second row.' );
+		$this->assertSame( 'image:' . $target_url, $this->rawPostMeta( $first, '_emr_test_builder' ), 'The first row is rewritten in the database.' );
+		$this->assertSame( 'image:' . $target_url, $this->rawPostMeta( $second, '_emr_test_builder' ), 'The second row is rewritten in the database.' );
+		$this->assertSame( 'image:' . $target_url, get_post_meta( $first, '_emr_test_builder', true ), 'The first post reads the new URL through the cache.' );
+		$this->assertSame( 'image:' . $target_url, get_post_meta( $second, '_emr_test_builder', true ), 'The second post reads the new URL through the cache.' );
 	}
 
 	/**

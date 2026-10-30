@@ -210,7 +210,10 @@ class ReplaceControllerTest extends WP_UnitTestCase {
 		$image = imagecreatetruecolor( $width, $height );
 		imagefilledrectangle( $image, 0, 0, $width - 1, $height - 1, imagecolorallocate( $image, 30, 120, 200 ) );
 		imagejpeg( $image, $path, 80 );
-		imagedestroy( $image );
+		if ( PHP_VERSION_ID < 80000 ) {
+			// GD images are objects since PHP 8.0; imagedestroy() is a no-op there and deprecated since 8.5.
+			imagedestroy( $image );
+		}
 		return $path;
 	}
 
