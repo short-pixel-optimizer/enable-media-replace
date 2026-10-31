@@ -40,16 +40,11 @@ concurrency:
 jobs:
   e2e:
     name: Playwright / ${{ matrix.engine }} / WP latest
-    # Two skips, both reported as passing by GitHub so neither blocks a PR:
-    # - pull_request runs whose SOURCE branch is `updates` or `bulk` in this
-    #   repository: the push to that branch has already tested that exact
-    #   commit, the PR would only run everything a second time;
-    # - the Firefox and WebKit jobs, unless a manual run asked for them.
-    if: >-
-      (github.event_name != 'pull_request'
-      || (github.event.pull_request.head.ref != 'updates' && github.event.pull_request.head.ref != 'bulk')
-      || github.event.pull_request.head.repo.full_name != github.repository)
-      && (matrix.engine == 'chromium' || (github.event_name == 'workflow_dispatch' && inputs.all_engines))
+    # Skip pull_request runs whose SOURCE branch is `updates` or `bulk` in
+    # this repository: the push to that branch has already tested that exact
+    # commit, the PR would only run everything a second time. GitHub reports
+    # a job skipped by `if` as passing, so it never blocks the PR.
+    if: github.event_name != 'pull_request' || (github.event.pull_request.head.ref != 'updates' && github.event.pull_request.head.ref != 'bulk') || github.event.pull_request.head.repo.full_name != github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
@@ -63,17 +58,13 @@ jobs:
 
     strategy:
       # Every engine reports its own verdict; one red engine must not hide
-      # whether the others are green. Firefox and WebKit are skipped by the
-      # job `if` unless a manual run asks for them (all_engines).
+      # whether the others are green. The matrix is Chromium only (with the
+      # `visual` project) unless a manual run asks for every engine with
+      # the all_engines input: `matrix` cannot be read in a job-level `if`,
+      # so the list itself is chosen here.
       fail-fast: false
       matrix:
-        include:
-          - engine: chromium
-            projects: --project chromium --project visual
-          - engine: firefox
-            projects: --project firefox
-          - engine: webkit
-            projects: --project webkit
+        include: ${{ fromJSON((github.event_name == 'workflow_dispatch' && inputs.all_engines) && '[{"engine":"chromium","projects":"--project chromium --project visual"},{"engine":"firefox","projects":"--project firefox"},{"engine":"webkit","projects":"--project webkit"}]' || '[{"engine":"chromium","projects":"--project chromium --project visual"}]') }}
 
     steps:
       - uses: actions/checkout@v7
