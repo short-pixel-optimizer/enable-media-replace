@@ -3,42 +3,68 @@
 # site on http://localhost:8031), so a green run here means a green run on
 # any developer machine.
 #
-# One job per browser engine, in parallel on separate runners. The
-# screenshot regression project (`visual`, Chromium-only baselines) rides
-# along in the Chromium job. Chromium and Firefox gate the run; the WebKit
-# job reports without blocking (see continue-on-error below).
+# CI runs the Chromium engine only (plus the screenshot regression project
+# `visual`, whose baselines are Chromium). Firefox and WebKit are run
+# locally for now (bin/test-e2e.sh --project firefox / webkit); a manual
+# run from the Actions tab can include them with the `all_engines` input.
+# One job per engine, in parallel on separate runners; WebKit, when
+# included, reports without gating (see continue-on-error below).
 name: E2E (browser)
 
-# Manual dispatch only, from the Actions tab. No push or pull_request
-# trigger: the browser suite is run on demand.
+# Every push to `updates` (the integration branch) or `bulk` (the bulk
+# processing work) runs the browser suite, and so does every pull request
+# into `updates` or `master`. Other branches are covered by their pull
+# request; anything else can be run by hand from the Actions tab
+# (workflow_dispatch).
 on:
+  push:
+    branches: [ updates, bulk ]
+  pull_request:
+    branches: [ updates, master ]
   workflow_dispatch:
+    inputs:
+      all_engines:
+        description: Also run Firefox and WebKit (CI runs Chromium only by default)
+        type: boolean
+        default: false
 
-# A unique group per run, so every manual run keeps its own verdict. (A
-# shared group is not enough even with cancel-in-progress off: GitHub keeps
-# only ONE pending run per group and silently cancels the older pending one
-# when a third arrives.)
+# Pull requests: one group per PR, so a newer push cancels the stale run.
+# Pushes and manual runs: a unique group per run, so every commit on
+# `updates` or `bulk` keeps its own verdict. (A shared group is not enough
+# even with cancel-in-progress off: GitHub keeps only ONE pending run per
+# group and silently cancels the older pending one when a third arrives.)
 concurrency:
-  group: e2e-${{ github.run_id }}
-  cancel-in-progress: false
+  group: e2e-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   e2e:
     name: Playwright / ${{ matrix.engine }} / WP latest
+    # Two skips, both reported as passing by GitHub so neither blocks a PR:
+    # - pull_request runs whose SOURCE branch is `updates` or `bulk` in this
+    #   repository: the push to that branch has already tested that exact
+    #   commit, the PR would only run everything a second time;
+    # - the Firefox and WebKit jobs, unless a manual run asked for them.
+    if: >-
+      (github.event_name != 'pull_request'
+      || (github.event.pull_request.head.ref != 'updates' && github.event.pull_request.head.ref != 'bulk')
+      || github.event.pull_request.head.repo.full_name != github.repository)
+      && (matrix.engine == 'chromium' || (github.event_name == 'workflow_dispatch' && inputs.all_engines))
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
     # WebKit reports but does not gate. Playwright's Linux WebKit dies in
     # ways that have nothing to do with the plugin when the runner is
     # starved (2 cores / 7 GB): a web process killed mid-navigation
-    # ("WebKit encountered an internal error"). Chromium and Firefox still
-    # gate every run, and a red WebKit job stays visible in the run.
+    # ("WebKit encountered an internal error"). Chromium (and Firefox when
+    # included) still gate every run, and a red WebKit job stays visible.
     # This is NOT a retry: the failing test still fails (retries: 0).
     continue-on-error: ${{ matrix.engine == 'webkit' }}
 
     strategy:
       # Every engine reports its own verdict; one red engine must not hide
-      # whether the others are green.
+      # whether the others are green. Firefox and WebKit are skipped by the
+      # job `if` unless a manual run asks for them (all_engines).
       fail-fast: false
       matrix:
         include:

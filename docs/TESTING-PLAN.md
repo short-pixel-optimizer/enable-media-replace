@@ -389,7 +389,7 @@ WordPress test install with MySQL 8. No local PHP is needed.
 | `tests/partner-plugins/` | same, gitignored | the four SPIO zips copied in Phase 3 (Breakdance, WPBakery, WPML, WPML Media) |
 | `tests/Smoke/` | same | one `test-RealRemoveBackgroundSmoke.php`, keyed by `SHORTPIXEL_SMOKE_KEY`, mock unregistered, never in `--all`/`--matrix`/CI |
 | `tests/E2E/` | same | Playwright 1.63.0, `workers: 1`, `retries: 0`; mu-plugins `emr-e2e-mock-api.php` and `emr-e2e-support.php` (REST namespace `emr-e2e/v1`); provisioning with `PLUGIN_SLUG=enable-media-replace`; new specs (Phase 8) |
-| `.github/workflows/phpunit.yml`, `e2e.yml`, `smoke.yml` | same | triggers: push on `tests`, PRs to `updates` and `master`; suite loops; `e2e.yml` and `smoke.yml` manual dispatch only; zero-test guard added to every PHPUnit job, not only the unit matrix |
+| `.github/workflows/phpunit.yml`, `e2e.yml`, `smoke.yml` | same | triggers: push on `tests`, PRs to `updates` and `master`; suite loops; `smoke.yml` manual dispatch only, `e2e.yml` Chromium on the same pushes and PRs as `phpunit.yml` (the other engines on manual runs); zero-test guard added to every PHPUnit job, not only the unit matrix |
 | `.github/dependabot.yml` | same | path and branch |
 | `TESTING.md`, `CLAUDE.md`, `AGENTS.md`, `.github/copilot-instructions.md` | same | rewritten for EMR (Phase 2.2 and 3.5) |
 | `.gitignore` | same | already replaced with SPIO's layout adapted to EMR: `vendor`, `vendor-tests`, `composer.lock`, partner zips, E2E artifacts; `.*` and `bin` removed |

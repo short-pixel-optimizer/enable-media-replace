@@ -507,7 +507,9 @@ Every PHPUnit step carries a zero-test guard: the output is captured with
 `No tests executed!`, or when it has no `OK (` / `Tests:` summary line (an
 `exit()` mid-run). A green job always ran real tests.
 
-`smoke.yml` and `e2e.yml` run on manual dispatch only, never on push or PR.
+`smoke.yml` runs on manual dispatch only, never on push or PR; `e2e.yml`
+runs Chromium on the same pushes and pull requests as `phpunit.yml` (see
+"Browser end-to-end tests").
 
 The Docker-based local setup (`.docker/Dockerfile.tests` +
 `docker-compose.tests.yml` + `bin/test.sh`) is designed to match this
@@ -707,10 +709,15 @@ the pulled image, because a core change moves the admin CSS. Refresh
 intended changes with `bin/test-e2e.sh --project visual --update-snapshots`.
 
 **CI**: `.github/workflows/e2e.yml` runs the identical Docker stack on
-`ubuntu-latest`, on manual dispatch only, one job per engine (`visual` rides
-in the Chromium job, `fail-fast: false`). Each job fails on a non-zero exit
-and on a log without an `N passed` line or with `0 passed`. Artifacts are
-uploaded per engine.
+`ubuntu-latest` on every push to `updates` and `bulk` and on every pull
+request into `updates` or `master`, with the same skip as `phpunit.yml` for
+a pull request whose source branch is `updates` or `bulk` (that commit was
+tested by its push). CI runs the Chromium job only (`visual` rides in it);
+Firefox and WebKit stay local for now and can be added to a manual run from
+the Actions tab with the `all_engines` input (WebKit then reports without
+gating, `continue-on-error`). Each job fails on a non-zero exit and on a log
+without an `N passed` line or with `0 passed`. Artifacts are uploaded per
+engine.
 
 ## Writing new tests
 
