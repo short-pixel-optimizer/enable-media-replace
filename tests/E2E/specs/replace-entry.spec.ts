@@ -3,6 +3,9 @@
  *   - the "Replace media" row action of the Media Library list view;
  *   - the "Upload a new file" button of the edit-attachment "Replace Media"
  *     meta box;
+ *   - the three buttons of the attachment details modal of the Media
+ *     Library grid view (the same compat fields the editors' media modal
+ *     shows);
  *   - permissions: an author who does not own the attachment gets no row
  *     action and the error screen on the direct URL
  *     (EnableMediaReplacePlugin::checkImagePermission(), edit_post);
@@ -11,7 +14,7 @@
 import { test, expect, newVisitorContext } from '../fixtures';
 import { ErrorScreen, ReplaceScreen, emrQuery, emrUrls } from '../helpers/emr';
 import { loginAs } from '../helpers/journeys';
-import { EditAttachment, MediaList } from '../helpers/media-list';
+import { EditAttachment, MediaGrid, MediaList } from '../helpers/media-list';
 
 test.describe('Replace entry points', () => {
 	test('the Replace media row action opens the replace screen for that attachment', async ({ page, emr }) => {
@@ -51,6 +54,33 @@ test.describe('Replace entry points', () => {
 		await Promise.all([page.waitForURL(/action=media_replace/), edit.replaceButton.click()]);
 		expect(emrQuery(page.url()).attachmentId).toBe(emr.seed.attachment_id);
 
+		const screen = new ReplaceScreen(page);
+		await expect(screen.heading).toBeVisible();
+		await expect(screen.form.locator('input[name="ID"]')).toHaveValue(String(emr.seed.attachment_id));
+	});
+
+	test('the grid view attachment details offer the three buttons, and Upload a new file opens the replace screen', async ({ page, emr }) => {
+		const grid = new MediaGrid(page);
+		await grid.goto();
+		await grid.open(emr.seed.attachment_id);
+
+		// The three compat fields EMR adds (the seed is an 800 px JPEG: removable and upscalable).
+		await expect(grid.replaceButton).toBeVisible();
+		await expect(grid.removeBackgroundButton).toBeVisible();
+		await expect(grid.upscaleButton).toBeVisible();
+
+		// The two API screens are reached through nonced links (their load
+		// throws the known emr_admin.js error, pinned in smoke.spec.ts, so
+		// they are not clicked through here; their specs cover the screens).
+		const removeHref = (await grid.removeBackgroundButton.getAttribute('href')) || '';
+		expect(emrQuery(removeHref)).toEqual({ page: 'enable-media-replace/enable-media-replace.php', action: 'emr_prepare_remove', attachmentId: emr.seed.attachment_id });
+		expect(removeHref).toMatch(/_wpnonce=[0-9a-f]+/);
+		const upscaleHref = (await grid.upscaleButton.getAttribute('href')) || '';
+		expect(emrQuery(upscaleHref)).toEqual({ page: 'enable-media-replace/enable-media-replace.php', action: 'emr_prepare_upscale', attachmentId: emr.seed.attachment_id });
+		expect(upscaleHref).toMatch(/_wpnonce=[0-9a-f]+/);
+
+		await Promise.all([page.waitForURL(/action=media_replace/), grid.replaceButton.click()]);
+		expect(emrQuery(page.url()).attachmentId).toBe(emr.seed.attachment_id);
 		const screen = new ReplaceScreen(page);
 		await expect(screen.heading).toBeVisible();
 		await expect(screen.form.locator('input[name="ID"]')).toHaveValue(String(emr.seed.attachment_id));

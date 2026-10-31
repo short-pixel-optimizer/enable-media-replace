@@ -39,6 +39,14 @@ use EnableMediaReplace\ApiKeyManager;
 use EnableMediaReplace\Controller\RemoteNoticeController;
 use EnableMediaReplace\InstallHelper;
 use EnableMediaReplace\Notices\NoticeController;
+use EnableMediaReplace\ViewController\UploadViewController;
+
+/** Exposes the protected settings writer of the upload controller. */
+class EMR_MsSettingsUploadViewController extends UploadViewController {
+	public function writeSettings( array $params ) {
+		return $this->updateSettings( $params );
+	}
+}
 
 class MultisiteSiteStateTest extends EMR_IntegrationTestCase {
 
@@ -319,6 +327,43 @@ class MultisiteSiteStateTest extends EMR_IntegrationTestCase {
 		$this->enter( $blog );
 		$this->assertSame( array( 'emr_news', 'emr_url_cache', 'enable_media_replace' ), $this->existingOptions( $this->uninstallOptions() ), 'Pinned: the subsite rows stay.' );
 		$this->assertSame( array( 'bg_type' => 'sub' ), get_option( 'enable_media_replace' ) );
+	}
+
+	// ---------------------------------------------------------------------
+	// Replace settings.
+	// ---------------------------------------------------------------------
+
+	/**
+	 * The replace screen remembers the last choices (replace type, date mode,
+	 * new location) in the `enable_media_replace` option, written by
+	 * UploadViewController::updateSettings() after every replace. On a
+	 * network each site keeps its own: a choice made on the main site is not
+	 * the default on a subsite, and the subsite's choice does not change the
+	 * main site's.
+	 */
+	public function test_the_replace_settings_are_stored_per_site() {
+		$blog = $this->newSite();
+		$main = array( 'replace_type' => 'replace_and_search', 'timestamp_replace' => 3, 'new_location' => true, 'location_dir' => '2020/01', 'is_custom_date' => true, 'new_date' => '2020-01-02 03:04:00' );
+		$sub  = array( 'replace_type' => 'replace', 'timestamp_replace' => 2, 'new_location' => false, 'location_dir' => '', 'is_custom_date' => false, 'new_date' => '2030-01-01 00:00:00' );
+
+		( new EMR_MsSettingsUploadViewController() )->writeSettings( $main );
+		$stored_main = get_option( 'enable_media_replace' );
+		$this->assertSame( 'replace_and_search', $stored_main['replace_type'], 'Sentinel: the main site stored its choices.' );
+		$this->assertSame( 3, $stored_main['timestamp_replace'] );
+		$this->assertSame( '2020/01', $stored_main['new_location_dir'] );
+
+		$this->enter( $blog );
+		$this->assertFalse( get_option( 'enable_media_replace' ), 'The subsite starts without replace settings: the screen shows its defaults.' );
+		( new EMR_MsSettingsUploadViewController() )->writeSettings( $sub );
+		$stored_sub = get_option( 'enable_media_replace' );
+		$this->assertSame( 'replace', $stored_sub['replace_type'] );
+		$this->assertSame( 2, $stored_sub['timestamp_replace'] );
+		$this->assertFalse( $stored_sub['new_location'] );
+		$this->assertArrayNotHasKey( 'custom_date', $stored_sub, 'A non-custom date mode stores no custom date.' );
+		$this->leave();
+
+		$this->assertSame( $stored_main, get_option( 'enable_media_replace' ), 'The subsite choices do not reach the main site.' );
+		$this->assertSame( array(), $this->existingNetworkOptions( 'enable_media_replace' ), 'No network option is written.' );
 	}
 
 	// ---------------------------------------------------------------------

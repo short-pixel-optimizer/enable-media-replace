@@ -950,6 +950,42 @@ class ReplaceFlowTest extends EMR_IntegrationTestCase {
 		$this->assertSame( '<img src="' . $svg_url . '" srcset="' . $svg_url . ' 300w, ' . $svg_url . ' 150w" />', $this->rawContent( $post ) );
 	}
 
+	/**
+	 * The way back: an SVG attachment (no sizes) replaced by a JPEG under a
+	 * new name. The post references the SVG's single URL; after the replace
+	 * every such reference points at the new full image (the SVG never had
+	 * sizes, so there is nothing to map them to), the attachment carries the
+	 * JPEG's MIME type and freshly generated sizes.
+	 */
+	public function test_search_replace_from_an_svg_back_to_an_image_points_the_references_at_the_full_image() {
+		$this->addHook(
+			'upload_mimes',
+			function ( $mimes ) {
+				$mimes['svg'] = 'image/svg+xml';
+				return $mimes;
+			}
+		);
+		$id      = $this->uploadFixtureAs( 'test-vector.svg', 'emr-vector-' . $this->token() . '.svg' );
+		$svg_url = wp_get_attachment_url( $id );
+		$this->assertStringEndsWith( '.svg', $svg_url, 'Sentinel: the SVG attachment exists.' );
+		$this->assertArrayNotHasKey( 'sizes', (array) wp_get_attachment_metadata( $id ), 'Sentinel: an SVG has no sizes.' );
+		$post = $this->makePost( '<figure><img src="' . $svg_url . '" alt="vector" /><a href="' . $svg_url . '">file</a></figure>' );
+		$name = 'emr-raster-' . $this->token() . '.jpg';
+
+		$this->searchReplaceMode( $id, $this->tmpJpeg( 400, 300 ), $name );
+
+		$new_url = wp_get_attachment_url( $id );
+		$this->assertStringEndsWith( '/' . $name, $new_url );
+		$this->assertSame( 'image/jpeg', get_post_mime_type( $id ) );
+		$this->assertFileExists( get_attached_file( $id ) );
+		$this->assertSame( array( 'medium', 'thumbnail' ), $this->sortedKeys( wp_get_attachment_metadata( $id )['sizes'] ), 'The sizes are generated for the new image.' );
+		$this->assertSame(
+			'<figure><img src="' . $new_url . '" alt="vector" /><a href="' . $new_url . '">file</a></figure>',
+			$this->rawContent( $post ),
+			'Every SVG reference becomes the new full image.'
+		);
+	}
+
 	// ---------------------------------------------------------------------
 	// Hooks and side effects.
 	// ---------------------------------------------------------------------

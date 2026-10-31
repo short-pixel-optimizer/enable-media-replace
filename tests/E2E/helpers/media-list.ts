@@ -12,6 +12,17 @@
  *                   Row actions are visually hidden until the row is hovered
  *                   or focused; rowAction() hovers first.
  *
+ * Media Library GRID view (wp-admin/upload.php?mode=grid):
+ *   - tiles:        `li.attachment[data-id="<id>"]`; a click opens the
+ *                   attachment details modal (`.media-modal`);
+ *   - EMR's buttons: EnableMediaReplacePlugin::attachment_editor() adds
+ *                   compat fields, rendered in the modal as
+ *                   `tr.compat-field-enable-media-replace` ("Upload a new
+ *                   file"), `tr.compat-field-emr-remove-background` and
+ *                   `tr.compat-field-emr-upscale`, each holding one
+ *                   `a.button-secondary`. The same fields show in the media
+ *                   modal of the editors ("Replace" on an image block).
+ *
  * Edit-attachment screen (wp-admin/post.php?post=<id>&action=edit):
  *   - meta box `#emr-replace-box` ("Replace Media") with the "Upload a new
  *     file" button (to the replace screen) and, for removable images, the
@@ -45,6 +56,42 @@ export class MediaList {
 	/** Locator only (no hover): for presence / absence checks. */
 	rowActionLink(id: number, action: 'media_replace' | 'remove_background' | 'upscale_image'): Locator {
 		return this.row(id).locator(`.row-actions .${action} a`);
+	}
+}
+
+export class MediaGrid {
+	constructor(readonly page: Page) {}
+
+	async goto(): Promise<void> {
+		await this.page.goto(adminUrls.mediaGrid);
+		await expect(this.page.locator('.attachments-browser .attachments')).toBeVisible();
+	}
+
+	tile(id: number): Locator {
+		return this.page.locator(`li.attachment[data-id="${id}"]`);
+	}
+
+	/** Open the attachment details modal of a tile. */
+	async open(id: number): Promise<void> {
+		await this.tile(id).click();
+		await expect(this.page.locator('.media-modal .attachment-details')).toBeVisible();
+	}
+
+	/** One of EMR's compat fields inside the open modal. */
+	field(name: 'enable-media-replace' | 'emr-remove-background' | 'emr-upscale'): Locator {
+		return this.page.locator(`.media-modal tr.compat-field-${name}`);
+	}
+
+	get replaceButton(): Locator {
+		return this.field('enable-media-replace').getByRole('link', { name: 'Upload a new file' });
+	}
+
+	get removeBackgroundButton(): Locator {
+		return this.field('emr-remove-background').getByRole('link', { name: 'Remove background' });
+	}
+
+	get upscaleButton(): Locator {
+		return this.field('emr-upscale').getByRole('link', { name: 'Upscale image' });
 	}
 }
 
