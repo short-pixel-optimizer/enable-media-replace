@@ -152,6 +152,7 @@ classes/
     RemoteNoticeController.php - remote notices from api.shortpixel.com
     Bulk/                  - the bulk queue, ported from SPIO's queue layer (PSR-4, autoloaded)
       BulkAjaxController.php - wp_ajax_emr_bulk_process / _request / _settings, the two-tab processor key
+      CronController.php   - WP-Cron ticks (event emr_bulk_cron) while the background_process setting is on
       BulkQueue.php        - the ShortQ queue (slug emr, name bulk): prepare / dequeue lifecycle, stats
       QueueController.php  - one tick: key and plan gates, run the queue, process the items
       BulkController.php   - create / start / finish a bulk run, the bulk logs (option emr_bulk_logs)
@@ -268,6 +269,15 @@ docs/                      - the documentation and test plan
   `emrBulk` (`EnableMediaReplacePlugin::bulkScriptData()`); nothing is
   inline. Settings live in `enable_media_replace` under `bulk_*` keys
   (`BulkController::getSettings()`).
+- **Bulk cron:** `CronController` (created on `init` for every request, so
+  WP-Cron knows the schedule) keeps a started bulk going without the page:
+  with the `background_process` setting on and the queue running with items
+  waiting, `startBulk()` schedules `emr_bulk_cron` on the `emr_bulk_interval`
+  schedule (60 s, filter `emr/bulk/cron_interval`); each run is
+  `processCronHook()`, a loop of ticks (10 runs, 50 s, 1 s between; filter
+  `emr/bulk/cron/options`) that ends on an empty queue or a refused tick;
+  `finishBulk()`, deactivation and uninstall clear the event. Cron never
+  drives the preparing phase and does not take the browser's processor key.
 
 ## Git workflow (no commits, no branches, no worktrees unless asked)
 

@@ -81,9 +81,11 @@ class BulkFlowTest extends EMR_IntegrationTestCase {
 	}
 
 	private function resetBulkState() {
+		wp_clear_scheduled_hook( \EnableMediaReplace\Controller\Bulk\CronController::EVENT );
 		foreach ( array(
 			'EnableMediaReplace\Controller\Bulk\BulkApi'        => 'instance',
 			'EnableMediaReplace\Controller\Bulk\BulkController' => 'instance',
+			'EnableMediaReplace\Controller\Bulk\CronController' => 'instance',
 		) as $class => $property ) {
 			$this->resetSingleton( $class, $property );
 		}
@@ -368,6 +370,39 @@ class BulkFlowTest extends EMR_IntegrationTestCase {
 		$this->assertCount( 1, $this->api->requestsTo( 'api-status.php' ) );
 		$this->assertCount( 0, $this->api->requestsTo( 'reducer.php' ) );
 		$this->assertTrue( ( new BulkQueue() )->getStats()->is_preparing, 'Nothing was prepared yet.' );
+	}
+
+	/**
+	 * The cron run: the page prepared and started the bulk, then was closed;
+	 * WP-Cron finishes it. Pending answers are handled by the in-process
+	 * timeout like any tick, so the mock answers with success at once here.
+	 */
+	public function test_cron_finishes_a_started_bulk_when_the_background_setting_is_on() {
+		$settings = BulkController::getSettings();
+		$settings['background_process'] = true;
+		BulkController::saveSettings( $settings );
+		add_filter( 'emr/bulk/cron/options', function ( $options ) {
+			$options['wait'] = 0;
+			return $options;
+		} );
+		$ids  = array( $this->image(), $this->image() );
+		$bulk = BulkController::getInstance();
+		$bulk->createNewBulk( array( 'operation' => 'background', 'items' => $ids ) );
+		$this->prepare();
+		$bulk->startBulk();
+		$cron = \EnableMediaReplace\Controller\Bulk\CronController::getInstance();
+		$this->assertTrue( $cron->isScheduled(), 'startBulk() scheduled the event.' );
+
+		$last = $cron->processCronHook();
+
+		remove_all_filters( 'emr/bulk/cron/options' );
+		$this->assertSame( BulkQueue::RESULT_QUEUE_EMPTY, $last->media->qstatus );
+		foreach ( $ids as $id ) {
+			$this->assertSame( 50, wp_get_attachment_metadata( $id )['width'] );
+			$this->assertTrue( BackupController::hasBackup( BulkImage::getById( $id ) ) );
+		}
+		$this->assertFalse( $cron->isScheduled() );
+		$bulk->finishBulk();
 	}
 
 	public function test_a_second_run_skips_images_the_operation_already_processed() {

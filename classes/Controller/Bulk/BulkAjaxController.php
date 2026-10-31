@@ -162,6 +162,7 @@ class BulkAjaxController
 			$settings['upscale_threshold'] = BulkController::sanitizeThreshold(wp_unslash($_POST['threshold']));
 		}
 		BulkController::saveSettings($settings);
+		CronController::getInstance()->checkNewJobs();
 
 		$json           = new \stdClass();
 		$json->status   = true;

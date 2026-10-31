@@ -29,6 +29,9 @@ use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
  * backup folder while it runs and renamed to `bulk_<operation>_<ts>.log`
  * when it finishes.
  *
+ * startBulk() asks CronController to schedule the background ticks when the
+ * setting is on; finishBulk() removes the event.
+ *
  * Lifecycle: getInstance() singleton. Hooks:
  * - filter `emr/bulk/custom_options` (array args): the options of a custom operation before they are stored.
  */
@@ -255,6 +258,7 @@ class BulkController
 	{
 		$q = $this->queue();
 		$q->startBulk();
+		CronController::getInstance()->checkNewJobs();
 		return $q->getStats();
 	}
 
@@ -268,6 +272,7 @@ class BulkController
 		$q = $this->queue();
 		$this->addLog($q);
 		$q->resetQueue();
+		CronController::getInstance()->unschedule();
 	}
 
 	/**

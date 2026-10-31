@@ -115,6 +115,9 @@ class EnableMediaReplacePlugin
     {
         $this->nopriv_plugin_actions();
 
+        // The bulk cron must be known on every request (WP-Cron runs without a user).
+        \EnableMediaReplace\Controller\Bulk\CronController::getInstance();
+
         if (EMR_CAPABILITY !== false) {
             if (is_array(EMR_CAPABILITY)) {
                 $this->general_cap = EMR_CAPABILITY[0];

@@ -8,6 +8,7 @@ namespace EnableMediaReplace;
 use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
 use EnableMediaReplace\Notices\NoticeController as Notices;
 use EnableMediaReplace\Controller\Bulk\BulkController;
+use EnableMediaReplace\Controller\Bulk\CronController;
 use EnableMediaReplace\Controller\Bulk\QueueController;
 
 /**
@@ -70,10 +71,11 @@ class InstallHelper
 			QueueController::uninstallPlugin();
 			BulkController::uninstallPlugin();
 			delete_transient( QueueController::PLAN_TRANSIENT );
+			wp_clear_scheduled_hook( CronController::EVENT );
 		}
 
 		/**
-		 * Deactivation callback: clears the stored admin notices.
+		 * Deactivation callback: clears the stored admin notices and the bulk cron event.
 		 *
 		 * NoticeController::resetNotices() deletes the `EnableMediaReplace-notices`
 		 * option, which holds persistent notices and their dismissal state, so a
@@ -85,5 +87,6 @@ class InstallHelper
 		public static function deactivatePlugin()
 		{
 			Notices::resetNotices();
+			wp_clear_scheduled_hook( CronController::EVENT );
 		}
 }

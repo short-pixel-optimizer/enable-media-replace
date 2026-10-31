@@ -57,6 +57,7 @@ trait EMR_BulkTestHelpers {
 			}
 		}
 		delete_transient( 'emr_bulk_plan_ok' );
+		wp_clear_scheduled_hook( 'emr_bulk_cron' );
 
 		$table = $wpdb->prefix . 'shortpixel_queue';
 		if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ) === $table ) {
@@ -76,6 +77,7 @@ trait EMR_BulkTestHelpers {
 			'EnableMediaReplace\Controller\Bulk\BulkApi'          => 'instance',
 			'EnableMediaReplace\Controller\Bulk\ActionController' => 'instances',
 			'EnableMediaReplace\Controller\Bulk\BulkController'   => 'instance',
+			'EnableMediaReplace\Controller\Bulk\CronController'   => 'instance',
 			'EnableMediaReplace\Controller\Bulk\BulkQueue'        => 'isInQueue',
 			'EnableMediaReplace\ApiKeyManager'                    => 'instance',
 		) as $class => $property ) {
