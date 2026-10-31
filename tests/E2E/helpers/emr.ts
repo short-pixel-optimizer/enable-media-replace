@@ -260,6 +260,11 @@ export class EmrSupport {
 		return this.post('key', { key });
 	}
 
+	/** Turn the block editor off for every post (what the Classic Editor plugin does); the reset turns it back on. */
+	setClassicEditor(on: boolean): Promise<{ ok: boolean }> {
+		return on ? this.setOption('emr_e2e_classic_editor', 1) : this.deleteOption('emr_e2e_classic_editor');
+	}
+
 	/** Force the emr/feature/* filter outcome; null restores the default. */
 	setFeatures(features: { background?: boolean | null; upscale?: boolean | null; remote_notice?: boolean | null }): Promise<{ ok: boolean }> {
 		return this.post('feature', features);

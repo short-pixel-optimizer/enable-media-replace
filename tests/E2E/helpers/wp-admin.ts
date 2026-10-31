@@ -43,5 +43,7 @@ export const adminUrls = {
 	/** Media Library in GRID mode (EMR's buttons sit in the attachment details modal). */
 	mediaGrid: '/wp-admin/upload.php?mode=grid',
 	editAttachment: (id: number): string => `/wp-admin/post.php?post=${id}&action=edit`,
+	/** The post editor (block editor, or the classic editor when the support switch is on). */
+	editPost: (id: number): string => `/wp-admin/post.php?post=${id}&action=edit`,
 	plugins: '/wp-admin/plugins.php',
 } as const;

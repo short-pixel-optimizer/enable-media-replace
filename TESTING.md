@@ -204,6 +204,7 @@ downloaded from wordpress.org (latest stable, zips cached in the
 | `beaver-builder-lite-version` | Beaver Builder Lite |
 | `shortpixel-image-optimiser` | ShortPixel Image Optimizer (coexistence and upsell) |
 | `envira-gallery-lite` | Envira Gallery Lite (upsell) |
+| `advanced-custom-fields` | Advanced Custom Fields (image, URL, text, WYSIWYG and group fields in postmeta) |
 
 The commercial ones have no public download: drop their zips into
 `tests/partner-plugins/` (gitignored) and `--compat` extracts and activates
@@ -581,9 +582,13 @@ volumes `emr-e2e_*` and port):
   `emr/feature/remote_notice`), `user`, `mock`,
   `mock/reset`, `mock/requests`, `bulk/status` (the bulk queue's startup
   data, raw numbers) and `queue/backdate` (ages every row of the
-  `shortpixel_queue` table past ShortQ's `process_timeout`). It also turns
-  off the core, plugin and theme update checks, pings and the dashboard
-  news widget.
+  `shortpixel_queue` table past ShortQ's `process_timeout`). With the
+  `emr_e2e_classic_editor` option set (`emr.setClassicEditor(true)`) it
+  turns the block editor off for every post, the way the Classic Editor
+  plugin does, so `editors.spec.ts` can drive TinyMCE's image toolbar
+  without installing a plugin from wordpress.org; the seed removes the
+  option. It also turns off the core, plugin and theme update checks,
+  pings and the dashboard news widget.
 
 **Seed and reset.** Every test starts from the same state: the `emr`
 fixture calls `reset` before each test. Reset deletes every attachment
@@ -608,7 +613,8 @@ list row actions and the edit-attachment meta box, `emr.ts` the support
 client, EMR URLs and the screen objects, `journeys.ts` the shared journey
 steps, `bulk-page.ts` the Media > Bulk page object), `specs/`
 (`auth.setup.ts` logs in once; `smoke.spec.ts` proves the harness;
-`bulk.spec.ts` the bulk page).
+`editors.spec.ts` the Replace entry point in the block and classic editor
+media modal; `bulk.spec.ts` the bulk page).
 
 **Writing E2E specs**
 

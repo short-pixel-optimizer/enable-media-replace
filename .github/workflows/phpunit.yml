@@ -542,7 +542,7 @@ jobs:
           # keeps the suite honest against what users actually install.
           PLUGIN_DIR="$WP_CORE_DIR/wp-content/plugins"
           mkdir -p "$PLUGIN_DIR"
-          for SLUG in elementor wordpress-seo polylang woocommerce amazon-s3-and-cloudfront siteorigin-panels smart-slider-3 beaver-builder-lite-version shortpixel-image-optimiser envira-gallery-lite; do
+          for SLUG in elementor wordpress-seo polylang woocommerce amazon-s3-and-cloudfront siteorigin-panels smart-slider-3 beaver-builder-lite-version shortpixel-image-optimiser envira-gallery-lite advanced-custom-fields; do
             echo "=== Downloading $SLUG (latest stable)"
             curl -sSfL "https://downloads.wordpress.org/plugin/$SLUG.latest-stable.zip" -o "/tmp/$SLUG.zip"
             unzip -qo "/tmp/$SLUG.zip" -d "$PLUGIN_DIR"

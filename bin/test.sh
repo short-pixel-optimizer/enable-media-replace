@@ -485,7 +485,7 @@ if [ "$COMPAT" = "1" ]; then
         ZIP_CACHE=/tmp/partner-plugin-zips
         PLUGIN_DIR="$WP_CORE_DIR/wp-content/plugins"
         mkdir -p "$ZIP_CACHE" "$PLUGIN_DIR"
-        for SLUG in elementor wordpress-seo polylang woocommerce amazon-s3-and-cloudfront siteorigin-panels smart-slider-3 beaver-builder-lite-version shortpixel-image-optimiser envira-gallery-lite; do
+        for SLUG in elementor wordpress-seo polylang woocommerce amazon-s3-and-cloudfront siteorigin-panels smart-slider-3 beaver-builder-lite-version shortpixel-image-optimiser envira-gallery-lite advanced-custom-fields; do
             if [ ! -d "$PLUGIN_DIR/$SLUG" ]; then
                 if [ ! -f "$ZIP_CACHE/$SLUG.zip" ]; then
                     echo "==> Downloading $SLUG (latest stable) from wordpress.org"

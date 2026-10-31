@@ -137,6 +137,18 @@ class MultisiteAjaxTest extends EMR_AjaxTestCase {
 		);
 	}
 
+	/** The same endpoint with an upscale factor instead of a background (the upscale preview). */
+	private function upscale( $id, $factor = 2 ) {
+		return $this->post(
+			'emr_remove_background',
+			array(
+				'nonce'         => wp_create_nonce( 'emr_remove_background' ),
+				'attachment_id' => (string) $id,
+				'upscale'       => (string) $factor,
+			)
+		);
+	}
+
 	/** The option as stored on the main site, read without leaving the subsite's state behind. */
 	private function mainOption( $name ) {
 		switch_to_blog( get_main_site_id() );
@@ -170,6 +182,49 @@ class MultisiteAjaxTest extends EMR_AjaxTestCase {
 
 		$this->assertFalse( $this->mainOption( 'enable_media_replace' ), 'Nothing is saved on the main site.' );
 		$this->assertFalse( $this->mainOption( '_transient_emr_' . $response->key ), 'The transient is not on the main site.' );
+	}
+
+	/**
+	 * The upscale preview goes through the same endpoint with `upscale` =
+	 * factor; on a subsite it must send the subsite's URL, keep its result
+	 * transient there and, unlike a removal, store no background settings.
+	 */
+	public function test_upscale_by_the_subsite_administrator_sends_the_factor_and_the_subsite_url_and_keeps_its_state_there() {
+		update_option( ApiKeyManager::OPTION_NAME, self::MAIN_KEY );
+		$this->onSubsiteAs( 'admin' );
+		$id = $this->attachmentOf( 'author' );
+		$this->assertSame( 50, wp_get_attachment_metadata( $id )['width'], 'Sentinel: the fixture is 50 px wide, every factor fits.' );
+
+		$response = $this->upscale( $id, 3 );
+
+		$this->assertIsObject( $response );
+		$this->assertTrue( $response->success, wp_json_encode( $response ) );
+		$sent = $this->api->requestsTo( 'free-reducer.php' );
+		$this->assertCount( 1, $sent, 'Without a subsite key the free endpoint is used, the main site key is ignored.' );
+		$this->assertCount( 0, $this->api->requestsTo( 'api-status.php' ) );
+		$this->assertSame( 3, (int) $sent[0]['request']['upscale'] );
+		$this->assertArrayNotHasKey( 'bg_remove', $sent[0]['request'] );
+		$url = urldecode( $sent[0]['request']['urllist'][0] );
+		$this->assertStringContainsString( '/sites/' . $this->blog . '/', $url, 'The subsite uploads URL is sent.' );
+		$this->assertIsString( get_transient( 'emr_' . $response->key ), 'The result is kept in a subsite transient.' );
+		$this->assertFalse( get_option( 'enable_media_replace' ), 'An upscale stores no background settings on the subsite.' );
+
+		$this->assertFalse( $this->mainOption( 'enable_media_replace' ), 'Nothing is saved on the main site.' );
+		$this->assertFalse( $this->mainOption( '_transient_emr_' . $response->key ), 'The transient is not on the main site.' );
+
+		update_option( ApiKeyManager::OPTION_NAME, self::SUB_KEY );
+		$this->resetSingleton( 'EnableMediaReplace\ApiKeyManager' );
+		$this->api->reset();
+
+		$this->assertTrue( $this->upscale( $id, 2 )->success );
+		$status = $this->api->requestsTo( 'api-status.php' );
+		$keyed  = $this->api->requestsTo( '/reducer.php' );
+		$this->assertCount( 1, $status, 'The subsite key is verified.' );
+		$this->assertSame( self::SUB_KEY, $status[0]['request']['key'] );
+		$this->assertCount( 1, $keyed );
+		$this->assertSame( self::SUB_KEY, $keyed[0]['request']['key'] );
+		$this->assertSame( 2, (int) $keyed[0]['request']['upscale'] );
+		$this->assertSame( $id, (int) $keyed[0]['request']['item_id'] );
 	}
 
 	public function test_remove_background_on_a_subsite_ignores_the_main_site_key_and_uses_the_subsite_key() {

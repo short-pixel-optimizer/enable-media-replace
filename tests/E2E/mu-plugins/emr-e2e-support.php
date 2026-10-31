@@ -35,6 +35,8 @@
  *   POST key              { key } store the API key option, { key: null } delete it
  *   POST feature          { background?, upscale?, remote_notice? } force the
  *                         emr/feature/* filter outcome (true/false), null = default
+ *   (option emr_e2e_classic_editor, set through POST option: turns the
+ *   block editor off for every post, like the Classic Editor plugin)
  *   POST user             { role[, login] } a user with password "password"
  *   GET  mock             the mock knobs
  *   POST mock             merge knobs into the mock (see emr-e2e-mock-api.php)
@@ -128,6 +130,19 @@ function emr_e2e_feature_value( $name, $default ) {
 	$features = (array) get_option( EMR_E2E_FEATURE_OPTION, array() );
 	return array_key_exists( $name, $features ) ? (bool) $features[ $name ] : $default;
 }
+/**
+ * Classic editor switch: with the `emr_e2e_classic_editor` option set the
+ * block editor is turned off for every post (what the Classic Editor
+ * plugin does by default), so a spec can drive TinyMCE's image toolbar and
+ * its media modal without installing a plugin from wordpress.org. The seed
+ * removes the option.
+ */
+function emr_e2e_use_block_editor( $use ) {
+	return get_option( 'emr_e2e_classic_editor' ) ? false : $use;
+}
+add_filter( 'use_block_editor_for_post', 'emr_e2e_use_block_editor', 999 );
+add_filter( 'use_block_editor_for_post_type', 'emr_e2e_use_block_editor', 999 );
+
 add_filter( 'emr/feature/background', 'emr_e2e_feature_background', 999 );
 add_filter( 'emr/feature/upscale', 'emr_e2e_feature_upscale', 999 );
 add_filter( 'emr/feature/remote_notice', 'emr_e2e_feature_remote_notice', 999 );
@@ -154,6 +169,7 @@ function emr_e2e_apply_seed() {
 	delete_option( 'enable_media_replace' );
 	delete_option( 'emr_shortpixel_api_key' );
 	delete_option( EMR_E2E_FEATURE_OPTION );
+	delete_option( 'emr_e2e_classic_editor' );
 
 	$previous = (array) get_option( EMR_E2E_SEED_OPTION, array() );
 	if ( ! empty( $previous['post_id'] ) ) {

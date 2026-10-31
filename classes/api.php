@@ -144,6 +144,13 @@ class Api {
 	 * @todo The alpha suffix is `str_pad($transparency, 2, '0')` of the decimal 0-99 value,
 	 *       not a hex alpha: 50 becomes '50' (0x50, about 31 %), 5 becomes '05'. Suggested
 	 *       fix: `sprintf('%02X', round($transparency * 255 / 100))`.
+	 * @todo The feature gate is not checked: neither this method nor Ajax::remove_background()
+	 *       consults \emr()->useFeature('background') / useFeature('upscale'), so an
+	 *       author-restricted user (every entry point hidden) or a site that turned the
+	 *       feature off through the emr/feature/* filters still gets the remote request sent
+	 *       (spending the quota or the key) and a usable result key; only the apply step
+	 *       (loadPost()) refuses. Suggested fix: refuse here, next to checkImagePermission(),
+	 *       with the permission message and no request, when the feature is off for the user.
 	 *
 	 * @param  array $posted_data The AJAX POST data; only `upscale`, `background.type`,
 	 *                            `.color` and `.transparency` are read from it.
