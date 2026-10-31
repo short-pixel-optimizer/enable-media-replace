@@ -189,7 +189,7 @@ js/, css/, scss/, img/     - assets, no build step; js/bulk/ holds the bulk proc
                              (vanilla JS, no jQuery); scss/bulk.scss compiles to css/bulk.css with `sass`
 build/shortpixel/          - bundled modules (generated, do not edit)
 tests/                     - PHPUnit suites, E2E stack, fixtures (see TESTING.md)
-docs/                      - the documentation and test plan
+docs/                      - the documentation and test plan, the bulk design note (BULK.md)
 ```
 
 ### Key Patterns
@@ -251,7 +251,8 @@ docs/                      - the documentation and test plan
   `emr/bulk/custom_options`, `emr/bulk/backup_dir`, `emr/bulk/api/request`,
   `emr/bulk/api/timeout`, `emr/bulk/plan_check_ttl`, `emr/bulk/prepare_items`,
   `emr/bulk/item/done`, `emr/bulk/item/failed`, `emr/bulk/interval`,
-  `emr/bulk/defer_interval`. The bulk needs an API key on an Unlimited plan
+  `emr/bulk/defer_interval`, `emr/bulk/upscale/threshold` (the default
+  threshold). The design note is `docs/BULK.md`. The bulk needs an API key on an Unlimited plan
   (checked once per hour, transient `emr_bulk_plan_ok`).
 - **Bulk screen:** `upload.php?page=emr-bulk` (`BulkViewController`,
   `manage_options`). The browser drives the queue like SPIO's bulk page:

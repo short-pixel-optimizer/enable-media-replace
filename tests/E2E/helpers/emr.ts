@@ -102,6 +102,29 @@ export type MockRequest = {
 	request: Record<string, unknown> | null;
 };
 
+/** One queue's counters as the bulk screen receives them (BulkQueue::getStats(), raw). */
+export type BulkQueueStats = {
+	is_preparing: boolean;
+	is_running: boolean;
+	is_finished: boolean;
+	in_queue: number | string;
+	in_process: number | string;
+	done: number | string;
+	fatal_errors: number | string;
+	errors: number | string;
+	total: number | string;
+	percentage_done: number | string;
+	operation?: string;
+	customOperation?: string | false;
+	[key: string]: unknown;
+};
+
+/** The bulk/status answer: EMR has one queue, `total` mirrors `media` (the SPIO JSON shape the scripts expect). */
+export type BulkStatus = {
+	media: { stats: BulkQueueStats };
+	total: { stats: BulkQueueStats };
+};
+
 /** A file for locator.setInputFiles(). */
 export type FilePayload = { name: string; mimeType: string; buffer: Buffer };
 
@@ -264,6 +287,19 @@ export class EmrSupport {
 	mockRequests(pathFragment?: string): Promise<MockRequest[]> {
 		return this.get('mock/requests', pathFragment ? { path: pathFragment } : {});
 	}
+
+	/**
+	 * Server-side bulk state: the same startup data the bulk screen is
+	 * localized with (QueueController::getStartupData), raw numbers.
+	 */
+	bulkStatus(): Promise<BulkStatus> {
+		return this.get('bulk/status');
+	}
+
+	/** Age every queue row past ShortQ's process_timeout (see BulkPage.driveToFinish). */
+	backdateQueue(): Promise<{ ok: boolean; rows: number }> {
+		return this.post('queue/backdate');
+	}
 }
 
 /**
@@ -341,6 +377,8 @@ export const emrUrls = {
 	removeBackground: (attachmentId: number): string => `${EMR_PAGE}&action=emr_prepare_remove&attachment_id=${attachmentId}`,
 	/** Upscale screen (views/prepare-upscale.php); needs the `upscale` feature. */
 	upscale: (attachmentId: number): string => `${EMR_PAGE}&action=emr_prepare_upscale&attachment_id=${attachmentId}`,
+	/** The visible Media > Bulk page (BulkViewController, manage_options). */
+	bulk: '/wp-admin/upload.php?page=emr-bulk',
 } as const;
 
 /** The query arguments of an EMR page URL (absolute or relative), for assertions on links and redirects. */

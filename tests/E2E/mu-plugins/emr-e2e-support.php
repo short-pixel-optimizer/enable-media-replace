@@ -40,6 +40,11 @@
  *   POST mock             merge knobs into the mock (see emr-e2e-mock-api.php)
  *   POST mock/reset       wipe mock knobs, counters, request log, stash
  *   GET  mock/requests    the mock's request log (?path= filters on the URL path)
+ *   GET  bulk/status      the bulk queue's startup data (QueueController::getStartupData(false)):
+ *                         { media: { stats }, total: { stats } }, raw numbers
+ *   POST queue/backdate   age every row of the shortpixel_queue table past
+ *                         ShortQ's process_timeout, so the next tick re-picks
+ *                         the items that were sent to the API
  *
  * Besides the routes, the file keeps the install hermetic: no core, plugin
  * or theme update checks, no pings, no dashboard news widget.
@@ -380,6 +385,8 @@ function emr_e2e_register_routes() {
 	register_rest_route( $ns, '/mock', $def + array( 'methods' => 'POST', 'callback' => 'emr_e2e_route_mock' ) );
 	register_rest_route( $ns, '/mock/reset', $def + array( 'methods' => 'POST', 'callback' => 'emr_e2e_route_mock_reset' ) );
 	register_rest_route( $ns, '/mock/requests', $def + array( 'methods' => 'GET', 'callback' => 'emr_e2e_route_mock_requests' ) );
+	register_rest_route( $ns, '/bulk/status', $def + array( 'methods' => 'GET', 'callback' => 'emr_e2e_route_bulk_status' ) );
+	register_rest_route( $ns, '/queue/backdate', $def + array( 'methods' => 'POST', 'callback' => 'emr_e2e_route_queue_backdate' ) );
 }
 add_action( 'rest_api_init', 'emr_e2e_register_routes' );
 
@@ -415,6 +422,7 @@ function emr_e2e_route_reset( WP_REST_Request $request ) {
 	delete_option( 'EnableMediaReplace-notices' );
 	delete_option( EMR_E2E_FEATURE_OPTION );
 	delete_transient( 'emr_remote_notice' );
+	emr_e2e_reset_bulk();
 	$like = $wpdb->esc_like( '_transient_emr_' ) . '%';
 	$likeTimeout = $wpdb->esc_like( '_transient_timeout_emr_' ) . '%';
 	$wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s", $like, $likeTimeout ) );
@@ -450,7 +458,7 @@ function emr_e2e_route_reset( WP_REST_Request $request ) {
 	$base    = $uploads['basedir'];
 	foreach ( (array) glob( trailingslashit( $base ) . '*', GLOB_ONLYDIR ) as $dir ) {
 		$name = basename( $dir );
-		if ( preg_match( '/^\d{4}$/', $name ) || 0 === strpos( $name, 'emr-e2e-' ) ) {
+		if ( preg_match( '/^\d{4}$/', $name ) || 0 === strpos( $name, 'emr-e2e-' ) || 'EMR_Backups' === $name ) {
 			emr_e2e_rmdir_recursive( $dir, $base );
 		}
 	}
@@ -687,4 +695,42 @@ function emr_e2e_route_mock_requests( WP_REST_Request $request ) {
 		);
 	}
 	return rest_ensure_response( $requests );
+}
+
+/**
+ * Wipes the bulk state a test may leave behind: the queue rows and ShortQ's
+ * status option (a half-finished bulk would otherwise skip the dashboard on
+ * the next page load), the bulk logs, the plan-check and processor-key
+ * transients (the LIKE delete in reset() covers these two as well) and the
+ * cron event. The _emr_bulk markers go with the attachments; the
+ * EMR_Backups folder goes with the upload directories.
+ */
+function emr_e2e_reset_bulk() {
+	if ( class_exists( '\EnableMediaReplace\Controller\Bulk\QueueController' ) ) {
+		\EnableMediaReplace\Controller\Bulk\QueueController::resetQueues();
+	}
+	delete_option( 'shortqwp_emr' ); // ShortQ's status option for InstallHelper::QUEUE_SLUG
+	delete_option( 'emr_bulk_logs' );
+	delete_transient( 'emr_bulk_plan_ok' );
+	delete_transient( 'emr_bulk_secret' );
+	wp_clear_scheduled_hook( 'emr_bulk_cron' );
+}
+
+/** The bulk queue's startup data, raw numbers, as plain arrays. */
+function emr_e2e_route_bulk_status( WP_REST_Request $request ) {
+	if ( ! class_exists( '\EnableMediaReplace\Controller\Bulk\QueueController' ) ) {
+		return new WP_Error( 'emr_e2e_no_bulk', 'The bulk classes are not loaded', array( 'status' => 500 ) );
+	}
+	$controller = new \EnableMediaReplace\Controller\Bulk\QueueController( array( 'is_bulk' => true ) );
+	$data       = $controller->getStartupData( false );
+	// json_encode/decode: plain arrays whatever object graph the controller returns.
+	return rest_ensure_response( json_decode( wp_json_encode( $data ), true ) );
+}
+
+/** Ages every queue row past ShortQ's process_timeout (10 s for the EMR queue). */
+function emr_e2e_route_queue_backdate( WP_REST_Request $request ) {
+	global $wpdb;
+	$table = $wpdb->prefix . 'shortpixel_queue';
+	$rows  = $wpdb->query( "UPDATE `$table` SET updated = '2000-01-01 00:00:00'" ); // phpcs:ignore WordPress.DB
+	return rest_ensure_response( array( 'ok' => true, 'rows' => (int) $rows ) );
 }

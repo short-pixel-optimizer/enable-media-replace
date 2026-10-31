@@ -24,10 +24,11 @@ section of [TESTING.md](../../TESTING.md).
 | `helpers/media-list.ts` | Media Library list row actions, the edit-attachment meta boxes |
 | `helpers/emr.ts` | support REST client, EMR page URLs, screen objects (replace, success, error, remove background, upscale, upsell) |
 | `helpers/journeys.ts` | shared journey steps: a second logged-in user, submit the replace form, success screen + redirect, fetch a file, a padded JPEG of an exact size |
+| `helpers/bulk-page.ts` | the Media > Bulk page object: panels, stats, prepare / start / pause / resume / stop / finish / restore, the tick driver |
 | `helpers/screenshot.css` | screenshot-only CSS for the `visual` project |
-| `specs/` | `auth.setup.ts` (logs in once), `smoke.spec.ts` (proves the harness), the journey specs |
+| `specs/` | `auth.setup.ts` (logs in once), `smoke.spec.ts` (proves the harness), the journey specs, `bulk.spec.ts` (the bulk page) |
 | `mu-plugins/emr-e2e-mock-api.php` | answers api.shortpixel.com and wordpress.org at the WordPress HTTP layer |
-| `mu-plugins/emr-e2e-support.php` | REST API `emr-e2e/v1` (reset, seed, fixtures, posts, attachments, key, features, users, mock knobs) |
+| `mu-plugins/emr-e2e-support.php` | REST API `emr-e2e/v1` (reset, seed, fixtures, posts, attachments, key, features, users, mock knobs, bulk status, queue backdate) |
 | `provision/` | WP-CLI provisioning and the seed |
 | `docker/apache/` | Apache listening on 8031 as well as 80 |
 

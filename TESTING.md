@@ -579,8 +579,11 @@ volumes `emr-e2e_*` and port):
   `post/<id>`, `attachment/<id>`, `key`, `feature` (forces
   `emr/feature/background` / `emr/feature/upscale` /
   `emr/feature/remote_notice`), `user`, `mock`,
-  `mock/reset`, `mock/requests`. It also turns off the core, plugin and
-  theme update checks, pings and the dashboard news widget.
+  `mock/reset`, `mock/requests`, `bulk/status` (the bulk queue's startup
+  data, raw numbers) and `queue/backdate` (ages every row of the
+  `shortpixel_queue` table past ShortQ's `process_timeout`). It also turns
+  off the core, plugin and theme update checks, pings and the dashboard
+  news widget.
 
 **Seed and reset.** Every test starts from the same state: the `emr`
 fixture calls `reset` before each test. Reset deletes every attachment
@@ -589,7 +592,10 @@ fixture calls `reset` before each test. Reset deletes every attachment
 `EnableMediaReplace-notices` notices option), the `emr_remote_notice` and
 remove-background result transients, the feature overrides, the mock state,
 the stub plugins the upsell installer installed (recognised by a marker in
-their header), and the year/month and `emr-e2e-*` folders under uploads.
+their header), the bulk state (the queue rows and ShortQ's `shortqwp_emr`
+status option, the `emr_bulk_logs` option, the plan-check and
+processor-key transients, the `emr_bulk_cron` event) and the year/month,
+`emr-e2e-*` and `EMR_Backups` folders under uploads.
 Then it seeds: `emr-seed.jpg` (800x600, so WordPress makes the thumbnail,
 medium and medium_large sizes) and a published post that links the full
 image and embeds its medium size. `emr.seed` holds their ids and URLs.
@@ -600,8 +606,9 @@ console-error tripwire, hermetic routing, the `emr` support client),
 `helpers/` (`wp-admin.ts` login and admin URLs, `media-list.ts` the media
 list row actions and the edit-attachment meta box, `emr.ts` the support
 client, EMR URLs and the screen objects, `journeys.ts` the shared journey
-steps), `specs/` (`auth.setup.ts` logs in
-once; `smoke.spec.ts` proves the harness).
+steps, `bulk-page.ts` the Media > Bulk page object), `specs/`
+(`auth.setup.ts` logs in once; `smoke.spec.ts` proves the harness;
+`bulk.spec.ts` the bulk page).
 
 **Writing E2E specs**
 
@@ -631,6 +638,18 @@ once; `smoke.spec.ts` proves the harness).
 - The plan-expired state is a stored key plus `unlimited: 'false'`: set the
   key with `emr.setApiKey(...)` (a save through the screen refuses a
   non-Unlimited key), then the knob.
+- The bulk page (`BulkPage` in `helpers/bulk-page.ts`) is driven by its
+  window events (`emr.PrepareBulk`, `emr.bulk.started`,
+  `emr.processor.responseHandled`, `emr.processor.paused`), never by
+  timers. `driveToFinish()` backdates the queue rows between ticks
+  (`emr.backdateQueue()`) so an item the mock answered "pending" is
+  re-picked at once instead of after ShortQ's 10 s `process_timeout`;
+  `stop()` and `finish()` wait for `emr.bulkStatus()` to report the queue
+  clear before asserting the dashboard, because the reload the screen
+  triggers can be served while finishBulk is still running. The E2E
+  install has no WooCommerce, so the specs use the upscale operation; the
+  mock's result (`resultFixture`, 50x50 by default) makes an applied result
+  visible as the attachment's new width.
 - Never `waitForURL` for a page that reloads the SAME URL (the API-key box
   reloads after a save or removal): it resolves immediately. Wait for a DOM
   state of the new document, or use `withSelfReload(page, action)`.
