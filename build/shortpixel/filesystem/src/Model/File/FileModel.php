@@ -1,4 +1,9 @@
 <?php
+/**
+ * File model of the FileSystem module.
+ *
+ * @package EnableMediaReplace\FileSystem
+ */
 namespace EnableMediaReplace\FileSystem\Model\File;
 use EnableMediaReplace\ShortpixelLogger\ShortPixelLogger as Log;
 
@@ -6,6 +11,56 @@ if ( ! defined( 'ABSPATH' ) ) {
  exit; // Exit if accessed directly.
 }
 
+/**
+ * One file, existing or not, with lazy status checks and the low-level
+ * operations on it.
+ *
+ * Obtain instances through FileSystemController::getFile();
+ * `new FileModel($path)` is equivalent. The constructor stores the path as
+ * given (getRawFullPath()) and trimmed; when the path is a URL it is
+ * resolved right away by UrlToPath(), so that PHP stream wrappers never
+ * see a remote URL. Everything else is deferred: the first call to
+ * getFullPath(), getFileName(), getFileBase(), getExtension() or getMime()
+ * runs setFileInfo(), which normalises the path through processPath()
+ * (relative to absolute, open_basedir handling) and splits it with a
+ * multibyte-safe pathinfo. The status flags (`exists`, `is_writable`,
+ * `is_readable`, `is_file`, `filesize`, `permissions`) are each checked on
+ * first use and cached; resetStatus() clears them after an operation that
+ * changed the file, and copy(), move() and delete() call it.
+ *
+ * Virtual files: a URL that does not belong to this site cannot be mapped
+ * to a path. The model then becomes virtual (is_virtual()) and asks
+ * through the `shortpixel/image/urltopath` filter whether an integration
+ * (an offload plugin, for example) can serve it. The filter answers false
+ * (file does not exist), true or self::$VIRTUAL_REMOTE (exists, read-only)
+ * or self::$VIRTUAL_STATELESS (exists and accepts writes through a stream
+ * wrapper). Virtual files report size -1 and MIME false.
+ *
+ * Trusted mode: setting the static $TRUSTED_MODE to true makes every new
+ * model assume it is an existing, readable, writable image file without
+ * touching the disk, and skips the path checks in processPath(). Meant
+ * for bulk listings of many files where the caller already knows they
+ * are plain local files; never for processing.
+ *
+ * Hooks fired by this class:
+ * - filter `shortpixel_image_exists` (exists(); legacy name, not rewritten
+ *   by the build tool)
+ * - filter `shortpixel/file/exists` (exists())
+ * - action `shortpixel/filesystem/addfile` (copy())
+ * - filter `shortpixel/filesystem/processFilePath` (processPath())
+ * - filter `shortpixel/file/basedir_check` (fileIsRestricted())
+ * - filter `shortpixel/image/urltopath` (UrlToPath())
+ *
+ * @todo $is_restricted is initialised to false and fileIsRestricted()
+ *       returns the cached value whenever it is not null, so the
+ *       open_basedir check never runs for a fresh model; it only runs
+ *       after resetStatus() has set the property to null. Suggested fix:
+ *       initialise $is_restricted to null.
+ * @todo setFileInfo() takes the extension from mb_pathinfo(), which
+ *       pre-fills 'extension' with '', so getExtension() returns '' rather
+ *       than null for a file without extension. Suggested fix: treat the
+ *       empty string as missing.
+ */
 /* FileModel class.
 *
 *
@@ -20,37 +75,185 @@ class FileModel
 {
 
   // File info
+
+  /**
+   * Normalised absolute path. Holds the trimmed input until setFileInfo()
+   * has run; empty string for a null input.
+   *
+   * @var string|null
+   */
   protected $fullpath = null;
+
+  /**
+   * Path exactly as passed to the constructor.
+   *
+   * @var string|null
+   */
   protected $rawfullpath = null;
+
+  /**
+   * File name with extension. Null until setFileInfo() runs, and stays
+   * null when the path is not a file.
+   *
+   * @var string|null
+   */
   protected $filename = null; // filename + extension
+
+  /**
+   * File name without extension.
+   *
+   * @var string|null
+   */
   protected $filebase = null; // filename without extension
+
+  /**
+   * Model of the containing directory, created by getFileDir().
+   *
+   * @var DirectoryModel|null
+   */
   protected $directory = null;
+
+  /**
+   * Lowercased last extension; '' when the file has none.
+   *
+   * @var string|null
+   */
   protected $extension = null;
+
+  /**
+   * MIME type as determined by getMime(); false when unavailable.
+   *
+   * @var string|false|null
+   */
   protected $mime = null;
+
+  /**
+   * Cached permission bits (mode & 0777).
+   *
+   * @var int|null
+   */
   protected $permissions = null;
+
+  /**
+   * Cached size in bytes.
+   *
+   * @var int|null
+   */
   protected $filesize = null;
 
   // File Status
+
+  /**
+   * Cached result of exists(); null until checked.
+   *
+   * @var bool|null
+   */
   protected $exists = null;
+
+  /**
+   * Cached result of is_writable(); null until checked.
+   *
+   * @var bool|null
+   */
   protected $is_writable = null;
+
+  /**
+   * Cached result of is_directory_writable(); null until checked.
+   *
+   * @var bool|null
+   */
   protected $is_directory_writable = null;
+
+  /**
+   * Cached result of is_readable(); null until checked.
+   *
+   * @var bool|null
+   */
   protected $is_readable = null;
+
+  /**
+   * Cached result of is_file(); null until checked.
+   *
+   * @var bool|null
+   */
   protected $is_file = null;
+
+  /**
+   * True when the path is a URL that could not be mapped to a local path.
+   *
+   * @var bool|null
+   */
   protected $is_virtual = false;
+
+  /**
+   * Cached open_basedir verdict of fileIsRestricted(). See the class
+   * @todo about its initial value.
+   *
+   * @var bool|null
+   */
   protected $is_restricted = false;
+
+  /**
+   * self::$VIRTUAL_REMOTE or self::$VIRTUAL_STATELESS for virtual files
+   * that an integration claimed, null otherwise.
+   *
+   * @var int|null
+   */
   protected $virtual_status = null;
 
+  /**
+   * Unused.
+   *
+   * @var mixed
+   */
   protected $status; // seems unused ?
 
+  /**
+   * Unused status code.
+   *
+   * @var int
+   */
   const FILE_OK = 1;
+
+  /**
+   * Unused status code.
+   *
+   * @var int
+   */
   const FILE_UNKNOWN_ERROR = 2;
 
+  /**
+   * When true, new models skip all file system checks; see the class
+   * description. Global for the request.
+   *
+   * @var bool
+   */
 	public static $TRUSTED_MODE = false;
 
 	// Constants for is_virtual . Virtual Remote is truly a remote file, not writable from machine. Stateless means it looks remote, but it's a protocol-based filesystem remote or not - that will accept writes / is_writable. Stateless also mean performance issue since it can't be 'translated' to a local path. All communication happens over http wrapper, so check should be very limited.
+
+  /**
+   * Answer for `shortpixel/image/urltopath`: the file is remote and not
+   * writable from this machine.
+   *
+   * @var int
+   */
 	public static $VIRTUAL_REMOTE = 1;
+
+  /**
+   * Answer for `shortpixel/image/urltopath`: the file is served by a
+   * stream wrapper that also accepts writes, but has no local path.
+   *
+   * @var int
+   */
 	public static $VIRTUAL_STATELESS = 2;
 
+  /**
+   * Stores the path and resolves it when it is a URL. A null path is
+   * logged and leaves an empty model.
+   *
+   * @param string|null $path Full path, or a URL.
+   */
   /** Creates a file model object. FileModel files don't need to exist on FileSystem */
   public function __construct($path)
   {
@@ -77,11 +280,22 @@ class FileModel
     }
   }
 
+  /**
+   * Returns a new FileSystemController for the helpers the model needs.
+   *
+   * @return \EnableMediaReplace\FileSystem\Controller\FileSystemController
+   */
 	private function getFS()
 	{
 		return new \EnableMediaReplace\FileSystem\Controller\FileSystemController();
 	}
 
+  /**
+   * Returns the full path as currently held, which is the unprocessed
+   * input until setFileInfo() has run. Prefer getFullPath().
+   *
+   * @return string
+   */
   /* Get a string representation of file, the fullpath
   *  Note - this might be risky, without processedpath, in cases.
   * @return String  Full path  processed or unprocessed.
@@ -91,6 +305,14 @@ class FileModel
     return (string) $this->fullpath;
   }
 
+  /**
+   * Normalises the path with processPath() and fills $filename, $filebase
+   * and $extension with a multibyte-safe pathinfo. The name fields are
+   * only set when the path is a file, so a directory path leaves them
+   * null.
+   *
+   * @return void
+   */
   protected function setFileInfo()
   {
       $processed_path = $this->processPath($this->fullpath);
@@ -109,6 +331,13 @@ class FileModel
 
   }
 
+  /**
+   * Forgets every cached status flag, including the virtual flag, so the
+   * next checks hit the file system again. Call after the file was
+   * changed outside this object.
+   *
+   * @return void
+   */
   /** Call when file status changed, so writable / readable / exists are not reliable anymore */
   public function resetStatus()
   {
@@ -124,6 +353,19 @@ class FileModel
 	$this->permissions = null;
   }
 
+  /**
+   * Tells whether the file exists and is a regular file.
+   *
+   * Restricted (open_basedir) paths count as missing. The cached result
+   * passes through the `shortpixel_image_exists` and
+   * `shortpixel/file/exists` filters on every call, so integrations can
+   * claim files that are not on disk.
+   *
+   * @param bool $forceCheck True to re-check the disk instead of using the
+   *                         cached value. Use sparingly; exists for retina
+   *                         handling under trusted mode.
+   * @return bool
+   */
 	/**
 	* @param $forceCheck  Forces a filesystem check instead of using cached.  Use very sparingly. Implemented for retina on trusted mode.
 	*/
@@ -147,6 +389,16 @@ class FileModel
     return $this->exists;
   }
 
+  /**
+   * Tells whether the file can be written.
+   *
+   * Virtual files are not writable unless UrlToPath() marked them
+   * stateless. For an existing local file PHP's is_writable() decides; for
+   * a missing one the only reliable probe is to create() and delete() an
+   * empty file, which is what happens.
+   *
+   * @return bool
+   */
   public function is_writable()
   {
 		// Return when already asked / Stateless might set this
@@ -176,6 +428,13 @@ class FileModel
     return $this->is_writable;
   }
 
+  /**
+   * Tells whether the containing directory can be written, for callers
+   * that want to create a sibling file (a converted copy, for example).
+   * False for virtual files (unless stateless) and missing directories.
+   *
+   * @return bool
+   */
 	public function is_directory_writable()
 	{
 		// Return when already asked / Stateless might set this
@@ -203,6 +462,11 @@ class FileModel
 		return $this->is_directory_writable;
 	}
 
+  /**
+   * Tells whether the file can be read. Cached after the first check.
+   *
+   * @return bool
+   */
   public function is_readable()
   {
     if (is_null($this->is_readable))
@@ -211,6 +475,12 @@ class FileModel
     return $this->is_readable;
   }
 
+  /**
+   * Tells whether the file is virtual: a URL with no local counterpart.
+   * Set by UrlToPath() during construction.
+   *
+   * @return bool
+   */
   // A file is virtual when the file is remote  with URL and no local alternative is present.
   public function is_virtual()
   {
@@ -219,6 +489,17 @@ class FileModel
      return $this->is_virtual;
   }
 
+  /**
+   * Tells whether the path denotes a file rather than a directory.
+   *
+   * Virtual files are files. An existing path is a file when is_file()
+   * says so. A missing path is treated as a potential file unless it is
+   * `.`/`..` or an existing directory, because the model allows files
+   * that are created later. Guards against a directory path being passed
+   * to the model by mistake.
+   *
+   * @return bool
+   */
   /* Function checks if path is actually a file. This can be used to check possible confusion if a directory path is given to filemodel */
   public function is_file()
   {
@@ -259,12 +540,25 @@ class FileModel
     return $this->is_file;
   }
 
+  /**
+   * Returns the modification time. Not cached, no existence check.
+   *
+   * @return int|false Unix timestamp, false when it cannot be read.
+   */
   public function getModified()
   {
     return filemtime($this->fullpath);
   }
 
 
+  /**
+   * Returns the model of the containing directory, created on first use.
+   * The full path is passed on because DirectoryModel strips the file
+   * part itself; dirname() would misbehave when the path is already a
+   * directory.
+   *
+   * @return DirectoryModel|null Null when the path is empty.
+   */
   /** Returns the Directory Model this file resides in
   *
   * @return DirectoryModel Directorymodel Object
@@ -282,6 +576,11 @@ class FileModel
       return $this->directory;
   }
 
+  /**
+   * Returns the size in bytes, cached.
+   *
+   * @return int Bytes; 0 for a missing file, -1 for a virtual file.
+   */
   public function getFileSize()
   {
 		if (! is_null($this->filesize))
@@ -301,6 +600,13 @@ class FileModel
       return 0;
   }
 
+  /**
+   * Creates an empty file with touch(). Requires the directory to exist;
+   * an already existing file is logged and left alone. Used by
+   * is_writable() as a probe for missing files.
+   *
+   * @return bool True when the file was created.
+   */
   // Creates an empty file
   public function create()
   {
@@ -321,6 +627,13 @@ class FileModel
     return false;
   }
 
+  /**
+   * Appends a string to the file, creating the file first when needed.
+   * Used by the logger.
+   *
+   * @param string $message Content to append.
+   * @return bool False (and a warning in the log) when not writable.
+   */
   public function append($message)
   {
        if (! $this->exists() )
@@ -339,6 +652,18 @@ class FileModel
   }
 
 
+  /**
+   * Copies the file to another FileModel's path with copy().
+   *
+   * Refuses empty paths and a missing source (both logged). On success
+   * the destination's cached status and name fields are refreshed. The
+   * `shortpixel/filesystem/addfile` action fires in every case after the
+   * attempt, with `[destination path, destination model, source model,
+   * is_new]`, where is_new tells whether the destination existed before.
+   *
+   * @param FileModel $destination Target file.
+   * @return bool
+   */
   /** Copy a file to somewhere
   *
   * @param $destination String Full Path to new file.
@@ -378,6 +703,14 @@ class FileModel
       return $status;
   }
 
+  /**
+   * Moves the file by copy() followed by delete() of the source. Fails
+   * when either step fails; a copy that succeeded is kept even when the
+   * delete fails (logged as an error). Both models' status is reset.
+   *
+   * @param FileModel $destination Target file.
+   * @return bool
+   */
   /** Move a file to somewhere
   * This uses copy and delete functions and will fail if any of those fail.
   * @param $destination String Full Path to new file.
@@ -399,6 +732,13 @@ class FileModel
      return $result;
   }
 
+  /**
+   * Deletes the file through wp_delete_file(), so WordPress' own filter
+   * runs. Success means the file is gone afterwards, whether or not it
+   * existed before (a missing file is logged as a warning).
+   *
+   * @return bool
+   */
   /** Deletes current file
   * This uses the WP function since it has a filter that might be useful
   */
@@ -426,11 +766,22 @@ class FileModel
 
   }
 
+  /**
+   * Reads the whole file. No existence or size check.
+   *
+   * @return string|false
+   */
 	public function getContents()
 	{
 			return file_get_contents($this->getFullPath());
 	}
 
+  /**
+   * Returns the normalised absolute path, running setFileInfo() on first
+   * use.
+   *
+   * @return string Empty string when the constructor received null.
+   */
   public function getFullPath()
   {
 		// filename here since fullpath is set unchecked in constructor, but might be a different take
@@ -442,6 +793,16 @@ class FileModel
     return $this->fullpath;
   }
 
+  /**
+   * Returns the path exactly as given to the constructor, without any
+   * normalisation or file system access.
+   *
+   * Only for high-volume listings (the directory filters use it) where
+   * the caller already knows the path is a plain local file and does not
+   * want to pay for processPath() per entry.
+   *
+   * @return string|null
+   */
 	// Testing this. Principle is that when the plugin is absolutely sure this is a file, not something remote, not something non-existing, get the fullpath without any check.
 	// This function should *only* be used when processing mega amounts of files while not doing optimization or any processing.
 	// So far, testing use for file Filter */
@@ -450,6 +811,11 @@ class FileModel
 			return $this->rawfullpath;
 	}
 
+  /**
+   * Returns the file name with extension. Runs setFileInfo() on first use.
+   *
+   * @return string|null Null when the path is not a file.
+   */
   public function getFileName()
   {
     if (is_null($this->filename))
@@ -458,6 +824,12 @@ class FileModel
     return $this->filename;
   }
 
+  /**
+   * Returns the file name without extension. Runs setFileInfo() on first
+   * use.
+   *
+   * @return string|null Null when the path is not a file.
+   */
   public function getFileBase()
   {
     if (is_null($this->filebase))
@@ -467,6 +839,12 @@ class FileModel
   }
 
 
+  /**
+   * Returns the lowercased extension. Runs setFileInfo() on first use.
+   *
+   * @return string|null '' when the file has no extension, null when the
+   *                     path is not a file.
+   */
   public function getExtension()
   {
     if (is_null($this->extension))
@@ -475,6 +853,13 @@ class FileModel
     return $this->extension;
   }
 
+  /**
+   * Returns the MIME type, determined on every call for existing local
+   * files: wp_get_image_mime() first, then wp_check_filetype_and_ext()
+   * for non-image files.
+   *
+   * @return string|false False for missing and virtual files.
+   */
   public function getMime()
   {
     if (is_null($this->mime))
@@ -500,6 +885,20 @@ class FileModel
   }
 
 
+  /**
+   * Turns whatever the constructor received into an absolute local path.
+   *
+   * URLs go through UrlToPath(). In trusted mode the path is returned
+   * untouched. Otherwise: a path outside open_basedir, and a path that
+   * neither exists, nor sits in an existing directory, nor contains the
+   * WordPress root, is treated as relative and resolved by
+   * relativeToFullPath(). The result passes through the
+   * `shortpixel/filesystem/processFilePath` filter with the original path
+   * as second argument. Existence is not required.
+   *
+   * @param string $path Path or URL.
+   * @return string|false False when the input is a URL of another site.
+   */
   /* Internal function to check if path is a real path
   *  - Test for URL's based on http / https
   *  - Test if given path is absolute, from the filesystem root.
@@ -564,6 +963,15 @@ class FileModel
     return $path;
   }
 
+  /**
+   * In trusted mode, pre-fills the status flags as if the file were an
+   * existing, readable and writable image, and derives the MIME type from
+   * the extension, so no file system call is made later. Runs from the
+   * constructor before any file info is loaded, hence the direct
+   * pathinfo() call to avoid recursion.
+   *
+   * @return void
+   */
 	protected function checkTrustedMode()
 	{
 		// When in trusted mode prevent filesystem checks as much as possible.
@@ -595,6 +1003,16 @@ class FileModel
 
 	}
 
+  /**
+   * Tells whether the path falls outside PHP's open_basedir, in which
+   * case file functions would raise warnings; such a path is most likely
+   * relative. Cached in $is_restricted (see the class @todo). The verdict
+   * passes through `shortpixel/file/basedir_check` so hosts with symlinked
+   * layouts can override a false positive.
+   *
+   * @param string $path Path to test.
+   * @return bool
+   */
   /** Check if path is allowed within openbasedir restrictions. This is an attempt to limit notices in file funtions if so.  Most likely the path will be relative in that case.
   * @param String Path as String
   */
@@ -631,6 +1049,21 @@ class FileModel
      return $restricted;
   }
 
+  /**
+   * Maps a URL of this site to a local path, or marks the file virtual.
+   *
+   * Compares scheme-less URLs. The site part is home_url(), or the
+   * uploads base URL when the URL contains `/files/` (old WPMU layout,
+   * where home_url() lacks that segment). A match is replaced by the
+   * WordPress root from FileSystemController::getWPAbsPath(). Otherwise
+   * the model becomes virtual and the `shortpixel/image/urltopath` filter
+   * (false, URL, raw path) decides whether it exists: false means missing;
+   * true, self::$VIRTUAL_REMOTE or self::$VIRTUAL_STATELESS mean it does,
+   * the last one also writable.
+   *
+   * @param string $url URL to resolve.
+   * @return string|false Local path, or false when the file is virtual.
+   */
   /** Resolve an URL to a local path
   *  This partially comes from WordPress functions attempting the same
   * @param String $url  The URL to resolve
@@ -701,6 +1134,19 @@ class FileModel
      return false; // seems URL from other server, use virtual mode.
   }
 
+  /**
+   * Resolves a path that does not contain the WordPress root.
+   *
+   * Returned unchanged when it exists, lies in PHP's upload_tmp_dir or
+   * sys_get_temp_dir(), or already contains the uploads base directory
+   * (uploads outside the WordPress tree). Then the path is tried under the
+   * WordPress root and under the uploads base; when neither exists it is
+   * appended to the WordPress root anyway, because the model allows files
+   * that do not exist yet.
+   *
+   * @param string $path Possibly relative path.
+   * @return string Absolute path, or the input when it is empty.
+   */
   /** Tries to find the full path for a perceived relative path.
   *
   * Relative path is detected on basis of WordPress ABSPATH. If this doesn't appear in the file path, it might be a relative path.
@@ -764,6 +1210,11 @@ class FileModel
       //    return $originalPath;
   }
 
+  /**
+   * Returns the permission bits (mode & 0777), cached.
+   *
+   * @return int
+   */
 	public function getPermissions()
   {
 		if (is_null($this->permissions))
@@ -772,6 +1223,13 @@ class FileModel
     return $this->permissions;
   }
 
+  /**
+   * Changes the file mode with chmod(), silently. The cached permissions
+   * and status are not updated.
+   *
+   * @param int $permissions Octal mode, for example 0644.
+   * @return void
+   */
 	// @tozo Lazy IMplementation / copy, should be brought in line w/ other attributes.
   public function setPermissions($permissions)
   {
@@ -779,6 +1237,16 @@ class FileModel
   }
 
 
+  /**
+   * Locale-independent pathinfo() for multibyte file names, taken from
+   * PHPMailer. Every key is pre-filled with '' so callers get strings.
+   *
+   * @param string          $path    Path to split.
+   * @param int|string|null $options One PATHINFO_* constant or its name
+   *                                 for a single part, null for all.
+   * @return array|string Array with dirname, basename, extension and
+   *                      filename, or the requested part.
+   */
   /** Fix for multibyte pathnames and pathinfo which doesn't take into regard the locale.
   * This snippet taken from PHPMailer.
   */
@@ -818,6 +1286,11 @@ class FileModel
         }
     }
 
+    /**
+     * Limits var_dump() output to the path, name and main status flags.
+     *
+     * @return array
+     */
     public function __debuginfo()
     {
        return [
