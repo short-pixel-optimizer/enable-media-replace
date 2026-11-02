@@ -17,17 +17,17 @@
  * The bundled replacer has no Bricks module: these rows go through the
  * generic postmeta and options passes, Replacer::replaceContent(). When a
  * row contains a URL being replaced, the replacer json_decode()s every
- * JSON-looking string it meets while recursing, but re-encodes only at the
- * top level, so the slider's options come back as a stdClass, although
- * they hold no URL. Bricks then fatals ("stripslashes(): Argument #1
- * ($string) must be of type string, stdClass given") on every page that
- * renders the slider; for a component, on every page that uses it. Pinned
- * below for an EMR rename, on a page and in a component, and for a
- * same-name replace whose upload renames a size. A same-name replace that
- * changes no URL leaves the row alone and the slider intact.
+ * JSON-looking string it meets while recursing and encodes it back at the
+ * same level, so the slider's options stay the JSON string Bricks passes to
+ * stripslashes() (a stdClass there is a fatal, "stripslashes(): Argument #1
+ * ($string) must be of type string, stdClass given", on every page that
+ * renders the slider). Covered below for an EMR rename, on a page and in a
+ * component, and for a same-name replace whose upload renames a size. A
+ * same-name replace that changes no URL leaves the row alone and the slider
+ * intact.
  *
  * Ported from SPIO's tests/Compat/test-CompatBricks.php: the element
- * arrays, the render helper, the stripslashes assertion and the pins.
+ * arrays, the render helper and the slider assertion.
  * SPIO's rename and PNG conversion are replaced by EMR replaces.
  *
  * @package Enable_Media_Replace
@@ -147,14 +147,6 @@ class CompatBricksTest extends EMR_IntegrationTestCase {
 		}
 	}
 
-	/** Asserts that $result is the stripslashes() TypeError Bricks raises on a stdClass. */
-	private function assertStripslashesFatal( $result, $message ) {
-		$this->assertInstanceOf( \TypeError::class, $result, $message );
-		$this->assertStringContainsString( 'stripslashes()', $result->getMessage() );
-		$this->assertStringContainsString( 'stdClass given', $result->getMessage() );
-		$this->assertStringContainsString( 'slider-nested.php', $result->getFile() );
-	}
-
 	/** Asserts that the slider options are the JSON string and the elements render the slider. */
 	private function assertSliderIntact( array $elements, $message ) {
 		$this->assertSame( self::SLIDER_OPTIONS, $elements[0]['settings']['options'], $message . ': the options are the JSON string.' );
@@ -192,18 +184,12 @@ class CompatBricksTest extends EMR_IntegrationTestCase {
 	// -------------------------------------------------------------------
 
 	/**
-	 * An EMR rename of an image used on a Bricks page turns the page's
-	 * Nested Slider options into an object, and the page then fatals in
-	 * Bricks. Replacer::replaceContent() decodes the nested JSON string
-	 * while recursing into the element tree and re-encodes JSON only at the
-	 * top level. The correct behaviour is to re-encode a nested JSON string
-	 * after replacing inside it (and to leave a JSON string that holds none
-	 * of the search URLs untouched).
-	 *
-	 * How to recognise the fix: the options stay the JSON string, the page
-	 * renders, and the pinned assertions below fail.
+	 * An EMR rename of an image used on a Bricks page rewrites the Image
+	 * element and leaves the page's Nested Slider options the JSON string:
+	 * Replacer::replaceContent() encodes a nested JSON string back after
+	 * walking it, so the page still renders.
 	 */
-	public function test_rename_breaks_the_nested_slider_on_a_bricks_page_pinned_for_deferred_fix() {
+	public function test_rename_keeps_the_nested_slider_on_a_bricks_page() {
 		list( $id, $url ) = $this->standardCompatImage( 'emr-bricks-rn' );
 		$post_id          = $this->bricksPage( $this->elements( $id, $url ) );
 		$this->assertSliderIntact( $this->pageElements( $post_id ), 'Precondition' );
@@ -215,22 +201,16 @@ class CompatBricksTest extends EMR_IntegrationTestCase {
 		$this->assertStringEndsWith( '/' . $name, wp_get_attachment_url( $id ), 'Sentinel: the attachment was renamed.' );
 		$this->assertSame( wp_get_attachment_url( $id ), $elements[1]['settings']['image']['url'], 'Sentinel: the Image element follows the rename.' );
 
-		$this->assertInstanceOf( stdClass::class, $elements[0]['settings']['options'], 'Pinned: the slider options are an object now.' );
-		$this->assertSame( 'loop', $elements[0]['settings']['options']->type, 'Pinned: the decoded options, not encoded back.' );
-		$this->assertStripslashesFatal( $this->render( $elements ), 'Pinned: Bricks fatals on the page.' );
+		$this->assertSliderIntact( $elements, 'After the rename' );
 	}
 
 	/**
-	 * When a shared Bricks component contains the renamed image, its Nested
-	 * Slider options in the `bricks_components` option become an object
-	 * (the generic options pass, same cause as
-	 * test_rename_breaks_the_nested_slider_on_a_bricks_page_pinned_for_deferred_fix),
-	 * so every page that uses the component fatals.
-	 *
-	 * How to recognise the fix: the component's options stay the JSON
-	 * string, its elements render, and the pinned assertions below fail.
+	 * When a shared Bricks component contains the renamed image, the generic
+	 * options pass rewrites its Image element in the `bricks_components`
+	 * option and its Nested Slider options stay the JSON string, so the
+	 * pages that use the component still render.
 	 */
-	public function test_rename_breaks_the_nested_slider_in_a_shared_component_pinned_for_deferred_fix() {
+	public function test_rename_keeps_the_nested_slider_in_a_shared_component() {
 		list( $id, $url ) = $this->standardCompatImage( 'emr-bricks-cmp' );
 		update_option(
 			BRICKS_DB_COMPONENTS,
@@ -248,8 +228,7 @@ class CompatBricksTest extends EMR_IntegrationTestCase {
 		$elements = $this->componentElements();
 		$this->assertSame( wp_get_attachment_url( $id ), $elements[1]['settings']['image']['url'], 'Sentinel: the component Image element follows the rename.' );
 
-		$this->assertInstanceOf( stdClass::class, $elements[0]['settings']['options'], 'Pinned: the component slider options are an object now.' );
-		$this->assertStripslashesFatal( $this->render( $elements ), 'Pinned: Bricks fatals on the component.' );
+		$this->assertSliderIntact( $elements, 'After the rename' );
 	}
 
 	// -------------------------------------------------------------------
@@ -278,15 +257,10 @@ class CompatBricksTest extends EMR_IntegrationTestCase {
 	/**
 	 * A same-name replace whose upload has other dimensions renames the
 	 * medium size. The page's row matches the attachment's base path (it
-	 * shows the main URL, which stays valid), so the replacer walks it and
-	 * the slider options come back as an object: the page fatals although
-	 * none of its URLs changed. Same cause as
-	 * test_rename_breaks_the_nested_slider_on_a_bricks_page_pinned_for_deferred_fix.
-	 *
-	 * How to recognise the fix: the options stay the JSON string, the page
-	 * renders, and the pinned assertions below fail.
+	 * shows the main URL, which stays valid), so the replacer walks it; the
+	 * slider options come back as the same JSON string and the page renders.
 	 */
-	public function test_same_name_replace_with_a_renamed_size_breaks_the_nested_slider_pinned_for_deferred_fix() {
+	public function test_same_name_replace_with_a_renamed_size_keeps_the_nested_slider() {
 		list( $id, $url ) = $this->standardCompatImage( 'emr-bricks-size' );
 		$post_id          = $this->bricksPage( $this->elements( $id, $url ) );
 
@@ -296,7 +270,6 @@ class CompatBricksTest extends EMR_IntegrationTestCase {
 		$elements = $this->pageElements( $post_id );
 		$this->assertSame( $url, $elements[1]['settings']['image']['url'], 'The Image element keeps the (still valid) main URL.' );
 
-		$this->assertInstanceOf( stdClass::class, $elements[0]['settings']['options'], 'Pinned: the slider options are an object now.' );
-		$this->assertStripslashesFatal( $this->render( $elements ), 'Pinned: Bricks fatals on the page.' );
+		$this->assertSliderIntact( $elements, 'After the replace' );
 	}
 }

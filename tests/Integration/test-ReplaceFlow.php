@@ -15,11 +15,10 @@
  * SPIO's tests/Integration/test-ConversionReplacement.php (classic img,
  * srcset, Gutenberg blocks, draft / private / future / pending posts, a
  * page, string / serialized / object / JSON postmeta, options, term, user
- * and comment meta) with EMR's ReplaceController as the driver. Each test
- * seeds at most ONE matching postmeta row: a second matching row of the
- * same table hits the cache-key defect of Replacer::handleMetaData() that
- * the Replacer unit suite pins (an undefined-index warning, which this
- * harness turns into an exception).
+ * and comment meta) with EMR's ReplaceController as the driver. Most tests
+ * seed one matching postmeta row so the outcome on that row can be
+ * observed; one test seeds two matching rows in the same table to show
+ * that each owner's meta cache is cleared.
  *
  * The uploads folder is the test install's current month folder; every
  * attachment, file and directory a test creates is deleted in tear_down.
@@ -422,6 +421,32 @@ class ReplaceFlowTest extends EMR_IntegrationTestCase {
 		$this->searchReplaceMode( $id, $this->tmpJpeg( 400, 300 ), 'emr-pm-string-' . $this->token() . '.jpg' );
 
 		$this->assertSame( 'background: url(' . wp_get_attachment_url( $id ) . ')', get_post_meta( $carrier, '_emr_flow_string', true ) );
+	}
+
+	/**
+	 * Two posts carrying the URL in the same meta table: both rows are
+	 * rewritten and each post's meta cache is cleared, so both read the new
+	 * URL through the cache after the replace (the Replacer unit suite
+	 * covers the row loop of handleMetaData() itself).
+	 */
+	public function test_search_replace_rewrites_two_matching_postmeta_rows_and_clears_both_caches() {
+		list( $id, , $url ) = $this->standardImage();
+		$first              = $this->makePost( 'first carrier' );
+		$second             = $this->makePost( 'second carrier' );
+		$this->assertNotSame( $first, $second );
+		add_post_meta( $first, '_emr_flow_twice', 'image:' . $url );
+		add_post_meta( $second, '_emr_flow_twice', 'image:' . $url );
+		$this->assertSame( 'image:' . $url, get_post_meta( $first, '_emr_flow_twice', true ), 'Sentinel: first cache primed.' );
+		$this->assertSame( 'image:' . $url, get_post_meta( $second, '_emr_flow_twice', true ), 'Sentinel: second cache primed.' );
+
+		$this->searchReplaceMode( $id, $this->tmpJpeg( 400, 300 ), 'emr-pm-twice-' . $this->token() . '.jpg' );
+
+		$new_url = wp_get_attachment_url( $id );
+		$this->assertNotSame( $url, $new_url, 'Sentinel: the attachment was renamed.' );
+		$this->assertSame( 'image:' . $new_url, $this->rawPostMeta( $first, '_emr_flow_twice' ) );
+		$this->assertSame( 'image:' . $new_url, $this->rawPostMeta( $second, '_emr_flow_twice' ) );
+		$this->assertSame( 'image:' . $new_url, get_post_meta( $first, '_emr_flow_twice', true ), 'The first post reads the new URL through the cache.' );
+		$this->assertSame( 'image:' . $new_url, get_post_meta( $second, '_emr_flow_twice', true ), 'The second post reads the new URL through the cache.' );
 	}
 
 	public function test_search_replace_rewrites_a_nested_serialized_array_postmeta() {

@@ -650,10 +650,6 @@ escaping and filter registration, WPBakery urlencoding: `Controllers` and
 Observations only. They become `E#` ledger lines once a test or the
 documentation confirms them; none is numbered here and none is changed.
 
-- `Replacer::handleMetaData()` reuses the column-name variable `$main_id` as
-  the row value inside the row loop, so from the second matching row of a meta
-  table the cache key is read from a wrong index (present in the module source
-  and in both bundled copies).
 - The `filesystem` module imports `ShortpixelLogger` with a lowercase `p` in
   three files; it resolves only because the logger is loaded earlier.
 - `Ajax` is instantiated twice, registering each endpoint twice.

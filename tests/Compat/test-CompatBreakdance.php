@@ -28,9 +28,9 @@
  *     renames a size.
  *   - Breakdance with Elementor active (every --compat run): the Elementor
  *     run uses the same LIKE pattern and runs first. It rewrites the row with
- *     the generic replacer, which stores `tree_json_string` back as an
- *     object; the Breakdance run then finds nothing left to match and
- *     get_tree() throws a TypeError. Pinned below. EMR registers its
+ *     the generic replacer, which encodes `tree_json_string` back to a
+ *     string, so the document still loads; the Breakdance run then finds
+ *     nothing left to match. EMR registers its
  *     Elementor support twice (the module and Externals\Elementor), and the
  *     only switch, `emr/externals/elementor_is_active`, turns both off.
  *   - Breakdance 2.x: saveContent() passes `false` as futureLayerMeta to the
@@ -253,52 +253,38 @@ class CompatBreakdanceTest extends EMR_IntegrationTestCase {
 		$this->assertIsString( $this->storedBreakdanceData( $post )['tree_json_string'], 'tree_json_string stays a string.' );
 	}
 
-	// -------------------------------------------------------------------
-	// Pinned defects
-	// -------------------------------------------------------------------
-
 	/**
-	 * With Elementor active, a rename corrupts a Breakdance document. The
-	 * Elementor run (the module's and Externals\Elementor's shared
-	 * `elementor` entry) builds the same LIKE pattern as the Breakdance run
-	 * and runs before it, so the generic replacer handles the
-	 * `_breakdance_data` row: replaceContent() decodes the nested
-	 * `tree_json_string` while walking the outer JSON and does not encode
-	 * it back (it is below the top level), so the row is saved with
-	 * `tree_json_string` as an object. The Breakdance run then finds no
-	 * match, and Breakdance's get_tree() hands an array to json_decode()
-	 * and throws a TypeError: the page no longer loads. The correct
-	 * behaviour is that only the Breakdance run handles `_breakdance_data`
-	 * rows (or that a nested JSON string is re-encoded as a string).
-	 *
-	 * How to recognise the fix: `tree_json_string` stays a string,
-	 * get_tree() returns the tree with the new URL, and the pinned
-	 * assertions below fail.
+	 * With Elementor active, a rename still leaves a loadable Breakdance
+	 * document. The Elementor run (the module's and Externals\Elementor's
+	 * shared `elementor` entry) builds the same LIKE pattern as the
+	 * Breakdance run and runs before it, so the generic replacer handles the
+	 * `_breakdance_data` row and the Breakdance run finds nothing left to
+	 * match. replaceContent() encodes the nested `tree_json_string` back
+	 * after walking it, so it stays a string and get_tree() loads the new
+	 * URL.
 	 */
-	public function test_rename_with_elementor_active_corrupts_the_breakdance_document_pinned_for_deferred_fix() {
+	public function test_rename_with_elementor_active_keeps_the_breakdance_document_loadable() {
 		$this->assertTrue( defined( 'ELEMENTOR_VERSION' ), 'Precondition: Elementor is active (every --compat run loads it).' );
-		list( $id, $url ) = $this->standardCompatImage( 'emr-bd-el' );
+		list( $id, $url, , $old_base ) = $this->standardCompatImage( 'emr-bd-el' );
 		$post    = $this->breakdancePost( array( $url ) );
 		$meta_id = $this->metaIdOf( $post, '_breakdance_data' );
 		$this->assertIsString( $this->storedBreakdanceData( $post )['tree_json_string'], 'Sentinel: tree_json_string is a string before the replace.' );
 		$this->recordMetaRows();
 
-		$this->searchReplaceMode( $id, $this->tmpJpeg( 400, 300 ), 'emr-bd-el-new-' . $this->token() . '.jpg' );
+		$name = 'emr-bd-el-new-' . $this->token() . '.jpg';
+		$this->searchReplaceMode( $id, $this->tmpJpeg( 400, 300 ), $name );
 
-		$this->assertSame( array( 'unset' ), $this->componentsThatSawMetaRow( $meta_id ), 'Pinned: only the Elementor run (component `unset`) reaches the row.' );
-		$stored = $this->storedBreakdanceData( $post );
-		$this->assertIsArray( $stored['tree_json_string'], 'Pinned: tree_json_string is stored as an object.' );
-		$this->assertSame( wp_get_attachment_url( $id ), $stored['tree_json_string']['root']['children'][0]['data']['properties']['image']['url'], 'Pinned: the URL inside was rewritten.' );
-
-		wp_cache_delete( $post, 'post_meta' );
-		$thrown = null;
-		try {
-			\Breakdance\Data\get_tree( $post );
-		} catch ( \TypeError $e ) {
-			$thrown = $e;
-		}
-		$this->assertInstanceOf( 'TypeError', $thrown, 'Pinned: Breakdance can no longer load the document.' );
+		$new_url = wp_get_attachment_url( $id );
+		$this->assertStringEndsWith( '/' . $name, $new_url, 'Sentinel: the attachment was renamed.' );
+		$this->assertSame( array( 'unset' ), $this->componentsThatSawMetaRow( $meta_id ), 'Only the Elementor run (component `unset`) reaches the row.' );
+		$this->assertIsString( $this->storedBreakdanceData( $post )['tree_json_string'], 'tree_json_string stays a string.' );
+		$this->assertStringNotContainsString( $old_base, $this->rawPostMeta( $post, '_breakdance_data' ), 'No reference to the old name is left.' );
+		$this->assertSame( array( $new_url ), $this->documentUrls( $post ), 'Breakdance loads the new URL.' );
 	}
+
+	// -------------------------------------------------------------------
+	// Pinned defects
+	// -------------------------------------------------------------------
 
 	/**
 	 * On Breakdance 2.x, a replace that rewrites a document wipes its

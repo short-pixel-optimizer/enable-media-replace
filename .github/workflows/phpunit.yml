@@ -1,29 +1,30 @@
 name: EMR PHPUnit Tests
 
-# Every push to `tests` (the branch the test harness is built on) runs the
-# PHPUnit suites, and so does every pull request into `updates` or `master`.
-# Other branches are covered by their pull request; anything else can be run
-# by hand from the Actions tab (workflow_dispatch).
+# Every push to `updates` (the integration branch) or `tests` (the branch
+# the test harness is built on) runs the PHPUnit suites, and so does every
+# pull request into `updates` or `master`. Other branches are covered by
+# their pull request; anything else can be run by hand from the Actions tab
+# (workflow_dispatch).
 on:
   push:
-    branches: [ tests ]
+    branches: [ updates, tests ]
   pull_request:
     branches: [ updates, master ]
   workflow_dispatch:
 
 # Pull requests: one group per PR, so a newer push cancels the stale run.
 # Pushes and manual runs: a unique group per run, so every commit on
-# `tests` keeps its own verdict. (A shared group is not enough even with
-# cancel-in-progress off: GitHub keeps only ONE pending run per group and
-# silently cancels the older pending one when a third arrives.)
+# `updates` or `tests` keeps its own verdict. (A shared group is not enough
+# even with cancel-in-progress off: GitHub keeps only ONE pending run per
+# group and silently cancels the older pending one when a third arrives.)
 concurrency:
   group: phpunit-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
-# Every job below skips pull_request runs whose SOURCE branch is `tests` in
-# this repository: the push to `tests` has already tested that exact commit,
-# so the PR would only run everything a second time. GitHub reports a job
-# skipped by `if` as passing, so it never blocks the PR.
+# Every job below skips pull_request runs whose SOURCE branch is `updates`
+# or `tests` in this repository: the push to that branch has already tested
+# that exact commit, so the PR would only run everything a second time.
+# GitHub reports a job skipped by `if` as passing, so it never blocks the PR.
 #
 # Zero-test guard: every PHPUnit invocation below is captured with `tee` and
 # fails the step when (a) PHPUnit exits non-zero, (b) the log contains
@@ -35,7 +36,7 @@ concurrency:
 jobs:
   build:
     name: Run Tests (PHP ${{ matrix.php-version }})
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.ref != 'tests' || github.event.pull_request.head.repo.full_name != github.repository
+    if: github.event_name != 'pull_request' || (github.event.pull_request.head.ref != 'updates' && github.event.pull_request.head.ref != 'tests') || github.event.pull_request.head.repo.full_name != github.repository
     runs-on: ubuntu-latest
 
     strategy:
@@ -257,16 +258,16 @@ jobs:
 
   integration:
     name: Run Integration Tests (PHP ${{ matrix.php-version }}, WP ${{ matrix.wp-version }})
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.ref != 'tests' || github.event.pull_request.head.repo.full_name != github.repository
+    if: github.event_name != 'pull_request' || (github.event.pull_request.head.ref != 'updates' && github.event.pull_request.head.ref != 'tests') || github.event.pull_request.head.repo.full_name != github.repository
     runs-on: ubuntu-latest
 
     strategy:
       fail-fast: false
       # Budget decision: PRs run PHP 8.3 / WP latest (the common production
       # combo) plus WP 5.9, the oldest version the WordPress test library
-      # installs on this setup, on PHP 7.4 and 8.3. Pushes to `tests` and
-      # manual runs run the full PHP 7.4/8.3/8.5 matrix on WP latest, plus
-      # WP 5.9 on PHP 7.4 and 8.3. Old WP + PHP 8.5 is skipped: a WP core
+      # installs on this setup, on PHP 7.4 and 8.3. Pushes to `updates` or
+      # `tests` and manual runs run the full PHP 7.4/8.3/8.5 matrix on WP
+      # latest, plus WP 5.9 on PHP 7.4 and 8.3. Old WP + PHP 8.5 is skipped: a WP core
       # that predates PHP 8.x-era fixes only produces deprecation noise
       # there, not signal.
       matrix: ${{ github.event_name == 'pull_request'
@@ -384,7 +385,7 @@ jobs:
     # multisite-specific surface doesn't vary by PHP version, which the
     # unit/integration matrices already cover.
     name: Run Multisite Tests (PHP 8.3, WP latest)
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.ref != 'tests' || github.event.pull_request.head.repo.full_name != github.repository
+    if: github.event_name != 'pull_request' || (github.event.pull_request.head.ref != 'updates' && github.event.pull_request.head.ref != 'tests') || github.event.pull_request.head.repo.full_name != github.repository
     runs-on: ubuntu-latest
 
     services:
@@ -472,7 +473,7 @@ jobs:
     # Bricks theme from tests/partner-themes/, both gitignored, so their
     # tests self-skip here.
     name: Run Compat Tests (PHP ${{ matrix.php }}, WP latest)
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.ref != 'tests' || github.event.pull_request.head.repo.full_name != github.repository
+    if: github.event_name != 'pull_request' || (github.event.pull_request.head.ref != 'updates' && github.event.pull_request.head.ref != 'tests') || github.event.pull_request.head.repo.full_name != github.repository
     runs-on: ubuntu-latest
 
     strategy:

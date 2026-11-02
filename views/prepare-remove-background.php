@@ -150,7 +150,7 @@ $replace_url = add_query_arg(array(
 						<div id="solid_selecter" style="display:none;">
 							<label for="bg_display_picker">
 								<p><?php esc_html_e('Background Color:','enable-media-replace'); ?> <strong>
-									<span style="text-transform: uppercase;" id="color_range">
+									<span id="color_range">
 										<?php echo esc_attr($view->settings['bg_color']); ?></span>
 									</strong>
 								</p>

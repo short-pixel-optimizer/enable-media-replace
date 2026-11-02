@@ -449,7 +449,7 @@ class EnableMediaReplacePlugin
     /** Load EMR views based on request
      *
      * Page callback of the hidden EMR page. Enqueues the shared styles and
-     * scripts (emr_style, emr-redesign, jquery-ui-datepicker, emr_admin),
+     * scripts (emr_style, jquery-ui-datepicker, emr_admin),
      * queues the feature notice, then dispatches on `$_GET['action']`:
      * - 'media_replace' with an `attachment_id` > 0:
      *   ReplaceViewController::load() (the replace form), plus emr_upsell.
@@ -489,7 +489,6 @@ class EnableMediaReplacePlugin
             case 'enable-media-replace/enable-media-replace.php':
                 $action = isset($_GET['action']) ? sanitize_text_field($_GET['action']) : '';
                 wp_enqueue_style('emr_style');
-                wp_enqueue_style('emr-redesign');
                 wp_enqueue_script('jquery-ui-datepicker');
                 wp_enqueue_style('jquery-ui-datepicker');
                 wp_enqueue_script('emr_admin');
@@ -586,8 +585,7 @@ class EnableMediaReplacePlugin
      * they need.
      *
      * Styles registered: emr_style (css/admin.css, or css/rtl/admin.css for
-     * RTL), emr_edit-attachment, emr-remove-background, and emr-redesign
-     * (depends on emr_style; versioned by file mtime).
+     * RTL), emr_edit-attachment and emr-remove-background.
      *
      * Scripts registered and their localised objects:
      * - emr_admin (js/emr_admin.js) -> `emr_options`: dateFormat (from
@@ -624,9 +622,6 @@ class EnableMediaReplacePlugin
 
         wp_register_style('emr-remove-background', plugins_url('css/remove_background.css', EMR_ROOT_FILE));
 
-        $emr_redesign_path = plugin_dir_path(EMR_ROOT_FILE) . 'css/redesign.css';
-        $emr_redesign_ver  = file_exists($emr_redesign_path) ? filemtime($emr_redesign_path) : EMR_VERSION;
-        wp_register_style('emr-redesign', plugins_url('css/redesign.css', EMR_ROOT_FILE), array('emr_style'), $emr_redesign_ver);
 
         $mimes = array_values(get_allowed_mime_types());
 
