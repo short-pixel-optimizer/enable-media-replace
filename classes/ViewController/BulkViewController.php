@@ -42,6 +42,9 @@ class BulkViewController extends ViewController
 	/** @var string */
 	protected $view_name = 'bulk/view-bulk';
 
+	/** ShortPixel sign-up page, with the UTM parameters of the bulk page. */
+	const SIGNUP_URL = 'https://shortpixel.com/free-sign-up?utm_source=plugin&utm_medium=emr&utm_campaign=emr_bulk';
+
 	/**
 	 * @return static
 	 */
@@ -92,11 +95,23 @@ class BulkViewController extends ViewController
 			);
 		}
 
+		$this->view->signupUrl      = self::SIGNUP_URL;
+		$this->view->backupPath     = $this->getBackupDisplayPath();
+		$this->view->factorList     = $this->getFactorList(array_keys($this->view->factors));
+		$this->view->maxFactor      = max(array_keys($this->view->factors));
+		$this->view->displayOperation = (BulkQueue::CUSTOM_OP_RESTORE === $this->view->customOperation) ? 'restore' : $this->view->currentOperation;
+
 		$this->view->error = false;
 		if (false === $this->view->hasKey) {
 			$this->view->error        = true;
 			$this->view->errorTitle   = __('API key required', 'enable-media-replace');
-			$this->view->errorContent = __('The bulk needs a ShortPixel API key on an Unlimited plan. Add it below to start.', 'enable-media-replace');
+			// HTML: escaped here, printed with wp_kses_post() by part-dashboard.php.
+			$this->view->errorContent = sprintf(
+				/* translators: %1$s and %2$s: opening and closing tags of the sign-up link. */
+				esc_html__('Bulk Enhance needs a ShortPixel API key on an Unlimited plan. Add your key below to start, or get one %1$shere%2$s.', 'enable-media-replace'),
+				'<a href="' . esc_url(self::SIGNUP_URL) . '" target="_blank" rel="noopener">',
+				'</a>'
+			);
 		}
 
 		wp_enqueue_style('emr_style');
@@ -105,6 +120,75 @@ class BulkViewController extends ViewController
 		wp_enqueue_script('emr_bulk_screen');
 
 		$this->loadView($this->view_name);
+	}
+
+	/**
+	 * Renders the step bar (views/bulk/part-steps.php) with $part as the current step.
+	 *
+	 * loadView() includes a template once and passes no arguments, while the
+	 * step bar appears on four panels with a different current step.
+	 *
+	 * @param string $part selection, summary, process or finished.
+	 * @return void
+	 */
+	public function loadSteps($part)
+	{
+		$view       = $this->view;
+		$controller = $this;
+		include \emr()->plugin_path('views/bulk/part-steps.php');
+	}
+
+	/**
+	 * Attributes for an element shown for some operations only.
+	 *
+	 * The screen script (UpdateOperationLabels()) toggles every
+	 * `[data-operation-only]` element when the operation changes; this sets
+	 * the initial state for the operation the page loads with.
+	 *
+	 * @param string $operations Space-separated: background, upscale, restore.
+	 * @return string The attribute string, escaped.
+	 */
+	public function operationOnly($operations)
+	{
+		$list   = explode(' ', $operations);
+		$hidden = in_array($this->view->displayOperation, $list, true) ? '' : ' hidden';
+		return 'data-operation-only="' . esc_attr($operations) . '"' . $hidden;
+	}
+
+	/**
+	 * The backup folder as shown to the user: relative to the WordPress root.
+	 *
+	 * @return string For example `/wp-content/uploads/EMR_Backups`.
+	 */
+	protected function getBackupDisplayPath()
+	{
+		$path = wp_normalize_path(untrailingslashit(BackupController::getBackupDirectory()->getPath()));
+		$root = wp_normalize_path(untrailingslashit(ABSPATH));
+		if ('' !== $root && 0 === strpos($path, $root)) {
+			$path = substr($path, strlen($root));
+		}
+		return $path;
+	}
+
+	/**
+	 * The upscale factors as a sentence fragment: "2×, 3× or 4×".
+	 *
+	 * @param int[] $factors
+	 * @return string
+	 */
+	protected function getFactorList($factors)
+	{
+		$labels = array();
+		foreach ($factors as $factor) {
+			/* translators: %d: upscale factor. */
+			$labels[] = sprintf(__('%d×', 'enable-media-replace'), (int) $factor);
+		}
+		$last = array_pop($labels);
+		if (0 === count($labels)) {
+			return $last;
+		}
+		/* translators: %1$s: comma-separated factors, %2$s: the last factor. */
+		return sprintf(__('%1$s or %2$s', 'enable-media-replace'), implode(', ', $labels), $last);
 	}
 
 	/**

@@ -2,6 +2,11 @@
 /**
  * Bulk summary panel: what is queued, start or go back.
  *
+ * `[data-operation-detail]` is filled by the screen script with the chosen
+ * options ("Transparent", "Solid color #ffffff, 100% opacity", "Images
+ * narrower than 1200 px"); `[data-background-process]` follows the
+ * background-process checkbox of the selection panel.
+ *
  * Variables in scope: see views/bulk/view-bulk.php.
  */
 namespace EnableMediaReplace;
@@ -11,12 +16,29 @@ if (! defined('ABSPATH')) {
 }
 ?>
 <section class="emr-bulk-panel emr-bulk-summary" data-panel="summary" hidden>
-	<h2><?php esc_html_e('Ready to start', 'enable-media-replace'); ?></h2>
-	<p class="emr-bulk-summary-operation"><span data-operation-label><?php echo esc_html($view->operations[ $view->currentOperation ]->label); ?></span></p>
-	<p class="emr-bulk-summary-count"><?php printf(esc_html__('%s images are queued.', 'enable-media-replace'), '<strong data-stats-media="total">0</strong>'); ?></p>
-	<p class="description"><?php esc_html_e('Every original is copied to the EMR_Backups folder before it is replaced, so the run can be undone from the dashboard.', 'enable-media-replace'); ?></p>
-	<p class="emr-bulk-summary-empty" data-check-visibility="false" data-control="data-check-media-total"><?php esc_html_e('Nothing to do: no image matched.', 'enable-media-replace'); ?></p>
-	<span class="hidden" data-check-media-total data-stats-media="total">0</span>
+	<?php $controller->loadSteps('summary'); ?>
+
+	<h2 class="emr-bulk-heading"><?php esc_html_e('Ready to start', 'enable-media-replace'); ?></h2>
+
+	<div class="emr-bulk-summary-box">
+		<p class="emr-bulk-summary-operation"><span data-operation-label><?php echo esc_html($view->operations[ $view->currentOperation ]->label); ?></span><span class="emr-bulk-summary-detail" data-operation-detail></span></p>
+		<p class="emr-bulk-summary-count" data-check-visibility data-control="data-check-media-total"><?php printf(esc_html__('%s will be processed.', 'enable-media-replace'), '<strong>' . sprintf(esc_html__('%s images', 'enable-media-replace'), '<span data-stats-media="total">0</span>') . '</strong>'); ?></p>
+		<p class="emr-bulk-summary-empty" data-check-visibility="false" data-control="data-check-media-total"><?php esc_html_e('Nothing to do: no image matched.', 'enable-media-replace'); ?></p>
+		<span class="hidden" data-check-media-total data-stats-media="total">0</span>
+		<p>
+			<?php
+			printf(
+				/* translators: %1$s: the backup folder, %2$s: "Restore originals" in bold. */
+				esc_html__('Your originals are copied to the %1$s folder first, so you can undo this run anytime with %2$s.', 'enable-media-replace'),
+				'<code>' . esc_html($view->backupPath) . '</code>',
+				'<strong>' . esc_html__('Restore originals', 'enable-media-replace') . '</strong>'
+			);
+			?>
+		</p>
+		<p class="emr-bulk-summary-keep-open" data-background-process="0"<?php echo $view->settings['background_process'] ? ' hidden' : ''; ?>><?php esc_html_e('Keep this page open while it runs.', 'enable-media-replace'); ?></p>
+		<p class="emr-bulk-summary-keep-open" data-background-process="1"<?php echo $view->settings['background_process'] ? '' : ' hidden'; ?>><?php esc_html_e('It is fastest with this page open; if you close it, the bulk keeps going in the background.', 'enable-media-replace'); ?></p>
+	</div>
+
 	<nav>
 		<button type="button" class="button" data-action="FinishBulk"><?php esc_html_e('Cancel', 'enable-media-replace'); ?></button>
 		<button type="button" class="button button-primary" data-action="StartBulk" data-check-visibility data-control="data-check-media-total"><?php esc_html_e('Start processing', 'enable-media-replace'); ?></button>

@@ -1,18 +1,21 @@
 <?php
 /**
- * The Media > Bulk page: wrapper and panel includes.
+ * The Media > Bulk Enhance page: header, banners and panel includes.
  *
  * Loaded by BulkViewController::load() through ViewController::loadView().
  * Variables in scope: $controller (BulkViewController) and $view (stdClass):
  * stats (startup data), settings, hasKey, logs, logHeaders, currentOperation,
- * customOperation, errorLog, factors, maxThreshold, operations (per
- * operation: available, reason, count, restorable, label), error,
- * errorTitle, errorContent.
+ * customOperation, displayOperation (the operation, or 'restore' during a
+ * restore), errorLog, factors, factorList, maxFactor, maxThreshold,
+ * signupUrl, backupPath, operations (per operation: available, reason,
+ * count, restorable, label), error, errorTitle, errorContent (HTML).
  *
+ * The layout follows ShortPixel Image Optimizer's bulk page (white header
+ * bar, rounded panels, the step bar, the stats table, the preview boxes).
  * The panels are `section.emr-bulk-panel` with a data-panel attribute;
  * js/bulk/emr-bulk-screen.js shows one at a time. No inline scripts or
- * styles: the stylesheet is css/bulk.css, strings for the script are
- * localized in EnableMediaReplacePlugin::bulkScriptData().
+ * styles: the stylesheet is css/bulk.css (from scss/bulk.scss), strings for
+ * the script are localized in EnableMediaReplacePlugin::bulkScriptData().
  */
 namespace EnableMediaReplace;
 
@@ -21,7 +24,10 @@ if (! defined('ABSPATH')) {
 }
 ?>
 <div class="wrap emr-bulk-wrapper">
-	<h1><?php esc_html_e('Bulk processing', 'enable-media-replace'); ?></h1>
+	<header class="emr-bulk-header">
+		<h1><?php esc_html_e('Enable Media Replace - Bulk Enhance', 'enable-media-replace'); ?></h1>
+	</header>
+	<hr class="wp-header-end">
 	<div class="emr-bulk-notices"></div>
 
 	<div id="emr-bulk-paused" class="emr-bulk-banner emr-bulk-banner-paused" data-action="ResumeBulk" hidden>
@@ -38,6 +44,7 @@ if (! defined('ABSPATH')) {
 		<a href="<?php echo esc_url(admin_url('upload.php?page=' . EnableMediaReplacePlugin::BULK_PAGE_SLUG)); ?>"><?php esc_html_e('Reload the page after fixing the key or the plan', 'enable-media-replace'); ?></a>
 	</div>
 
+	<div class="emr-bulk-screen">
 	<?php
 	$controller->loadView('bulk/part-dashboard');
 	$controller->loadView('bulk/part-selection');
@@ -46,4 +53,5 @@ if (! defined('ABSPATH')) {
 	$controller->loadView('bulk/part-finished');
 	$controller->loadView('bulk/part-restore');
 	?>
+	</div>
 </div>

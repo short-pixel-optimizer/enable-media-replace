@@ -1,79 +1,477 @@
-// Bulk processing page (Media > Bulk). Compiled to css/bulk.css.
+// Bulk Enhance page (Media > Bulk Enhance). Compiled to css/bulk.css.
+//
+// The look follows ShortPixel Image Optimizer's bulk page
+// (res/scss/shortpixel-bulk.scss, bulk/_dashboard.scss, elements/_header.scss):
+// white header bar, rounded white panels, the numbered step bar, light blue
+// option blocks, the stats table, the history log and the preview boxes.
+// Class names are EMR's own (`emr-bulk-*`); the rules mirror SPIO's.
+@use "sass:color";
+@use 'bulk-colors' as *;
+
+@mixin emr-bulk-button {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	min-height: 36px;
+	margin: 0;
+	padding: 8px 16px;
+	background: $color-brokenwhite;
+	color: $blue_dark;
+	letter-spacing: .3px;
+	font-weight: 700;
+	font-size: 14px;
+	line-height: 1;
+	border-radius: 3px;
+	border: 1px solid $blue_default;
+	box-shadow: none;
+	text-decoration: none;
+	transition: all .1s ease-in-out;
+
+	&:hover,
+	&:focus {
+		background: color.adjust($blue_default, $lightness: 10%);
+		border-color: $blue_default;
+		color: #fff;
+	}
+
+	&:focus-visible {
+		outline: 2px solid $blue_dark;
+		outline-offset: 2px;
+	}
+
+	.dashicons {
+		font-size: 18px;
+		width: 18px;
+		height: 18px;
+		line-height: 1;
+	}
+}
+
 .emr-bulk-wrapper {
-	max-width: 960px;
+	// The header bar spans the content area like SPIO's.
+	.emr-bulk-header {
+		background: #fff;
+		display: flex;
+		align-items: center;
+		margin: -10px -20px 10px -22px;
+		padding: 8px 24px;
+		box-shadow: 0 1px 4px 0 rgba(0, 0, 0, .1);
 
-	h1 { margin-bottom: 16px; }
+		h1 {
+			margin: 0;
+			padding: 0;
+			font-size: 23px;
+			line-height: 50px;
+		}
+	}
 
-	.hidden { display: none; }
+	.hidden { display: none !important; }
 	[hidden] { display: none !important; }
+
+	code {
+		background: $blue_background;
+		border-radius: 3px;
+		padding: 2px 5px;
+	}
+
+	.description { color: $emr-text-muted; }
+
+	.button {
+		@include emr-bulk-button;
+
+		&.button-primary {
+			background: $blue_default;
+			color: #fff;
+			border-color: $blue_default;
+
+			&:hover,
+			&:focus { background: color.adjust($blue_default, $lightness: 10%); }
+		}
+
+		&:disabled,
+		&.disabled,
+		&.button-primary:disabled {
+			background: $color-brokenwhite !important;
+			border-color: $color-grey !important;
+			color: #a7aaad !important;
+			cursor: not-allowed;
+		}
+
+		&.emr-bulk-button-danger {
+			color: $emr-red;
+			border-color: $emr-red;
+
+			&:hover,
+			&:focus { background: $emr-red; color: #fff; }
+		}
+	}
 
 	nav {
 		display: flex;
-		gap: 10px;
-		margin-top: 20px;
 		flex-wrap: wrap;
-
-		.button .dashicons { vertical-align: text-bottom; }
+		gap: 10px;
+		justify-content: center;
+		margin: 30px auto 0;
 	}
-
-	.description { color: #50575e; }
 }
 
+.emr-bulk-screen {
+	max-width: 1200px;
+	margin: 20px auto 0;
+}
+
+// Panels.
 .emr-bulk-panel {
 	background: #fff;
-	border: 1px solid #dcdcde;
-	border-radius: 8px;
-	padding: 24px;
+	border-radius: 16px;
+	box-shadow: 1px 0 4px 0 rgba(0, 0, 0, .12);
+	padding: 30px 5% 35px;
 	margin-bottom: 20px;
 	opacity: 0;
-	transition: opacity .3s ease;
+	transition: opacity .5s ease-in;
 
 	&.active { opacity: 1; }
 
 	h2 { margin-top: 0; }
+
+	.emr-bulk-heading {
+		text-align: center;
+		font-size: 24px;
+		font-weight: 700;
+		line-height: 1.4;
+		color: #3c434a;
+		margin: 10px 0 8px;
+	}
+
+	.emr-bulk-subheading {
+		text-align: center;
+		max-width: 760px;
+		margin: 0 auto 10px;
+		font-size: 13px;
+	}
 }
 
-// Banners above the panels.
-.emr-bulk-banner {
+// Step bar (SPIO's section.spio-progressbar).
+.emr-bulk-steps {
 	display: flex;
-	align-items: center;
-	gap: 8px;
-	padding: 12px 16px;
-	margin-bottom: 16px;
-	border-radius: 6px;
-	border: 1px solid #dcdcde;
-	background: #f6f7f7;
+	list-style: none;
+	margin: 0 auto 25px;
+	padding: 16px;
+	background: $blue_background;
+	border-radius: 15px;
 
-	&.emr-bulk-banner-paused { cursor: pointer; }
-	&.emr-bulk-banner-error { border-color: #d63638; background: #fcf0f1; flex-wrap: wrap; }
+	.emr-bulk-step {
+		display: flex;
+		flex: 1;
+		flex-direction: column;
+		align-items: center;
+		position: relative;
+		margin: 0;
+	}
+
+	.line {
+		position: absolute;
+		top: 22px;
+		left: 0;
+		width: 100%;
+		height: 2px;
+		background: #ccc;
+		z-index: 1;
+	}
+
+	.emr-bulk-step:first-child .line { left: 50%; width: 50%; }
+	.emr-bulk-step:last-child .line { width: 50%; }
+
+	.step {
+		position: relative;
+		z-index: 2;
+		box-sizing: border-box;
+		width: 45px;
+		height: 45px;
+		border: 2px solid #ccc;
+		border-radius: 50%;
+		background: #fff;
+		color: #ccc;
+		font-size: 20px;
+		font-weight: 700;
+		line-height: 41px;
+		text-align: center;
+	}
+
+	.text {
+		margin-top: 8px;
+		font-size: 12px;
+		font-weight: 700;
+		text-transform: uppercase;
+		color: #aaa;
+	}
+
+	.active {
+		.line { background: $blue_default; }
+
+		.step {
+			background: $blue_default;
+			border-color: $blue_background;
+			color: #fff;
+		}
+
+		.text { color: $blue_default; }
+	}
+
+	// The line after the current step is half done, like SPIO's line-active().
+	.current:not(:last-child) .line {
+		background: linear-gradient(90deg, $blue_default 0%, $blue_default 50%, #ccc 50%, #ccc 100%);
+	}
 }
 
-// Dashboard.
+// Alerts (API key missing, restore warning).
+.emr-bulk-alert {
+	margin: 0 0 24px;
+	padding: 14px 18px;
+	border-left: 4px solid $emr-orange;
+	border-radius: 4px;
+	background: #fcf9e8;
+
+	h3 { margin: 0 0 4px; font-size: 14px; }
+	p { margin: 0; font-size: 13px; }
+
+	&.emr-bulk-alert-error {
+		border-left-color: $emr-red;
+		background: #fcf0f1;
+		max-width: 760px;
+		margin: 16px auto;
+
+		p { font-weight: 600; color: color.adjust($emr-red, $lightness: -15%); }
+	}
+}
+
+// Light blue blocks (SPIO's .option-block).
+.emr-bulk-option-block {
+	margin: 0 0 10px;
+	padding: 16px 20px;
+	background: $blue_background;
+	border-radius: 15px;
+
+	h2 { font-size: 18px; margin: 0 0 12px; color: #000; }
+	h3 { font-size: 15px; margin: 0 0 10px; color: #000; }
+	p { margin: 6px 0; }
+}
+
+// Dashboard: the operation cards.
 .emr-bulk-operations {
 	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+	grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
 	gap: 20px;
 }
 
 .emr-bulk-operation {
-	border: 1px solid #e6e7e9;
-	border-radius: 8px;
-	padding: 20px;
-	background: #fafafa;
+	display: flex;
+	flex-direction: column;
+	padding: 22px 24px;
+	background: $blue_background;
+	border: 1px solid color.adjust($blue_background, $lightness: -4%);
+	border-radius: 15px;
+	transition: border-color .15s ease-in-out;
 
+	&:hover { border-color: $blue_light; }
 	&[data-available="0"] { opacity: .7; }
 
-	.emr-bulk-operation-title { margin-top: 0; }
-	.emr-bulk-count { font-size: 15px; }
+	.emr-bulk-operation-title {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		margin: 0 0 10px;
+		font-size: 18px;
+		color: #000;
+
+		.dashicons { color: $blue_default; font-size: 24px; width: 24px; height: 24px; }
+	}
+
+	p { margin: 0 0 10px; color: #3c434a; }
+	.emr-bulk-count { font-size: 15px; color: $blue_dark; }
 	.emr-bulk-unavailable { color: #996800; }
+
+	// margin-left/right 0: the wrapper's auto margins would centre the nav in this column flexbox.
+	nav {
+		justify-content: flex-start;
+		margin: auto 0 0;
+		padding-top: 10px;
+	}
 }
 
-.emr-bulk-account { margin-top: 24px; }
+// Collapsible rows: <details>/<summary>, the whole summary is the toggle.
+.emr-bulk-collapsible {
+	margin-top: 24px;
+	border: 1px solid color.adjust($blue_background, $lightness: -4%);
+	border-radius: 15px;
+	background: #fff;
 
-.emr-bulk-history {
-	margin-top: 32px;
+	> summary {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		padding: 14px 20px;
+		border-radius: 15px;
+		background: $blue_background;
+		cursor: pointer;
+		list-style: none;
+		font-size: 14px;
 
-	h2 { font-size: 16px; }
+		&::-webkit-details-marker { display: none; }
+		&::marker { content: ''; }
+
+		&:hover { background: color.adjust($blue_background, $lightness: -2%); }
+
+		&:focus-visible {
+			outline: 2px solid $blue_default;
+			outline-offset: 2px;
+		}
+	}
+
+	&[open] > summary { border-radius: 15px 15px 0 0; }
+
+	.emr-bulk-collapsible-title {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		font-weight: 700;
+		color: #000;
+
+		.dashicons { color: $blue_default; }
+	}
+
+	.emr-bulk-chevron {
+		margin-left: auto;
+		color: $blue_dark;
+		transition: transform .2s linear;
+	}
+
+	&[open] .emr-bulk-chevron { transform: rotate(180deg); }
+
+	.emr-bulk-collapsible-content { padding: 16px 20px 20px; }
+}
+
+// ShortPixel Account row. Resets the shared box rules of admin.css.
+.emr-bulk-account.emr-sp-account {
+	margin: 24px 0 0;
+
+	.emr-bulk-account-status {
+		display: inline-flex;
+		align-items: center;
+
+		&::before {
+			content: '\2014';
+			margin-right: 8px;
+			color: #a7aaad;
+			font-weight: 400;
+		}
+
+		.dashicons { font-size: 18px; width: 18px; height: 18px; }
+	}
+
+	.emr-bulk-account-connected { color: $emr-green; font-weight: 600; }
+	.emr-bulk-account-disconnected { color: #996800; font-weight: 600; }
+
+	.emr-bulk-account-plan {
+		color: #3c434a;
+
+		&::before {
+			content: '\2014';
+			margin-right: 8px;
+			color: #a7aaad;
+		}
+	}
+
+	.emr-sp-account-body { padding: 16px 20px 20px; }
+	.emr-sp-intro { margin: 0 0 12px; font-size: 13px; color: $emr-text-muted; }
+
+	.emr-sp-key-card {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: space-between;
+		gap: 12px;
+		padding: 12px 16px;
+		background: $blue_background;
+		border: 0;
+		border-radius: 10px;
+	}
+
+	.emr-sp-key-status { display: flex; align-items: center; gap: 10px; }
+	.emr-sp-key-value { font-size: 13px; }
+	.emr-sp-key-actions { display: flex; gap: 8px; }
+
+	.emr-sp-edit-form {
+		margin-top: 12px;
+		padding: 0;
+		border: 0;
+		background: none;
+
+		label {
+			display: block;
+			margin-bottom: 6px;
+			font-size: 13px;
+			font-weight: 600;
+			text-transform: none;
+			letter-spacing: 0;
+			color: #1d2327;
+		}
+	}
+
+	.emr-sp-edit-row {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 8px;
+	}
+
+	// Wide enough for the whole 20-character key and the placeholder.
+	.emr-sp-edit-row input.emr-bulk-key-input {
+		flex: 0 1 auto;
+		width: 26ch;
+		max-width: 100%;
+		min-height: 36px;
+		font-family: Consolas, Monaco, monospace;
+		font-size: 14px;
+	}
+
+	.description { margin: 8px 0 0; }
+}
+
+// History log (SPIO's .dashboard-log).
+.emr-bulk-log {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 12px;
+
+	th {
+		padding: 10px;
+		background: $blue_extralight;
+		text-align: left;
+		font-weight: 700;
+	}
+
+	td {
+		padding: 9px 10px;
+		border-top: 1px solid #EBF5FF;
+		border-bottom: 1px solid #EBF5FF;
+	}
+
+	tbody tr:nth-child(even) { background: $blue_background; }
+
+	.emr-bulk-log-name { color: $blue_dark; font-weight: 600; }
+	.emr-bulk-log-date { color: $emr-text-muted; }
+}
+
+// Error count links: red, the count only means trouble above 0.
+.emr-bulk-errors-link {
+	color: $emr-red;
+	text-decoration: underline;
+
+	strong { color: $emr-red; }
+	&:hover,
+	&:focus { color: color.adjust($emr-red, $lightness: -12%); }
 }
 
 // Selection.
@@ -83,68 +481,157 @@
 		.emr-bulk-loading { display: block; }
 	}
 
+	.emr-bulk-selection-form { max-width: 820px; margin: 0 auto; }
+
+	fieldset { margin: 0; padding: 0; border: 0; }
+
+	.emr-bulk-radio,
+	.emr-bulk-checkbox {
+		display: block;
+		margin: 8px 0;
+		font-size: 14px;
+
+		input { margin-right: 6px; }
+		em { margin-left: 8px; color: #996800; font-style: normal; }
+	}
+
+	.emr-bulk-indent { margin: 2px 0 8px 26px; }
+	.emr-bulk-note { margin-top: 12px; font-style: italic; }
+
+	.emr-bulk-color-row {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 10px;
+
+		input[type="color"] { width: 48px; height: 32px; padding: 2px; }
+		input[type="number"] { width: 80px; }
+	}
+
+	.emr-bulk-field-label { display: block; margin-bottom: 6px; font-weight: 600; }
+	#emr-bulk-threshold { width: 110px; }
+
 	.emr-bulk-loading {
 		display: none;
 		text-align: center;
 		padding: 20px;
 
-		.spinner { float: none; margin: 0 auto 12px; display: block; }
+		h3 { color: #555; }
 	}
-
-	.emr-bulk-radio,
-	.emr-bulk-checkbox {
-		display: block;
-		margin: 6px 0;
-
-		em { margin-left: 8px; color: #996800; font-style: normal; }
-	}
-
-	.emr-bulk-options {
-		margin-top: 20px;
-		padding-top: 16px;
-		border-top: 1px solid #e6e7e9;
-
-		h3 { margin: 0 0 8px; }
-	}
-
-	.emr-bulk-color-row {
-		display: flex;
-		gap: 10px;
-		align-items: center;
-		margin: 8px 0;
-
-		input[type="number"] { width: 80px; }
-	}
-
-	#emr-bulk-threshold { width: 100px; }
 }
 
-// Process.
+// CSS spinner for the preparing phase.
+.emr-bulk-loader {
+	display: inline-block;
+	width: 48px;
+	height: 48px;
+	border: 5px solid $blue_extralight;
+	border-top-color: $blue_default;
+	border-radius: 50%;
+	animation: emr-bulk-rotate 1s linear infinite;
+}
+
+// Summary.
+.emr-bulk-summary-box {
+	max-width: 760px;
+	margin: 20px auto 0;
+	padding: 20px 26px;
+	background: $blue_background;
+	border-radius: 15px;
+	font-size: 14px;
+
+	p { margin: 8px 0; }
+
+	.emr-bulk-summary-operation {
+		font-size: 16px;
+		font-weight: 700;
+		color: $blue_dark;
+	}
+
+	.emr-bulk-summary-detail:not(:empty)::before {
+		content: '\00a0\00b7\00a0';
+	}
+
+	.emr-bulk-summary-count { font-size: 15px; }
+	.emr-bulk-summary-keep-open { color: $emr-text-muted; }
+}
+
+.emr-bulk-summary-empty {
+	color: #996800;
+	font-weight: 600;
+	text-align: center;
+}
+
+// Process: the stats table (SPIO's .bulk-summary).
+.emr-bulk-stats {
+	display: table;
+	width: 100%;
+	max-width: 900px;
+	margin: 25px auto 0;
+	border-radius: 15px;
+	background: $blue_background;
+	overflow: hidden;
+	font-size: 13px;
+
+	> div { display: table-row; }
+
+	> div > span {
+		display: table-cell;
+		width: 33%;
+		padding: 14px 16px;
+		vertical-align: middle;
+	}
+
+	.heading {
+		background: $blue_extralight;
+		color: #000;
+
+		.emr-bulk-stats-name { font-weight: 700; }
+		.dashicons { color: $blue_default; }
+	}
+
+	strong { color: $blue_dark; }
+}
+
 .emr-bulk-progress {
-	display: flex;
-	align-items: center;
-	gap: 12px;
-	margin: 16px 0;
+	white-space: nowrap;
 
 	.emr-bulk-progress-bar {
-		flex: 1;
-		height: 14px;
-		border-radius: 7px;
-		background: #e6e7e9;
+		display: inline-block;
+		position: relative;
+		width: calc(100% - 70px);
+		max-width: 220px;
+		height: 18px;
+		vertical-align: middle;
+		background: #fff;
+		border-radius: 9px;
 		overflow: hidden;
 	}
 
 	.emr-bulk-progress-done {
-		display: block;
-		height: 100%;
+		position: absolute;
+		top: 0;
+		bottom: 0;
+		left: 0;
 		width: 0;
-		background: #2271b1;
+		background: $blue_default;
 		transition: width .4s ease;
 	}
 
-	.emr-bulk-progress-text { min-width: 48px; text-align: right; font-weight: 600; }
+	.emr-bulk-progress-text {
+		display: inline-block;
+		min-width: 36px;
+		margin-left: 6px;
+		font-weight: 700;
+		vertical-align: middle;
+	}
 
-	.emr-bulk-spinner.spin { animation: emr-bulk-rotate 1.2s linear infinite; }
+	.emr-bulk-spinner {
+		vertical-align: middle;
+		color: $blue_default;
+
+		&.spin { animation: emr-bulk-rotate 1.2s linear infinite; }
+	}
 }
 
 @keyframes emr-bulk-rotate {
@@ -152,52 +639,97 @@
 	to { transform: rotate(360deg); }
 }
 
-.emr-bulk-stats {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 8px 24px;
-	margin: 12px 0;
-
-	.error { color: #d63638; }
-	.emr-bulk-show-errors { margin-left: 8px; }
-}
-
 .emr-bulk-errorbox {
-	margin: 8px 0;
-	padding: 10px 14px;
-	border-radius: 6px;
-	background: #fcf0f1;
-	border: 1px solid #f0b3b6;
-	max-height: 240px;
-	overflow: auto;
+	box-sizing: border-box;
+	width: 100%;
+	max-width: 900px;
+	max-height: 300px;
+	margin: 0 auto;
+	padding: 12px 16px;
+	overflow-y: auto;
+	background: $blue_background;
+	border-top: 1px solid $color-grey;
+	border-radius: 0 0 15px 15px;
 	font-size: 12px;
+	line-height: 22px;
 
-	.fatal { padding: 2px 0; }
+	.fatal { color: $emr-red; }
 }
 
-.emr-bulk-preview {
-	margin-top: 28px;
+.emr-bulk-finished .emr-bulk-errorbox {
+	max-width: 760px;
+	margin-bottom: 16px;
+	border-radius: 15px;
+	border-top: 0;
+}
 
-	h3 { font-size: 14px; }
+// Process: the last result (SPIO's .image-preview-section).
+.emr-bulk-preview {
+	max-width: 900px;
+	margin: 30px auto 0;
+	background: #F6F9FF;
+	border: 1px solid #DFEAFF;
+	border-radius: 16px;
+	overflow: hidden;
+
+	.emr-bulk-preview-title {
+		padding: 14px 24px;
+		background: $blue_extralight;
+		font-size: 15px;
+		font-weight: 600;
+		color: #000;
+
+		[data-result="filename"] { font-weight: 700; }
+	}
 }
 
 .emr-bulk-preview-images {
 	display: grid;
 	grid-template-columns: 1fr 1fr;
-	gap: 20px;
-	opacity: 1;
+	gap: 16px;
+	padding: 24px;
 
 	&.emr-bulk-fade { animation: emr-bulk-fadein .6s ease; }
 
 	.image {
-		background: #fafafa;
-		border: 1px solid #e6e7e9;
+		position: relative;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		min-height: 160px;
+		overflow: hidden;
 		border-radius: 8px;
-		padding: 12px;
-		text-align: center;
+		// Checkerboard: a transparent result must not look like a white one.
+		background-color: #fff;
+		background-image:
+			linear-gradient(45deg, #e6e7e9 25%, transparent 25%),
+			linear-gradient(-45deg, #e6e7e9 25%, transparent 25%),
+			linear-gradient(45deg, transparent 75%, #e6e7e9 75%),
+			linear-gradient(-45deg, transparent 75%, #e6e7e9 75%);
+		background-size: 16px 16px;
+		background-position: 0 0, 0 8px, 8px -8px, -8px 0;
 
-		img { max-width: 100%; max-height: 320px; height: auto; }
-		p { margin: 8px 0 0; color: #50575e; }
+		img {
+			display: block;
+			max-width: 100%;
+			max-height: 360px;
+			height: auto;
+
+			&[src*="placeholder.svg"] { width: 100%; background: #ebedf1; }
+		}
+
+		p {
+			position: absolute;
+			top: 0;
+			left: 0;
+			margin: 0;
+			padding: 4px 8px;
+			background: rgba(0, 0, 0, .5);
+			color: #fff;
+			border-radius: 0 0 6px 0;
+		}
+
+		&.result p { font-weight: 700; }
 	}
 }
 
@@ -206,16 +738,82 @@
 	to { opacity: 1; }
 }
 
+// Finished.
+.emr-bulk-finished {
+	.emr-bulk-finished-icon {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 64px;
+		height: 64px;
+		margin: 10px auto 0;
+		border-radius: 50%;
+		background: $blue_default;
+
+		.dashicons { color: #fff; font-size: 44px; width: 44px; height: 44px; }
+	}
+
+	.emr-bulk-finished-text {
+		text-align: center;
+		font-size: 16px;
+		color: #3c434a;
+
+		strong { color: $blue_dark; }
+	}
+}
+
 // Restore.
 .emr-bulk-restore {
-	.emr-bulk-warning { color: #d63638; font-weight: 600; }
 	.emr-bulk-restore-choice {
-		margin: 16px 0;
-		padding: 12px 16px;
-		border: 1px solid #e6e7e9;
-		border-radius: 8px;
+		max-width: 760px;
+		margin: 12px auto;
 
 		.button { margin-top: 10px; }
+	}
+
+	.emr-bulk-checkbox {
+		display: block;
+		font-size: 14px;
+
+		input { margin-right: 6px; }
+	}
+}
+
+// Banners above the panels (SPIO's .processor-paused / .processor-overquota).
+.emr-bulk-banner {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex-wrap: wrap;
+	gap: 8px;
+	max-width: 1200px;
+	box-sizing: border-box;
+	margin: 20px auto;
+	padding: 18px 24px;
+	border-radius: 16px;
+	font-size: 16px;
+	text-align: center;
+
+	&.emr-bulk-banner-paused {
+		background: $blue_default;
+		color: #fff;
+		cursor: pointer;
+		transition: background .3s;
+
+		&:hover { background: color.adjust($blue_default, $lightness: -5%); }
+	}
+
+	&.emr-bulk-banner-blocked {
+		background: $blue_background;
+		border: 1px solid $blue_light;
+		color: $blue_dark;
+	}
+
+	&.emr-bulk-banner-error {
+		background: $emr-red;
+		color: #fff;
+
+		a { color: #fff; }
 	}
 }
 
@@ -223,20 +821,21 @@
 .emr-bulk-modal {
 	position: fixed;
 	inset: 0;
-	background: rgba(0, 0, 0, .5);
 	z-index: 100000;
 	display: flex;
 	align-items: center;
 	justify-content: center;
+	background: rgba(0, 0, 0, .5);
 
 	.emr-bulk-modal-inner {
-		background: #fff;
-		border-radius: 8px;
-		padding: 24px;
+		position: relative;
 		width: min(900px, 92vw);
 		max-height: 80vh;
 		overflow: auto;
-		position: relative;
+		padding: 24px;
+		background: #fff;
+		border-radius: 16px;
+		box-shadow: rgba(0, 0, 0, .5) 4px 4px 20px;
 	}
 
 	.emr-bulk-modal-close {
@@ -252,12 +851,22 @@
 	.emr-bulk-log-table {
 		display: grid;
 		grid-template-columns: auto 1fr auto 2fr;
+		font-size: 12px;
 
 		> div {
 			display: contents;
 
-			span { padding: 6px 8px; border-bottom: 1px solid #e6e7e9; }
-			&.heading span { font-weight: 600; background: #f6f7f7; }
+			span { padding: 8px; border-bottom: 1px solid #EBF5FF; }
+			&.heading span { font-weight: 700; background: $blue_default; color: #fff; }
 		}
+
+		a { color: $blue_default; }
 	}
+}
+
+@media (max-width: 782px) {
+	.emr-bulk-wrapper .emr-bulk-header { margin: -10px -10px 10px -12px; }
+	.emr-bulk-steps .text { font-size: 10px; }
+	.emr-bulk-stats > div > span { display: block; width: auto; }
+	.emr-bulk-preview-images { grid-template-columns: 1fr; }
 }

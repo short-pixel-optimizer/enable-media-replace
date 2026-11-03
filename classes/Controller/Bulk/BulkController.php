@@ -70,7 +70,9 @@ class BulkController
 	/**
 	 * The bulk settings with their defaults: `background_process` (bool,
 	 * cron-driven ticks), `upscale_threshold` (int px), `bg_type`
-	 * ('transparent' or 'solid'), `bg_color` (hex), `bg_transparency` (0-100).
+	 * ('transparent' or 'solid'), `bg_color` (hex), `bg_transparency` (0-100,
+	 * the opacity of the colour: 100 is solid, the default, as on the single
+	 * remove background screen).
 	 * Stored under `bulk_*` keys of the `enable_media_replace` option.
 	 *
 	 * @return array
@@ -84,7 +86,7 @@ class BulkController
 			'upscale_threshold'  => (int) apply_filters('emr/bulk/upscale/threshold', self::DEFAULT_THRESHOLD),
 			'bg_type'            => 'transparent',
 			'bg_color'           => '#ffffff',
-			'bg_transparency'    => 0,
+			'bg_transparency'    => 100,
 		);
 		$settings = array();
 		foreach ($defaults as $key => $default) {

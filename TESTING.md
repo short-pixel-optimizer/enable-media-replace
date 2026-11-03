@@ -613,7 +613,7 @@ console-error tripwire, hermetic routing, the `emr` support client),
 `helpers/` (`wp-admin.ts` login and admin URLs, `media-list.ts` the media
 list row actions and the edit-attachment meta box, `emr.ts` the support
 client, EMR URLs and the screen objects, `journeys.ts` the shared journey
-steps, `bulk-page.ts` the Media > Bulk page object), `specs/`
+steps, `bulk-page.ts` the Media > Bulk Enhance page object), `specs/`
 (`auth.setup.ts` logs in once; `smoke.spec.ts` proves the harness;
 `editors.spec.ts` the Replace entry point in the block and classic editor
 media modal; `bulk.spec.ts` the bulk page).

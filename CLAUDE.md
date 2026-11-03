@@ -169,7 +169,7 @@ classes/
     UploadViewController.php           - the replace POST handler
     RemoveBackgroundViewController.php - the remove-background screen and POST handler
     UpscaleViewController.php          - the upscale screen and POST handler (subclass: own template and nonce)
-    BulkViewController.php             - the visible Media > Bulk page (slug emr-bulk, manage_options)
+    BulkViewController.php             - the visible Media > Bulk Enhance page (slug emr-bulk, manage_options)
   ajax.php                 - wp_ajax_emr_remove_background (also the upscale preview) / _save_api_key / _delete_api_key;
                              instantiates BulkAjaxController for the bulk actions
   api.php                  - the remove-background and upscale API client
@@ -184,9 +184,11 @@ classes/
   compat.php               - polyfills for old WordPress versions
 views/                     - PHP templates (screen, prepare-remove-background, prepare-upscale,
                              shortpixel-account (the API key box both screens include), success, error, upsell,
-                             bulk/ (view-bulk + the dashboard, selection, summary, process, finished, restore panels))
+                             bulk/ (view-bulk + the dashboard, selection, summary, process, finished, restore panels,
+                             part-steps (the step bar) and part-account (the collapsible API key row)))
 js/, css/, scss/, img/     - assets, no build step; js/bulk/ holds the bulk processor, worker and screen
-                             (vanilla JS, no jQuery); scss/bulk.scss compiles to css/bulk.css with `sass`
+                             (vanilla JS, no jQuery); scss/bulk.scss (+ _bulk-colors.scss, SPIO's palette)
+                             compiles to css/bulk.css with `sass`
 build/shortpixel/          - bundled modules (generated, do not edit)
 tests/                     - PHPUnit suites, E2E stack, fixtures (see TESTING.md)
 docs/                      - the documentation and test plan, the bulk design note (BULK.md)

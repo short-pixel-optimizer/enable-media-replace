@@ -35,7 +35,7 @@ test.describe('Bulk page: dashboard', () => {
 		await bulk.goto();
 		await bulk.expectPanel('dashboard');
 
-		await expect(bulk.panel('dashboard').locator('.notice-warning')).toContainText('API key required');
+		await expect(bulk.panel('dashboard').locator('.emr-bulk-alert-warning')).toContainText('API key required');
 		await expect(bulk.startButton('upscale')).toBeDisabled();
 		await expect(bulk.startButton('background')).toBeDisabled();
 

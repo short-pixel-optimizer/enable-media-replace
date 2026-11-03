@@ -11,7 +11,9 @@
  * Buttons carry data-action="MethodName" (dispatched by DoActionEvent) or
  * data-action="open-panel" with data-panel. Values are written to elements
  * with data-stats-media="field" / data-stats-total="field" (UpdateData),
- * the last processed item to data-result="field".
+ * the last processed item to data-result="field". Elements with
+ * data-operation-only="op [op]" are shown for those operations only
+ * (background, upscale, restore).
  */
 class EmrBulkScreen {
 
@@ -21,6 +23,7 @@ class EmrBulkScreen {
 		this.panels = {};
 		this.currentPanel = 'dashboard';
 		this.operation = emrBulk.startData && emrBulk.startData.media ? emrBulk.startData.media.stats.operation : 'background';
+		this.reloadPanel = false;
 	}
 
 	Init() {
@@ -28,6 +31,7 @@ class EmrBulkScreen {
 		this.LoadActions();
 		this.OperationChanged();
 		this.BackgroundTypeChanged();
+		this.UpdateSummaryDetail();
 
 		window.addEventListener('emr.processor.paused', this.TogglePauseNotice.bind(this));
 		window.addEventListener('emr.processor.responseHandled', this.CheckPanelData.bind(this));
@@ -36,7 +40,7 @@ class EmrBulkScreen {
 		var processData = emrBulk.startData;
 		if (! processData || ! processData.media) {
 			this.processor.StopProcess({ waiting: true });
-			this.SwitchPanel('dashboard');
+			this.SwitchPanel(this.RequestedPanel());
 			return;
 		}
 
@@ -45,9 +49,7 @@ class EmrBulkScreen {
 		this.UpdateStats(processData.total.stats, 'total');
 		this.CheckPanelData();
 		// A reload during a restore must keep saying "Restore originals", not the operation name.
-		if (stats.customOperation) {
-			this.UpdateOperationLabels('restore');
-		}
+		this.UpdateOperationLabels(stats.customOperation ? 'restore' : this.operation);
 
 		if (stats.is_preparing == true) {
 			this.SwitchPanel('selection');
@@ -64,8 +66,23 @@ class EmrBulkScreen {
 			this.SwitchPanel('summary');
 		} else {
 			this.processor.StopProcess({ waiting: true });
-			this.SwitchPanel('dashboard');
+			this.SwitchPanel(this.RequestedPanel());
 		}
+	}
+
+	/**
+	 * The panel to show when no bulk is active: the restore panel after
+	 * "Restore originals" on the finished panel (reload with emr_panel=restore),
+	 * else the dashboard. The parameter is removed from the address bar.
+	 */
+	RequestedPanel() {
+		var params = new URLSearchParams(window.location.search);
+		if (params.get('emr_panel') !== 'restore' || ! this.panels.restore) {
+			return 'dashboard';
+		}
+		params.delete('emr_panel');
+		window.history.replaceState(null, '', window.location.pathname + '?' + params.toString());
+		return 'restore';
 	}
 
 	LoadPanels() {
@@ -165,6 +182,42 @@ class EmrBulkScreen {
 		}
 	}
 
+	/**
+	 * Writes the chosen options next to the operation on the summary panel
+	 * ("Remove background · Transparent") and shows the line about keeping
+	 * the page open that matches the background-process checkbox. Reads the
+	 * selection form, which holds the stored settings after a reload.
+	 */
+	UpdateSummaryDetail() {
+		var operation = this.SelectedOperation();
+		var detail = '';
+		if (operation === 'upscale') {
+			var threshold = document.getElementById('emr-bulk-threshold');
+			detail = threshold ? this.strings.detailUpscale.replace('%s', threshold.value) : '';
+		} else if (operation === 'background') {
+			var type = document.querySelector('input[name="emr_bulk_bg_type"]:checked');
+			if (type && type.value === 'solid') {
+				var color = document.getElementById('emr-bulk-bg-color');
+				var opacity = document.getElementById('emr-bulk-bg-transparency');
+				detail = this.strings.detailSolid
+					.replace('%1$s', color ? color.value : '')
+					.replace('%2$s', opacity ? opacity.value : '')
+					.replace('%%', '%');
+			} else {
+				detail = this.strings.detailTransparent;
+			}
+		}
+		document.querySelectorAll('[data-operation-detail]').forEach(function (el) {
+			el.textContent = detail;
+		});
+
+		var background = document.getElementById('emr-bulk-background-process');
+		var inBackground = (background && background.checked) ? '1' : '0';
+		document.querySelectorAll('[data-background-process]').forEach(function (el) {
+			el.hidden = (el.getAttribute('data-background-process') !== inBackground);
+		});
+	}
+
 	CreateBulk() {
 		var operation = this.SelectedOperation();
 		var data = { screen_action: 'createBulk', callback: 'emr.PrepareBulk', operation: operation };
@@ -192,6 +245,7 @@ class EmrBulkScreen {
 
 		this.operation = operation;
 		this.UpdateOperationLabels(operation);
+		this.UpdateSummaryDetail();
 		this.UpdatePanelStatus('loading', 'selection');
 
 		window.addEventListener('emr.PrepareBulk', this.PrepareBulk.bind(this), { once: true });
@@ -279,6 +333,12 @@ class EmrBulkScreen {
 		this.processor.AjaxRequest({ screen_action: 'finishBulk', callback: 'emr.reloadscreen' });
 	}
 
+	/** "Restore originals" on the finished panel: finish, then reload on the restore panel. */
+	FinishAndRestore() {
+		this.reloadPanel = 'restore';
+		this.FinishBulk();
+	}
+
 	BulkRestore(event) {
 		var operation = event.currentTarget.getAttribute('data-operation') || this.operation;
 		this.operation = operation;
@@ -292,7 +352,11 @@ class EmrBulkScreen {
 	}
 
 	ReloadScreen(event) {
-		location.href = (event.detail && event.detail.redirect) ? event.detail.redirect : emrBulk.reloadURL;
+		var url = (event.detail && event.detail.redirect) ? event.detail.redirect : emrBulk.reloadURL;
+		if (this.reloadPanel) {
+			url += (url.indexOf('?') === -1 ? '?' : '&') + 'emr_panel=' + encodeURIComponent(this.reloadPanel);
+		}
+		location.href = url;
 	}
 
 	ToggleButton(event) {
@@ -329,7 +393,7 @@ class EmrBulkScreen {
 
 	UpdateOperationLabels(operation) {
 		var label = '';
-		var card = document.querySelector('.emr-bulk-operation[data-operation="' + operation + '"] .emr-bulk-operation-title');
+		var card = document.querySelector('.emr-bulk-operation[data-operation="' + operation + '"] .emr-bulk-operation-name');
 		if (card) {
 			label = card.textContent.trim();
 		} else if (operation === 'restore') {
@@ -337,6 +401,12 @@ class EmrBulkScreen {
 		}
 		document.querySelectorAll('[data-operation-label]').forEach(function (el) {
 			el.textContent = label;
+		});
+		document.querySelectorAll('[data-operation-only]').forEach(function (el) {
+			el.hidden = (el.getAttribute('data-operation-only').split(' ').indexOf(operation) === -1);
+		});
+		document.querySelectorAll('[data-operation-detail]').forEach(function (el) {
+			el.hidden = (operation === 'restore');
 		});
 	}
 
@@ -473,13 +543,16 @@ class EmrBulkScreen {
 		});
 	}
 
+	/** The error count links (process and finished panels) open and close the error boxes. */
 	ToggleErrorBox(event) {
-		var checked = event.target.checked;
+		event.preventDefault();
+		var link = event.currentTarget;
+		var open = (link.getAttribute('aria-expanded') !== 'true');
 		document.querySelectorAll('.emr-bulk-errorbox').forEach(function (box) {
-			box.hidden = ! checked;
+			box.hidden = ! open;
 		});
-		document.querySelectorAll('input[name="emr-show-errors"]').forEach(function (input) {
-			input.checked = checked;
+		document.querySelectorAll('[data-action="ToggleErrorBox"]').forEach(function (toggle) {
+			toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
 		});
 	}
 

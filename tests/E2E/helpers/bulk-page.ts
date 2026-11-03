@@ -24,8 +24,10 @@
  *                (StopBulk uses a native confirm()), `#emr-bulk-paused` banner,
  *                `#emr-bulk-blocked` banner (another processor holds the key),
  *                error rows `.emr-bulk-errorbox > div.fatal`, revealed by
- *                `input[name="emr-show-errors"]`.
- *   - finished   `[data-action="FinishBulk"]` → server finishBulk → reload to the dashboard.
+ *                the red error count link `a[data-action="ToggleErrorBox"]`
+ *                (shown only when the count is > 0).
+ *   - finished   `[data-action="FinishBulk"]` → server finishBulk → reload to the dashboard;
+ *                `[data-action="FinishAndRestore"]` reloads on the restore panel.
  *   - restore    `input[data-target="emr-bulk-restore-<op>"]` arms `#emr-bulk-restore-<op>`.
  *   - events     `emr.PrepareBulk` (createBulk answered), `emr.bulk.started`,
  *                `emr.processor.responseHandled` (every tick),
@@ -244,11 +246,17 @@ export class BulkPage {
 			.toBe(true);
 	}
 
-	/** Reveal the error box of the active panel and return its fatal rows. */
+	/** Reveal the error box of the active panel (the red error count link) and return its fatal rows. */
 	async showErrors(): Promise<Locator> {
-		const toggle = this.page.locator('section.emr-bulk-panel.active input[name="emr-show-errors"]');
-		await setChecked(toggle, true);
-		return this.page.locator('section.emr-bulk-panel.active .emr-bulk-errorbox > div.fatal');
+		const toggle = this.page.locator('section.emr-bulk-panel.active a[data-action="ToggleErrorBox"]');
+		await expect(toggle).toBeVisible();
+		if ((await toggle.getAttribute('aria-expanded')) !== 'true') {
+			await toggle.click();
+		}
+		await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+		const box = this.page.locator('section.emr-bulk-panel.active .emr-bulk-errorbox');
+		await expect(box).toBeVisible();
+		return box.locator('> div.fatal');
 	}
 
 	/** dashboard → restore panel → arm and click the restore button → process (restore ticks). */

@@ -2,7 +2,7 @@
 /**
  * Tests for EnableMediaReplace\ViewController\BulkViewController
  * (classes/ViewController/BulkViewController.php) and the Media > Bulk
- * page registration in EnableMediaReplacePlugin::menu().
+ * Enhance page registration in EnableMediaReplacePlugin::menu().
  *
  * load() is called directly with an administrator; the rendered HTML is
  * captured and inspected for the panels and the data attributes the screen
@@ -100,7 +100,8 @@ class BulkViewControllerTest extends WP_UnitTestCase {
 			}
 		}
 		$this->assertNotNull( $bulk, 'The bulk page is registered under Media.' );
-		$this->assertSame( 'Bulk', $bulk[0] );
+		$this->assertSame( 'Bulk Enhance', $bulk[0] );
+		$this->assertSame( 'Bulk Enhance', $bulk[3], 'The page title.' );
 		$this->assertSame( 'manage_options', $bulk[1] );
 		$this->assertSame( 'upload.php', emr()->hide_sub_menu( 'upload.php' ) );
 		$remaining = array_filter( $GLOBALS['submenu']['upload.php'], function ( $entry ) {
@@ -219,6 +220,101 @@ class BulkViewControllerTest extends WP_UnitTestCase {
 		file_put_contents( $dir . BulkController::currentLogName( 'background' ), '2026-10-30 10:00|img.jpg| 5|Invalid <image> format;' );
 		$html = $this->render();
 		$this->assertStringContainsString( 'Invalid &lt;image&gt; format (file img.jpg)', $html );
+	}
+
+	public function test_load_renders_the_header_the_step_bar_and_the_operation_texts() {
+		update_option( 'emr_shortpixel_api_key', 'abcdEFGHIJKLMNOPwxyz' );
+		$html = $this->render();
+
+		$this->assertStringContainsString( '<h1>Enable Media Replace - Bulk Enhance</h1>', $html );
+		$this->assertSame( 4, substr_count( $html, '<ol class="emr-bulk-steps">' ), 'Selection, summary, process and finished carry the step bar.' );
+		$this->assertMatchesRegularExpression( '/emr-bulk-step-selection active current" aria-current="step"/', $html );
+		$this->assertMatchesRegularExpression( '/emr-bulk-step-finished active current" aria-current="step"/', $html );
+		$this->assertMatchesRegularExpression( '/class="emr-bulk-step emr-bulk-step-summary"/', $html, 'A step after the current one is not active.' );
+		$this->assertStringContainsString( 'What do you want to do?', $html );
+		$this->assertStringContainsString( 'Opacity (%)', $html );
+		$this->assertStringContainsString( 'Solid color', $html );
+		$this->assertStringNotContainsString( 'colour', strtolower( wp_strip_all_tags( $html ) ), 'US spelling on the page.' );
+		$this->assertStringContainsString( 'Keep going in the background if I close this page', $html );
+		$this->assertStringContainsString( 'Each image is enlarged 2×, 3× or 4×, whichever is the largest', $html );
+		$this->assertStringContainsString( '(up to 4×)', $html );
+		$this->assertStringContainsString( 'All done', $html );
+		$this->assertStringContainsString( 'data-action="FinishAndRestore"', $html );
+		$this->assertStringContainsString( 'Latest result:', $html );
+	}
+
+	public function test_load_shows_the_backup_folder_relative_to_the_wordpress_root() {
+		update_option( 'emr_shortpixel_api_key', 'abcdEFGHIJKLMNOPwxyz' );
+		$html     = $this->render();
+		$expected = substr( wp_normalize_path( untrailingslashit( BackupController::getBackupDirectory()->getPath() ) ), strlen( wp_normalize_path( untrailingslashit( ABSPATH ) ) ) );
+
+		$this->assertStringStartsWith( '/', $expected, 'Precondition: the backup folder is under ABSPATH.' );
+		$this->assertStringEndsWith( 'EMR_Backups', $expected );
+		$this->assertStringContainsString( '<code>' . esc_html( $expected ) . '</code>', $html );
+		$this->assertStringNotContainsString( '<code>' . esc_html( wp_normalize_path( ABSPATH ) ), $html, 'No absolute server path.' );
+	}
+
+	public function test_load_shows_only_the_texts_of_the_current_operation() {
+		update_option( 'emr_shortpixel_api_key', 'abcdEFGHIJKLMNOPwxyz' );
+		$html = $this->render();
+
+		$this->assertSame( 'background', ( new BulkQueue() )->getOperation(), 'Precondition: an idle queue reports the background operation.' );
+		$this->assertMatchesRegularExpression( '/<span data-operation-only="background">Removing backgrounds/', $html );
+		$this->assertMatchesRegularExpression( '/<span data-operation-only="upscale" hidden>Upscaling images/', $html );
+		$this->assertMatchesRegularExpression( '/<span data-operation-only="restore" hidden>Restoring originals/', $html );
+	}
+
+	public function test_load_collapses_the_account_row_while_a_key_is_stored() {
+		update_option( 'emr_shortpixel_api_key', 'abcdEFGHIJKLMNOPwxyz' );
+		$html = $this->render();
+
+		$this->assertMatchesRegularExpression( '/<details class="emr-sp-account emr-bulk-collapsible emr-bulk-account"[^>]*data-confirm-remove="Remove the API key\? Bulk Enhance will stop working until you add one\."\s*>/', $html, 'Collapsed: no open attribute.' );
+		$this->assertStringContainsString( 'Connected', $html );
+		$this->assertStringContainsString( 'Unlimited plan active.', $html );
+		$this->assertStringContainsString( 'abcd************wxyz', $html );
+		$this->assertStringContainsString( '>Change key<', $html );
+		$this->assertStringContainsString( '>Remove key<', $html );
+		$this->assertTrue( wp_script_is( 'emr_shortpixel_account', 'enqueued' ) );
+	}
+
+	public function test_load_opens_the_account_row_with_the_sign_up_link_without_a_key() {
+		delete_option( 'emr_shortpixel_api_key' );
+		$html = $this->render();
+
+		$this->assertMatchesRegularExpression( '/<details class="emr-sp-account[^>]* open>/', $html );
+		$this->assertStringContainsString( 'Not connected', $html );
+		$this->assertStringContainsString( 'The Free plan includes 10 background removals and upscales.', $html );
+		$this->assertStringContainsString( 'placeholder="Paste your API key"', $html );
+		$this->assertStringContainsString( 'utm_source=', BulkViewController::SIGNUP_URL );
+		// esc_url() writes & as &#038;, wp_kses() (the warning) normalises it to &amp;.
+		$signup = '/href="' . str_replace( '&', '&(?:#038|amp);', preg_quote( BulkViewController::SIGNUP_URL, '/' ) ) . '"/';
+		$this->assertSame( 2, preg_match_all( $signup, $html ), 'The warning and the account row link to the sign-up page with UTM parameters.' );
+		$this->assertStringContainsString( 'Bulk Enhance needs a ShortPixel API key on an Unlimited plan.', $html );
+	}
+
+	public function test_load_offers_no_restore_choice_without_originals() {
+		update_option( 'emr_shortpixel_api_key', 'abcdEFGHIJKLMNOPwxyz' );
+		$html = $this->render();
+
+		$this->assertStringNotContainsString( 'data-action="BulkRestore"', $html );
+		$this->assertStringContainsString( 'There are no originals to restore.', $html );
+	}
+
+	public function test_the_history_is_a_collapsible_details_element() {
+		update_option( 'emr_shortpixel_api_key', 'abcdEFGHIJKLMNOPwxyz' );
+		update_option( BulkController::LOG_OPTION, array(
+			array( 'logfile' => 'bulk_upscale_1700000100.log', 'date' => 1700000100, 'type' => 'upscale', 'processed' => 3, 'fatal_errors' => 0 ),
+		), false );
+		$html = $this->render();
+
+		$this->assertMatchesRegularExpression( '/<details class="emr-bulk-collapsible emr-bulk-history">\s*<summary>/', $html );
+		$this->assertStringContainsString( 'Bulk history', $html );
+	}
+
+	public function test_the_bulk_settings_default_to_an_opaque_solid_color() {
+		$option = get_option( BulkController::SETTINGS_OPTION, array() );
+		$this->assertFalse( is_array( $option ) && array_key_exists( 'bulk_bg_transparency', $option ), 'Precondition: no stored opacity.' );
+		$this->assertSame( 100, BulkController::getSettings()['bg_transparency'] );
 	}
 
 	public function test_load_refuses_a_user_without_manage_options() {

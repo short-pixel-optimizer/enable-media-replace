@@ -1,7 +1,7 @@
 # Bulk processing: design note
 
 Enable Media Replace runs two operations on many attachments at once, from
-the visible **Media > Bulk** page (`upload.php?page=emr-bulk`, capability
+the visible **Media > Bulk Enhance** page (`upload.php?page=emr-bulk`, capability
 `manage_options`):
 
 - **Remove background** of every image used by WooCommerce products: the
@@ -84,6 +84,17 @@ the three plugins never see each other's items.
   `PROCESSOR_ACTIVE`, shows the blocked banner and rechecks after three
   minutes. Everything the scripts need is localized as `emrBulk`
   (`EnableMediaReplacePlugin::bulkScriptData()`); nothing is inline.
+- **Look.** The page copies SPIO's bulk layout and palette: the white
+  header bar, rounded panels, the Select / Summary / Process / Results step
+  bar (`views/bulk/part-steps.php`, `BulkViewController::loadSteps()`), the
+  light blue option blocks, the stats table, the preview boxes and the
+  collapsible history. `scss/_bulk-colors.scss` holds SPIO's color
+  variables under the same names. Texts that depend on the operation carry
+  `data-operation-only` (`BulkViewController::operationOnly()` sets the
+  initial state, the screen script toggles it). The API key box is a bulk
+  variant (`views/bulk/part-account.php`): a `<details>` row, collapsed
+  while a key is stored, with the shared box's element IDs, so
+  `js/shortpixel-account.js` drives it unchanged.
 - **WP-Cron.** With the `background_process` setting on, `startBulk()`
   schedules `emr_bulk_cron` on the `emr_bulk_interval` schedule (60 s,
   `emr/bulk/cron_interval`). Each run is a loop of ticks (10 runs, 50 s,

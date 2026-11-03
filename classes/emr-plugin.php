@@ -392,8 +392,8 @@ class EnableMediaReplacePlugin
         $title = (isset($_REQUEST['action']) && ($_REQUEST['action'] === 'emr_prepare_upscale')) ? esc_html__("Upscale image", "enable-media-replace") : $title;
         add_submenu_page('upload.php', $title, $title, 'upload_files', 'enable-media-replace/enable-media-replace.php', array($this, 'route'));
 
-        // The visible bulk page (Media > Bulk). Administrators only; hide_sub_menu() leaves it alone.
-        add_submenu_page('upload.php', esc_html__('Bulk', 'enable-media-replace'), esc_html__('Bulk', 'enable-media-replace'), BulkAjaxController::CAPABILITY, self::BULK_PAGE_SLUG, array(BulkViewController::getInstance(), 'load'));
+        // The visible bulk page (Media > Bulk Enhance). Administrators only; hide_sub_menu() leaves it alone.
+        add_submenu_page('upload.php', esc_html__('Bulk Enhance', 'enable-media-replace'), esc_html__('Bulk Enhance', 'enable-media-replace'), BulkAjaxController::CAPABILITY, self::BULK_PAGE_SLUG, array(BulkViewController::getInstance(), 'load'));
     }
 
     /**
@@ -738,6 +738,12 @@ class EnableMediaReplacePlugin
                 'noQuota'         => __('Your ShortPixel quota is exhausted. The bulk is paused.', 'enable-media-replace'),
                 'noKey'           => __('The bulk needs an API key on an Unlimited plan.', 'enable-media-replace'),
                 'restoreLabel'    => __('Restore originals', 'enable-media-replace'),
+                /* translators: summary detail of a background removal to a transparent background. */
+                'detailTransparent' => __('Transparent', 'enable-media-replace'),
+                /* translators: %1$s: hex color, %2$s: opacity in percent. */
+                'detailSolid'     => __('Solid color %1$s, %2$s%% opacity', 'enable-media-replace'),
+                /* translators: %s: width in pixels. */
+                'detailUpscale'   => __('Images narrower than %s px', 'enable-media-replace'),
             ),
         );
     }

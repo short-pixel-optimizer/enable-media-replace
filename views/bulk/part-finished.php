@@ -1,6 +1,10 @@
 <?php
 /**
- * Bulk finished panel: the totals and the finish button.
+ * Bulk finished panel: the totals and the way back.
+ *
+ * "Back to Bulk Enhance" (FinishBulk) and "Restore originals"
+ * (FinishAndRestore) both finish the run on the server; the latter reloads
+ * the page on the restore panel.
  *
  * Variables in scope: see views/bulk/view-bulk.php.
  */
@@ -9,14 +13,44 @@ namespace EnableMediaReplace;
 if (! defined('ABSPATH')) {
 	exit;
 }
+
+$emr_done   = '<strong data-stats-media="done">0</strong>';
+$emr_errors = '<span class="hidden" data-check-media-fatalerrors-finished data-stats-media="fatal_errors">0</span>'
+	. '<strong data-check-visibility="false" data-control="data-check-media-fatalerrors-finished" data-stats-media="fatal_errors">0</strong>'
+	. '<a href="#" class="emr-bulk-errors-link" data-action="ToggleErrorBox" aria-expanded="false" data-check-visibility data-control="data-check-media-fatalerrors-finished" hidden><strong data-stats-media="fatal_errors">0</strong></a>';
 ?>
 <section class="emr-bulk-panel emr-bulk-finished" data-panel="finished" hidden>
-	<h2><?php esc_html_e('The bulk is finished', 'enable-media-replace'); ?></h2>
-	<p class="emr-bulk-finished-text"><?php printf(esc_html__('%1$s: %2$s images processed, %3$s errors.', 'enable-media-replace'), '<span data-operation-label>' . esc_html($view->operations[ $view->currentOperation ]->label) . '</span>', '<strong data-stats-media="done">0</strong>', '<strong data-stats-media="fatal_errors" data-check-media-fatalerrors-finished>0</strong>'); ?></p>
-	<label class="emr-bulk-show-errors" data-check-visibility data-control="data-check-media-fatalerrors-finished"><input type="checkbox" name="emr-show-errors" data-action="ToggleErrorBox" data-event="change"> <?php esc_html_e('Show errors', 'enable-media-replace'); ?></label>
+	<?php $controller->loadSteps('finished'); ?>
+
+	<div class="emr-bulk-finished-icon"><span class="dashicons dashicons-yes" aria-hidden="true"></span></div>
+	<h2 class="emr-bulk-heading"><?php esc_html_e('All done', 'enable-media-replace'); ?></h2>
+	<p class="emr-bulk-finished-text"><?php
+		// One line of output: whitespace between the hidden spans would show before the comma.
+		/* translators: %s: number of images. */
+		echo '<span ' . $controller->operationOnly('background') . '>' . sprintf(esc_html__('Backgrounds removed from %s images', 'enable-media-replace'), $emr_done) . '</span>';
+		/* translators: %s: number of images. */
+		echo '<span ' . $controller->operationOnly('upscale') . '>' . sprintf(esc_html__('%s images upscaled', 'enable-media-replace'), $emr_done) . '</span>';
+		/* translators: %s: number of originals. */
+		echo '<span ' . $controller->operationOnly('restore') . '>' . sprintf(esc_html__('%s originals restored', 'enable-media-replace'), $emr_done) . '</span>';
+		/* translators: %s: number of errors, follows "Backgrounds removed from 10 images" and the like. */
+		printf(esc_html__(', %s errors', 'enable-media-replace'), $emr_errors);
+	?></p>
 	<div class="emr-bulk-errorbox" data-error-media="message" hidden><?php if (false !== $view->errorLog) { echo $view->errorLog; /* escaped per line in loadCurrentLog() */ } ?></div>
-	<p class="description"><?php esc_html_e('The originals are kept in the EMR_Backups folder; use Restore on the dashboard to undo this run.', 'enable-media-replace'); ?></p>
+
+	<p class="description emr-bulk-subheading" <?php echo $controller->operationOnly('background upscale'); ?>>
+		<?php
+		printf(
+			/* translators: %s: the backup folder. */
+			esc_html__('Originals are backed up in the %s folder, so you can undo this run anytime. If your site uses caching or a CDN, clear it to see the new images.', 'enable-media-replace'),
+			'<code>' . esc_html($view->backupPath) . '</code>'
+		);
+		?>
+	</p>
+	<p class="description emr-bulk-subheading" <?php echo $controller->operationOnly('restore'); ?>><?php esc_html_e('The original images are back in place. If your site uses caching or a CDN, clear it to see them.', 'enable-media-replace'); ?></p>
+
 	<nav>
-		<button type="button" class="button button-primary" data-action="FinishBulk"><?php esc_html_e('Back to the dashboard', 'enable-media-replace'); ?></button>
+		<button type="button" class="button button-primary" data-action="FinishBulk"><?php esc_html_e('Back to Bulk Enhance', 'enable-media-replace'); ?></button>
+		<button type="button" class="button" data-action="FinishAndRestore" <?php echo $controller->operationOnly('background upscale'); ?>><?php esc_html_e('Restore originals', 'enable-media-replace'); ?></button>
+		<a class="button" href="<?php echo esc_url(admin_url('upload.php')); ?>"><?php esc_html_e('View in Media Library', 'enable-media-replace'); ?></a>
 	</nav>
 </section>
