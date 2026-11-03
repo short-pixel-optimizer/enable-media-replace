@@ -22,7 +22,7 @@ if (! defined('ABSPATH')) {
 
 	<div class="emr-bulk-summary-box">
 		<p class="emr-bulk-summary-operation"><span data-operation-label><?php echo esc_html($view->operations[ $view->currentOperation ]->label); ?></span><span class="emr-bulk-summary-detail" data-operation-detail></span></p>
-		<p class="emr-bulk-summary-count" data-check-visibility data-control="data-check-media-total"><?php printf(esc_html__('%s will be processed.', 'enable-media-replace'), '<strong>' . sprintf(esc_html__('%s images', 'enable-media-replace'), '<span data-stats-media="total">0</span>') . '</strong>'); ?></p>
+		<p class="emr-bulk-summary-count" data-check-visibility data-control="data-check-media-total"><?php printf(esc_html__('%s will be processed.', 'enable-media-replace'), '<strong>' . sprintf(esc_html__('%s image(s)', 'enable-media-replace'), '<span data-stats-media="total">0</span>') . '</strong>'); ?></p>
 		<p class="emr-bulk-summary-empty" data-check-visibility="false" data-control="data-check-media-total"><?php esc_html_e('Nothing to do: no image matched.', 'enable-media-replace'); ?></p>
 		<span class="hidden" data-check-media-total data-stats-media="total">0</span>
 		<p>

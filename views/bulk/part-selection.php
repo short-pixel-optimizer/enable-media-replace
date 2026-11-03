@@ -79,7 +79,7 @@ $settings = $view->settings;
 	<div class="emr-bulk-loading">
 		<span class="emr-bulk-loader" aria-hidden="true"></span>
 		<h3><?php esc_html_e('Collecting the images', 'enable-media-replace'); ?></h3>
-		<p><?php printf(esc_html__('%s images queued so far', 'enable-media-replace'), '<strong data-stats-media="total">0</strong>'); ?></p>
+		<p><?php printf(esc_html__('%s image(s) queued so far', 'enable-media-replace'), '<strong data-stats-media="total">0</strong>'); ?></p>
 		<p class="emr-bulk-overlimit" hidden><?php esc_html_e('The scan is taking longer than one request allows and continues in the next one.', 'enable-media-replace'); ?></p>
 		<nav>
 			<button type="button" class="button" data-action="SkipPreparing"><?php esc_html_e('Start with what is queued so far', 'enable-media-replace'); ?></button>

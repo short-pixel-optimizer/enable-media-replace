@@ -26,14 +26,14 @@ $emr_errors = '<span class="hidden" data-check-media-fatalerrors-finished data-s
 	<h2 class="emr-bulk-heading"><?php esc_html_e('All done', 'enable-media-replace'); ?></h2>
 	<p class="emr-bulk-finished-text"><?php
 		// One line of output: whitespace between the hidden spans would show before the comma.
-		/* translators: %s: number of images. */
-		echo '<span ' . $controller->operationOnly('background') . '>' . sprintf(esc_html__('Backgrounds removed from %s images', 'enable-media-replace'), $emr_done) . '</span>';
-		/* translators: %s: number of images. */
-		echo '<span ' . $controller->operationOnly('upscale') . '>' . sprintf(esc_html__('%s images upscaled', 'enable-media-replace'), $emr_done) . '</span>';
-		/* translators: %s: number of originals. */
-		echo '<span ' . $controller->operationOnly('restore') . '>' . sprintf(esc_html__('%s originals restored', 'enable-media-replace'), $emr_done) . '</span>';
-		/* translators: %s: number of errors, follows "Backgrounds removed from 10 images" and the like. */
-		printf(esc_html__(', %s errors', 'enable-media-replace'), $emr_errors);
+		/* translators: %s: number of images, filled in by the script (no plural form). */
+		echo '<span ' . $controller->operationOnly('background') . '>' . sprintf(esc_html__('Backgrounds removed from %s image(s)', 'enable-media-replace'), $emr_done) . '</span>';
+		/* translators: %s: number of images, filled in by the script (no plural form). */
+		echo '<span ' . $controller->operationOnly('upscale') . '>' . sprintf(esc_html__('%s image(s) upscaled', 'enable-media-replace'), $emr_done) . '</span>';
+		/* translators: %s: number of originals, filled in by the script (no plural form). */
+		echo '<span ' . $controller->operationOnly('restore') . '>' . sprintf(esc_html__('%s original(s) restored', 'enable-media-replace'), $emr_done) . '</span>';
+		/* translators: %s: number of errors (no plural form), follows "Backgrounds removed from 10 image(s)" and the like. */
+		printf(esc_html__(', %s error(s)', 'enable-media-replace'), $emr_errors);
 	?></p>
 	<div class="emr-bulk-errorbox" data-error-media="message" hidden><?php if (false !== $view->errorLog) { echo $view->errorLog; /* escaped per line in loadCurrentLog() */ } ?></div>
 

@@ -88,7 +88,10 @@ the three plugins never see each other's items.
   header bar, rounded panels, the Select / Summary / Process / Results step
   bar (`views/bulk/part-steps.php`, `BulkViewController::loadSteps()`), the
   light blue option blocks, the stats table, the preview boxes and the
-  collapsible history. `scss/_bulk-colors.scss` holds SPIO's color
+  collapsible history, and the operation icons of `img/icons/` (64 px
+  SVGs; `icon-media-replace.svg` is meant for the single-item screens). A
+  greyed-out Start button explains itself in a CSS tooltip (`data-tooltip`
+  on its wrapper). `scss/_bulk-colors.scss` holds SPIO's color
   variables under the same names. Texts that depend on the operation carry
   `data-operation-only` (`BulkViewController::operationOnly()` sets the
   initial state, the screen script toggles it). The API key box is a bulk

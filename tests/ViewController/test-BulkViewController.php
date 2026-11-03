@@ -317,6 +317,53 @@ class BulkViewControllerTest extends WP_UnitTestCase {
 		$this->assertSame( 100, BulkController::getSettings()['bg_transparency'] );
 	}
 
+	public function test_without_a_key_the_disabled_start_buttons_carry_a_tooltip() {
+		delete_option( 'emr_shortpixel_api_key' );
+		$html = $this->render();
+
+		$this->assertSame( 2, substr_count( $html, '<span class="emr-bulk-tooltip" data-tooltip="Add a ShortPixel API key on an Unlimited plan to start."><button' ), 'One per operation.' );
+		$this->assertMatchesRegularExpression( '/data-tooltip="[^"]+"><button[^>]*data-select-operation="upscale"[^>]*disabled/', $html );
+	}
+
+	public function test_with_a_key_only_an_unavailable_operation_carries_a_tooltip() {
+		update_option( 'emr_shortpixel_api_key', 'abcdEFGHIJKLMNOPwxyz' );
+		$html = $this->render();
+
+		$this->assertFalse( post_type_exists( 'product' ), 'Precondition: no WooCommerce product type, the background operation is unavailable.' );
+		$this->assertMatchesRegularExpression( '/<span class="emr-bulk-tooltip" data-tooltip="[^"]*WooCommerce[^"]*"><button[^>]*data-select-operation="background"/', $html );
+		$this->assertMatchesRegularExpression( '/<span class="emr-bulk-tooltip"><button[^>]*data-select-operation="upscale"/', $html, 'The available operation has no tooltip.' );
+	}
+
+	public function test_the_operation_cards_show_the_svg_icons() {
+		update_option( 'emr_shortpixel_api_key', 'abcdEFGHIJKLMNOPwxyz' );
+		$html = $this->render();
+
+		foreach ( array( 'icon-background-removal.svg', 'icon-image-upscale.svg' ) as $icon ) {
+			$this->assertFileExists( dirname( EMR_ROOT_FILE ) . '/img/icons/' . $icon );
+			$this->assertMatchesRegularExpression( '#<img class="emr-bulk-operation-icon" src="[^"]*/img/icons/' . preg_quote( $icon, '#' ) . '"#', $html );
+		}
+	}
+
+	public function test_counts_filled_in_by_the_script_say_image_s() {
+		update_option( 'emr_shortpixel_api_key', 'abcdEFGHIJKLMNOPwxyz' );
+		$html = $this->render();
+
+		$this->assertStringContainsString( ' image(s)</strong> will be processed.', $html );
+		$this->assertStringContainsString( ' image(s) queued so far', $html );
+		$this->assertStringContainsString( ' image(s) upscaled', $html );
+		$this->assertStringContainsString( ' original(s) restored', $html );
+		$this->assertStringContainsString( ' error(s)', $html );
+	}
+
+	public function test_the_restore_choice_counts_a_single_original_in_the_singular() {
+		update_option( 'emr_shortpixel_api_key', 'abcdEFGHIJKLMNOPwxyz' );
+		$image = BulkImage::getById( $this->makeImageAttachment( 100, 100 ) );
+		$image->setMarker( 'upscale', array( 'ts' => time() ), BackupController::backup( $image ) );
+		$html = $this->render();
+
+		$this->assertStringContainsString( 'I want to restore the 1 original of &quot;Upscale images&quot;.', $html );
+	}
+
 	public function test_load_refuses_a_user_without_manage_options() {
 		wp_set_current_user( self::factory()->user->create( array( 'role' => 'editor' ) ) );
 		$controller = new class() extends BulkViewController {

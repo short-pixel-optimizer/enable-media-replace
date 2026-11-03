@@ -11,6 +11,12 @@ if (! defined('ABSPATH')) {
 }
 
 use EnableMediaReplace\Controller\Bulk\BulkQueue;
+
+// Operation icons (img/icons/*.svg), shown at 64 px.
+$emr_icons = array(
+	BulkQueue::OPERATION_BACKGROUND => 'icon-background-removal.svg',
+	BulkQueue::OPERATION_UPSCALE    => 'icon-image-upscale.svg',
+);
 ?>
 <section class="emr-bulk-panel emr-bulk-dashboard active" data-panel="dashboard">
 
@@ -25,7 +31,7 @@ use EnableMediaReplace\Controller\Bulk\BulkQueue;
 		<?php foreach ($view->operations as $operation => $info) : ?>
 			<div class="emr-bulk-operation" data-operation="<?php echo esc_attr($operation); ?>" data-available="<?php echo $info->available ? '1' : '0'; ?>">
 				<h2 class="emr-bulk-operation-title">
-					<span class="dashicons <?php echo (BulkQueue::OPERATION_BACKGROUND === $operation) ? 'dashicons-format-image' : 'dashicons-editor-expand'; ?>" aria-hidden="true"></span>
+					<img class="emr-bulk-operation-icon" src="<?php echo esc_url(plugins_url('img/icons/' . $emr_icons[ $operation ], EMR_ROOT_FILE)); ?>" width="64" height="64" alt="">
 					<span class="emr-bulk-operation-name"><?php echo esc_html($info->label); ?></span>
 				</h2>
 				<?php if (BulkQueue::OPERATION_BACKGROUND === $operation) : ?>
@@ -48,8 +54,17 @@ use EnableMediaReplace\Controller\Bulk\BulkQueue;
 				<?php if (! $info->available) : ?>
 					<p class="emr-bulk-unavailable"><?php echo esc_html($info->reason); ?></p>
 				<?php endif; ?>
+				<?php
+				// Why Start is greyed out, as a hover tooltip on the wrapper (a disabled button gets no hover).
+				$emr_tooltip = '';
+				if ($view->error) {
+					$emr_tooltip = __('Add a ShortPixel API key on an Unlimited plan to start.', 'enable-media-replace');
+				} elseif (! $info->available) {
+					$emr_tooltip = $info->reason;
+				}
+				?>
 				<nav>
-					<button type="button" class="button button-primary" data-action="open-panel" data-panel="selection" data-select-operation="<?php echo esc_attr($operation); ?>" <?php disabled(! $info->available || $view->error); ?>><?php esc_html_e('Start', 'enable-media-replace'); ?></button>
+					<span class="emr-bulk-tooltip"<?php echo ('' !== $emr_tooltip) ? ' data-tooltip="' . esc_attr($emr_tooltip) . '"' : ''; ?>><button type="button" class="button button-primary" data-action="open-panel" data-panel="selection" data-select-operation="<?php echo esc_attr($operation); ?>" <?php disabled(! $info->available || $view->error); ?>><?php esc_html_e('Start', 'enable-media-replace'); ?></button></span>
 					<?php if ($info->restorable > 0) : ?>
 						<button type="button" class="button" data-action="open-panel" data-panel="restore" data-select-operation="<?php echo esc_attr($operation); ?>"><?php printf(esc_html(_n('Restore %s original', 'Restore %s originals', $info->restorable, 'enable-media-replace')), esc_html(number_format_i18n($info->restorable))); ?></button>
 					<?php endif; ?>

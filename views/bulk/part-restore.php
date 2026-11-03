@@ -28,7 +28,7 @@ foreach ($view->operations as $info) {
 		<div class="emr-bulk-option-block emr-bulk-restore-choice" data-restore-operation="<?php echo esc_attr($operation); ?>">
 			<label class="emr-bulk-checkbox">
 				<input type="checkbox" data-action="ToggleButton" data-target="emr-bulk-restore-<?php echo esc_attr($operation); ?>">
-				<span><?php printf(esc_html__('I want to restore the %1$s originals of "%2$s". This cannot be undone.', 'enable-media-replace'), esc_html(number_format_i18n($info->restorable)), esc_html($info->label)); ?></span>
+				<span><?php printf(esc_html(_n('I want to restore the %1$s original of "%2$s". This cannot be undone.', 'I want to restore the %1$s originals of "%2$s". This cannot be undone.', $info->restorable, 'enable-media-replace')), esc_html(number_format_i18n($info->restorable)), esc_html($info->label)); ?></span>
 			</label>
 			<button type="button" class="button button-primary" id="emr-bulk-restore-<?php echo esc_attr($operation); ?>" data-action="BulkRestore" data-operation="<?php echo esc_attr($operation); ?>" disabled><?php printf(esc_html__('Restore: %s', 'enable-media-replace'), esc_html($info->label)); ?></button>
 		</div>
