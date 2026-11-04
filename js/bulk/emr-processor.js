@@ -39,6 +39,7 @@ window.EmrProcessor = {
 	nonce: {},
 	debugIsActive: false,
 	workerErrors: 0,
+	maxWorkerErrors: 3, // failed requests in a row before the bulk stops (the screen counts the attempts)
 	isUnloading: false,
 	broadcaster: null,
 	qStatus: {
@@ -347,7 +348,7 @@ window.EmrProcessor = {
 				this.screen.HandleError(data.message);
 				this.Debug(data.message, 'error');
 			}
-			if (this.workerErrors >= 3) {
+			if (this.workerErrors >= this.maxWorkerErrors) {
 				this.screen.HandleErrorStop();
 				this.StopProcess();
 				this.ShutDownWorker();

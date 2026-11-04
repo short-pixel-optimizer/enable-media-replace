@@ -477,6 +477,11 @@ class EmrBulkScreen {
 	}
 
 	HandleError(data) {
+		// A request that failed or did not answer JSON (the worker's ErrorMessage()).
+		if (data && data.request_error === true) {
+			this.ShowRequestError(data);
+			return;
+		}
 		var message = '';
 		if (data && data.http_status === 500) {
 			message = this.strings.fatalError500;
@@ -496,23 +501,81 @@ class EmrBulkScreen {
 		this.ShowNotice(this.strings.fatalError, message);
 	}
 
-	HandleErrorStop() {
-		this.ShowNotice(this.strings.fatalErrorStop, this.strings.fatalErrorStopText);
+	/**
+	 * One notice for a failed request, replaced on each attempt: what went
+	 * wrong and what to do (by kind), the start of the server's answer, the
+	 * retry count, and a reload button. Always shown, debug or not.
+	 */
+	ShowRequestError(data) {
+		var texts = this.strings.requestError[data.kind] || this.strings.requestError.http;
+		var status = String(data.http_status || '');
+		var lines = [];
+		if (texts.text) {
+			lines.push(texts.text);
+		}
+		if (data.http_text) {
+			lines.push(this.strings.serverAnswer.replace('%s', '\u201c' + data.http_text + '\u201d'));
+		}
+		var attempt = this.processor.workerErrors;
+		var max = this.processor.maxWorkerErrors;
+		if (attempt > 0 && attempt < max) {
+			lines.push(this.strings.retrying
+				.replace('%1$s', String(Math.round(this.processor.deferInterval / 1000)))
+				.replace('%2$s', String(attempt))
+				.replace('%3$s', String(max)));
+		}
+		this.ShowNotice(texts.title.replace('%s', status), lines, { id: 'emr-bulk-request-error', reload: true });
 	}
 
-	ShowNotice(title, text) {
+	HandleErrorStop() {
+		this.ShowNotice(this.strings.fatalErrorStop, this.strings.fatalErrorStopText, { id: 'emr-bulk-stopped', reload: true });
+	}
+
+	/**
+	 * Prepends an error notice to `.emr-bulk-notices`.
+	 *
+	 * @param {string}          title
+	 * @param {string|string[]} text    One paragraph per entry; set as text, never HTML.
+	 * @param {object}          options id: replaces an earlier notice with that id;
+	 *                                  reload: adds a "Reload the page" button.
+	 */
+	ShowNotice(title, text, options) {
+		options = options || {};
 		var el = document.querySelector('.emr-bulk-notices');
 		if (! el) {
 			return;
 		}
+		if (options.id) {
+			var previous = document.getElementById(options.id);
+			if (previous) {
+				previous.remove();
+			}
+		}
 		var notice = document.createElement('div');
-		notice.classList.add('notice', 'notice-error', 'is-dismissible');
+		notice.classList.add('notice', 'notice-error', 'is-dismissible', 'emr-bulk-error-notice');
+		if (options.id) {
+			notice.id = options.id;
+		}
 		var strong = document.createElement('p');
 		strong.innerHTML = '<strong></strong>';
 		strong.firstChild.textContent = title;
 		var body = document.createElement('div');
 		body.classList.add('error-details');
-		body.textContent = text;
+		(Array.isArray(text) ? text : [text]).forEach(function (line) {
+			var p = document.createElement('p');
+			p.textContent = line;
+			body.appendChild(p);
+		});
+		if (options.reload) {
+			var actions = document.createElement('p');
+			var reload = document.createElement('button');
+			reload.type = 'button';
+			reload.classList.add('button');
+			reload.textContent = this.strings.reloadPage;
+			reload.addEventListener('click', function () { window.location.reload(); });
+			actions.appendChild(reload);
+			body.appendChild(actions);
+		}
 		var button = document.createElement('button');
 		button.type = 'button';
 		button.classList.add('notice-dismiss');

@@ -138,6 +138,65 @@ test.describe('Bulk page: upscale', () => {
 		await bulk.cancelSummary(emr);
 	});
 
+	test.describe('a request that does not answer JSON', () => {
+		test.use({ allowConsoleErrors: true });
+
+		test('a tick answered with a WordPress database error page shows what happened, the server answer, the retry and a reload button', async ({ page, emr, consoleErrors }) => {
+			await seedLibrary(emr);
+			// What WordPress sends when MySQL is unreachable (wpdb::bail(), as seen on a real site).
+			const dbErrorPage = '<p><code>No such file or directory</code></p>\n<h1>Error reconnecting to the database</h1>\n<p>This means that the contact with the database server at <code>localhost</code> was lost.</p>';
+			await page.context().route('**/wp-admin/admin-ajax.php', async (route) => {
+				if ((route.request().postData() || '').includes('action=emr_bulk_process')) {
+					await route.fulfill({ status: 200, contentType: 'text/html', body: dbErrorPage });
+					return;
+				}
+				await route.continue();
+			});
+
+			const bulk = new BulkPage(page);
+			await bulk.goto();
+			await bulk.startSelection('upscale');
+			await page.locator('#emr-bulk-create').click();
+
+			const notice = page.locator('#emr-bulk-request-error');
+			await expect(notice).toBeVisible({ timeout: 30_000 });
+			await expect(notice).toContainText('The bulk lost its connection to the database');
+			await expect(notice).toContainText('The site\'s database server could not be reached for a moment');
+			await expect(notice).toContainText('Server answer: \u201cNo such file or directory Error reconnecting to the database');
+			await expect(notice).toContainText('(attempt 1 of 3)');
+			await expect(notice.getByRole('button', { name: 'Reload the page' })).toBeVisible();
+			await expect(notice).not.toContainText('SyntaxError');
+			await expect(page.locator('#emr-bulk-request-error')).toHaveCount(1);
+			await page.context().unroute('**/wp-admin/admin-ajax.php');
+			// The processor logs the failed request on purpose; nothing else may fail.
+			expect(consoleErrors.filter((entry) => ! /EMR bulk:/.test(entry))).toEqual([]);
+		});
+
+		test('a tick answered with PHP output instead of JSON names that cause', async ({ page, emr, consoleErrors }) => {
+			await seedLibrary(emr);
+			await page.context().route('**/wp-admin/admin-ajax.php', async (route) => {
+				if ((route.request().postData() || '').includes('action=emr_bulk_process')) {
+					await route.fulfill({ status: 200, contentType: 'text/html', body: '<br />\n<b>Notice</b>:  Undefined index: foo in /x/plugin.php on line <b>3</b><br />\n{"status":true}' });
+					return;
+				}
+				await route.continue();
+			});
+
+			const bulk = new BulkPage(page);
+			await bulk.goto();
+			await bulk.startSelection('upscale');
+			await page.locator('#emr-bulk-create').click();
+
+			const notice = page.locator('#emr-bulk-request-error');
+			await expect(notice).toBeVisible({ timeout: 30_000 });
+			await expect(notice).toContainText('The server answered with an error page instead of a bulk result');
+			await expect(notice).toContainText('Server answer: \u201cNotice : Undefined index: foo in /x/plugin.php on line 3');
+			await page.context().unroute('**/wp-admin/admin-ajax.php');
+			// The processor logs the failed request on purpose; nothing else may fail.
+			expect(consoleErrors.filter((entry) => ! /EMR bulk:/.test(entry))).toEqual([]);
+		});
+	});
+
 	test('pause and resume during processing, stop confirms and finishes the bulk server-side', async ({ page, emr }) => {
 		const { queued } = await seedLibrary(emr);
 		await emr.mock({ waitingRounds: 50 }); // the API keeps every item pending: the run never ends by itself

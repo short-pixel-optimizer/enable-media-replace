@@ -84,6 +84,15 @@ the three plugins never see each other's items.
   `PROCESSOR_ACTIVE`, shows the blocked banner and rechecks after three
   minutes. Everything the scripts need is localized as `emrBulk`
   (`EnableMediaReplacePlugin::bulkScriptData()`); nothing is inline.
+- **Failed requests.** When a tick fails or does not answer JSON, the worker
+  (`ErrorMessage()`) sends a category (`database` for WordPress's database
+  error page, `invalid` for other output such as a PHP notice, `server` for
+  HTTP 500, `unavailable` for 502-504, `network`, `http`) with a plain-text
+  excerpt of the answer. The screen shows one notice for it (`#emr-bulk-request-error`,
+  replaced on each attempt, shown with or without debug): what happened, the
+  server's answer, "attempt N of 3" (`maxWorkerErrors`, one retry per
+  `emr/bulk/defer_interval`) and a reload button; after the third failure
+  the bulk stops.
 - **Look.** The page copies SPIO's bulk layout and palette: the white
   header bar, rounded panels, the Select / Summary / Process / Results step
   bar (`views/bulk/part-steps.php`, `BulkViewController::loadSteps()`), the

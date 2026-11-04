@@ -816,6 +816,40 @@ class EnableMediaReplacePlugin
                 'noQuota'         => __('You have no AI credits left this month. The bulk is paused.', 'enable-media-replace'),
                 'noKey'           => __('The bulk needs an API key on an Unlimited plan.', 'enable-media-replace'),
                 'restoreLabel'    => __('Restore originals', 'enable-media-replace'),
+                // A request that failed or did not answer JSON (js/bulk/emr-worker.js ErrorMessage(), by kind).
+                'requestError'    => array(
+                    'database'    => array(
+                        'title' => __('The bulk lost its connection to the database', 'enable-media-replace'),
+                        'text'  => __('The site\'s database server could not be reached for a moment, so WordPress answered with an error page instead of a bulk result. This is a server problem and usually temporary. If it keeps happening, check the MySQL error log or ask your host.', 'enable-media-replace'),
+                    ),
+                    'invalid'     => array(
+                        'title' => __('The server answered with an error page instead of a bulk result', 'enable-media-replace'),
+                        'text'  => __('Something on the site printed output into the bulk\'s answer, for example a PHP notice or another plugin. The PHP error log or wp-content/debug.log has the details.', 'enable-media-replace'),
+                    ),
+                    'server'      => array(
+                        'title' => __('The server ran into a fatal error (HTTP 500)', 'enable-media-replace'),
+                        'text'  => __('The PHP error log or wp-content/debug.log has the cause.', 'enable-media-replace'),
+                    ),
+                    'unavailable' => array(
+                        /* translators: %s: HTTP status code. */
+                        'title' => __('The server is unavailable or overloaded (HTTP %s)', 'enable-media-replace'),
+                        'text'  => __('This usually passes on its own.', 'enable-media-replace'),
+                    ),
+                    'network'     => array(
+                        'title' => __('The server could not be reached', 'enable-media-replace'),
+                        'text'  => __('Check your internet connection.', 'enable-media-replace'),
+                    ),
+                    'http'        => array(
+                        /* translators: %s: HTTP status code. */
+                        'title' => __('The server answered with HTTP %s', 'enable-media-replace'),
+                        'text'  => '',
+                    ),
+                ),
+                /* translators: %s: the start of the server's answer, as plain text. */
+                'serverAnswer'    => __('Server answer: %s', 'enable-media-replace'),
+                /* translators: %1$s: seconds until the next attempt, %2$s: this attempt, %3$s: the maximum. */
+                'retrying'        => __('The bulk tries again in about %1$s seconds (attempt %2$s of %3$s). If it keeps failing it stops; reload the page to continue then.', 'enable-media-replace'),
+                'reloadPage'      => __('Reload the page', 'enable-media-replace'),
                 /* translators: summary detail of a background removal to a transparent background. */
                 'detailTransparent' => __('Transparent', 'enable-media-replace'),
                 /* translators: %1$s: hex color, %2$s: opacity in percent. */
