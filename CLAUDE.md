@@ -248,8 +248,10 @@ docs/                      - the documentation and test plan, the bulk design no
   `emr/settings/no_banner` (and the SHORTPIXEL_NO_BANNER constant). The E2E
   support option `emr_e2e_promo_window` opens the window for the browser tests.
 - **AI credits:** background removal and upscale use one AI credit per image.
-  `ApiKeyManager::getAiCredits()` reads the `AIUnlimited` / `CaptionsCalls*`
-  fields of api-status (the same fields SPIO shows as AI credits), cached in
+  `ApiKeyManager::getAiCredits()` reads the `PlanType` / `CaptionsCalls*`
+  fields of api-status (the same fields SPIO shows as AI credits; Unlimited AI
+  is `PlanType` 'Unlimited AI', and on that plan the quota and remaining
+  fields are null), cached in
   the `emr_ai_credits` transient (10 min, `emr/ai_credits/ttl`; every
   api-status call refreshes it). `views/ai-credits.php` shows them in the
   account row and on the bulk summary: Unlimited AI has no limit, other

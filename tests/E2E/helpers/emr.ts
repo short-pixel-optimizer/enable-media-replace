@@ -87,8 +87,8 @@ export type MockKnobs = Partial<{
 	apiStatusCode: number | string;
 	apiStatusMessage: string;
 	unlimited: 'true' | 'false' | null;
-	/** api-status AIUnlimited; null leaves it out. */
-	aiUnlimited: boolean | null;
+	/** api-status PlanType; 'Unlimited AI' is the Unlimited AI plan (null AI quota, like the real API). Null leaves it out. */
+	planType: string | null;
 	/** api-status CaptionsCallsQuota (AI credits per month); null leaves the AI credit fields out. */
 	captionsQuota: number | null;
 	/** api-status CaptionsCallsMade. */

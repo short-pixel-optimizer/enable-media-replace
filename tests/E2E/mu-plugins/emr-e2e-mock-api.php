@@ -58,7 +58,10 @@
  *   apiStatusCode    int|string   api-status Status->Code (2 = valid key,
  *                                 -401 = wrong key).
  *   apiStatusMessage string       api-status Status->Message.
- *   aiUnlimited      bool|null    api-status AIUnlimited; null leaves it out.
+ *   planType         string|null  api-status PlanType; 'Unlimited AI' is the
+ *                                 Unlimited AI plan, for which the quota and
+ *                                 remaining AI fields are null like the real
+ *                                 API's. Null leaves the property out.
  *   captionsQuota    int|null     api-status CaptionsCallsQuota (AI credits per month);
  *                                 null leaves the three AI credit fields out.
  *   captionsMade     int          api-status CaptionsCallsMade (Remaining = quota - made).
@@ -117,7 +120,7 @@ class EMR_E2E_MockApi {
 		'apiStatusCode'    => 2,
 		'apiStatusMessage' => '',
 		'unlimited'        => 'true',
-		'aiUnlimited'      => false,
+		'planType'         => 'Monthly',
 		'captionsQuota'    => 1000,
 		'captionsMade'     => 0,
 		'notices'          => array(),
@@ -394,10 +397,15 @@ class EMR_E2E_MockApi {
 		if ( null !== $this->knobs['unlimited'] ) {
 			$body['Unlimited'] = $this->knobs['unlimited'];
 		}
-		if ( null !== $this->knobs['aiUnlimited'] ) {
-			$body['AIUnlimited'] = $this->knobs['aiUnlimited'];
+		if ( null !== $this->knobs['planType'] ) {
+			$body['PlanType'] = $this->knobs['planType'];
 		}
-		if ( null !== $this->knobs['captionsQuota'] ) {
+		if ( 'Unlimited AI' === $this->knobs['planType'] ) {
+			// The real API reports no AI quota on the Unlimited AI plan.
+			$body['CaptionsCallsQuota']     = null;
+			$body['CaptionsCallsMade']      = (int) $this->knobs['captionsMade'];
+			$body['CaptionsCallsRemaining'] = null;
+		} elseif ( null !== $this->knobs['captionsQuota'] ) {
 			$body['CaptionsCallsQuota']     = (int) $this->knobs['captionsQuota'];
 			$body['CaptionsCallsMade']      = (int) $this->knobs['captionsMade'];
 			$body['CaptionsCallsRemaining'] = max( 0, (int) $this->knobs['captionsQuota'] - (int) $this->knobs['captionsMade'] );

@@ -125,7 +125,7 @@ test.describe('Bulk page: upscale', () => {
 
 	test('Unlimited AI: no credit count, no warning, the "Enjoy!" line', async ({ page, emr }) => {
 		await seedLibrary(emr);
-		await emr.mock({ aiUnlimited: true, captionsMade: 1000 });
+		await emr.mock({ planType: 'Unlimited AI', captionsMade: 1000 });
 
 		const bulk = new BulkPage(page);
 		await bulk.goto();

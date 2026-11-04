@@ -468,7 +468,7 @@ class ApiKeyManagerTest extends WP_UnitTestCase {
 	}
 
 	/* ------------------------------------------------------------------
-	 * AI credits (getAiCredits(), the api-status AIUnlimited / CaptionsCalls* fields)
+	 * AI credits (getAiCredits(), the api-status PlanType / CaptionsCalls* fields)
 	 * ------------------------------------------------------------------ */
 
 	public function test_ai_credits_are_read_from_the_captions_fields() {
@@ -481,20 +481,58 @@ class ApiKeyManagerTest extends WP_UnitTestCase {
 		$this->assertCount( 1, $this->mock->requestsTo( 'api-status.php' ) );
 	}
 
-	public function test_ai_credits_recognise_unlimited_ai_as_a_boolean_or_a_string() {
+	/**
+	 * Unlimited AI is PlanType 'Unlimited AI' (SPIO's derivation); the
+	 * answer has no AIUnlimited field. On that plan the API answers null
+	 * for CaptionsCallsQuota and CaptionsCallsRemaining, which must not
+	 * read as "0 credits left".
+	 */
+	public function test_ai_credits_are_unlimited_on_the_unlimited_ai_plan_type_even_with_null_counts() {
 		$this->store_key( self::VALID_KEY );
-		foreach ( array( true, 'true', '1' ) as $flag ) {
+		$this->mock->setKnob( 'planType', 'Unlimited AI' );
+		$this->mock->setKnob( 'captionsMade', 1234 );
+
+		$credits = $this->fresh()->getAiCredits();
+
+		$raw = json_decode( wp_json_encode( $this->mock->apiStatusBody() ), true );
+		$this->assertNull( $raw['CaptionsCallsQuota'], 'Precondition: the mock answers like the real API.' );
+		$this->assertNull( $raw['CaptionsCallsRemaining'], 'Precondition: the mock answers like the real API.' );
+		$this->assertSame( array( 'unlimited' => true, 'quota' => 0, 'used' => 1234, 'remaining' => 0 ), $credits );
+	}
+
+	public function test_ai_credits_are_not_unlimited_on_other_plan_types_or_an_ai_unlimited_field() {
+		$this->store_key( self::VALID_KEY );
+		foreach ( array( 'Monthly', 'Unlimited', 'unlimited ai', '', null ) as $plan ) {
 			delete_transient( ApiKeyManager::CREDITS_TRANSIENT );
-			$this->mock->setKnob( 'aiUnlimited', $flag );
+			$this->mock->setKnob( 'planType', $plan );
 			$credits = $this->fresh()->getAiCredits();
-			$this->assertTrue( $credits['unlimited'], var_export( $flag, true ) );
+			$this->assertFalse( $credits['unlimited'], var_export( $plan, true ) );
+			$this->assertSame( 1000, $credits['remaining'], var_export( $plan, true ) );
 		}
-		foreach ( array( false, 'false', null ) as $flag ) {
-			delete_transient( ApiKeyManager::CREDITS_TRANSIENT );
-			$this->mock->setKnob( 'aiUnlimited', $flag );
-			$credits = $this->fresh()->getAiCredits();
-			$this->assertFalse( $credits['unlimited'], var_export( $flag, true ) );
-		}
+
+		// A stray AIUnlimited field (which the API does not send) decides nothing.
+		delete_transient( ApiKeyManager::CREDITS_TRANSIENT );
+		$this->mock->setKnob( 'planType', 'Monthly' );
+		$body = $this->mock->apiStatusBody();
+		$body['AIUnlimited'] = true;
+		$this->add_test_filter(
+			'pre_http_request',
+			function ( $preempt, $args, $url ) use ( $body ) {
+				if ( false === strpos( $url, 'api-status.php' ) ) {
+					return $preempt;
+				}
+				return array(
+					'headers'  => array(),
+					'body'     => wp_json_encode( $body ),
+					'response' => array( 'code' => 200, 'message' => 'OK' ),
+					'cookies'  => array(),
+				);
+			},
+			11
+		);
+		$credits = $this->fresh()->getAiCredits();
+		$this->assertFalse( $credits['unlimited'] );
+		$this->assertSame( 1000, $credits['remaining'] );
 	}
 
 	public function test_ai_credits_are_cached_per_key_until_refreshed() {

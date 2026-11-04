@@ -200,7 +200,7 @@ class ApiKeyManager
      * use one per image. Unlimited plans get a monthly amount, Unlimited AI has
      * no limit.
      *
-     * Read from the `AIUnlimited` and `CaptionsCalls*` fields of api-status.php,
+     * Read from the `PlanType` and `CaptionsCalls*` fields of api-status.php,
      * the same fields ShortPixel Image Optimizer shows as "AI credits". Cached
      * in the CREDITS_TRANSIENT transient; every successful callApi() refreshes
      * it (verifyUnlimitedPlan() runs before each single-screen preview), and
@@ -239,9 +239,13 @@ class ApiKeyManager
     /**
      * Reads the AI credits from an api-status.php answer and caches them.
      *
-     * `AIUnlimited` is accepted as a boolean or the strings 'true' / '1';
-     * a missing remaining count is computed from quota minus used, never
-     * below 0.
+     * Unlimited AI is the plan whose `PlanType` is 'Unlimited AI', the same
+     * derivation as ShortPixel Image Optimizer's QuotaController: the answer
+     * carries no `AIUnlimited` field. On that plan the API answers null for
+     * `CaptionsCallsQuota` and `CaptionsCallsRemaining` (no AI quota to
+     * report); null and missing counts become 0, and every consumer checks
+     * `unlimited` before reading the numbers. A missing remaining count is
+     * computed from quota minus used, never below 0.
      *
      * @param object $data Decoded api-status.php answer.
      * @param string $key  The key it was asked for (the cache is tied to it).
@@ -252,9 +256,8 @@ class ApiKeyManager
         $quota     = isset($data->CaptionsCallsQuota) ? max(0, (int) $data->CaptionsCallsQuota) : 0;
         $used      = isset($data->CaptionsCallsMade) ? max(0, (int) $data->CaptionsCallsMade) : 0;
         $remaining = isset($data->CaptionsCallsRemaining) ? (int) $data->CaptionsCallsRemaining : $quota - $used;
-        $flag      = isset($data->AIUnlimited) ? $data->AIUnlimited : false;
         $credits   = array(
-            'unlimited' => (true === $flag || 1 === $flag || (is_string($flag) && in_array(strtolower($flag), array('true', '1'), true))),
+            'unlimited' => (isset($data->PlanType) && 'Unlimited AI' === $data->PlanType),
             'quota'     => $quota,
             'used'      => $used,
             'remaining' => max(0, $remaining),

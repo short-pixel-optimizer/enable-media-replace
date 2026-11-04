@@ -317,7 +317,7 @@ class BulkViewControllerTest extends WP_UnitTestCase {
 
 	public function test_unlimited_ai_shows_no_credit_count_no_upgrade_button_and_no_summary_warning() {
 		update_option( 'emr_shortpixel_api_key', 'abcdEFGHIJKLMNOPwxyz' );
-		$this->mock->setKnob( 'aiUnlimited', true );
+		$this->mock->setKnob( 'planType', 'Unlimited AI' );
 		$html = $this->render();
 
 		$this->assertStringContainsString( '<span class="emr-sp-account-plan">Unlimited AI</span>', $html );
