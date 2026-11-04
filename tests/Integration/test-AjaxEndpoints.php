@@ -556,7 +556,7 @@ class AjaxEndpointsTest extends EMR_AjaxTestCase {
 		$this->assertEquals(
 			(object) array(
 				'success' => true,
-				'data'    => (object) array( 'message' => 'API Key saved and verified successfully. You now have unlimited background removal.' ),
+				'data'    => (object) array( 'message' => 'API key saved and verified. You now have unlimited background removal and image upscale.' ),
 			),
 			$response
 		);
@@ -621,7 +621,7 @@ class AjaxEndpointsTest extends EMR_AjaxTestCase {
 		$this->assertEquals(
 			(object) array(
 				'success' => true,
-				'data'    => (object) array( 'message' => 'API Key removed.' ),
+				'data'    => (object) array( 'message' => 'API key removed.' ),
 			),
 			$response
 		);

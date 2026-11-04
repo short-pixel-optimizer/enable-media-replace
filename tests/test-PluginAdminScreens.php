@@ -624,7 +624,7 @@ class PluginAdminScreensTest extends EMR_MainTestCase {
 		$data = $this->localized( 'emr_upsell', 'emr_upsell' );
 
 		$this->assertSame( admin_url( 'admin-ajax.php' ), $data['ajax'] );
-		$this->assertSame( 'Installing ...', $data['installing'] );
+		$this->assertSame( 'Installing…', $data['installing'] );
 	}
 
 	public function test_admin_scripts_localises_a_valid_remove_background_nonce() {

@@ -128,7 +128,7 @@ class Ajax {
 		}
 
 		ApiKeyManager::getInstance()->deleteKey();
-		wp_send_json_success( array( 'message' => __( 'API Key removed.', 'enable-media-replace' ) ) );
+		wp_send_json_success( array( 'message' => __( 'API key removed.', 'enable-media-replace' ) ) );
 	}
 
 	/**

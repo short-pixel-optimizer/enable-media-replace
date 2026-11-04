@@ -23,7 +23,7 @@
  * - upscale (radio) one of the factors of UIHelper::getUpscaleFactors(); a factor is
  *   disabled when its maximum width is at or below the metadata width of the image,
  *   the first enabled one is checked, and with none enabled the help text reads "This
- *   image is too big to be upscaled" and the Preview button is disabled
+ *   image is too large to be upscaled" and the Preview button is disabled
  * The Preview button (`#remove_background_button`, the id the shared script expects)
  * triggers the AJAX call with the checked factor; the result panel's text layer then
  * shows the new dimensions. The Replace submit button stays disabled until a preview
@@ -90,7 +90,7 @@ $scale_checked = false;
 
 		<div class="editor-wrapper" >
 			<section class='image_chooser wrapper'>
-				<div class='section-header'> <?php esc_html_e( 'Upscale Image', 'enable-media-replace' ); ?></div>
+				<div class='section-header'> <?php esc_html_e( 'Upscale image', 'enable-media-replace' ); ?></div>
 				<div class='image_previews'>
 						<?php echo $base_image; ?>
 						<?php echo $replace_image ?>
@@ -105,7 +105,7 @@ $scale_checked = false;
 
 			<div class="option-flex-wrapper">
 				<section class="replace_type wrapper">
-					<div class="section-header"><?php esc_html_e('Upscale Options', 'enable-media-replace'); ?></div>
+					<div class="section-header"><?php esc_html_e('Upscale options', 'enable-media-replace'); ?></div>
 					<div class="option replace ">
 						<?php foreach ($uiHelper->getUpscaleFactors() as $factor => $max_width) :
 							$disabled = ($image_width > 0 && $max_width <= $image_width);
@@ -119,7 +119,7 @@ $scale_checked = false;
 						?>
 						<label for="upscale_<?php echo intval($factor); ?>">
 							<input id="upscale_<?php echo intval($factor); ?>" type="radio" name="upscale" value="<?php echo intval($factor); ?>" <?php checked($checked); ?> <?php disabled($disabled); ?> >
-							<?php echo esc_html($factor . 'x'); ?>
+							<?php /* translators: %d: upscale factor. */ echo esc_html(sprintf(__('%d×', 'enable-media-replace'), (int) $factor)); ?>
 						</label>
 						<?php endforeach; ?>
 						<p class="howto">
@@ -127,7 +127,7 @@ $scale_checked = false;
 							if ($has_scale_option) {
 								esc_html_e('Enlarges the image with the selected factor using AI upscaling. The current image will be replaced with the upscaled version.', 'enable-media-replace');
 							} else {
-								esc_html_e('This image is too big to be upscaled.', 'enable-media-replace');
+								esc_html_e('This image is too large to be upscaled.', 'enable-media-replace');
 							}
 							?>
 						</p>

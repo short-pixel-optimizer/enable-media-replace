@@ -356,8 +356,8 @@ class UpscaleViewControllerTest extends WP_UnitTestCase {
 		$this->assertSame( $id, $view->attachment->ID );
 		$this->assertSame( get_attached_file( $id ), $view->sourceFile->getFullPath() );
 		$this->assertStringContainsString( '<div class="wrap emr_upload_form emr-upscale-form" id="remove-background-form">', $output );
-		$this->assertStringContainsString( 'Upscale Image</div>', $output );
-		$this->assertStringContainsString( 'Upscale Options</div>', $output );
+		$this->assertStringContainsString( 'Upscale image</div>', $output );
+		$this->assertStringContainsString( 'Upscale options</div>', $output );
 	}
 
 	public function test_load_without_upload_files_shows_the_upload_permission_error() {
@@ -407,14 +407,14 @@ class UpscaleViewControllerTest extends WP_UnitTestCase {
 		foreach ( array( 2, 3, 4 ) as $factor ) {
 			$radio = $this->radio( $output, $factor );
 			$this->assertStringContainsString( 'type="radio" name="upscale" value="' . $factor . '"', $radio );
-			$this->assertStringNotContainsString( 'disabled', $radio, $factor . 'x is enabled for a 50 px image.' );
-			$this->assertStringContainsString( $factor . 'x', $output );
+			$this->assertStringNotContainsString( 'disabled', $radio, $factor . '× is enabled for a 50 px image.' );
+			$this->assertStringContainsString( $factor . '×', $output, 'The same factor sign as the tiles and the bulk.' );
 		}
 		$this->assertStringContainsString( "checked='checked'", $this->radio( $output, 2 ) );
 		$this->assertStringNotContainsString( 'checked', $this->radio( $output, 3 ) );
 		$this->assertStringNotContainsString( 'checked', $this->radio( $output, 4 ) );
 		$this->assertStringContainsString( 'Enlarges the image with the selected factor using AI upscaling.', $output );
-		$this->assertStringNotContainsString( 'This image is too big to be upscaled.', $output );
+		$this->assertStringNotContainsString( 'This image is too large to be upscaled.', $output );
 	}
 
 	public function test_screen_disables_4x_above_1024_pixels_and_checks_the_first_enabled_factor() {
@@ -451,7 +451,7 @@ class UpscaleViewControllerTest extends WP_UnitTestCase {
 			$this->assertStringContainsString( "disabled='disabled'", $radio, $factor . 'x' );
 			$this->assertStringNotContainsString( 'checked', $radio, $factor . 'x' );
 		}
-		$this->assertStringContainsString( 'This image is too big to be upscaled.', $output );
+		$this->assertStringContainsString( 'This image is too large to be upscaled.', $output );
 		$this->assertStringNotContainsString( 'Enlarges the image with the selected factor', $output );
 		$this->assertMatchesRegularExpression( '/id="remove_background_button"\s+disabled=\'disabled\'\s*>Preview<\/button>/', $output );
 	}
@@ -476,7 +476,7 @@ class UpscaleViewControllerTest extends WP_UnitTestCase {
 		$this->assertSame( 2, substr_count( $output, "<div class='image_placeholder" ), 'Current and preview boxes.' );
 		$this->assertStringContainsString( "<span class='upload-title'>Current</span>", $output );
 		$this->assertStringContainsString( "<span class='upload-title'>Preview</span>", $output );
-		$this->assertStringContainsString( '<h3>Upscaling image...</h3>', $output );
+		$this->assertStringContainsString( '<h3>Upscaling image…</h3>', $output );
 		$this->assertStringNotContainsString( 'Removing background', $output );
 		$this->assertSame( 1, substr_count( $output, 'id="overlay"' ) );
 	}
@@ -504,7 +504,7 @@ class UpscaleViewControllerTest extends WP_UnitTestCase {
 		list( , $output ) = $this->load( $id );
 
 		$this->assertMatchesRegularExpression( '/<details class="emr-sp-account emr-collapsible emr-sp-account-upscale" data-confirm-remove="[^"]+">/', $output, 'Collapsed: no open attribute.' );
-		$this->assertStringContainsString( 'data-confirm-remove="Remove the API key? Background removal and upscale go back to the Free plan (10 images)."', $output );
+		$this->assertStringContainsString( 'data-confirm-remove="Remove the API key? Background removal and image upscale go back to the Free plan (10 images)."', $output );
 		$this->assertStringContainsString( 'Free plan (10 images)', $output );
 		$this->assertStringContainsString( 'utm_campaign=emr_upscale', $output );
 		$this->assertStringNotContainsString( '100 image', $output );
@@ -523,7 +523,7 @@ class UpscaleViewControllerTest extends WP_UnitTestCase {
 
 		list( , $output ) = $this->load( $id );
 
-		$this->assertStringContainsString( 'Unlimited plan active. Background removal and upscale have no limit while your plan is active.', $output );
+		$this->assertStringContainsString( 'Unlimited plan active. Background removal and image upscale have no limit while your plan is active.', $output );
 		$this->assertStringContainsString( '<code class="emr-sp-key-value">' . esc_html( $manager->getMaskedKey() ) . '</code>', $output );
 		$this->assertStringNotContainsString( $key, $output );
 		$this->assertMatchesRegularExpression( '/<span class="emr-sp-account-status emr-sp-account-connected">.*Connected<\/span>/', $output );

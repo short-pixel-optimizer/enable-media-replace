@@ -610,8 +610,8 @@ class UIHelper
    *     @type bool        $is_upload    Right-side upload interface; default false.
    *     @type string|bool $mime_type    Written to data-filetype; default false (omitted).
    *     @type int|bool    $file_size    Bytes, shown through size_format(); default false (empty).
-   *     @type bool        $remove_bg_ui Adds the "Removing background..." overlay; default false.
-   *     @type bool        $upscale_ui   Adds the "Upscaling image..." overlay instead, with the same
+   *     @type bool        $remove_bg_ui Adds the "Removing background…" overlay; default false.
+   *     @type bool        $upscale_ui   Adds the "Upscaling image…" overlay instead, with the same
    *                                     "Preview" title; wins over `remove_bg_ui`; default false.
    * }
    * @return string HTML.
@@ -691,7 +691,7 @@ class UIHelper
 			$output .= "<span class='upload-title'>" . __('New', 'enable-media-replace') . "</span>";
 			$output .= '<input type="file" name="userfile" id="upload-file" />';
 				$output .= '<div class="drag-and-drop-title">
-                              <span>' . __('Click here to upload or drop file in area', 'enable-media-replace') . '</span>
+                              <span>' . __('Click here to upload, or drop a file in this area', 'enable-media-replace') . '</span>
                    </div>';
 		}
 		else
@@ -963,7 +963,7 @@ class UIHelper
 	}
 
 	/**
-	 * Returns the "Removing background..." overlay with its CSS spinner.
+	 * Returns the "Removing background…" overlay with its CSS spinner.
 	 *
 	 * @return string HTML.
 	 */
@@ -972,14 +972,14 @@ class UIHelper
 		$output = '<div class="overlay" id="overlay">
 										<div class="lds-spinner"><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div></div>';
 
-		$output .=	'<h3>'  .  esc_html__('Removing background...', 'enable-media-replace') . '</h3>';
+		$output .=	'<h3>'  .  esc_html__('Removing background…', 'enable-media-replace') . '</h3>';
 		$output .= '</div>';
 
 		return $output;
 	}
 
 	/**
-	 * Returns the "Upscaling image..." overlay with its CSS spinner.
+	 * Returns the "Upscaling image…" overlay with its CSS spinner.
 	 *
 	 * @return string HTML.
 	 */
@@ -988,7 +988,7 @@ class UIHelper
 		$output = '<div class="overlay" id="overlay">
 										<div class="lds-spinner"><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div></div>';
 
-		$output .=	'<h3>'  .  esc_html__('Upscaling image...', 'enable-media-replace') . '</h3>';
+		$output .=	'<h3>'  .  esc_html__('Upscaling image…', 'enable-media-replace') . '</h3>';
 		$output .= '</div>';
 
 		return $output;
@@ -1077,7 +1077,7 @@ class UIHelper
 	 */
 	public function featureNotice()
 	{
-			$message = sprintf(__('%s New Beta Feature! %s %s Enable Media Replace now gives you the ability to remove the background of any image. Try it out in the Media Library: hover over an image and click on Remove Background. Or just click on Remove background from the image editing window! %s  ', 'enable-media-replace' ), '<h3>', '</h3>',
+			$message = sprintf(__('%s New beta feature! %s %s Enable Media Replace can now remove the background of an image and upscale it with AI. Try it in the Media Library: hover over an image and click Remove background or Upscale image, or use the buttons on the image editing screen. %s', 'enable-media-replace' ), '<h3>', '</h3>',
 				'<p>', '</p>');
 
 		  $notice = Notices::addNormal($message, true);

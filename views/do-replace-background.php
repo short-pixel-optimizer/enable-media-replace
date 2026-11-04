@@ -36,7 +36,7 @@ if (is_null($key) || strlen($key) == 0)
 
 $post_id = isset($_POST['ID']) ? intval($_POST['ID']) : null; // sanitize, post_id.
 if (is_null($post_id)) {
-    wp_die(esc_html__('Error in request. Please try again', 'enable-media-replace'));
+    wp_die(esc_html__('Error in request. Please try again.', 'enable-media-replace'));
 }
 
 $attachment = get_post($post_id);

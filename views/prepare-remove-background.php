@@ -74,8 +74,8 @@ $formurl = $uiHelper->getFormUrl($attachment_id, 'do_background_replace');
 
 $linebreak = '%0D%0A';
 $linebreak_double = $linebreak . $linebreak;
-$email_subject = __('Bad remove of background report', 'enable-media-replace');
-$email_body = sprintf(__('Hello! %s This is a report of a background removal that did not go well %s Url: {url} %s Settings : {settings} %s Thank you! %s', 'enable-media-replace'), $linebreak_double, $linebreak_double, $linebreak, $linebreak_double, $linebreak_double);
+$email_subject = __('Bad background removal report', 'enable-media-replace');
+$email_body = sprintf(__('Hello! %s This is a report of a background removal that did not go well %s URL: {url} %s Settings: {settings} %s Thank you! %s', 'enable-media-replace'), $linebreak_double, $linebreak_double, $linebreak, $linebreak_double, $linebreak_double);
 
 ?>
 
@@ -101,7 +101,7 @@ $email_body = sprintf(__('Hello! %s This is a report of a background removal tha
 
 		<div class="editor-wrapper" >
 			<section class='image_chooser wrapper'>
-				<div class='section-header'> <?php esc_html_e( 'Remove Media Background', 'enable-media-replace' ); ?></div>
+				<div class='section-header'> <?php esc_html_e( 'Remove media background', 'enable-media-replace' ); ?></div>
 				<div class='image_previews'>
 						<?php echo $base_image; ?>
 						<?php echo $replace_image ?>
@@ -121,7 +121,7 @@ $email_body = sprintf(__('Hello! %s This is a report of a background removal tha
 
 			<div class="option-flex-wrapper">
 				<section class="replace_type wrapper">
-					<div class="section-header"><?php esc_html_e('Background Removal Options', 'enable-media-replace'); ?></div>
+					<div class="section-header"><?php esc_html_e('Background removal options', 'enable-media-replace'); ?></div>
 					<div class="option replace ">
 						<label for="transparent_background">
 							<input id="transparent_background" type="radio" name="background_type" value="transparent" <?php checked('transparent', $view->settings['bg_type']); ?> >
@@ -141,7 +141,7 @@ $email_body = sprintf(__('Hello! %s This is a report of a background removal tha
 						</p>
 						<div id="solid_selecter" style="display:none;">
 							<label for="bg_display_picker">
-								<p><?php esc_html_e('Background Color:','enable-media-replace'); ?> <strong>
+								<p><?php esc_html_e('Background color','enable-media-replace'); ?>: <strong>
 									<span id="color_range">
 										<?php echo esc_attr($view->settings['bg_color']); ?></span>
 									</strong>
@@ -151,9 +151,9 @@ $email_body = sprintf(__('Hello! %s This is a report of a background removal tha
 							</label>
 							<hr>
 							<label for="bg_transparency">
-								<p><?php esc_html_e('Opacity:', 'enable-media-replace'); ?>
+								<p><?php esc_html_e('Opacity (%)', 'enable-media-replace'); ?>:
 									<strong>
-										<span id="transparency_range"><?php echo esc_attr($view->settings['bg_transparency']); ?></span>%</strong>
+										<span id="transparency_range"><?php echo esc_attr($view->settings['bg_transparency']); ?></span></strong>
 								</p>
 								<input type="range" min="0" max="100" value="<?php echo esc_attr($view->settings['bg_transparency']); ?>" id="bg_transparency" />
 							</label>

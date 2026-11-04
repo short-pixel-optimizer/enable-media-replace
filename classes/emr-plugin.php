@@ -662,7 +662,7 @@ class EnableMediaReplacePlugin
 
         wp_localize_script('emr_upsell', 'emr_upsell', array(
             'ajax' => admin_url('admin-ajax.php'),
-            'installing' => __('Installing ...', 'enable-media-replace'),
+            'installing' => __('Installing…', 'enable-media-replace'),
 
         ));
 
@@ -754,7 +754,7 @@ class EnableMediaReplacePlugin
                 /* translators: summary detail of a background removal to a transparent background. */
                 'detailTransparent' => __('Transparent', 'enable-media-replace'),
                 /* translators: %1$s: hex color, %2$s: opacity in percent. */
-                'detailSolid'     => __('Solid color %1$s, %2$s%% opacity', 'enable-media-replace'),
+                'detailSolid'     => __('Solid background %1$s, %2$s%% opacity', 'enable-media-replace'),
                 /* translators: %s: width in pixels. */
                 'detailUpscale'   => __('Images narrower than %s px', 'enable-media-replace'),
             ),
@@ -928,11 +928,11 @@ class EnableMediaReplacePlugin
             return;
         }
 
-        add_meta_box('emr-replace-box', __('Replace Media', 'enable-media-replace'), array($this, 'replace_meta_box'), 'attachment', 'side', 'low');
+        add_meta_box('emr-replace-box', __('Replace media', 'enable-media-replace'), array($this, 'replace_meta_box'), 'attachment', 'side', 'low');
         $this->enqueueMediaModal(); // The tiles of replace_meta_box(); added before the admin header prints the styles.
 
         if (isset($_GET['emr_replaced']) && intval($_GET['emr_replaced'] == 1)) {
-            add_meta_box('emr-showthumbs-box', __('Replaced Thumbnails Preview', 'enable-media-replace'), array($this, 'show_thumbs_box'), 'attachment', 'side', 'low');
+            add_meta_box('emr-showthumbs-box', __('Replaced thumbnails preview', 'enable-media-replace'), array($this, 'show_thumbs_box'), 'attachment', 'side', 'low');
         }
     }
 
@@ -1129,10 +1129,6 @@ class EnableMediaReplacePlugin
      * @return array Row actions with EMR's appended.
      *
      * @hook filter media_row_actions (listened to)
-     *
-     * @todo The "Remove  background" label and aria-label contain a double
-     *       space, which makes them separate translation strings from the
-     *       "Remove background" used elsewhere. Use a single space.
      */
     public function add_media_action($actions, $post)
     {
@@ -1156,7 +1152,7 @@ class EnableMediaReplacePlugin
         $uiHelper = $this->uiHelper(); 
 
         if ($uiHelper->isBackgroundRemovable($post) && false === $uiHelper->is_author_restricted()) {
-            $newaction['remove_background'] = '<a ' . $background_remove_link . ' aria-label="' . esc_attr__("Remove  background", "enable-media-replace") . '" rel="permalink">' . esc_html__("Remove  background", "enable-media-replace") . '</a>';
+            $newaction['remove_background'] = '<a ' . $background_remove_link . ' aria-label="' . esc_attr__("Remove background", "enable-media-replace") . '" rel="permalink">' . esc_html__("Remove background", "enable-media-replace") . '</a>';
         }
 
         if ($uiHelper->isUpscalable($post)) {
@@ -1218,7 +1214,7 @@ class EnableMediaReplacePlugin
             $display_name = get_the_author_meta('display_name', $author_id);
         ?>
             <div class="misc-pub-section replace_author">
-                <span><?php echo esc_html__('Replaced By', 'enable-media-replace'); ?>: <b><?php echo esc_html($display_name); ?></b></span>
+                <span><?php echo esc_html__('Replaced by', 'enable-media-replace'); ?>: <b><?php echo esc_html($display_name); ?></b></span>
             </div>
 <?php
         }

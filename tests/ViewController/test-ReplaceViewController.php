@@ -355,7 +355,7 @@ class ReplaceViewControllerTest extends WP_UnitTestCase {
 
 		$this->assertFalse( $controller->getView()->is_movable );
 		$this->assertSame( array( array( true, $id ) ), $seen );
-		$this->assertStringContainsString( "File is offloaded and can't be moved to other directory", $output );
+		$this->assertStringContainsString( "The file is offloaded and can't be moved to another directory.", $output );
 		$this->assertStringNotContainsString( 'name="new_location"', $output );
 		$this->assertStringNotContainsString( 'name="location_dir"', $output );
 	}

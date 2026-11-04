@@ -410,9 +410,9 @@ class RemoveBackgroundViewControllerTest extends WP_UnitTestCase {
 
 		// The single screens work on the Free plan: the row is collapsed and says so.
 		$this->assertMatchesRegularExpression( '/<details class="emr-sp-account emr-collapsible emr-sp-account-background" data-confirm-remove="[^"]+">/', $output, 'Collapsed: no open attribute.' );
-		$this->assertStringContainsString( 'data-confirm-remove="Remove the API key? Background removal and upscale go back to the Free plan (10 images)."', $output );
+		$this->assertStringContainsString( 'data-confirm-remove="Remove the API key? Background removal and image upscale go back to the Free plan (10 images)."', $output );
 		$this->assertStringContainsString( 'Free plan (10 images)', $output );
-		$this->assertStringContainsString( 'The Free plan includes 10 background removals and upscales.', $output );
+		$this->assertStringContainsString( 'The Free plan includes 10 background removals and image upscales.', $output );
 		$this->assertStringNotContainsString( '100 image', $output );
 		$this->assertStringContainsString( 'id="emr-new-api-key"', $output );
 		$this->assertStringContainsString( 'Activate', $output );
@@ -641,7 +641,7 @@ class RemoveBackgroundViewControllerTest extends WP_UnitTestCase {
 	 * loadPost() copies the download error from Api::handleDownload() into
 	 * `$this->view->errorMessage` and then calls
 	 * viewError(ERROR_DOWNLOAD_FAILED), which overwrites it with the generic
-	 * "Replacement Image could not be downloaded or does not exist". The
+	 * "The replacement image could not be downloaded or does not exist.". The
 	 * API's message ("This file seems not available anymore. Please try
 	 * again") never reaches the error screen. It should be shown, for
 	 * instance as the error description.
@@ -659,8 +659,8 @@ class RemoveBackgroundViewControllerTest extends WP_UnitTestCase {
 
 		$this->assertSame( ViewController::ERROR_DOWNLOAD_FAILED, $exit->getCode() );
 		$this->assertSame( ViewController::ERROR_DOWNLOAD_FAILED, $controller->lastError );
-		$this->assertSame( 'This file seems not available anymore. Please try again', $controller->errorMessageBefore, 'Set from the API result before viewError().' );
-		$this->assertSame( 'Replacement Image could not be downloaded or does not exist', $controller->getView()->errorMessage );
+		$this->assertSame( 'This file does not seem to be available anymore. Please try again.', $controller->errorMessageBefore, 'Set from the API result before viewError().' );
+		$this->assertSame( 'The replacement image could not be downloaded or does not exist.', $controller->getView()->errorMessage );
 		$this->assertObjectNotHasProperty( 'errorDescription', $controller->getView() );
 	}
 
@@ -733,7 +733,7 @@ class RemoveBackgroundViewControllerTest extends WP_UnitTestCase {
 
 		$this->assertFalse( $result->success );
 		$this->assertNull( $result->image );
-		$this->assertSame( 'This file seems not available anymore. Please try again', $result->message );
+		$this->assertSame( 'This file does not seem to be available anymore. Please try again.', $result->message );
 		$this->assertSame( array(), $this->mock->getRequests() );
 	}
 

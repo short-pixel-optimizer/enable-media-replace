@@ -3,7 +3,7 @@
  * Tests for the media-library side of EnableMediaReplace\EnableMediaReplacePlugin
  * (classes/emr-plugin.php): checkImagePermission(), the URL builders, the
  * attachment meta boxes, the attachment fields, the row actions, the
- * "Revised" / "Replaced By" lines, attempt_uncache_image() and the
+ * "Revised" / "Replaced by" lines, attempt_uncache_image() and the
  * `[file_modified]` shortcode (get_modified_date()).
  *
  * Attachments are created as database rows with crafted metadata, without
@@ -288,7 +288,7 @@ class PluginMediaUITest extends EMR_MainTestCase {
 
 		$low = $GLOBALS['wp_meta_boxes']['attachment']['side']['low'];
 		$this->assertArrayHasKey( 'emr-replace-box', $low );
-		$this->assertSame( 'Replace Media', $low['emr-replace-box']['title'] );
+		$this->assertSame( 'Replace media', $low['emr-replace-box']['title'] );
 		$this->assertSame( array( emr(), 'replace_meta_box' ), $low['emr-replace-box']['callback'] );
 		$this->assertArrayNotHasKey( 'emr-showthumbs-box', $low );
 	}
@@ -303,7 +303,7 @@ class PluginMediaUITest extends EMR_MainTestCase {
 
 		$low = $GLOBALS['wp_meta_boxes']['attachment']['side']['low'];
 		$this->assertArrayHasKey( 'emr-showthumbs-box', $low );
-		$this->assertSame( 'Replaced Thumbnails Preview', $low['emr-showthumbs-box']['title'] );
+		$this->assertSame( 'Replaced thumbnails preview', $low['emr-showthumbs-box']['title'] );
 		$this->assertSame( array( emr(), 'show_thumbs_box' ), $low['emr-showthumbs-box']['callback'] );
 	}
 
@@ -735,24 +735,16 @@ class PluginMediaUITest extends EMR_MainTestCase {
 		$this->assertSame( array( 'media_replace' ), array_keys( emr()->add_media_action( array(), get_post( $own ) ) ) );
 	}
 
-	/**
-	 * The remove-background row action uses "Remove  background" (two
-	 * spaces) for its label and aria-label, a different translation string
-	 * from the "Remove background" used everywhere else.
-	 *
-	 * How to recognise the fix: the aria-label and the link text read
-	 * "Remove background" with a single space.
-	 */
-	public function test_add_media_action_label_has_a_double_space_pinned_for_deferred_fix() {
+	public function test_add_media_action_label_reads_remove_background() {
 		$this->as_admin();
 		$id = $this->make_attachment();
 
 		$actions = emr()->add_media_action( array(), get_post( $id ) );
 
 		$this->assertArrayHasKey( 'remove_background', $actions );
-		$this->assertStringContainsString( 'aria-label="Remove  background"', $actions['remove_background'] );
-		$this->assertStringContainsString( '>Remove  background</a>', $actions['remove_background'] );
-		$this->assertStringNotContainsString( 'Remove background', $actions['remove_background'] );
+		$this->assertStringContainsString( 'aria-label="Remove background"', $actions['remove_background'] );
+		$this->assertStringContainsString( '>Remove background</a>', $actions['remove_background'] );
+		$this->assertStringNotContainsString( 'Remove  background', $actions['remove_background'] );
 	}
 
 	/* ------------------------------------------------------------------
@@ -781,7 +773,7 @@ class PluginMediaUITest extends EMR_MainTestCase {
 
 		$this->assertStringContainsString( 'Revised', $html );
 		$this->assertStringContainsString( '<b>May 6, 2021 @ 10:20</b>', $html );
-		$this->assertStringNotContainsString( 'Replaced By', $html );
+		$this->assertStringNotContainsString( 'Replaced by', $html );
 	}
 
 	public function test_replaced_date_prints_nothing_for_an_unmodified_post() {
@@ -812,7 +804,7 @@ class PluginMediaUITest extends EMR_MainTestCase {
 			}
 		);
 
-		$this->assertStringContainsString( 'Replaced By', $html );
+		$this->assertStringContainsString( 'Replaced by', $html );
 		$this->assertStringContainsString( '<b>Emr &lt;i&gt;Replacer&lt;/i&gt;</b>', $html );
 	}
 

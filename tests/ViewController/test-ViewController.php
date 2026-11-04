@@ -193,19 +193,19 @@ class ViewControllerTest extends WP_UnitTestCase {
 			'form'               => array( 3, 'The form submitted is missing various fields', null ),
 			'time'               => array( 4, 'The custom time format submitted is invalid', null ),
 			'update failed'      => array( 5, 'Updating the WordPress attachment failed', null ),
-			'security'           => array( 6, 'The file upload has been rejected for security reason. WordPress might not allow uploading this extension or filetype', null ),
-			'upload failed'      => array( 7, 'The upload from your browser seem to have failed', null ),
-			'nonce'              => array( 8, 'Fail to validate form nonce. Please try again', 'This can happen when the window is open for a long time and/or there has been a timeout.  You can go back to previous screen and try again. If this happens each time when replacing, contact us' ),
-			'target exists'      => array( 20, 'The target file already exists in this directory. Please try another name / directory', 'This error is shown because you try to move the image to another folder, which already has this file' ),
+			'security'           => array( 6, 'The file upload was rejected for security reasons. WordPress might not allow uploading this extension or file type.', null ),
+			'upload failed'      => array( 7, 'The upload from your browser seems to have failed.', null ),
+			'nonce'              => array( 8, 'The form could not be validated (nonce). Please try again.', 'This can happen when the window is open for a long time and/or there has been a timeout. You can go back to the previous screen and try again. If this happens every time you replace a file, contact us.' ),
+			'target exists'      => array( 20, 'The target file already exists in this directory. Please try another name / directory', 'This error is shown because you are moving the image to another folder that already has this file.' ),
 			'destination fail'   => array( 21, 'Something went wrong while writing the file or directory', null ),
 			'copy failed'        => array( 22, 'Copying replacement file to destination failed', null ),
 			'update post'        => array( 23, 'Error updating WordPress post in the database', null ),
 			'directory security' => array( 24, 'Specified directory is outside the upload directory. This is not allowed for security reasons', null ),
 			'directory notexist' => array( 25, 'Specified new directory does not exist. Path must be a relative path from the upload directory and exist', null ),
-			'download failed'    => array( 31, 'Replacement Image could not be downloaded or does not exist', null ),
-			'unknown code'       => array( 99, 'An unknown error has occured', null ),
-			'zero'               => array( 0, 'An unknown error has occured', null ),
-			'null'               => array( null, 'An unknown error has occured', null ),
+			'download failed'    => array( 31, 'The replacement image could not be downloaded or does not exist.', null ),
+			'unknown code'       => array( 99, 'An unknown error has occurred.', null ),
+			'zero'               => array( 0, 'An unknown error has occurred.', null ),
+			'null'               => array( null, 'An unknown error has occurred.', null ),
 		);
 	}
 
@@ -233,7 +233,7 @@ class ViewControllerTest extends WP_UnitTestCase {
 	 * ERROR_KEY (9) is documented in the class table as "remove-background
 	 * download key missing", but viewError() has no case for it, so
 	 * RemoveBackGroundViewController::loadPost() with an empty key shows the
-	 * generic "An unknown error has occured" message. ERROR_KEY should get
+	 * generic "An unknown error has occurred." message. ERROR_KEY should get
 	 * its own message (the key of the processed image is missing, run the
 	 * preview again).
 	 *
@@ -246,7 +246,7 @@ class ViewControllerTest extends WP_UnitTestCase {
 		$exit = $this->error_exit( $controller, ViewController::ERROR_KEY );
 
 		$this->assertSame( 9, $exit->getCode() );
-		$this->assertSame( 'An unknown error has occured', $controller->getView()->errorMessage );
+		$this->assertSame( 'An unknown error has occurred.', $controller->getView()->errorMessage );
 		$this->assertObjectNotHasProperty( 'errorDescription', $controller->getView() );
 	}
 
@@ -298,8 +298,8 @@ class ViewControllerTest extends WP_UnitTestCase {
 
 		$this->error_exit( $controller, ViewController::ERROR_NONCE );
 
-		$this->assertSame( array( 'enable-media-replace' ), $this->domains['Fail to validate form nonce. Please try again'] );
-		$this->assertSame( array( 'enable-media-replace' ), $this->domains['This can happen when the window is open for a long time and/or there has been a timeout.  You can go back to previous screen and try again. If this happens each time when replacing, contact us'] );
+		$this->assertSame( array( 'enable-media-replace' ), $this->domains['The form could not be validated (nonce). Please try again.'] );
+		$this->assertSame( array( 'enable-media-replace' ), $this->domains['This can happen when the window is open for a long time and/or there has been a timeout. You can go back to the previous screen and try again. If this happens every time you replace a file, contact us.'] );
 	}
 
 	/**
@@ -449,7 +449,7 @@ class ViewControllerTest extends WP_UnitTestCase {
 		);
 
 		$this->assertStringContainsString( "<div class='enable-media-replace emr-screen error-screen'>", $output );
-		$this->assertStringContainsString( '<h1>An error occured</h1>', $output );
+		$this->assertStringContainsString( '<h1>An error occurred</h1>', $output );
 		$this->assertStringContainsString( '<p class="error-message"> Bad &lt;b&gt;thing&lt;/b&gt; &amp; more </p>', $output );
 		$this->assertStringContainsString( '<p class="description">See &lt;script&gt;x&lt;/script&gt;</p>', $output );
 		$this->assertStringNotContainsString( '<b>thing</b>', $output );
@@ -491,7 +491,7 @@ class ViewControllerTest extends WP_UnitTestCase {
 			}
 		);
 
-		$message = strpos( $output, '<p class="error-message"> Fail to validate form nonce. Please try again </p>' );
+		$message = strpos( $output, '<p class="error-message"> The form could not be validated (nonce). Please try again. </p>' );
 		$footer  = strpos( $output, '<div id="wpfooter" role="contentinfo">' );
 		$this->assertIsInt( $message );
 		$this->assertIsInt( $footer );

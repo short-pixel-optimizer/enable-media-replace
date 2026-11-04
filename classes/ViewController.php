@@ -37,7 +37,7 @@ use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
  * | 20-25| ERROR_TARGET_EXISTS ... ERROR_DIRECTORY_NOTEXIST | same values as ReplaceController's constants |
  * | 31   | ERROR_DOWNLOAD_FAILED    | remove-background result could not be downloaded     |
  *
- * Any other code (including null) shows "An unknown error has occured".
+ * Any other code (including null) shows "An unknown error has occurred.".
  */
 abstract class ViewController
 {
@@ -197,14 +197,14 @@ abstract class ViewController
 					 $message = __('Updating the WordPress attachment failed', 'enable-media-replace');
 					break;
 					case self::ERROR_SECURITY:
-					 $message = __('The file upload has been rejected for security reason. WordPress might not allow uploading this extension or filetype', 'enable-media-replace');
+					 $message = __('The file upload was rejected for security reasons. WordPress might not allow uploading this extension or file type.', 'enable-media-replace');
 					break;
 					case self::ERROR_UPLOAD_FAILED:
-					 $message = __('The upload from your browser seem to have failed', 'enable-media-replace');
+					 $message = __('The upload from your browser seems to have failed.', 'enable-media-replace');
 					break;
 					case self::ERROR_TARGET_EXISTS:
 					 $message = __('The target file already exists in this directory. Please try another name / directory', 'enable-media-replace');
-					 $description = __('This error is shown because you try to move the image to another folder, which already has this file', 'enable-media-replace');
+					 $description = __('This error is shown because you are moving the image to another folder that already has this file.', 'enable-media-replace');
 					break;
 					case self::ERROR_DESTINATION_FAIL:
 					 $message = __('Something went wrong while writing the file or directory', 'enable-media-replace');
@@ -230,17 +230,17 @@ abstract class ViewController
 					break;
 
 					case self::ERROR_NONCE:
-					 $message = __('Fail to validate form nonce. Please try again', 'enable-media-replace');
-					 $description = __('This can happen when the window is open for a long time and/or there has been a timeout.  You can go back to previous screen and try again. If this happens each time when replacing, contact us', 'enable-media-replace');
+					 $message = __('The form could not be validated (nonce). Please try again.', 'enable-media-replace');
+					 $description = __('This can happen when the window is open for a long time and/or there has been a timeout. You can go back to the previous screen and try again. If this happens every time you replace a file, contact us.', 'enable-media-replace');
 					break;
 
 					// Remove Background
 					case self::ERROR_DOWNLOAD_FAILED:
-						$message = __('Replacement Image could not be downloaded or does not exist', 'enable-media-replace');
+						$message = __('The replacement image could not be downloaded or does not exist.', 'enable-media-replace');
 					break;
 
 					default:
-					 $message = __('An unknown error has occured', 'enable-media-replace');
+					 $message = __('An unknown error has occurred.', 'enable-media-replace');
 					break;
 			 }
 

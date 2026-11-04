@@ -44,7 +44,7 @@ test.describe('Replace entry points', () => {
 		const edit = new EditAttachment(page);
 		await edit.goto(emr.seed.attachment_id);
 		await expect(edit.replaceBox).toBeVisible();
-		await expect(edit.replaceBox).toContainText('Replace Media');
+		await expect(edit.replaceBox).toContainText('Replace media');
 		// The thumbnails box only follows a replace.
 		await expect(edit.thumbnailsBox).toHaveCount(0);
 

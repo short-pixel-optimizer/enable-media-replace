@@ -26,11 +26,8 @@
  * (`#emr-change-key-toggle`, reveals `#emr-change-key-form`) and "Remove key"
  * (`#emr-remove-key`, asks for confirmation). Without one: the `#emr-new-api-key`
  * input (20 characters), "Activate" (`#emr-update-api-key`) and the sign-up link.
- * `#emr-apikey-notice` receives the result of a save or removal.
- *
- * @todo ApiKeyManager's answers ("You now have unlimited background removal", "unlock
- *       unlimited background removal") are shown unchanged on the upscale screen, where
- *       they describe the wrong feature. Word them per feature, or neutrally.
+ * `#emr-apikey-notice` receives the result of a save or removal; ApiKeyManager's
+ * answers name both background removal and image upscale.
  */
 namespace EnableMediaReplace;
 
@@ -51,7 +48,7 @@ $emr_has_api_key = $emr_key_manager->hasApiKey();
 $emr_signup_url  = 'https://shortpixel.com/free-sign-up?utm_source=plugin&utm_medium=emr&utm_campaign=' . ($emr_is_bulk ? 'emr_bulk' : 'emr_' . $emr_context);
 $emr_confirm     = $emr_is_bulk
 	? __('Remove the API key? Bulk Enhance will stop working until you add one.', 'enable-media-replace')
-	: __('Remove the API key? Background removal and upscale go back to the Free plan (10 images).', 'enable-media-replace');
+	: __('Remove the API key? Background removal and image upscale go back to the Free plan (10 images).', 'enable-media-replace');
 // Open by default only where nothing works without a key.
 $emr_open = (! $emr_has_api_key && $emr_is_bulk);
 
@@ -59,7 +56,7 @@ wp_enqueue_script('emr_shortpixel_account');
 ?>
 <details class="emr-sp-account emr-collapsible emr-sp-account-<?php echo esc_attr($emr_context); ?>" data-confirm-remove="<?php echo esc_attr($emr_confirm); ?>"<?php echo $emr_open ? ' open' : ''; ?>>
 	<summary>
-		<span class="emr-collapsible-title"><?php esc_html_e('ShortPixel Account', 'enable-media-replace'); ?></span>
+		<span class="emr-collapsible-title"><?php esc_html_e('ShortPixel account', 'enable-media-replace'); ?></span>
 		<?php if ($emr_has_api_key) : ?>
 			<span class="emr-sp-account-status emr-sp-account-connected"><span class="dashicons dashicons-yes" aria-hidden="true"></span><?php esc_html_e('Connected', 'enable-media-replace'); ?></span>
 			<span class="emr-sp-account-plan"><?php esc_html_e('Unlimited', 'enable-media-replace'); ?></span>
@@ -73,7 +70,7 @@ wp_enqueue_script('emr_shortpixel_account');
 
 	<div class="emr-collapsible-content emr-sp-account-body">
 		<?php if ($emr_has_api_key) : ?>
-			<p class="emr-sp-intro"><?php esc_html_e('Unlimited plan active. Background removal and upscale have no limit while your plan is active.', 'enable-media-replace'); ?></p>
+			<p class="emr-sp-intro"><?php esc_html_e('Unlimited plan active. Background removal and image upscale have no limit while your plan is active.', 'enable-media-replace'); ?></p>
 			<div class="emr-sp-key-card">
 				<div class="emr-sp-key-status">
 					<span class="emr-sp-status-dot"></span>
@@ -94,7 +91,7 @@ wp_enqueue_script('emr_shortpixel_account');
 				</div>
 			</div>
 		<?php else : ?>
-			<p class="emr-sp-intro"><?php esc_html_e('The Free plan includes 10 background removals and upscales. To remove the limit, add an API key from a ShortPixel Unlimited or Unlimited AI plan.', 'enable-media-replace'); ?></p>
+			<p class="emr-sp-intro"><?php esc_html_e('The Free plan includes 10 background removals and image upscales. To remove the limit, add an API key from a ShortPixel Unlimited or Unlimited AI plan.', 'enable-media-replace'); ?></p>
 			<div class="emr-sp-edit-form">
 				<label for="emr-new-api-key"><?php esc_html_e('API key', 'enable-media-replace'); ?></label>
 				<div class="emr-sp-edit-row">

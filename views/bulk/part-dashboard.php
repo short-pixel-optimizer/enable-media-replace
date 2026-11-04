@@ -42,7 +42,7 @@ $emr_icons = array(
 						<?php
 						printf(
 							/* translators: %1$s: width in pixels, %2$s: the largest upscale factor, for example 4×. */
-							esc_html__('Makes small JPEG and PNG images in your media library larger. Only images narrower than %1$s px are changed, and each is enlarged as far as its size allows (up to %2$s). Originals are backed up, so you can restore them anytime.', 'enable-media-replace'),
+							esc_html__('Makes small JPG and PNG images in your media library larger. Only images narrower than %1$s px are changed, and each is enlarged as far as its size allows (up to %2$s). Originals are backed up, so you can restore them anytime.', 'enable-media-replace'),
 							'<strong data-settings="upscale_threshold">' . esc_html(number_format_i18n($view->settings['upscale_threshold'])) . '</strong>',
 							/* translators: %d: upscale factor. */
 							esc_html(sprintf(__('%d×', 'enable-media-replace'), (int) $view->maxFactor))

@@ -35,10 +35,10 @@ $settings = $view->settings;
 		<div class="emr-bulk-option-block" data-operation-options="<?php echo esc_attr(BulkQueue::OPERATION_BACKGROUND); ?>">
 			<h3><?php esc_html_e('Background', 'enable-media-replace'); ?></h3>
 			<label class="emr-bulk-radio"><input type="radio" name="emr_bulk_bg_type" value="transparent" data-action="BackgroundTypeChanged" data-event="change" <?php checked('solid' !== $settings['bg_type']); ?>> <span><?php esc_html_e('Transparent', 'enable-media-replace'); ?></span></label>
-			<p class="description emr-bulk-indent"><?php esc_html_e('PNG images get a transparent background. JPEG images cannot be transparent, so they get a white one; their file names and URLs do not change.', 'enable-media-replace'); ?></p>
-			<label class="emr-bulk-radio"><input type="radio" name="emr_bulk_bg_type" value="solid" data-action="BackgroundTypeChanged" data-event="change" <?php checked('solid' === $settings['bg_type']); ?>> <span><?php esc_html_e('Solid color', 'enable-media-replace'); ?></span></label>
+			<p class="description emr-bulk-indent"><?php esc_html_e('PNG images get a transparent background. JPG images cannot be transparent, so they get a white one; their file names and URLs do not change.', 'enable-media-replace'); ?></p>
+			<label class="emr-bulk-radio"><input type="radio" name="emr_bulk_bg_type" value="solid" data-action="BackgroundTypeChanged" data-event="change" <?php checked('solid' === $settings['bg_type']); ?>> <span><?php esc_html_e('Solid background', 'enable-media-replace'); ?></span></label>
 			<div id="emr-bulk-bg-color-row" class="emr-bulk-color-row emr-bulk-indent" <?php echo ('solid' === $settings['bg_type']) ? '' : 'hidden'; ?>>
-				<label for="emr-bulk-bg-color"><?php esc_html_e('Color', 'enable-media-replace'); ?></label>
+				<label for="emr-bulk-bg-color"><?php esc_html_e('Background color', 'enable-media-replace'); ?></label>
 				<input type="color" id="emr-bulk-bg-color" value="<?php echo esc_attr($settings['bg_color']); ?>">
 				<label for="emr-bulk-bg-transparency"><?php esc_html_e('Opacity (%)', 'enable-media-replace'); ?></label>
 				<input type="number" id="emr-bulk-bg-transparency" min="0" max="100" value="<?php echo esc_attr($settings['bg_transparency']); ?>">

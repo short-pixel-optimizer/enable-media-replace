@@ -867,7 +867,7 @@ class UIHelperTest extends WP_UnitTestCase {
 
 		$this->assertStringContainsString( '<div class="overlay" id="overlay">', $html );
 		$this->assertStringContainsString( 'lds-spinner', $html );
-		$this->assertStringContainsString( '<h3>Removing background...</h3>', $html );
+		$this->assertStringContainsString( '<h3>Removing background…</h3>', $html );
 		$this->assertStringContainsString( "<span class='upload-title'>Preview</span>", $html );
 	}
 
@@ -876,7 +876,7 @@ class UIHelperTest extends WP_UnitTestCase {
 
 		$this->assertStringContainsString( '<div class="overlay" id="overlay">', $html );
 		$this->assertStringContainsString( 'lds-spinner', $html );
-		$this->assertStringContainsString( '<h3>Upscaling image...</h3>', $html );
+		$this->assertStringContainsString( '<h3>Upscaling image…</h3>', $html );
 		$this->assertStringNotContainsString( 'Removing background', $html );
 		$this->assertStringContainsString( "<span class='upload-title'>Preview</span>", $html );
 		$this->assertStringNotContainsString( "<span class='upload-title'>Current</span>", $html );
@@ -886,7 +886,7 @@ class UIHelperTest extends WP_UnitTestCase {
 		$html = UIHelper::getInstance()->getPlaceHolder( array( 'remove_bg_ui' => true, 'upscale_ui' => true ) );
 
 		$this->assertSame( 1, substr_count( $html, 'id="overlay"' ), 'One overlay.' );
-		$this->assertStringContainsString( '<h3>Upscaling image...</h3>', $html );
+		$this->assertStringContainsString( '<h3>Upscaling image…</h3>', $html );
 		$this->assertStringNotContainsString( 'Removing background', $html );
 	}
 
@@ -1243,7 +1243,7 @@ class UIHelperTest extends WP_UnitTestCase {
 
 		$notice = NoticeController::getInstance()->getNoticeByID( 'EMR001' );
 
-		$this->assertStringContainsString( 'New Beta Feature!', $notice->message );
-		$this->assertStringContainsString( 'remove the background', $notice->message );
+		$this->assertStringContainsString( 'New beta feature!', $notice->message );
+		$this->assertStringContainsString( 'remove the background of an image and upscale it', $notice->message );
 	}
 }

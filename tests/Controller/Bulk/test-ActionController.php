@@ -172,7 +172,7 @@ class BulkActionControllerTest extends WP_UnitTestCase {
 		$wide = new QueueItem( array( 'imageModel' => BulkImage::getById( $this->makeImageAttachment( 1300, 200 ) ) ) );
 		$this->assertTrue( $c->checkItem( $wide, 'remove_background' ) );
 		$this->assertFalse( $c->checkItem( $wide, 'scale_image' ) );
-		$this->assertStringContainsString( 'too wide', $wide->result()->message );
+		$this->assertSame( 'This image is too large to be upscaled.', $wide->result()->message );
 
 		$gifId = $this->makeImageAttachment( 300, 200 );
 		wp_update_post( array( 'ID' => $gifId, 'post_mime_type' => 'image/gif' ) );

@@ -76,7 +76,7 @@ test.describe('Upscale', () => {
 		await expect(original).toBeVisible();
 		await expect(original).toHaveAttribute('src', /\/emr-seed(-\d+x\d+)?\.jpg/);
 		await expect(screen.resultImage).toHaveCount(0);
-		await expect(screen.resultPreview).toContainText('Upscaling image...');
+		await expect(screen.resultPreview).toContainText('Upscaling image…');
 		await expect(screen.form.locator('input[name="ID"]')).toHaveValue(String(emr.seed.attachment_id));
 		await expect(screen.resultKey).toHaveValue('');
 		await expect(screen.replaceButton).toBeDisabled();
@@ -93,7 +93,7 @@ test.describe('Upscale', () => {
 		await expect(screen.badBackgroundLink).toHaveCount(0);
 
 		await expect(screen.account).toContainText('Free plan (10 images)');
-		await expect(screen.account).toHaveAttribute('data-confirm-remove', 'Remove the API key? Background removal and upscale go back to the Free plan (10 images).');
+		await expect(screen.account).toHaveAttribute('data-confirm-remove', 'Remove the API key? Background removal and image upscale go back to the Free plan (10 images).');
 		await expect(screen.apiKeySave).toHaveText('Activate');
 
 		expectOnlyKnownErrors(consoleErrors, KNOWN);
@@ -114,7 +114,7 @@ test.describe('Upscale', () => {
 		await expect(screen.factor(3)).toBeDisabled();
 		await expect(screen.factor(4)).toBeDisabled();
 		await expect(page.locator('input[name="upscale"]:checked')).toHaveCount(0);
-		await expect(screen.factorHelp).toHaveText('This image is too big to be upscaled.');
+		await expect(screen.factorHelp).toHaveText('This image is too large to be upscaled.');
 		await expect(screen.previewButton).toBeDisabled();
 
 		// Above the largest limit there is no entry point at all.

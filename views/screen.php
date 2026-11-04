@@ -102,7 +102,7 @@ $uiHelper = emr()->uiHelper();
 	</header>
 	<hr class="wp-header-end">
 
-	<div class='emr_drop_area' id='emr-drop-area'><h3><?php _e('Drop File', 'enable-media-replace'); ?></h3></div>
+	<div class='emr_drop_area' id='emr-drop-area'><h3><?php _e('Drop file', 'enable-media-replace'); ?></h3></div>
 
 	<?php
 
@@ -118,7 +118,7 @@ $uiHelper = emr()->uiHelper();
 
 <div class='editor-wrapper'>
     <section class='image_chooser wrapper'>
-      <div class='section-header'> <?php _e('Select Replacement Media', 'enable-media-replace'); ?></div>
+      <div class='section-header'> <?php _e('Select replacement media', 'enable-media-replace'); ?></div>
 
 <!--
 		<div id="message" class=""><strong><?php printf( esc_html__('NOTE: You are about to replace the media file "%s". There is no undo. Think about it!', "enable-media-replace"), $sourceFile->getFileName() ); ?></strong></div>
@@ -127,12 +127,12 @@ $uiHelper = emr()->uiHelper();
 		<input type="hidden" name="ID" value="<?php echo $attachment_id ?>" />
 
 		<p class='explainer'>
-			<?php printf(esc_html__('			You are about to replace %s in your media library. This will be %spermanent%s. %s You can click on the new image panel and select a file from your computer. You can also drag and drop a file into this window', 'enable-media-replace'), '<b class="underline" title="' . $sourceFile->getFullPath() . '">' . $sourceFile->getFileName()  . '</b>', '<b>','</b>', '<br>' );
+			<?php printf(esc_html__('You are about to replace %s in your media library. This will be %spermanent%s. %s You can click on the new image panel and select a file from your computer. You can also drag and drop a file into this window.', 'enable-media-replace'), '<b class="underline" title="' . $sourceFile->getFullPath() . '">' . $sourceFile->getFileName()  . '</b>', '<b>','</b>', '<br>' );
 			?>
 		</p>
 
     <p><?php printf(__('Maximum file size: <strong>%s</strong>','enable-media-replace'), size_format(wp_max_upload_size() ) ) ?></p>
-    <div class='form-error filesize'><p><?php printf(__('%s f %s exceeds the maximum upload size for this site.', 'enable-media-replace'), '<span class="fn">', '</span>'); ?></p>
+    <div class='form-error filesize'><p><?php printf(__('%s exceeds the maximum upload size for this site.', 'enable-media-replace'), '<span class="fn"></span>'); ?></p>
     </div>
 
     <div class='form-warning filetype'><p><?php printf(__('The replacement file does not have the same file type. This can lead to unexpected issues ( %s )', 'enable-media-replace'), '<span class="source_type"></span> - <span class="target_type"></span>'); ?>
@@ -179,7 +179,7 @@ $uiHelper = emr()->uiHelper();
 
 <div class='option-flex-wrapper'>
   <section class='replace_type wrapper'>
-    <div class='section-header'> <?php _e('Replacement Options', 'enable-media-replace'); ?></div>
+    <div class='section-header'> <?php _e('Replacement options', 'enable-media-replace'); ?></div>
 
           <?php
       // these are also used in externals, for checks.
@@ -246,11 +246,11 @@ $uiHelper = emr()->uiHelper();
           <ul>
             <li><label><input type='radio' <?php checked('1', $settings['timestamp_replace']) ?> name='timestamp_replace' value='1' /><?php printf(__('Replace the date with the current date %s(%s)%s', 'enable-media-replace'), "<span class='small'>", $attachment_now_date, "</span>") ; ?></label></li>
             <li><label><input type='radio' <?php checked('2', $settings['timestamp_replace']) ?> name='timestamp_replace' value='2'  /><?php printf(__('Keep the date %s(%s)%s', 'enable-media-replace'), "<span class='small'>", $attachment_current_date, "</span>"); ?></label></li>
-            <li><label><input type='radio' <?php checked('3', $settings['timestamp_replace']) ?> name='timestamp_replace' value='3' /><?php _e('Set a Custom Date', 'enable-media-replace'); ?></label></li>
+            <li><label><input type='radio' <?php checked('3', $settings['timestamp_replace']) ?> name='timestamp_replace' value='3' /><?php _e('Set a custom date', 'enable-media-replace'); ?></label></li>
           </ul>
           <div class='custom_date'>
 
-            <span class='field-title dashicons dashicons-calendar'><?php _e('Custom Date', 'enable-media-replace'); ?></span>
+            <span class='field-title dashicons dashicons-calendar'><?php _e('Custom date', 'enable-media-replace'); ?></span>
            <input type='text' name="custom_date" value="<?php echo $date->format(get_option('date_format')); ?>" id='emr_datepicker'
             class='emr_datepicker' />
 
@@ -280,12 +280,12 @@ $uiHelper = emr()->uiHelper();
          <div class='location_option'>
 					 <?php
 					 if (true === $view->is_movable): ?>
-           <label><input type="checkbox" name="new_location" value="1" <?php checked($settings['new_location'], 1); ?>  /> <?php _e('Place the newly uploaded file in this folder: ', 'enable-media-replace'); ?></label>
+           <label><input type="checkbox" name="new_location" value="1" <?php checked($settings['new_location'], 1); ?>  /> <?php _e('Place the newly uploaded file in this folder:', 'enable-media-replace'); ?> </label>
 					 <br>
             <?php echo $view->custom_basedir ?> <input type="text" name="location_dir" value="<?php echo esc_attr($subdir) ?>" />
 						<?php
 						else:
-								echo __('File is offloaded and can\'t be moved to other directory', 'enable-media-replace');
+								echo __('The file is offloaded and can\'t be moved to another directory.', 'enable-media-replace');
 						endif;
 					 ?>
           </div>

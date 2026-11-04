@@ -35,7 +35,7 @@ use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
 	<h3 class='title'><?php _e('Enable Media Replace', 'enable-media-replace'); ?></h3>
 
 	<div class='content'>
-		<h1><?php _e('An error occured', 'enable-media-replace'); ?></h1>
+		<h1><?php _e('An error occurred', 'enable-media-replace'); ?></h1>
 		<p class="error-message"> <?php echo esc_html($view->errorMessage); ?> </p>
 
 		<?php if (property_exists($view, 'errorDescription'))

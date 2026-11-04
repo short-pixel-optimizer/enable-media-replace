@@ -240,7 +240,7 @@ class Api {
 				$result = $this->getResponseObject();
 				$result->success      = false;
 				$result->plan_expired = true;
-				$result->message      = __( 'Your Unlimited plan is no longer active. Please renew at shortpixel.com/pricing or remove your API Key to use the Free plan.', 'enable-media-replace' );
+				$result->message      = __( 'Your Unlimited plan is no longer active. Please renew at shortpixel.com/pricing or remove your API key to use the Free plan.', 'enable-media-replace' );
 				return $result;
 			}
 			$data['key']     = $apiKey;
@@ -446,7 +446,7 @@ class Api {
 
 		if ($url === false)
 		{
-			 	$result->message = __('This file seems not available anymore. Please try again', 'enable-media-replace');
+			 	$result->message = __('This file does not seem to be available anymore. Please try again.', 'enable-media-replace');
 				return $result;
 		}
 

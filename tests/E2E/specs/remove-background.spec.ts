@@ -82,7 +82,7 @@ test.describe('Remove background', () => {
 		await screen.openAccount();
 		await screen.apiKeyInput.fill(KEY);
 		await screen.apiKeySave.click();
-		await expect(screen.apiKeyNotice).toHaveText('API Key saved and verified successfully. You now have unlimited background removal.');
+		await expect(screen.apiKeyNotice).toHaveText('API key saved and verified. You now have unlimited background removal and image upscale.');
 		await expect(screen.apiKeyNotice).toHaveClass(/notice-success/);
 		// The page reloads itself; the connected-key card replaces the form.
 		await expect(screen.maskedKey).toHaveText('E2EK************ABCD');
@@ -92,12 +92,12 @@ test.describe('Remove background', () => {
 
 		page.once('dialog', (dialog) => {
 			expect(dialog.type()).toBe('confirm');
-			expect(dialog.message()).toBe('Remove the API key? Background removal and upscale go back to the Free plan (10 images).');
+			expect(dialog.message()).toBe('Remove the API key? Background removal and image upscale go back to the Free plan (10 images).');
 			void dialog.accept();
 		});
 		await screen.openAccount();
 		await screen.removeKey.click();
-		await expect(screen.apiKeyNotice).toHaveText('API Key removed.');
+		await expect(screen.apiKeyNotice).toHaveText('API key removed.');
 		// Reloaded: the form for a new key is back.
 		await expect(screen.apiKeySave).toHaveText('Activate');
 		await expect(screen.maskedKey).toHaveCount(0);
@@ -114,21 +114,21 @@ test.describe('Remove background', () => {
 		await screen.openAccount();
 		await screen.apiKeyInput.fill(KEY);
 		await screen.apiKeySave.click();
-		await expect(screen.apiKeyNotice).toHaveText('The API Key is not correct. Please try again.');
+		await expect(screen.apiKeyNotice).toHaveText('The API key is not correct. Please try again.');
 		await expect(screen.apiKeyNotice).toHaveClass(/notice-error/);
 		await expect(screen.apiKeySave).toBeEnabled();
 		expect((await emr.getOption('emr_shortpixel_api_key')).exists).toBe(false);
 
 		await emr.mock({ apiStatusCode: 2, unlimited: 'false' });
 		await screen.apiKeySave.click();
-		await expect(screen.apiKeyNotice).toContainText('to the Unlimited or Unlimited AI plan to unlock unlimited background removal.');
+		await expect(screen.apiKeyNotice).toContainText('to the Unlimited or Unlimited AI plan to unlock unlimited background removal and image upscale.');
 		await expect(screen.apiKeyNotice.getByRole('link', { name: 'upgrade' })).toHaveAttribute('href', 'https://shortpixel.com/pricing');
 		expect((await emr.getOption('emr_shortpixel_api_key')).exists).toBe(false);
 
 		// A too-short key never reaches the API.
 		await screen.apiKeyInput.fill('SHORT');
 		await screen.apiKeySave.click();
-		await expect(screen.apiKeyNotice).toHaveText('The API Key must be exactly 20 characters.');
+		await expect(screen.apiKeyNotice).toHaveText('The API key must be exactly 20 characters.');
 		expect((await emr.mockRequests('api-status.php')).length).toBe(2);
 
 		expectOnlyKnownErrors(consoleErrors, KNOWN);
@@ -239,7 +239,7 @@ test.describe('Remove background', () => {
 		expect(answer.plan_expired).toBe(true);
 
 		await expect(screen.notice).toBeVisible();
-		await expect(screen.notice).toContainText('Your Unlimited plan is no longer active. Please renew at shortpixel.com/pricing or remove your API Key to use the Free plan.');
+		await expect(screen.notice).toContainText('Your Unlimited plan is no longer active. Please renew at shortpixel.com/pricing or remove your API key to use the Free plan.');
 		await expect(screen.notice.getByRole('link', { name: 'shortpixel.com/pricing' })).toHaveAttribute('href', 'https://shortpixel.com/pricing');
 		await expect(screen.resultImage).toHaveCount(0);
 		await expect(screen.replaceButton).toBeDisabled();

@@ -207,7 +207,7 @@ class ApiKeyManagerTest extends WP_UnitTestCase {
 	public function test_save_empty_key_returns_a_message_without_request() {
 		$result = $this->fresh()->saveAndVerify( '   ' );
 
-		$this->assertSame( array( 'success' => false, 'message' => 'Please enter an API Key.' ), $result );
+		$this->assertSame( array( 'success' => false, 'message' => 'Please enter an API key.' ), $result );
 		$this->assertSame( array(), $this->mock->getRequests() );
 		$this->assertFalse( get_option( self::OPTION ) );
 	}
@@ -218,7 +218,7 @@ class ApiKeyManagerTest extends WP_UnitTestCase {
 		foreach ( array( substr( self::VALID_KEY, 0, 19 ), self::VALID_KEY . 'x' ) as $key ) {
 			$result = $manager->saveAndVerify( $key );
 			$this->assertFalse( $result['success'] );
-			$this->assertSame( 'The API Key must be exactly 20 characters.', $result['message'] );
+			$this->assertSame( 'The API key must be exactly 20 characters.', $result['message'] );
 		}
 		$this->assertSame( array(), $this->mock->getRequests() );
 		$this->assertFalse( get_option( self::OPTION ) );
@@ -243,7 +243,7 @@ class ApiKeyManagerTest extends WP_UnitTestCase {
 		$this->assertSame(
 			array(
 				'success' => true,
-				'message' => 'API Key saved and verified successfully. You now have unlimited background removal.',
+				'message' => 'API key saved and verified. You now have unlimited background removal and image upscale.',
 			),
 			$result
 		);
@@ -278,7 +278,7 @@ class ApiKeyManagerTest extends WP_UnitTestCase {
 
 		$result = $manager->saveAndVerify( self::VALID_KEY );
 
-		$this->assertSame( array( 'success' => false, 'message' => 'The API Key is not correct. Please try again.' ), $result );
+		$this->assertSame( array( 'success' => false, 'message' => 'The API key is not correct. Please try again.' ), $result );
 		$this->assertSame( 'previousKEYpreviousK', get_option( self::OPTION ) );
 		$this->assertSame( 'previousKEYpreviousK', $manager->getApiKey() );
 	}
@@ -340,7 +340,7 @@ class ApiKeyManagerTest extends WP_UnitTestCase {
 		$this->assertSame(
 			array(
 				'success' => false,
-				'message' => 'API Key could not be validated. Please check your internet connection and try again.',
+				'message' => 'The API key could not be validated. Please check your internet connection and try again.',
 			),
 			$result
 		);
@@ -362,7 +362,7 @@ class ApiKeyManagerTest extends WP_UnitTestCase {
 		$result = $this->fresh()->saveAndVerify( self::VALID_KEY );
 
 		$this->assertFalse( $result['success'] );
-		$this->assertStringStartsWith( 'API Key could not be validated.', $result['message'] );
+		$this->assertStringStartsWith( 'The API key could not be validated.', $result['message'] );
 		$this->assertCount( 1, $this->mock->requestsTo( 'api-status.php' ) );
 		$this->assertFalse( get_option( self::OPTION ) );
 	}
@@ -382,7 +382,7 @@ class ApiKeyManagerTest extends WP_UnitTestCase {
 		$result = $this->fresh()->saveAndVerify( self::VALID_KEY );
 
 		$this->assertFalse( $result['success'] );
-		$this->assertStringStartsWith( 'API Key could not be validated.', $result['message'] );
+		$this->assertStringStartsWith( 'The API key could not be validated.', $result['message'] );
 	}
 
 	/*

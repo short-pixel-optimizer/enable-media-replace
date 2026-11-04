@@ -55,7 +55,7 @@ use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
 		<p><?php printf(esc_html__('Try the %sShortPixel Image Optimizer%s plugin!', 'enable-media-replace'), '<a href="https://wordpress.org/plugins/shortpixel-image-optimiser/" target="_blank">', '</a>'); ?></p>
 	<?php } ?>
 
-	<p><?php _e('You will be redirect to the image screen in a few seconds.', 'enable-media-replace');
+	<p><?php _e('You will be redirected to the image screen in a few seconds.', 'enable-media-replace');
 		printf(esc_html__('( %s ) or %s click here to continue %s', 'enable-media-replace'), '<span id="redirect_counter"></span>',
 		'<a id="redirect_url" href="' . esc_url( $view->postUrl ) .  '">', '</a>');
 	?>

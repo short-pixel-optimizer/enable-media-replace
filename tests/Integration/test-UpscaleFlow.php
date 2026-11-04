@@ -246,7 +246,7 @@ class UpscaleFlowTest extends EMR_AjaxTestCase {
 		$this->assertMatchesRegularExpression( '/<input id="upscale_2" type="radio" name="upscale" value="2"\s+checked=\'checked\'\s*>/', $output );
 		$this->assertMatchesRegularExpression( '/<input id="upscale_3" type="radio" name="upscale" value="3"\s*>/', $output );
 		$this->assertMatchesRegularExpression( '/<input id="upscale_4" type="radio" name="upscale" value="4"\s*>/', $output );
-		$this->assertStringContainsString( '<h3>Upscaling image...</h3>', $output );
+		$this->assertStringContainsString( '<h3>Upscaling image…</h3>', $output );
 		$this->assertStringNotContainsString( 'name="background_type"', $output );
 		$this->assertSame( array(), $this->api->getRequests(), 'Rendering the screen calls no API.' );
 	}

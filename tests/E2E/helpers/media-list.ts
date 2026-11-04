@@ -7,8 +7,8 @@
  *                   `.row-actions .media_replace a` ("Replace media", to the
  *                   replace screen, no nonce) and, when the background
  *                   feature is on and the user is not author restricted,
- *                   `.row-actions .remove_background a` ("Remove  background",
- *                   two spaces, with an `emr_prepare_remove` nonce).
+ *                   `.row-actions .remove_background a` ("Remove background",
+ *                   with an `emr_prepare_remove` nonce).
  *                   Row actions are visually hidden until the row is hovered
  *                   or focused; rowAction() hovers first.
  *
@@ -27,7 +27,7 @@
  *   - meta box `#emr-replace-box` ("Replace Media") with the "Upload a new
  *     file" button (to the replace screen) and, for removable images, the
  *     "Remove background" button;
- *   - meta box `#emr-showthumbs-box` ("Replaced Thumbnails Preview"), only
+ *   - meta box `#emr-showthumbs-box` ("Replaced thumbnails preview"), only
  *     on the redirect after a replace (`emr_replaced=1`).
  */
 import { expect, type Locator, type Page } from '@playwright/test';
@@ -120,7 +120,7 @@ export class EditAttachment {
 		return this.replaceBox.getByRole('link', { name: /^Upscale image/ });
 	}
 
-	/** "Replaced Thumbnails Preview", shown after a replace (emr_replaced=1). */
+	/** "Replaced thumbnails preview", shown after a replace (emr_replaced=1). */
 	get thumbnailsBox(): Locator {
 		return this.page.locator('#emr-showthumbs-box');
 	}

@@ -126,14 +126,14 @@ class ApiKeyManager
         if (empty($key)) {
             return [
                 'success' => false,
-                'message' => __('Please enter an API Key.', 'enable-media-replace'),
+                'message' => __('Please enter an API key.', 'enable-media-replace'),
             ];
         }
 
         if (strlen($key) !== 20) {
             return [
                 'success' => false,
-                'message' => __('The API Key must be exactly 20 characters.', 'enable-media-replace'),
+                'message' => __('The API key must be exactly 20 characters.', 'enable-media-replace'),
             ];
         }
 
@@ -147,7 +147,7 @@ class ApiKeyManager
             return [
                 'success' => false,
                 'message' => sprintf(
-                    __('Please <a href="%s" target="_blank" rel="noopener">upgrade</a> to the Unlimited or Unlimited AI plan to unlock unlimited background removal.', 'enable-media-replace'),
+                    __('Please <a href="%s" target="_blank" rel="noopener">upgrade</a> to the Unlimited or Unlimited AI plan to unlock unlimited background removal and image upscale.', 'enable-media-replace'),
                     'https://shortpixel.com/pricing'
                 ),
             ];
@@ -158,7 +158,7 @@ class ApiKeyManager
 
         return [
             'success' => true,
-            'message' => __('API Key saved and verified successfully. You now have unlimited background removal.', 'enable-media-replace'),
+            'message' => __('API key saved and verified. You now have unlimited background removal and image upscale.', 'enable-media-replace'),
         ];
     }
 
@@ -212,7 +212,7 @@ class ApiKeyManager
         $default = [
             'valid'     => false,
             'unlimited' => false,
-            'message'   => __('API Key could not be validated. Please check your internet connection and try again.', 'enable-media-replace'),
+            'message'   => __('The API key could not be validated. Please check your internet connection and try again.', 'enable-media-replace'),
         ];
 
         $body = [
@@ -247,7 +247,7 @@ class ApiKeyManager
         }
 
         if ($data->Status->Code != 2) {
-            $default['message'] = __('The API Key is not correct. Please try again.', 'enable-media-replace');
+            $default['message'] = __('The API key is not correct. Please try again.', 'enable-media-replace');
             return $default;
         }
 

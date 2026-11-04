@@ -120,7 +120,7 @@ test.describe('Smoke: remove-background screen', () => {
 		await screen.openAccount();
 		await screen.apiKeyInput.fill(key);
 		await screen.apiKeySave.click();
-		await expect(screen.apiKeyNotice).toContainText('API Key saved and verified successfully');
+		await expect(screen.apiKeyNotice).toContainText('API key saved and verified');
 
 		// The page reloads itself after a successful save; the connected-key
 		// card replaces the form.

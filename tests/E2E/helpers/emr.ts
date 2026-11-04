@@ -528,7 +528,7 @@ export class SuccessScreen {
 	}
 }
 
-/** views/error.php: "An error occured" plus the message and optional description. */
+/** views/error.php: "An error occurred" plus the message and optional description. */
 export class ErrorScreen {
 	constructor(readonly page: Page) {}
 
@@ -537,7 +537,7 @@ export class ErrorScreen {
 	}
 
 	get title(): Locator {
-		return this.root.getByRole('heading', { level: 1, name: 'An error occured' });
+		return this.root.getByRole('heading', { level: 1, name: 'An error occurred' });
 	}
 
 	get message(): Locator {
@@ -696,7 +696,7 @@ export class UpscaleScreen extends RemoveBackgroundScreen {
 		return this.page.locator(`input[name="upscale"][value="${value}"]`);
 	}
 
-	/** The help text under the radios: the explanation, or "This image is too big to be upscaled." */
+	/** The help text under the radios: the explanation, or "This image is too large to be upscaled." */
 	get factorHelp(): Locator {
 		return this.page.locator('.replace_type .howto');
 	}

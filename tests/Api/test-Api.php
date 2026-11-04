@@ -785,7 +785,7 @@ class ApiTest extends WP_UnitTestCase {
 
 		$this->assertFalse( $result->success );
 		$this->assertTrue( $result->plan_expired );
-		$this->assertSame( 'Your Unlimited plan is no longer active. Please renew at shortpixel.com/pricing or remove your API Key to use the Free plan.', $result->message );
+		$this->assertSame( 'Your Unlimited plan is no longer active. Please renew at shortpixel.com/pricing or remove your API key to use the Free plan.', $result->message );
 		$this->assertCount( 1, $this->mock->requestsTo( 'api-status.php' ) );
 		$this->assertCount( 0, $this->mock->requestsTo( 'reducer.php' ) );
 		$this->assertCount( 0, $this->mock->requestsTo( 'cleanup.php' ) );
@@ -995,7 +995,7 @@ class ApiTest extends WP_UnitTestCase {
 
 		$this->assertFalse( $result->success );
 		$this->assertNull( $result->image );
-		$this->assertSame( 'This file seems not available anymore. Please try again', $result->message );
+		$this->assertSame( 'This file does not seem to be available anymore. Please try again.', $result->message );
 		$this->assertSame( array(), $this->mock->getRequests() );
 	}
 

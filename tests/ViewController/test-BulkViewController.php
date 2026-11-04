@@ -233,7 +233,7 @@ class BulkViewControllerTest extends WP_UnitTestCase {
 		$this->assertMatchesRegularExpression( '/class="emr-bulk-step emr-bulk-step-summary"/', $html, 'A step after the current one is not active.' );
 		$this->assertStringContainsString( 'What do you want to do?', $html );
 		$this->assertStringContainsString( 'Opacity (%)', $html );
-		$this->assertStringContainsString( 'Solid color', $html );
+		$this->assertStringContainsString( 'Solid background', $html );
 		$this->assertStringNotContainsString( 'colour', strtolower( wp_strip_all_tags( $html ) ), 'US spelling on the page.' );
 		$this->assertStringContainsString( 'Keep going in the background if I close this page', $html );
 		$this->assertStringContainsString( 'Each image is enlarged 2×, 3× or 4×, whichever is the largest', $html );
@@ -283,7 +283,7 @@ class BulkViewControllerTest extends WP_UnitTestCase {
 
 		$this->assertMatchesRegularExpression( '/<details class="emr-sp-account[^>]* open>/', $html );
 		$this->assertStringContainsString( 'Not connected', $html );
-		$this->assertStringContainsString( 'The Free plan includes 10 background removals and upscales.', $html );
+		$this->assertStringContainsString( 'The Free plan includes 10 background removals and image upscales.', $html );
 		$this->assertStringContainsString( 'placeholder="Paste your API key"', $html );
 		$this->assertStringContainsString( 'utm_source=', BulkViewController::SIGNUP_URL );
 		// esc_url() writes & as &#038;, wp_kses() (the warning) normalises it to &amp;.

@@ -171,9 +171,9 @@ class ActionController
 			if (false === $image->exists()) {
 				$reason = __('The image file does not exist', 'enable-media-replace');
 			} elseif (false === $image->isSupportedType()) {
-				$reason = __('Only JPEG and PNG images can be processed', 'enable-media-replace');
+				$reason = __('Only JPG and PNG images can be processed.', 'enable-media-replace');
 			} elseif ('scale_image' === $action && 0 === $image->getUpscaleFactor()) {
-				$reason = __('The image is too wide to be upscaled', 'enable-media-replace');
+				$reason = __('This image is too large to be upscaled.', 'enable-media-replace');
 			}
 		}
 
