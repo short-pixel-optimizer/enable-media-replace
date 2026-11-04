@@ -228,6 +228,13 @@ export class BulkPage {
 	}
 
 	/** finished → dashboard (server finishBulk + the same self-reload). */
+	/** summary → Cancel (server finishBulk + the self-reload) → dashboard. */
+	async cancelSummary(emr: EmrSupport): Promise<void> {
+		await withSelfReload(this.page, () => this.panel('summary').locator('[data-action="FinishBulk"]').click());
+		await this.expectQueueClear(emr);
+		await this.expectPanel('dashboard');
+	}
+
 	async finish(emr: EmrSupport): Promise<void> {
 		await withSelfReload(this.page, () => this.panel('finished').locator('[data-action="FinishBulk"]').click());
 		await this.expectQueueClear(emr);

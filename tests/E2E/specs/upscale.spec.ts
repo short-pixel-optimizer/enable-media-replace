@@ -211,7 +211,7 @@ test.describe('Upscale', () => {
 
 		await expect(screen.notice).toBeVisible();
 		await expect(screen.notice).toContainText(
-			'Enable Media Replace: Quota exceeded. Please purchase the Unlimited or Unlimited AI plan and add your API key to continue upscaling images.',
+			'Enable Media Replace: The Free plan limit is reached. Add an API key from a ShortPixel Unlimited plan (shortpixel.com/pricing) to continue upscaling images.',
 		);
 		await expect(screen.resultImage).toHaveCount(0);
 		await expect(screen.replaceButton).toBeDisabled();

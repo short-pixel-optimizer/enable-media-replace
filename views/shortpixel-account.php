@@ -3,8 +3,9 @@
  * ShortPixel Account row: shows, saves, changes and removes the ShortPixel API key.
  *
  * One collapsible `<details>` row, the same on the bulk page and the single
- * remove background and upscale screens: "ShortPixel Account - ✓ Connected -
- * Unlimited" with a key, collapsed; without one "Not connected" and open on
+ * remove background and upscale screens: "ShortPixel account - ✓ Connected -
+ * Unlimited - N AI credits left" (or "Unlimited AI") with a key, collapsed,
+ * the AI credits in the body (views/ai-credits.php, ApiKeyManager::getAiCredits()); without one "Not connected" and open on
  * the bulk page (the bulk needs a key), "Free plan (10 images)" and collapsed
  * on the single screens (they work without one). A stored key is always on an
  * Unlimited plan: ApiKeyManager::saveAndVerify() refuses any other.
@@ -45,6 +46,7 @@ $emr_context     = (isset($emr_account_context) && in_array($emr_account_context
 $emr_is_bulk     = ('bulk' === $emr_context);
 $emr_key_manager = ApiKeyManager::getInstance();
 $emr_has_api_key = $emr_key_manager->hasApiKey();
+$emr_credits     = $emr_has_api_key ? $emr_key_manager->getAiCredits() : false;
 $emr_signup_url  = 'https://shortpixel.com/free-sign-up?utm_source=plugin&utm_medium=emr&utm_campaign=' . ($emr_is_bulk ? 'emr_bulk' : 'emr_' . $emr_context);
 $emr_confirm     = $emr_is_bulk
 	? __('Remove the API key? Bulk Enhance will stop working until you add one.', 'enable-media-replace')
@@ -59,7 +61,15 @@ wp_enqueue_script('emr_shortpixel_account');
 		<span class="emr-collapsible-title"><?php esc_html_e('ShortPixel account', 'enable-media-replace'); ?></span>
 		<?php if ($emr_has_api_key) : ?>
 			<span class="emr-sp-account-status emr-sp-account-connected"><span class="dashicons dashicons-yes" aria-hidden="true"></span><?php esc_html_e('Connected', 'enable-media-replace'); ?></span>
-			<span class="emr-sp-account-plan"><?php esc_html_e('Unlimited', 'enable-media-replace'); ?></span>
+			<?php if (is_array($emr_credits) && $emr_credits['unlimited']) : ?>
+				<span class="emr-sp-account-plan"><?php esc_html_e('Unlimited AI', 'enable-media-replace'); ?></span>
+			<?php else : ?>
+				<span class="emr-sp-account-plan"><?php esc_html_e('Unlimited', 'enable-media-replace'); ?></span>
+				<?php if (is_array($emr_credits)) : ?>
+					<?php /* translators: %s: AI credits left this month. */ ?>
+					<span class="emr-sp-account-credits"><?php echo esc_html(sprintf(_n('%s AI credit left', '%s AI credits left', $emr_credits['remaining'], 'enable-media-replace'), number_format_i18n($emr_credits['remaining']))); ?></span>
+				<?php endif; ?>
+			<?php endif; ?>
 		<?php elseif ($emr_is_bulk) : ?>
 			<span class="emr-sp-account-status emr-sp-account-disconnected"><?php esc_html_e('Not connected', 'enable-media-replace'); ?></span>
 		<?php else : ?>
@@ -70,7 +80,7 @@ wp_enqueue_script('emr_shortpixel_account');
 
 	<div class="emr-collapsible-content emr-sp-account-body">
 		<?php if ($emr_has_api_key) : ?>
-			<p class="emr-sp-intro"><?php esc_html_e('Unlimited plan active. Background removal and image upscale have no limit while your plan is active.', 'enable-media-replace'); ?></p>
+			<?php include __DIR__ . '/ai-credits.php'; ?>
 			<div class="emr-sp-key-card">
 				<div class="emr-sp-key-status">
 					<span class="emr-sp-status-dot"></span>
@@ -91,7 +101,7 @@ wp_enqueue_script('emr_shortpixel_account');
 				</div>
 			</div>
 		<?php else : ?>
-			<p class="emr-sp-intro"><?php esc_html_e('The Free plan includes 10 background removals and image upscales. To remove the limit, add an API key from a ShortPixel Unlimited or Unlimited AI plan.', 'enable-media-replace'); ?></p>
+			<p class="emr-sp-intro"><?php esc_html_e('The Free plan includes 10 background removals and image upscales. For more, add an API key from a ShortPixel Unlimited plan: it comes with monthly AI credits, and Unlimited AI has no limit.', 'enable-media-replace'); ?></p>
 			<div class="emr-sp-edit-form">
 				<label for="emr-new-api-key"><?php esc_html_e('API key', 'enable-media-replace'); ?></label>
 				<div class="emr-sp-edit-row">

@@ -340,7 +340,7 @@ class AjaxTest extends WP_Ajax_UnitTestCase {
 		);
 
 		$this->assertTrue( $response['success'] );
-		$this->assertSame( 'API key saved and verified. You now have unlimited background removal and image upscale.', $response['data']['message'] );
+		$this->assertSame( 'API key saved and verified. Bulk background removal and image upscale is unlocked.', $response['data']['message'] );
 		$this->assertSame( self::API_KEY, get_option( self::KEY_OPTION ) );
 		$requests = $this->mock->requestsTo( 'api-status.php' );
 		$this->assertCount( 1, $requests );

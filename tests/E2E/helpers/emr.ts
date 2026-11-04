@@ -87,6 +87,12 @@ export type MockKnobs = Partial<{
 	apiStatusCode: number | string;
 	apiStatusMessage: string;
 	unlimited: 'true' | 'false' | null;
+	/** api-status AIUnlimited; null leaves it out. */
+	aiUnlimited: boolean | null;
+	/** api-status CaptionsCallsQuota (AI credits per month); null leaves the AI credit fields out. */
+	captionsQuota: number | null;
+	/** api-status CaptionsCallsMade. */
+	captionsMade: number;
 	notices: Array<{ id: string; message: string; type?: string }> | string;
 	resultFixture: string;
 	downloadsFail: boolean;

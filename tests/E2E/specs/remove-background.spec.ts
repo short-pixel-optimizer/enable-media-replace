@@ -82,12 +82,13 @@ test.describe('Remove background', () => {
 		await screen.openAccount();
 		await screen.apiKeyInput.fill(KEY);
 		await screen.apiKeySave.click();
-		await expect(screen.apiKeyNotice).toHaveText('API key saved and verified. You now have unlimited background removal and image upscale.');
+		await expect(screen.apiKeyNotice).toHaveText('API key saved and verified. Bulk background removal and image upscale is unlocked.');
 		await expect(screen.apiKeyNotice).toHaveClass(/notice-success/);
 		// The page reloads itself; the connected-key card replaces the form.
 		await expect(screen.maskedKey).toHaveText('E2EK************ABCD');
 		await expect(screen.account).toContainText('Connected');
-		await expect(screen.account).toContainText('Unlimited plan active.');
+		await expect(screen.account).toContainText('1,000 AI credits left');
+		await expect(screen.account).toContainText('AI credits: 1,000 of 1,000 left this month');
 		expect((await emr.getOption<string>('emr_shortpixel_api_key')).value).toBe(KEY);
 
 		page.once('dialog', (dialog) => {
@@ -121,8 +122,8 @@ test.describe('Remove background', () => {
 
 		await emr.mock({ apiStatusCode: 2, unlimited: 'false' });
 		await screen.apiKeySave.click();
-		await expect(screen.apiKeyNotice).toContainText('to the Unlimited or Unlimited AI plan to unlock unlimited background removal and image upscale.');
-		await expect(screen.apiKeyNotice.getByRole('link', { name: 'upgrade' })).toHaveAttribute('href', 'https://shortpixel.com/pricing');
+		await expect(screen.apiKeyNotice).toContainText('to Unlimited or Unlimited AI to unlock background removal and image upscale with it.');
+		await expect(screen.apiKeyNotice.getByRole('link', { name: 'upgrade' })).toHaveAttribute('href', 'https://shortpixel.com/pricing?utm_source=plugin&utm_medium=emr&utm_campaign=emr_upgrade_unlimited');
 		expect((await emr.getOption('emr_shortpixel_api_key')).exists).toBe(false);
 
 		// A too-short key never reaches the API.
@@ -214,7 +215,7 @@ test.describe('Remove background', () => {
 
 		await expect(screen.notice).toBeVisible();
 		await expect(screen.notice).toContainText(
-			'Enable Media Replace: Quota exceeded. Please purchase the Unlimited or Unlimited AI plan and add your API key to continue removing backgrounds.',
+			'Enable Media Replace: The Free plan limit is reached. Add an API key from a ShortPixel Unlimited plan (shortpixel.com/pricing) to continue removing backgrounds.',
 		);
 		await expect(screen.resultImage).toHaveCount(0);
 		await expect(screen.resultError).toHaveCount(0);
@@ -233,6 +234,8 @@ test.describe('Remove background', () => {
 		const screen = new RemoveBackgroundScreen(page);
 		await screen.goto(emr.seed.attachment_id);
 		await expect(screen.maskedKey).toHaveText('E2EK************ABCD');
+		// The page load already asked api-status for the AI credits of the account row.
+		const statusCallsBefore = (await emr.mockRequests('api-status.php')).length;
 
 		const answer = await preview(page, screen);
 		expect(answer.success).toBe(false);
@@ -244,7 +247,7 @@ test.describe('Remove background', () => {
 		await expect(screen.resultImage).toHaveCount(0);
 		await expect(screen.replaceButton).toBeDisabled();
 
-		expect((await emr.mockRequests('api-status.php')).length).toBe(1);
+		expect((await emr.mockRequests('api-status.php')).length - statusCallsBefore, 'the preview checks the plan once').toBe(1);
 		expect(await emr.mockRequests('reducer.php')).toEqual([]);
 
 		expectOnlyKnownErrors(consoleErrors, KNOWN);

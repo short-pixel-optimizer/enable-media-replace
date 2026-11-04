@@ -98,6 +98,7 @@ class RemoveBackgroundViewControllerTest extends WP_UnitTestCase {
 
 		$this->blocked = array();
 		$this->mock    = MockEmrApi::register();
+		delete_transient( ApiKeyManager::CREDITS_TRANSIENT ); // AI credits of the account row, cached per key.
 		add_filter( 'pre_http_request', array( $this, 'fail_fast' ), 9999, 3 );
 
 		$this->admin_id = self::factory()->user->create( array( 'role' => 'administrator' ) );
@@ -106,6 +107,7 @@ class RemoveBackgroundViewControllerTest extends WP_UnitTestCase {
 
 	public function tear_down() {
 		remove_filter( 'pre_http_request', array( $this, 'fail_fast' ), 9999 );
+		delete_transient( ApiKeyManager::CREDITS_TRANSIENT );
 		MockEmrApi::unregister();
 		foreach ( $this->hooks as $hook ) {
 			remove_filter( $hook[0], $hook[1], $hook[2] );
@@ -436,7 +438,8 @@ class RemoveBackgroundViewControllerTest extends WP_UnitTestCase {
 		$this->assertStringContainsString( 'id="emr-remove-key"', $output );
 		$this->assertStringContainsString( '>Remove key<', $output );
 		$this->assertStringContainsString( '>Change key<', $output );
-		$this->assertStringContainsString( 'Unlimited plan active.', $output );
+		$this->assertStringContainsString( 'AI credits: <strong>1,000</strong> of 1,000 left this month', $output );
+		$this->assertStringContainsString( 'Buy Unlimited AI credits</span></a>', $output );
 		$this->assertStringNotContainsString( 'Enter your 20-character API Key', $output );
 	}
 

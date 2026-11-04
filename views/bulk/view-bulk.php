@@ -4,7 +4,7 @@
  *
  * Loaded by BulkViewController::load() through ViewController::loadView().
  * Variables in scope: $controller (BulkViewController) and $view (stdClass):
- * stats (startup data), settings, hasKey, logs, logHeaders, currentOperation,
+ * stats (startup data), settings, hasKey, aiCredits (ApiKeyManager::getAiCredits()), logs, logHeaders, currentOperation,
  * customOperation, displayOperation (the operation, or 'restore' during a
  * restore), errorLog, factors, factorList, maxFactor, maxThreshold,
  * signupUrl, backupPath, operations (per operation: available, reason,

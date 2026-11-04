@@ -636,7 +636,22 @@ class EmrBulkScreen {
 		}
 	}
 
+	/**
+	 * Shows the summary warning when the queue holds more images than the AI
+	 * credits left (`data-ai-remaining`, Unlimited plans without Unlimited AI).
+	 */
+	CheckCredits() {
+		var self = this;
+		var total = document.querySelector('[data-check-media-total]');
+		var count = total ? self.ParseNumber(total.textContent) : 0;
+		document.querySelectorAll('[data-ai-remaining]').forEach(function (warning) {
+			var remaining = self.ParseNumber(warning.getAttribute('data-ai-remaining'));
+			warning.hidden = ! (! isNaN(count) && ! isNaN(remaining) && count > remaining);
+		});
+	}
+
 	CheckPanelData() {
+		this.CheckCredits();
 		var self = this;
 		document.querySelectorAll('[data-control]').forEach(function (element) {
 			var checker = document.querySelector('[' + element.getAttribute('data-control') + ']');

@@ -74,6 +74,7 @@ class BulkViewController extends ViewController
 		$this->view->stats    = $queue->getStartupData();
 		$this->view->settings = BulkController::getSettings();
 		$this->view->hasKey   = $keyManager->hasApiKey();
+		$this->view->aiCredits = $this->view->hasKey ? $keyManager->getAiCredits() : false;
 		$this->view->logs     = $this->getLogs();
 		$this->view->logHeaders = array(__('Operation', 'enable-media-replace'), __('Images', 'enable-media-replace'), __('Errors', 'enable-media-replace'), __('Date', 'enable-media-replace'));
 		$this->view->currentOperation = $queue->getQueue()->getOperation();

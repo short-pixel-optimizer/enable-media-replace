@@ -963,6 +963,23 @@ class UIHelper
 	}
 
 	/**
+	 * The "Buy Unlimited AI credits" button of ShortPixel Image Optimizer's bulk
+	 * summary, reused everywhere EMR suggests Unlimited AI: the same label, the
+	 * ShortPixel icon (img/icons/shortpixel.svg) and the `button button-primary
+	 * unlimited` classes (styles: scss/_shortpixel-account.scss). Links to
+	 * ApiKeyManager::UPGRADE_AI_URL in a new tab.
+	 *
+	 * @return string Escaped HTML.
+	 */
+	public function getUpgradeAiButton()
+	{
+		return '<a class="button button-primary unlimited emr-ai-upgrade" href="' . esc_url(ApiKeyManager::UPGRADE_AI_URL) . '" target="_blank" rel="noopener">'
+			. '<img class="icon" src="' . esc_url(plugins_url('img/icons/shortpixel.svg', EMR_ROOT_FILE)) . '" width="30" height="30" alt="">'
+			. '<span>' . esc_html__('Buy Unlimited AI credits', 'enable-media-replace') . '</span>'
+			. '</a>';
+	}
+
+	/**
 	 * Returns the "Removing background…" overlay with its CSS spinner.
 	 *
 	 * @return string HTML.

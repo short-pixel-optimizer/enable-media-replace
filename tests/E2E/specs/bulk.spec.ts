@@ -68,6 +68,9 @@ test.describe('Bulk page: upscale', () => {
 
 		// The summary counts the three images narrower than 1200 px, not the wide one.
 		await expect(bulk.stat('total')).toHaveText('3');
+		// 1000 AI credits left (the mock's default): no shortage warning.
+		await expect(bulk.panel('summary').locator('.emr-bulk-credits')).toContainText('AI credits: 1,000 of 1,000 left this month');
+		await expect(bulk.panel('summary').locator('.emr-bulk-credits-warning')).toBeHidden();
 		await bulk.startBulk();
 		await bulk.driveToFinish(emr);
 
@@ -99,6 +102,40 @@ test.describe('Bulk page: upscale', () => {
 		}
 		await bulk.finish(emr);
 		await expect(bulk.restoreButton('upscale')).toHaveCount(0);
+	});
+
+	test('the summary warns when the bulk has more images than the AI credits left, and Start stays enabled', async ({ page, emr }) => {
+		await seedLibrary(emr);
+		await emr.mock({ captionsMade: 998 }); // 2 AI credits left, 3 images queued
+
+		const bulk = new BulkPage(page);
+		await bulk.goto();
+		await expect(bulk.panel('dashboard').locator('details.emr-sp-account > summary')).toContainText('2 AI credits left');
+		await bulk.startSelection('upscale');
+		await bulk.prepare();
+
+		await expect(bulk.stat('total')).toHaveText('3');
+		const warning = bulk.panel('summary').locator('.emr-bulk-credits-warning');
+		await expect(warning).toBeVisible();
+		await expect(warning).toContainText('This bulk has 3 image(s), but only 2 AI credits are left this month.');
+		await expect(bulk.panel('summary').getByRole('link', { name: 'Buy Unlimited AI credits' })).toHaveAttribute('href', /utm_campaign=emr_unlimited_ai/);
+		await expect(bulk.panel('summary').locator('[data-action="StartBulk"]')).toBeEnabled();
+		await bulk.cancelSummary(emr);
+	});
+
+	test('Unlimited AI: no credit count, no warning, the "Enjoy!" line', async ({ page, emr }) => {
+		await seedLibrary(emr);
+		await emr.mock({ aiUnlimited: true, captionsMade: 1000 });
+
+		const bulk = new BulkPage(page);
+		await bulk.goto();
+		await expect(bulk.panel('dashboard').locator('details.emr-sp-account > summary')).toContainText('Unlimited AI');
+		await bulk.startSelection('upscale');
+		await bulk.prepare();
+
+		await expect(bulk.panel('summary').locator('.emr-bulk-credits')).toContainText('you do not have to worry about AI credits. Enjoy!');
+		await expect(bulk.panel('summary').locator('.emr-bulk-credits-warning')).toHaveCount(0);
+		await bulk.cancelSummary(emr);
 	});
 
 	test('pause and resume during processing, stop confirms and finishes the bulk server-side', async ({ page, emr }) => {

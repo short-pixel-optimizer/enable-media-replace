@@ -57,6 +57,10 @@
  *   - apiStatusMessage (string): api-status `Status->Message`.
  *   - unlimited (string|null): api-status `Unlimited` ('true' / 'false');
  *     null leaves the property out.
+ *   - aiUnlimited (bool|string|null): api-status `AIUnlimited`; null leaves it out.
+ *   - captionsQuota (int|null) / captionsMade (int): api-status
+ *     `CaptionsCallsQuota` / `CaptionsCallsMade` / `CaptionsCallsRemaining`
+ *     (the AI credits); null leaves the three out.
  *   - notices (array|string): notices.php body; an array is JSON-encoded,
  *     a string is sent verbatim.
  *   - resultFixture (string): file in tests/fixtures/ whose bytes the /f/
@@ -85,6 +89,9 @@ class MockEmrApi {
 		'apiStatusCode'    => 2,
 		'apiStatusMessage' => '',
 		'unlimited'        => 'true',
+		'aiUnlimited'      => false,
+		'captionsQuota'    => 1000,
+		'captionsMade'     => 0,
 		'notices'          => array(),
 		'resultFixture'    => 'test-image.jpg',
 	);
@@ -135,6 +142,15 @@ class MockEmrApi {
 
 	/** @var string|null See the class docblock. */
 	public $unlimited = 'true';
+
+	/** @var bool|string|null api-status `AIUnlimited`; null leaves it out. */
+	public $aiUnlimited = false;
+
+	/** @var int|null api-status `CaptionsCallsQuota` (AI credits per month); null leaves the AI credit fields out. */
+	public $captionsQuota = 1000;
+
+	/** @var int api-status `CaptionsCallsMade`; `CaptionsCallsRemaining` is quota minus made. */
+	public $captionsMade = 0;
 
 	/** @var array|string See the class docblock. */
 	public $notices = array();
@@ -382,6 +398,14 @@ class MockEmrApi {
 		);
 		if ( null !== $this->unlimited ) {
 			$body['Unlimited'] = $this->unlimited;
+		}
+		if ( null !== $this->aiUnlimited ) {
+			$body['AIUnlimited'] = $this->aiUnlimited;
+		}
+		if ( null !== $this->captionsQuota ) {
+			$body['CaptionsCallsQuota']     = $this->captionsQuota;
+			$body['CaptionsCallsMade']      = $this->captionsMade;
+			$body['CaptionsCallsRemaining'] = max( 0, $this->captionsQuota - $this->captionsMade );
 		}
 		return $body;
 	}

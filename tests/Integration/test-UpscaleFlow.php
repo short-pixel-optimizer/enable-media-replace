@@ -333,7 +333,7 @@ class UpscaleFlowTest extends EMR_AjaxTestCase {
 
 		$this->assertFalse( $result->success );
 		$this->assertTrue( $result->quota_exceeded );
-		$this->assertSame( 'Quota exceeded. Please purchase the Unlimited or Unlimited AI plan and add your API key to continue upscaling images.', $result->message );
+		$this->assertSame( 'The Free plan limit is reached. Add an API key from a ShortPixel Unlimited plan (shortpixel.com/pricing) to continue upscaling images.', $result->message );
 		$this->assertObjectNotHasProperty( 'key', $result );
 	}
 

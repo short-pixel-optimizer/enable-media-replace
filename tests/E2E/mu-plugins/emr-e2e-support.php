@@ -168,6 +168,7 @@ add_filter( 'emr/feature/remote_notice', 'emr_e2e_feature_remote_notice', 999 );
 function emr_e2e_apply_seed() {
 	delete_option( 'enable_media_replace' );
 	delete_option( 'emr_shortpixel_api_key' );
+	delete_transient( 'emr_ai_credits' ); // ApiKeyManager::CREDITS_TRANSIENT
 	delete_option( EMR_E2E_FEATURE_OPTION );
 	delete_option( 'emr_e2e_classic_editor' );
 
@@ -435,6 +436,7 @@ function emr_e2e_route_reset( WP_REST_Request $request ) {
 	// remove-background result transients (emr_<hash>).
 	delete_option( 'enable_media_replace' );
 	delete_option( 'emr_shortpixel_api_key' );
+	delete_transient( 'emr_ai_credits' ); // ApiKeyManager::CREDITS_TRANSIENT
 	delete_option( 'EnableMediaReplace-notices' );
 	delete_option( EMR_E2E_FEATURE_OPTION );
 	delete_transient( 'emr_remote_notice' );
@@ -628,6 +630,7 @@ function emr_e2e_route_attachment( WP_REST_Request $request ) {
 
 /** { key: '<20 chars>' } stores the API key option as is; { key: null } deletes it. */
 function emr_e2e_route_key( WP_REST_Request $request ) {
+	delete_transient( 'emr_ai_credits' ); // ApiKeyManager::CREDITS_TRANSIENT: the credits belong to the key.
 	$params = (array) $request->get_json_params();
 	$key    = array_key_exists( 'key', $params ) ? $params['key'] : null;
 	if ( null === $key || '' === $key ) {

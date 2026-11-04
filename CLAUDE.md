@@ -234,6 +234,15 @@ docs/                      - the documentation and test plan, the bulk design no
   `emr_returnurl`, `emr_unique_filename`, `enable_media_replace_title`.
 - **Remote API:** only `api.shortpixel.com` (reducer, cleanup, api-status,
   notices). Tests stub it at the `pre_http_request` boundary.
+- **AI credits:** background removal and upscale use one AI credit per image.
+  `ApiKeyManager::getAiCredits()` reads the `AIUnlimited` / `CaptionsCalls*`
+  fields of api-status (the same fields SPIO shows as AI credits), cached in
+  the `emr_ai_credits` transient (10 min, `emr/ai_credits/ttl`; every
+  api-status call refreshes it). `views/ai-credits.php` shows them in the
+  account row and on the bulk summary: Unlimited AI has no limit, other
+  Unlimited plans get a monthly amount and the "Upgrade to Unlimited AI"
+  button (`ApiKeyManager::UPGRADE_AI_URL`). Wording: an Unlimited key
+  *unlocks* the features; only Unlimited AI is unlimited.
 - **Bulk queue:** `Controller/Bulk/` is a port of SPIO's queue layer on the
   bundled ShortQ module and keeps SPIO's class and method names so fixes
   port one-to-one. One queue (`InstallHelper::QUEUE_SLUG` / `QUEUE_NAME`)

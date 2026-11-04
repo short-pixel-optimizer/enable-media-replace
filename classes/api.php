@@ -343,9 +343,16 @@ class Api {
 						// Friendly override + flag when the free-reducer quota is exhausted.
 						if ( ! empty( $result->message ) && stripos( $result->message, 'Quota exceeded' ) !== false ) {
 							$result->quota_exceeded = true;
-							$result->message       = ($upscale > 0)
-								? __( 'Quota exceeded. Please purchase the Unlimited or Unlimited AI plan and add your API key to continue upscaling images.', 'enable-media-replace' )
-								: __( 'Quota exceeded. Please purchase the Unlimited or Unlimited AI plan and add your API key to continue removing backgrounds.', 'enable-media-replace' );
+							// With a key the monthly AI credits ran out; without one the Free plan did.
+							// "shortpixel.com/pricing" stays in the text: js/remove_bg.js turns it into a link.
+							if ( ! empty( $apiKey ) ) {
+								ApiKeyManager::getInstance()->forgetAiCredits();
+								$result->message = __( 'You have no AI credits left this month. Upgrade to Unlimited AI at shortpixel.com/pricing for no limit, or wait until your credits renew.', 'enable-media-replace' );
+							} else {
+								$result->message = ($upscale > 0)
+									? __( 'The Free plan limit is reached. Add an API key from a ShortPixel Unlimited plan (shortpixel.com/pricing) to continue upscaling images.', 'enable-media-replace' )
+									: __( 'The Free plan limit is reached. Add an API key from a ShortPixel Unlimited plan (shortpixel.com/pricing) to continue removing backgrounds.', 'enable-media-replace' );
+							}
 						}
 					}
 				}

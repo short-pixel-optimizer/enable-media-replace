@@ -2,6 +2,9 @@
 /**
  * Bulk summary panel: what is queued, start or go back.
  *
+ * The AI credits box (views/ai-credits.php) follows, with a warning the
+ * screen script shows when the queue is larger than the credits left.
+ *
  * `[data-operation-detail]` is filled by the screen script with the chosen
  * options ("Transparent", "Solid color #ffffff, 100% opacity", "Images
  * narrower than 1200 px"); `[data-background-process]` follows the
@@ -38,6 +41,28 @@ if (! defined('ABSPATH')) {
 		<p class="emr-bulk-summary-keep-open" data-background-process="0"<?php echo $view->settings['background_process'] ? ' hidden' : ''; ?>><?php esc_html_e('Keep this page open while it runs.', 'enable-media-replace'); ?></p>
 		<p class="emr-bulk-summary-keep-open" data-background-process="1"<?php echo $view->settings['background_process'] ? '' : ' hidden'; ?>><?php esc_html_e('It is fastest with this page open; if you close it, the bulk keeps going in the background.', 'enable-media-replace'); ?></p>
 	</div>
+
+	<?php if ($view->hasKey) : ?>
+		<?php // The AI credits; the warning shows when the queue is larger than the credits left (js/bulk/emr-bulk-screen.js, CheckCredits()). ?>
+		<div class="emr-bulk-summary-box emr-bulk-credits" <?php echo $controller->operationOnly('background upscale'); ?>>
+			<?php
+			$emr_credits = $view->aiCredits;
+			include \emr()->plugin_path('views/ai-credits.php');
+			?>
+			<?php if (is_array($view->aiCredits) && ! $view->aiCredits['unlimited']) : ?>
+				<p class="emr-bulk-credits-warning" data-ai-remaining="<?php echo esc_attr($view->aiCredits['remaining']); ?>" hidden>
+					<?php
+					printf(
+						/* translators: %1$s: images in the bulk, %2$s: AI credits left. */
+						esc_html(_n('This bulk has %1$s image(s), but only %2$s AI credit is left this month. The images beyond that fail until your credits renew, unless you upgrade to Unlimited AI.', 'This bulk has %1$s image(s), but only %2$s AI credits are left this month. The images beyond that fail until your credits renew, unless you upgrade to Unlimited AI.', $view->aiCredits['remaining'], 'enable-media-replace')),
+						'<strong data-stats-media="total">0</strong>',
+						'<strong>' . esc_html(number_format_i18n($view->aiCredits['remaining'])) . '</strong>'
+					);
+					?>
+				</p>
+			<?php endif; ?>
+		</div>
+	<?php endif; ?>
 
 	<nav>
 		<button type="button" class="button" data-action="FinishBulk"><?php esc_html_e('Cancel', 'enable-media-replace'); ?></button>

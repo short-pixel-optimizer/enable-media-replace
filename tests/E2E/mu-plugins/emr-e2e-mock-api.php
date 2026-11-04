@@ -58,6 +58,10 @@
  *   apiStatusCode    int|string   api-status Status->Code (2 = valid key,
  *                                 -401 = wrong key).
  *   apiStatusMessage string       api-status Status->Message.
+ *   aiUnlimited      bool|null    api-status AIUnlimited; null leaves it out.
+ *   captionsQuota    int|null     api-status CaptionsCallsQuota (AI credits per month);
+ *                                 null leaves the three AI credit fields out.
+ *   captionsMade     int          api-status CaptionsCallsMade (Remaining = quota - made).
  *   unlimited        string|null  api-status Unlimited ('true' / 'false');
  *                                 null leaves the property out. 'false' with
  *                                 a stored key is the "plan expired" state:
@@ -113,6 +117,9 @@ class EMR_E2E_MockApi {
 		'apiStatusCode'    => 2,
 		'apiStatusMessage' => '',
 		'unlimited'        => 'true',
+		'aiUnlimited'      => false,
+		'captionsQuota'    => 1000,
+		'captionsMade'     => 0,
 		'notices'          => array(),
 		'resultFixture'    => 'test-image.jpg',
 		'downloadsFail'    => false,
@@ -164,6 +171,7 @@ class EMR_E2E_MockApi {
 		}
 		$merged = array_merge( self::knobs(), $knobs );
 		update_option( self::OPTION_KNOBS, $merged, false );
+		delete_transient( 'emr_ai_credits' ); // ApiKeyManager::CREDITS_TRANSIENT: changed answers take effect at once.
 		return $merged;
 	}
 
@@ -385,6 +393,14 @@ class EMR_E2E_MockApi {
 		);
 		if ( null !== $this->knobs['unlimited'] ) {
 			$body['Unlimited'] = $this->knobs['unlimited'];
+		}
+		if ( null !== $this->knobs['aiUnlimited'] ) {
+			$body['AIUnlimited'] = $this->knobs['aiUnlimited'];
+		}
+		if ( null !== $this->knobs['captionsQuota'] ) {
+			$body['CaptionsCallsQuota']     = (int) $this->knobs['captionsQuota'];
+			$body['CaptionsCallsMade']      = (int) $this->knobs['captionsMade'];
+			$body['CaptionsCallsRemaining'] = max( 0, (int) $this->knobs['captionsQuota'] - (int) $this->knobs['captionsMade'] );
 		}
 		return $body;
 	}

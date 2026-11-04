@@ -110,6 +110,7 @@ class UpscaleViewControllerTest extends WP_UnitTestCase {
 
 		$this->blocked = array();
 		$this->mock    = MockEmrApi::register();
+		delete_transient( ApiKeyManager::CREDITS_TRANSIENT ); // AI credits of the account row, cached per key.
 		add_filter( 'pre_http_request', array( $this, 'fail_fast' ), 9999, 3 );
 
 		$this->admin_id = self::factory()->user->create( array( 'role' => 'administrator' ) );
@@ -119,6 +120,7 @@ class UpscaleViewControllerTest extends WP_UnitTestCase {
 
 	public function tear_down() {
 		remove_filter( 'pre_http_request', array( $this, 'fail_fast' ), 9999 );
+		delete_transient( ApiKeyManager::CREDITS_TRANSIENT );
 		MockEmrApi::unregister();
 		foreach ( $this->hooks as $hook ) {
 			remove_filter( $hook[0], $hook[1], $hook[2] );
@@ -523,7 +525,9 @@ class UpscaleViewControllerTest extends WP_UnitTestCase {
 
 		list( , $output ) = $this->load( $id );
 
-		$this->assertStringContainsString( 'Unlimited plan active. Background removal and image upscale have no limit while your plan is active.', $output );
+		$this->assertStringContainsString( '<span class="emr-sp-account-credits">1,000 AI credits left</span>', $output );
+		$this->assertStringContainsString( 'Background removal and image upscale use one AI credit per image. The Unlimited AI plan has no limit.', $output );
+		$this->assertStringNotContainsString( 'have no limit while your plan is active', $output );
 		$this->assertStringContainsString( '<code class="emr-sp-key-value">' . esc_html( $manager->getMaskedKey() ) . '</code>', $output );
 		$this->assertStringNotContainsString( $key, $output );
 		$this->assertMatchesRegularExpression( '/<span class="emr-sp-account-status emr-sp-account-connected">.*Connected<\/span>/', $output );

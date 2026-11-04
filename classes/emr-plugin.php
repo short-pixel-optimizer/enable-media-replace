@@ -748,7 +748,7 @@ class EnableMediaReplacePlugin
                 'fatalErrorStopText' => __('Reload the page to continue. If this keeps happening, contact support.', 'enable-media-replace'),
                 'endBulk'         => __('This stops the bulk and takes you back to the start. Items already processed stay processed. Continue?', 'enable-media-replace'),
                 'processorActive' => __('The bulk is being processed in another window.', 'enable-media-replace'),
-                'noQuota'         => __('Your ShortPixel quota is exhausted. The bulk is paused.', 'enable-media-replace'),
+                'noQuota'         => __('You have no AI credits left this month. The bulk is paused.', 'enable-media-replace'),
                 'noKey'           => __('The bulk needs an API key on an Unlimited plan.', 'enable-media-replace'),
                 'restoreLabel'    => __('Restore originals', 'enable-media-replace'),
                 /* translators: summary detail of a background removal to a transparent background. */

@@ -275,6 +275,7 @@ class BulkController
 		$this->addLog($q);
 		$q->resetQueue();
 		CronController::getInstance()->unschedule();
+		\EnableMediaReplace\ApiKeyManager::getInstance()->forgetAiCredits(); // the run used AI credits
 	}
 
 	/**

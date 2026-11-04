@@ -556,7 +556,7 @@ class AjaxEndpointsTest extends EMR_AjaxTestCase {
 		$this->assertEquals(
 			(object) array(
 				'success' => true,
-				'data'    => (object) array( 'message' => 'API key saved and verified. You now have unlimited background removal and image upscale.' ),
+				'data'    => (object) array( 'message' => 'API key saved and verified. Bulk background removal and image upscale is unlocked.' ),
 			),
 			$response
 		);
@@ -576,7 +576,7 @@ class AjaxEndpointsTest extends EMR_AjaxTestCase {
 		$response = $this->post( 'emr_save_api_key', $this->keyPost( array( 'api_key' => self::API_KEY ) ) );
 
 		$this->assertFalse( $response->success );
-		$this->assertStringContainsString( '<a href="https://shortpixel.com/pricing"', $response->data->message );
+		$this->assertStringContainsString( '<a href="https://shortpixel.com/pricing?utm_source=plugin&#038;utm_medium=emr&#038;utm_campaign=emr_upgrade_unlimited"', $response->data->message );
 		$this->assertCount( 1, $this->api->requestsTo( 'api-status.php' ) );
 		$this->assertFalse( get_option( ApiKeyManager::OPTION_NAME ) );
 	}

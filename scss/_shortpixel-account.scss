@@ -76,7 +76,18 @@
 	.emr-sp-account-connected { color: $emr-green; font-weight: 600; }
 	.emr-sp-account-disconnected { color: #996800; font-weight: 600; }
 	.emr-sp-account-free,
-	.emr-sp-account-plan { color: #3c434a; }
+	.emr-sp-account-plan,
+	.emr-sp-account-credits { color: #3c434a; }
+
+	.emr-sp-account-credits {
+		&::before {
+			content: '\2014';
+			margin-inline-end: 8px;
+			color: #a7aaad;
+		}
+	}
+
+	.emr-ai-credits { margin-block-end: 14px; }
 
 	.emr-sp-intro { margin: 0 0 12px; font-size: 13px; color: $emr-text-muted; }
 
@@ -152,5 +163,91 @@
 
 		&[hidden] { display: none; }
 		p { margin: 6px 0; }
+	}
+}
+
+// AI credits (views/ai-credits.php): the account row and the bulk summary.
+.emr-ai-credits {
+	p { margin: 0 0 8px; }
+
+	&.emr-ai-credits-unlimited {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		color: $emr-green;
+		font-weight: 600;
+	}
+
+	&.emr-ai-credits-unknown { color: $emr-text-muted; }
+
+	.emr-ai-credits-count { font-size: 14px; color: #1d2327; }
+	.emr-ai-credits-help { font-size: 12px; color: $emr-text-muted; }
+
+	.emr-ai-credits-meter {
+		display: block;
+		width: 100%;
+		max-width: 360px;
+		height: 10px;
+		margin: 0 0 8px;
+		border: 0;
+		border-radius: 5px;
+		background: $blue_extralight;
+		overflow: hidden;
+		appearance: none;
+
+		&::-webkit-progress-bar { background: $blue_extralight; border-radius: 5px; }
+		&::-webkit-progress-value { background: $blue_default; border-radius: 5px; }
+		&::-moz-progress-bar { background: $blue_default; border-radius: 5px; }
+	}
+}
+
+// Bulk summary: more images queued than AI credits left.
+.emr-bulk-credits-warning {
+	margin: 12px 0 0;
+	padding: 10px 14px;
+	border-inline-start: 4px solid $emr-orange;
+	border-radius: 4px;
+	background: #fcf9e8;
+	font-size: 13px;
+
+	&[hidden] { display: none; }
+}
+
+// SPIO's "Buy Unlimited AI credits" button (shortpixel-bulk.scss `.button.unlimited`
+// and its bulk `.button` base), from UIHelper::getUpgradeAiButton().
+.button.button-primary.unlimited.emr-ai-upgrade {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	min-height: 0;
+	padding: 8px 16px;
+	background: $blue_background;
+	color: $blue_dark;
+	border: 1px solid $blue_default;
+	border-radius: 0;
+	box-shadow: none;
+	font-size: 14px;
+	font-weight: 700;
+	line-height: 1;
+	letter-spacing: .3px;
+	text-decoration: none;
+	transition: all .1s ease-in-out;
+
+	.icon {
+		width: 30px;
+		height: auto;
+	}
+
+	&:hover,
+	&:focus {
+		background: color.adjust($blue_default, $lightness: 10%);
+		border-color: $blue_default;
+		color: #fff;
+	}
+
+	&:focus-visible {
+		outline: 2px solid $blue_dark;
+		outline-offset: 2px;
 	}
 }

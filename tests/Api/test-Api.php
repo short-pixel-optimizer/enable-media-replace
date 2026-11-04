@@ -659,7 +659,7 @@ class ApiTest extends WP_UnitTestCase {
 
 		$this->assertFalse( $result->success );
 		$this->assertTrue( $result->quota_exceeded );
-		$this->assertSame( 'Quota exceeded. Please purchase the Unlimited or Unlimited AI plan and add your API key to continue upscaling images.', $result->message );
+		$this->assertSame( 'The Free plan limit is reached. Add an API key from a ShortPixel Unlimited plan (shortpixel.com/pricing) to continue upscaling images.', $result->message );
 	}
 
 	public function test_upscale_attempt_limit_message_names_upscaling_without_request() {
@@ -864,7 +864,23 @@ class ApiTest extends WP_UnitTestCase {
 
 		$this->assertFalse( $result->success );
 		$this->assertTrue( $result->quota_exceeded );
-		$this->assertSame( 'Quota exceeded. Please purchase the Unlimited or Unlimited AI plan and add your API key to continue removing backgrounds.', $result->message );
+		$this->assertSame( 'The Free plan limit is reached. Add an API key from a ShortPixel Unlimited plan (shortpixel.com/pricing) to continue removing backgrounds.', $result->message );
+	}
+
+	public function test_quota_exceeded_with_a_key_means_no_ai_credits_left_this_month() {
+		$this->use_key();
+		$this->mock->setKnob( 'quotaExceeded', true );
+		set_transient( ApiKeyManager::CREDITS_TRANSIENT, array( 'unlimited' => false, 'quota' => 1000, 'used' => 999, 'remaining' => 1, 'key' => md5( self::API_KEY ) ) );
+
+		$result = $this->run_request( $this->post() );
+
+		$this->assertFalse( $result->success );
+		$this->assertTrue( $result->quota_exceeded );
+		$this->assertSame( 'You have no AI credits left this month. Upgrade to Unlimited AI at shortpixel.com/pricing for no limit, or wait until your credits renew.', $result->message );
+		$this->assertStringNotContainsString( 'Free plan', $result->message );
+		$cached = get_transient( ApiKeyManager::CREDITS_TRANSIENT );
+		$this->assertNotSame( 1, is_array( $cached ) ? $cached['remaining'] : null, 'The stale count is not kept after running out.' );
+		delete_transient( ApiKeyManager::CREDITS_TRANSIENT );
 	}
 
 	public function test_object_response_message_is_used() {
@@ -882,7 +898,7 @@ class ApiTest extends WP_UnitTestCase {
 		$result = $this->run_request( $this->post() );
 
 		$this->assertTrue( $result->quota_exceeded );
-		$this->assertStringStartsWith( 'Quota exceeded. Please purchase', $result->message );
+		$this->assertStringStartsWith( 'The Free plan limit is reached.', $result->message );
 	}
 
 	public function test_malformed_body_fails_without_message() {

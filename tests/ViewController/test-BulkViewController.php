@@ -13,6 +13,7 @@
  */
 
 require_once dirname( __DIR__ ) . '/Controller/Bulk/BulkTestHelpers.php';
+require_once dirname( __DIR__ ) . '/Integration/Helpers/MockEmrApi.php';
 
 use EnableMediaReplace\Controller\Bulk\BackupController;
 use EnableMediaReplace\Controller\Bulk\BulkController;
@@ -48,6 +49,24 @@ class BulkViewControllerTest extends WP_UnitTestCase {
 	/** @var array */
 	private $savedViewsLoaded;
 
+	/** @var MockEmrApi api-status.php for the AI credits of the account row and the summary. */
+	private $mock;
+
+	/** @var mixed The AI credits transient before the test (restored in tear_down). */
+	private $savedCredits;
+
+	/** Blocks any HTTP request the mock does not answer. */
+	public function fail_fast( $preempt, $args, $url ) {
+		return ( false !== $preempt ) ? $preempt : new WP_Error( 'http_blocked', 'Blocked unmocked request to ' . $url );
+	}
+
+	/** A fresh ApiKeyManager, so a key written to the option in the test is read. */
+	private function fresh_key_manager() {
+		$prop = new ReflectionProperty( \EnableMediaReplace\ApiKeyManager::class, 'instance' );
+		$prop->setAccessible( true );
+		$prop->setValue( null, null );
+	}
+
 	/** ViewController::loadView() includes a template once per process; each test starts fresh. */
 	private function viewsLoaded() {
 		$prop = new ReflectionProperty( \EnableMediaReplace\ViewController::class, 'viewsLoaded' );
@@ -68,6 +87,11 @@ class BulkViewControllerTest extends WP_UnitTestCase {
 		$prop->setValue( null, null );
 		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
 		emr()->admin_scripts();
+		$this->savedCredits = get_transient( \EnableMediaReplace\ApiKeyManager::CREDITS_TRANSIENT );
+		delete_transient( \EnableMediaReplace\ApiKeyManager::CREDITS_TRANSIENT );
+		$this->mock = MockEmrApi::register();
+		add_filter( 'pre_http_request', array( $this, 'fail_fast' ), 9999, 3 );
+		$this->fresh_key_manager();
 	}
 
 	public function tear_down() {
@@ -78,6 +102,13 @@ class BulkViewControllerTest extends WP_UnitTestCase {
 		wp_dequeue_script( 'emr_bulk_processor' );
 		wp_dequeue_script( 'emr_bulk_screen' );
 		wp_dequeue_script( 'emr_shortpixel_account' );
+		remove_filter( 'pre_http_request', array( $this, 'fail_fast' ), 9999 );
+		MockEmrApi::unregister();
+		delete_transient( \EnableMediaReplace\ApiKeyManager::CREDITS_TRANSIENT );
+		if ( false !== $this->savedCredits ) {
+			set_transient( \EnableMediaReplace\ApiKeyManager::CREDITS_TRANSIENT, $this->savedCredits );
+		}
+		$this->fresh_key_manager();
 		$this->bulkTearDown();
 		parent::tear_down();
 	}
@@ -270,11 +301,53 @@ class BulkViewControllerTest extends WP_UnitTestCase {
 
 		$this->assertMatchesRegularExpression( '/<details class="emr-sp-account emr-collapsible emr-sp-account-bulk"[^>]*data-confirm-remove="Remove the API key\? Bulk Enhance will stop working until you add one\."\s*>/', $html, 'Collapsed: no open attribute.' );
 		$this->assertStringContainsString( 'Connected', $html );
-		$this->assertStringContainsString( 'Unlimited plan active.', $html );
+		// AI credits (mock: 1000 a month, none used, not Unlimited AI).
+		$this->assertStringContainsString( '<span class="emr-sp-account-credits">1,000 AI credits left</span>', $html );
+		$this->assertStringContainsString( 'AI credits: <strong>1,000</strong> of 1,000 left this month', $html );
+		$this->assertStringContainsString( '<progress class="emr-ai-credits-meter" max="1000" value="1000"></progress>', $html );
+		$this->assertStringContainsString( 'href="https://shortpixel.com/pricing?utm_source=plugin&#038;utm_medium=emr&#038;utm_campaign=emr_unlimited_ai"', $html );
+		// SPIO's "Buy Unlimited AI credits" button: its classes, the ShortPixel icon and the label.
+		$this->assertMatchesRegularExpression( '#<a class="button button-primary unlimited emr-ai-upgrade" href="[^"]+" target="_blank" rel="noopener"><img class="icon" src="[^"]*/img/icons/shortpixel\.svg" width="30" height="30" alt=""><span>Buy Unlimited AI credits</span></a>#', $html );
+		$this->assertStringNotContainsString( 'have no limit while your plan is active', $html, 'No "unlimited" promise for an Unlimited (non-AI) plan.' );
 		$this->assertStringContainsString( 'abcd************wxyz', $html );
 		$this->assertStringContainsString( '>Change key<', $html );
 		$this->assertStringContainsString( '>Remove key<', $html );
 		$this->assertTrue( wp_script_is( 'emr_shortpixel_account', 'enqueued' ) );
+	}
+
+	public function test_unlimited_ai_shows_no_credit_count_no_upgrade_button_and_no_summary_warning() {
+		update_option( 'emr_shortpixel_api_key', 'abcdEFGHIJKLMNOPwxyz' );
+		$this->mock->setKnob( 'aiUnlimited', true );
+		$html = $this->render();
+
+		$this->assertStringContainsString( '<span class="emr-sp-account-plan">Unlimited AI</span>', $html );
+		$this->assertStringContainsString( 'This site is on the ShortPixel Unlimited AI plan, so you do not have to worry about AI credits. Enjoy!', $html );
+		$this->assertStringNotContainsString( 'emr-ai-upgrade', $html );
+		$this->assertStringNotContainsString( 'emr-sp-account-credits', $html );
+		$this->assertStringNotContainsString( 'data-ai-remaining', $html );
+	}
+
+	public function test_the_summary_shows_the_credits_and_a_warning_for_more_images_than_credits() {
+		update_option( 'emr_shortpixel_api_key', 'abcdEFGHIJKLMNOPwxyz' );
+		$this->mock->setKnob( 'captionsMade', 997 );
+		$html = $this->render();
+
+		$this->assertMatchesRegularExpression( '/<div class="emr-bulk-summary-box emr-bulk-credits" data-operation-only="background upscale">/', $html );
+		$this->assertStringContainsString( 'AI credits: <strong>3</strong> of 1,000 left this month', $html );
+		$this->assertMatchesRegularExpression( '/<p class="emr-bulk-credits-warning" data-ai-remaining="3" hidden>/', $html, 'Hidden until the script compares it with the queue.' );
+		$this->assertStringContainsString( 'but only <strong>3</strong> AI credits are left this month', $html );
+		$this->assertCount( 1, $this->mock->requestsTo( 'api-status.php' ), 'One API call for the account row and the summary: the second read is cached.' );
+	}
+
+	public function test_credits_that_cannot_be_loaded_are_said_so() {
+		update_option( 'emr_shortpixel_api_key', 'abcdEFGHIJKLMNOPwxyz' );
+		$this->mock->setKnob( 'wpErrorMessage', 'down' );
+		$html = $this->render();
+
+		$this->assertStringContainsString( 'The AI credits of this API key could not be loaded right now.', $html );
+		$this->assertStringContainsString( '<span class="emr-sp-account-plan">Unlimited</span>', $html );
+		$this->assertStringNotContainsString( 'emr-sp-account-credits', $html );
+		$this->assertStringNotContainsString( 'data-ai-remaining', $html );
 	}
 
 	public function test_load_opens_the_account_row_with_the_sign_up_link_without_a_key() {
