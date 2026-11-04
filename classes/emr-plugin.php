@@ -297,10 +297,16 @@ class EnableMediaReplacePlugin
     }
 
 
-    /** Campaign of the promotional banner: id, first and last moment (US Eastern, both inclusive). */
-    const PROMO_ID    = 'black-friday-2026';
-    const PROMO_START = '2026-11-23 00:00:00';
-    const PROMO_END   = '2026-11-30 23:59:59';
+    /**
+     * Campaign of the promotional banner: id, first and last moment in UTC
+     * (both inclusive) and the day the "Offer ends" label prints. The end is
+     * 23:59:59 US Pacific (UTC-8 in late November) on November 30, so the
+     * offer closes at the end of that day on the US West Coast.
+     */
+    const PROMO_ID      = 'black-friday-2026';
+    const PROMO_START   = '2026-11-23 00:00:00';
+    const PROMO_END     = '2026-12-01 07:59:59';
+    const PROMO_ENDS_ON = '2026-11-30';
 
     /** @var \EnableMediaReplace\PromoBanner\PromoBanner|null The banner, built once by promoBanner(). */
     protected $promoBanner;
@@ -310,8 +316,9 @@ class EnableMediaReplacePlugin
      *
      * Shown on the Bulk Enhance page (screen `media_page_emr-bulk`) and on the
      * replace, remove background and upscale screens (isPromoBannerScreen()),
-     * from PROMO_START to PROMO_END in America/New_York, to users with
-     * `manage_options`; dismissible per user. Printed by views/bulk/view-bulk.php,
+     * from PROMO_START to PROMO_END (UTC), to users with `manage_options`;
+     * dismissible for the whole site (option `EnableMediaReplace-promo-banner`,
+     * deleted by InstallHelper::unInstallPlugin()). Printed by views/bulk/view-bulk.php,
      * views/screen.php, views/prepare-remove-background.php and
      * views/prepare-upscale.php right after their header bar. Hooks (from the module):
      * `emr/promo_banner/show`, `emr/promo_banner/capability`,
@@ -325,9 +332,9 @@ class EnableMediaReplacePlugin
         if (null === $this->promoBanner) {
             $this->promoBanner = new \EnableMediaReplace\PromoBanner\PromoBanner(array(
                 'id'         => self::PROMO_ID,
-                'start'      => self::PROMO_START,
-                'end'        => self::PROMO_END,
-                'timezone'   => 'America/New_York',
+                'start'      => strtotime(self::PROMO_START . ' UTC'),
+                'end'        => strtotime(self::PROMO_END . ' UTC'),
+                'ends_on'    => self::PROMO_ENDS_ON,
                 'url'        => 'https://shortpixel.com/pricing?utm_source=plugin&utm_medium=emr&utm_campaign=black_friday_2026',
                 'prefix'     => 'emr',
                 'assets_url' => plugins_url('build/shortpixel/promo-banner/assets/', EMR_ROOT_FILE),

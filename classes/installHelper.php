@@ -10,6 +10,7 @@ use EnableMediaReplace\Notices\NoticeController as Notices;
 use EnableMediaReplace\Controller\Bulk\BulkController;
 use EnableMediaReplace\Controller\Bulk\CronController;
 use EnableMediaReplace\Controller\Bulk\QueueController;
+use EnableMediaReplace\PromoBanner\PromoBanner;
 
 /**
  * Deactivation and uninstall routines.
@@ -47,7 +48,8 @@ class InstallHelper
 		 * the queue (its rows in the shared `shortpixel_queue` table and the
 		 * `shortqwp_emr` option; ShortQ drops the table itself only when no
 		 * rows of any plugin remain, so an active SPIO or RTA install keeps
-		 * its queue), the bulk logs option and the cached plan check.
+		 * its queue), the bulk logs option, the cached plan check and the
+		 * promo banner dismissals option (the module's own uninstall()).
 		 *
 		 * Registered from the root file as 'uninstallPlugin'; the declared name
 		 * differs only in case, which PHP resolves.
@@ -72,6 +74,7 @@ class InstallHelper
 			BulkController::uninstallPlugin();
 			delete_transient( QueueController::PLAN_TRANSIENT );
 			wp_clear_scheduled_hook( CronController::EVENT );
+			PromoBanner::uninstall();
 		}
 
 		/**

@@ -40,7 +40,7 @@ class PromoBannerAjaxTest extends WP_Ajax_UnitTestCase {
 		return json_decode( $this->_last_response, true );
 	}
 
-	public function test_a_valid_request_stores_the_dismissal_for_the_user() {
+	public function test_a_valid_request_stores_the_dismissal_for_the_whole_site() {
 		$this->_setRole( 'administrator' );
 		$this->assertFalse( $this->banner->isDismissed(), 'Precondition.' );
 		$_POST['nonce'] = wp_create_nonce( 'emrtest_promo_banner_dismiss' );
@@ -49,7 +49,22 @@ class PromoBannerAjaxTest extends WP_Ajax_UnitTestCase {
 
 		$this->assertTrue( $answer['success'] );
 		$this->assertTrue( $this->banner->isDismissed() );
-		$this->assertIsNumeric( get_user_meta( get_current_user_id(), 'shortpixel_promo_dismissed_black-friday-2026', true ) );
+		$stored = get_option( 'EnableMediaReplace-promo-banner' );
+		$this->assertIsArray( $stored );
+		$this->assertSame( array( 'black-friday-2026' ), array_keys( $stored ) );
+		$this->assertIsInt( $stored['black-friday-2026'] );
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
+		$this->assertTrue( $this->banner->isDismissed(), 'Hidden for every other user of the site too.' );
+	}
+
+	public function test_a_dismissal_keeps_only_the_current_campaign() {
+		$this->_setRole( 'administrator' );
+		update_option( 'EnableMediaReplace-promo-banner', array( 'black-friday-2025' => 1764000000 ) );
+		$_POST['nonce'] = wp_create_nonce( 'emrtest_promo_banner_dismiss' );
+
+		$this->call();
+
+		$this->assertSame( array( 'black-friday-2026' ), array_keys( get_option( 'EnableMediaReplace-promo-banner' ) ), 'The 2025 entry is pruned.' );
 	}
 
 	public function test_a_bad_nonce_stores_nothing() {

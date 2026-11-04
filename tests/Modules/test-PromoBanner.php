@@ -6,7 +6,7 @@
  *
  * The campaign window is tested against fixed moments; the other conditions
  * use EMR_TestPromoBanner, which pins "now" inside the window. Snapshots and
- * restores the current user, the current screen, $_GET, the dismissal meta,
+ * restores the current user, the current screen, $_GET, the dismissals option,
  * the enqueued assets and every filter it adds.
  *
  * @package Enable_Media_Replace
@@ -16,7 +16,7 @@ use EnableMediaReplace\PromoBanner\PromoBanner;
 
 /** PromoBanner with a fixed "now", so the conditions after the time window can be tested any day. */
 class EMR_TestPromoBanner extends PromoBanner {
-	/** @var DateTimeImmutable|null */
+	/** @var int|null Unix timestamp. */
 	public $now;
 
 	public function isInWindow( $now = null ) {
@@ -65,8 +65,9 @@ class PromoBannerTest extends WP_UnitTestCase {
 		$this->filters[] = array( $hook, $callback, $priority );
 	}
 
+	/** @return int The Unix timestamp of a 'Y-m-d H:i:s' moment in UTC. */
 	private function utc( $time ) {
-		return new DateTimeImmutable( $time, new DateTimeZone( 'UTC' ) );
+		return strtotime( $time . ' UTC' );
 	}
 
 	/** A banner shown on the `upload` screen, with "now" inside the default window. */
@@ -83,35 +84,47 @@ class PromoBannerTest extends WP_UnitTestCase {
 	}
 
 	/* ------------------------------------------------------------------
-	 * Time window: 23 to 30 November 2026, US Eastern (EST = UTC-5 that week)
+	 * Time window: Unix timestamps, so UTC. The default campaign runs from
+	 * 23 November 2026 00:00 UTC to the last second of 30 November on the
+	 * US West Coast (UTC-8 after the DST change), 07:59:59 UTC on 1 December.
 	 * ------------------------------------------------------------------ */
 
-	public function test_the_window_starts_at_midnight_us_eastern_on_november_23() {
+	public function test_the_default_window_starts_at_midnight_utc_on_november_23() {
 		$banner = new PromoBanner();
 
-		$this->assertFalse( $banner->isInWindow( $this->utc( '2026-11-23 04:59:59' ) ), '23:59:59 EST on the 22nd.' );
-		$this->assertTrue( $banner->isInWindow( $this->utc( '2026-11-23 05:00:00' ) ), '00:00 EST on the 23rd.' );
+		$this->assertFalse( $banner->isInWindow( $this->utc( '2026-11-22 23:59:59' ) ) );
+		$this->assertTrue( $banner->isInWindow( $this->utc( '2026-11-23 00:00:00' ) ) );
 	}
 
-	public function test_the_window_ends_after_the_last_second_of_november_30_us_eastern() {
+	public function test_the_default_window_ends_after_the_last_second_of_november_30_us_pacific() {
 		$banner = new PromoBanner();
 
-		$this->assertTrue( $banner->isInWindow( $this->utc( '2026-12-01 04:59:59' ) ), '23:59:59 EST on the 30th, inclusive.' );
-		$this->assertFalse( $banner->isInWindow( $this->utc( '2026-12-01 05:00:00' ) ), '00:00 EST on 1 December.' );
+		$this->assertTrue( $banner->isInWindow( $this->utc( '2026-12-01 07:59:59' ) ), '23:59:59 PST on the 30th, inclusive.' );
+		$this->assertFalse( $banner->isInWindow( $this->utc( '2026-12-01 08:00:00' ) ), '00:00 PST on 1 December.' );
+		$this->assertSame( $this->utc( '2026-12-01 07:59:59' ), strtotime( '2026-11-30 23:59:59 America/Los_Angeles' ), 'The constant is that moment on the West Coast.' );
 	}
 
-	public function test_the_window_ignores_the_site_timezone_setting() {
+	public function test_the_window_is_the_configured_timestamps_whatever_the_site_timezone() {
 		$saved = get_option( 'timezone_string' );
 		update_option( 'timezone_string', 'Asia/Tokyo' );
-		$banner = new PromoBanner();
+		$banner = new PromoBanner( array( 'start' => 1700000000, 'end' => 1700000010 ) );
 
-		$this->assertFalse( $banner->isInWindow( $this->utc( '2026-11-22 20:00:00' ) ), 'Already the 23rd in Tokyo, still the 22nd in New York.' );
+		$this->assertFalse( $banner->isInWindow( 1699999999 ) );
+		$this->assertTrue( $banner->isInWindow( 1700000000 ) );
+		$this->assertTrue( $banner->isInWindow( 1700000010 ) );
+		$this->assertFalse( $banner->isInWindow( 1700000011 ) );
 		update_option( 'timezone_string', $saved );
 	}
 
-	public function test_a_bad_date_or_timezone_never_shows() {
-		$this->assertFalse( ( new PromoBanner( array( 'timezone' => 'Not/AZone' ) ) )->isInWindow( $this->utc( '2026-11-25 12:00:00' ) ) );
+	public function test_the_window_defaults_to_the_current_time() {
+		$this->assertTrue( ( new PromoBanner( array( 'start' => time() - 10, 'end' => time() + 10 ) ) )->isInWindow() );
+		$this->assertFalse( ( new PromoBanner( array( 'start' => time() + 10, 'end' => time() + 20 ) ) )->isInWindow() );
+	}
+
+	public function test_a_bad_start_or_end_never_shows() {
 		$this->assertFalse( ( new PromoBanner( array( 'start' => 'garbage' ) ) )->isInWindow( $this->utc( '2026-11-25 12:00:00' ) ) );
+		$this->assertFalse( ( new PromoBanner( array( 'end' => '2026-11-30 23:59:59' ) ) )->isInWindow( $this->utc( '2026-11-25 12:00:00' ) ), 'A date string is not a timestamp.' );
+		$this->assertFalse( ( new PromoBanner( array( 'start' => null, 'end' => null ) ) )->isInWindow( $this->utc( '2026-11-25 12:00:00' ) ) );
 	}
 
 	/* ------------------------------------------------------------------
@@ -150,15 +163,41 @@ class PromoBannerTest extends WP_UnitTestCase {
 		$this->assertTrue( $conditional->shouldShow(), 'The condition callable alone is enough.' );
 	}
 
-	public function test_a_dismissal_hides_it_and_is_shared_by_every_shortpixel_plugin() {
+	public function test_the_option_is_this_plugins_own_named_from_the_namespace_like_the_notices_option() {
+		$this->assertSame( 'EnableMediaReplace-promo-banner', PromoBanner::getOptionName() );
+		$prop = new ReflectionProperty( \EnableMediaReplace\Notices\NoticeController::class, 'notice_option' );
+		$prop->setAccessible( true );
+		$this->assertSame( 'EnableMediaReplace-notices', $prop->getValue( \EnableMediaReplace\Notices\NoticeController::getInstance() ), 'Same derivation as the notices module.' );
+	}
+
+	public function test_a_dismissal_of_this_campaign_hides_it_for_every_user_and_one_of_another_campaign_does_not() {
 		$banner = $this->banner();
-		$this->assertSame( 'shortpixel_promo_dismissed_black-friday-2026', $banner->getMetaKey(), 'No plugin prefix in the meta key.' );
 
-		update_user_meta( get_current_user_id(), $banner->getMetaKey(), time() );
+		update_option( PromoBanner::getOptionName(), array( 'black-friday-2025' => 1764000000 ) );
+		$this->assertFalse( $banner->isDismissed(), 'Last year\'s dismissal does not count.' );
+		$this->assertTrue( $banner->shouldShow() );
 
+		update_option( PromoBanner::getOptionName(), array( 'black-friday-2026' => 1764000000 ) );
 		$this->assertTrue( $banner->isDismissed() );
 		$this->assertFalse( $banner->shouldShow() );
-		$this->assertFalse( $this->banner( array( 'prefix' => 'spio' ) )->shouldShow(), 'Another plugin\'s copy honours it too.' );
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
+		$this->assertFalse( $banner->shouldShow(), 'Another administrator of the site does not see it either.' );
+
+		update_option( PromoBanner::getOptionName(), 1764000000 );
+		$this->assertFalse( $banner->isDismissed(), 'Not an array: ignored.' );
+	}
+
+	public function test_uninstall_deletes_the_dismissals_option_and_nothing_else() {
+		update_option( PromoBanner::getOptionName(), array( 'black-friday-2026' => 1764000000 ) );
+		update_option( 'ShortPixel-promo-banner', array( 'black-friday-2026' => 1764000002 ) );
+		$this->assertTrue( $this->banner()->isDismissed(), 'Sentinel: seeded.' );
+
+		PromoBanner::uninstall();
+
+		$this->assertFalse( $this->banner()->isDismissed() );
+		$this->assertFalse( get_option( PromoBanner::getOptionName() ) );
+		$this->assertSame( array( 'black-friday-2026' => 1764000002 ), get_option( 'ShortPixel-promo-banner' ), 'Another plugin\'s option is untouched.' );
+		delete_option( 'ShortPixel-promo-banner' );
 	}
 
 	public function test_the_no_banner_filter_switches_it_off() {
@@ -192,7 +231,7 @@ class PromoBannerTest extends WP_UnitTestCase {
 		$this->assertStringContainsString( '<a class="shortpixel-bf__btn" href="https://shortpixel.com/pricing?a=1&#038;b=2" target="_blank" rel="noopener">Claim Deal', $html );
 		$this->assertStringContainsString( '<strong>25% OFF</strong> any yearly plan for life', $html );
 		$this->assertStringContainsString( '<strong>2x</strong> One-Time Credits', $html );
-		$this->assertStringContainsString( 'Offer ends <strong>November 30, 2026</strong>', $html );
+		$this->assertStringContainsString( 'Offer ends <strong>November 30, 2026</strong>', $html, 'ends_on, not the UTC date of the end (1 December).' );
 		foreach ( array( 'robot.svg', 'forever.png', 'black-friday-sale.png' ) as $image ) {
 			$this->assertStringContainsString( 'src="https://example.org/assets/img/' . $image . '"', $html );
 		}
@@ -221,6 +260,14 @@ class PromoBannerTest extends WP_UnitTestCase {
 		remove_action( 'admin_notices', array( $banner, 'render' ) );
 		remove_action( 'wp_ajax_emrtest_promo_banner_dismiss', array( $banner, 'ajaxDismiss' ) );
 		remove_action( 'admin_enqueue_scripts', array( $banner, 'enqueue' ) );
+	}
+
+	public function test_the_end_label_defaults_to_the_utc_date_of_the_end_and_follows_the_site_language_not_its_timezone() {
+		$saved = get_option( 'timezone_string' );
+		update_option( 'timezone_string', 'Pacific/Kiritimati' ); // UTC+14: already 2 December there.
+		$this->assertStringContainsString( 'Offer ends <strong>December 1, 2026</strong>', $this->banner( array( 'ends_on' => '' ) )->getMarkup() );
+		$this->assertStringContainsString( 'Offer ends <strong>November 30, 2026</strong>', $this->banner()->getMarkup() );
+		update_option( 'timezone_string', $saved );
 	}
 
 	public function test_the_url_filter_changes_the_link() {
@@ -276,9 +323,9 @@ class PromoBannerTest extends WP_UnitTestCase {
 		$prop->setAccessible( true );
 		$args = $prop->getValue( $banner );
 
-		$this->assertSame( '2026-11-23 00:00:00', $args['start'] );
-		$this->assertSame( '2026-11-30 23:59:59', $args['end'] );
-		$this->assertSame( 'America/New_York', $args['timezone'] );
+		$this->assertSame( strtotime( '2026-11-23 00:00:00 UTC' ), $args['start'] );
+		$this->assertSame( strtotime( '2026-11-30 23:59:59 America/Los_Angeles' ), $args['end'], 'The end of 30 November on the US West Coast.' );
+		$this->assertSame( '2026-11-30', $args['ends_on'] );
 		$this->assertSame( array( 'media_page_emr-bulk' ), $args['screens'] );
 		$this->assertSame( 'manage_options', $args['capability'] );
 		$this->assertFalse( $args['hook'], 'Printed by the views right after the header, not on admin_notices.' );

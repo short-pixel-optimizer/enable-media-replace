@@ -186,7 +186,7 @@ function emr_e2e_apply_seed() {
 	delete_option( EMR_E2E_FEATURE_OPTION );
 	delete_option( 'emr_e2e_classic_editor' );
 	delete_option( 'emr_e2e_promo_window' );
-	delete_metadata( 'user', 0, 'shortpixel_promo_dismissed_black-friday-2026', '', true );
+	delete_option( 'EnableMediaReplace-promo-banner' ); // PromoBanner::getOptionName()
 
 	$previous = (array) get_option( EMR_E2E_SEED_OPTION, array() );
 	if ( ! empty( $previous['post_id'] ) ) {

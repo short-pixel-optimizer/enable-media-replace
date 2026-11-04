@@ -21,9 +21,9 @@ if (! defined('ABSPATH')) {
  *
  *     $banner = new PromoBanner(array(
  *         'id'         => 'black-friday-2026',
- *         'start'      => '2026-11-23 00:00:00',
- *         'end'        => '2026-11-30 23:59:59',
- *         'timezone'   => 'America/New_York',
+ *         'start'      => strtotime('2026-11-23 00:00:00 UTC'),
+ *         'end'        => strtotime('2026-12-01 07:59:59 UTC'), // 23:59:59 US Pacific on the 30th
+ *         'ends_on'    => '2026-11-30',                         // the day the banner prints
  *         'url'        => 'https://shortpixel.com/...&utm_medium=emr',
  *         'prefix'     => 'emr',
  *         'assets_url' => plugins_url('build/shortpixel/promo-banner/assets/', PLUGIN_FILE),
@@ -32,14 +32,21 @@ if (! defined('ABSPATH')) {
  *     $banner->register();
  *
  * Shown when all of these hold (shouldShow()): the current time is inside
- * [start, end] in `timezone` (both inclusive, so an end of 23:59:59 covers the
- * whole last day; the server clock is read in UTC, the site's timezone setting
- * does not matter); the user has `capability` (default manage_options, filter
+ * [start, end], two Unix timestamps (UTC by definition, both inclusive; the
+ * site's timezone setting does not matter, and a campaign that ends at
+ * midnight in some place is expressed as that moment in UTC); the user has
+ * `capability` (default manage_options, filter
  * `shortpixel/promo_banner/capability`); the user has not dismissed this
  * campaign; the screen matches (`screens`: screen ids, and/or `condition`: a
- * callable returning bool); banners are not switched off (filter
- * `shortpixel/settings/no_banner` or the SHORTPIXEL_NO_BANNER constant, the
- * same switches as ShortPixel Image Optimizer's settings banner). The filter
+ * callable returning bool); banners are not switched off. Two switches do
+ * that: the filter `shortpixel/settings/no_banner`, which is per plugin (in a
+ * plugin's build its prefix is that plugin's, `emr/settings/no_banner` in
+ * Enable Media Replace, so a site that hooks ShortPixel Image Optimizer's
+ * filter silences that plugin's banners only), and the SHORTPIXEL_NO_BANNER
+ * constant, which the build leaves alone and therefore silences every
+ * ShortPixel plugin at once. The constant is compared loosely, as
+ * ShortPixel Image Optimizer's settings view compares it, so the `1` of the
+ * documented wp-config line works in every plugin alike. The filter
  * `shortpixel/promo_banner/show` has the last word; `shortpixel/promo_banner/in_window`
  * replaces only the time check (to preview a campaign before it starts). In a
  * plugin's build, `shortpixel/` in these hook names is that plugin's prefix.
@@ -56,15 +63,22 @@ if (! defined('ABSPATH')) {
  * enqueued only when the banner shows. No inline script or style.
  *
  * Dismissal: the close button posts to `wp_ajax_<prefix>_promo_banner_dismiss`
- * (nonce action of the same name); the user meta
- * `shortpixel_promo_dismissed_<id>` stores the time. The meta key has no
- * plugin prefix on purpose: dismissing the campaign in one ShortPixel plugin
- * hides it in the others too.
+ * (nonce action of the same name). A dismissal is per site, not per user: once
+ * one user closes the campaign, nobody on that site sees it again. It is
+ * stored in one option per plugin, an array of campaign id to dismissal time,
+ * named like the notices module's option from the first segment of this
+ * class's namespace (`ShortPixel-promo-banner` in this source,
+ * `EnableMediaReplace-promo-banner` in EMR's build), so each plugin's copy owns
+ * its option for every campaign it ever runs. A dismissal writes only the
+ * current campaign, so past ones are pruned at that moment, and uninstall()
+ * deletes the option; the plugin calls it from its own uninstall routine, as
+ * it calls NoticeController::resetNotices(). Dismissing in one ShortPixel
+ * plugin does not hide the campaign in another.
  */
 class PromoBanner
 {
-	/** User meta prefix of a dismissed campaign (+ the campaign id). Shared by every ShortPixel plugin. */
-	const META_PREFIX = 'shortpixel_promo_dismissed_';
+	/** Suffix of the dismissals option; the prefix is the plugin's namespace (getOptionName()). */
+	const OPTION_SUFFIX = '-promo-banner';
 
 	/** @var array The configuration, see the class docblock and $defaults in the constructor. */
 	protected $args;
@@ -72,9 +86,10 @@ class PromoBanner
 	/**
 	 * @param array $args {
 	 *     @type string        $id         Campaign id: the dismissal key. Default 'black-friday-2026'.
-	 *     @type string        $start      First moment shown, 'Y-m-d H:i:s' in $timezone.
-	 *     @type string        $end        Last moment shown (inclusive), 'Y-m-d H:i:s' in $timezone.
-	 *     @type string        $timezone   PHP timezone of start and end. Default 'America/New_York' (US Eastern).
+	 *     @type int           $start      First moment shown, a Unix timestamp (UTC).
+	 *     @type int           $end        Last moment shown (inclusive), a Unix timestamp (UTC).
+	 *     @type string        $ends_on    The day of the "Offer ends" label, 'Y-m-d'. Default: the UTC
+	 *                                     date of $end; set it when $end falls on the next UTC day.
 	 *     @type string        $url        The "Claim Deal" link.
 	 *     @type string        $prefix     Plugin prefix of the AJAX action and nonce, e.g. 'emr'.
 	 *     @type string        $assets_url URL of this module's assets/ directory, with a trailing slash.
@@ -92,9 +107,9 @@ class PromoBanner
 	{
 		$defaults   = array(
 			'id'         => 'black-friday-2026',
-			'start'      => '2026-11-23 00:00:00',
-			'end'        => '2026-11-30 23:59:59',
-			'timezone'   => 'America/New_York',
+			'start'      => gmmktime(0, 0, 0, 11, 23, 2026),
+			'end'        => gmmktime(7, 59, 59, 12, 1, 2026), // 23:59:59 US Pacific (UTC-8) on November 30.
+			'ends_on'    => '2026-11-30',
 			'url'        => 'https://shortpixel.com/pricing',
 			'prefix'     => 'shortpixel',
 			'assets_url' => '',
@@ -128,41 +143,56 @@ class PromoBanner
 		return sanitize_key($this->args['prefix']) . '_promo_banner_dismiss';
 	}
 
-	/** @return string The user meta key of this campaign's dismissal. */
-	public function getMetaKey()
+	/**
+	 * The option holding this plugin's dismissals, every campaign: the first
+	 * segment of the namespace and OPTION_SUFFIX, derived as the notices
+	 * module derives its option name.
+	 *
+	 * @return string
+	 */
+	public static function getOptionName()
 	{
-		return self::META_PREFIX . $this->args['id'];
+		$ns = __NAMESPACE__;
+		$ns = substr($ns, 0, strpos($ns, '\\')); // try to get first part of namespace
+		return $ns . self::OPTION_SUFFIX;
 	}
 
 	/**
-	 * Is $now inside [start, end] in the campaign's timezone? Both ends inclusive.
+	 * Deletes the dismissals option. For the plugin's uninstall routine, next
+	 * to NoticeController::resetNotices(); works on the option name directly
+	 * and does not need an instance.
 	 *
-	 * @param \DateTimeInterface|null $now Defaults to the current time.
+	 * @return void
+	 */
+	public static function uninstall()
+	{
+		delete_option(self::getOptionName());
+	}
+
+	/**
+	 * Is $now inside [start, end]? Both ends inclusive. Timestamps, so UTC.
+	 *
+	 * @param int|null $now Unix timestamp; defaults to the current time.
 	 * @return bool
 	 */
 	public function isInWindow($now = null)
 	{
-		try {
-			$zone  = new \DateTimeZone($this->args['timezone']);
-			$start = new \DateTimeImmutable($this->args['start'], $zone);
-			$end   = new \DateTimeImmutable($this->args['end'], $zone);
-			$now   = (null === $now) ? new \DateTimeImmutable('now', new \DateTimeZone('UTC')) : $now;
-		} catch (\Exception $e) {
+		if (! is_numeric($this->args['start']) || ! is_numeric($this->args['end'])) {
 			return false;
 		}
-		return ($now->getTimestamp() >= $start->getTimestamp() && $now->getTimestamp() <= $end->getTimestamp());
+		$now = (null === $now) ? time() : (int) $now;
+		return ($now >= (int) $this->args['start'] && $now <= (int) $this->args['end']);
 	}
 
 	/**
-	 * Has the user dismissed this campaign?
+	 * Has this campaign been dismissed on this site (by any user)?
 	 *
-	 * @param int|null $userId Defaults to the current user.
 	 * @return bool
 	 */
-	public function isDismissed($userId = null)
+	public function isDismissed()
 	{
-		$userId = (null === $userId) ? get_current_user_id() : (int) $userId;
-		return ($userId > 0 && '' !== (string) get_user_meta($userId, $this->getMetaKey(), true));
+		$dismissed = get_option(self::getOptionName(), false);
+		return (is_array($dismissed) && ! empty($dismissed[$this->args['id']]));
 	}
 
 	/** @return bool Whether the current screen is one of the configured ones. */
@@ -192,8 +222,8 @@ class PromoBanner
 			&& current_user_can($this->getCapability())
 			&& false === $this->isDismissed()
 			&& $this->isOnScreen()
-			&& true !== apply_filters('emr/settings/no_banner', false)
-			&& ! (defined('SHORTPIXEL_NO_BANNER') && true == constant('SHORTPIXEL_NO_BANNER'));
+			&& true !== apply_filters('emr/settings/no_banner', false) // this plugin only (prefix rewritten by the build)
+			&& ! (defined('SHORTPIXEL_NO_BANNER') && true == \SHORTPIXEL_NO_BANNER); // every ShortPixel plugin; loose like SPIO
 
 		return (bool) apply_filters('emr/promo_banner/show', $show, $this->args['id']);
 	}
@@ -226,19 +256,22 @@ class PromoBanner
 	}
 
 	/**
-	 * The "Offer ends" date: the end in the campaign's timezone, localized.
+	 * The "Offer ends" date: `ends_on` (else the UTC date of `end`), localized.
 	 *
 	 * @return string
 	 */
 	protected function getEndDate()
 	{
-		try {
-			$zone = new \DateTimeZone($this->args['timezone']);
-			$end  = new \DateTimeImmutable($this->args['end'], $zone);
-		} catch (\Exception $e) {
+		$day = (string) $this->args['ends_on'];
+		if ('' === $day && is_numeric($this->args['end'])) {
+			$day = gmdate('Y-m-d', (int) $this->args['end']);
+		}
+		$time = strtotime($day . ' 12:00:00 UTC');
+		if (false === $time) {
 			return '';
 		}
-		return function_exists('wp_date') ? wp_date('F j, Y', $end->getTimestamp(), $zone) : $end->format('F j, Y');
+		$utc = new \DateTimeZone('UTC');
+		return function_exists('wp_date') ? wp_date('F j, Y', $time, $utc) : gmdate('F j, Y', $time);
 	}
 
 	/**
@@ -291,7 +324,7 @@ class PromoBanner
 	}
 
 	/**
-	 * The close button's AJAX endpoint: stores the dismissal for the current user.
+	 * The close button's AJAX endpoint: stores the dismissal for the whole site.
 	 *
 	 * Answers JSON: success after the nonce and capability checks, an error
 	 * (403) otherwise.
@@ -304,7 +337,8 @@ class PromoBanner
 			wp_send_json_error(null, 403);
 			return;
 		}
-		update_user_meta(get_current_user_id(), $this->getMetaKey(), time());
+		// Only the current campaign: a dismissal prunes the ones before it.
+		update_option(self::getOptionName(), array($this->args['id'] => time()), false);
 		wp_send_json_success();
 	}
 }

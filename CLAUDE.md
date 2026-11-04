@@ -237,13 +237,16 @@ docs/                      - the documentation and test plan, the bulk design no
 - **Promo banner:** the bundled `promo-banner` module (a reusable, plugin-neutral
   campaign banner; assets in `build/shortpixel/promo-banner/assets/`).
   `EnableMediaReplacePlugin::promoBanner()` configures the Black Friday 2026
-  campaign (`PROMO_START` / `PROMO_END`, America/New_York, inclusive) for the
+  campaign (`PROMO_START` / `PROMO_END` in UTC, inclusive; the end is 23:59:59
+  US Pacific on November 30; `PROMO_ENDS_ON` is the label's day) for the
   Bulk Enhance page and, through `isPromoBannerScreen()`, the replace, remove
   background and upscale screens; the four views print it right after their
   header bar (`'hook' => false`: not on admin_notices, which WordPress's script
-  would move there only after load); `manage_options` only; dismissed per user in
-  the user meta `shortpixel_promo_dismissed_<id>` (shared by every ShortPixel
-  plugin). Hooks: `emr/promo_banner/show`, `emr/promo_banner/in_window`,
+  would move there only after load); `manage_options` only; dismissed per site
+  (one close hides it for everyone) in the option `EnableMediaReplace-promo-banner`
+  (one per plugin, named from the module's namespace like the notices option, an
+  array campaign id to time, pruned to the current campaign on each dismissal,
+  deleted by `PromoBanner::uninstall()` from `InstallHelper::unInstallPlugin()`). Hooks: `emr/promo_banner/show`, `emr/promo_banner/in_window`,
   `emr/promo_banner/capability`, `emr/promo_banner/url`,
   `emr/settings/no_banner` (and the SHORTPIXEL_NO_BANNER constant). The E2E
   support option `emr_e2e_promo_window` opens the window for the browser tests.
