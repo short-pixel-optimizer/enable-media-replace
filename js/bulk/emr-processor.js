@@ -51,11 +51,12 @@ window.EmrProcessor = {
 		5: 'PREPARING_OVERLIMIT',
 		11: 'PREPARING_RECOUNT'
 	},
-	fStatus: {
+	fStatus: { // QueueItem::FILE_STATUS_*
 		'-1': 'FILE_ERROR',
 		0: 'FILE_UNPROCESSED',
 		1: 'FILE_PENDING',
-		2: 'FILE_DONE'
+		2: 'FILE_DONE',
+		3: 'FILE_RESTORED' // a restored item: no preview (SPIO's screen-bulk.js does the same)
 	},
 	aStatusError: {
 		'-1': 'PROCESSOR_ACTIVE',

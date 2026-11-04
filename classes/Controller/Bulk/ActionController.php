@@ -35,7 +35,10 @@ use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
  * manual replace. The attachment then carries the `_emr_bulk` marker.
  *
  * A restore copies the backup over the main file the same way and removes
- * the marker and the backup.
+ * the marker and the backup. Its result carries FILE_STATUS_RESTORED and no
+ * before/after URLs (SPIO's restore answers FILE_STATUS_RESTORED too), so
+ * the bulk screen, which opens its preview on FILE_STATUS_SUCCESS only,
+ * shows no preview during a restore.
  *
  * Lifecycle: getInstance() singleton; QueueController sets the active
  * queue with setCurrentQueue() before every tick. Hooks:
@@ -432,7 +435,9 @@ class ActionController
 
 	/**
 	 * Restores an item from its bulk backup: copies the backup over the main
-	 * file through ReplaceController and removes marker and backup.
+	 * file through ReplaceController and removes marker and backup. The
+	 * result's file status is FILE_STATUS_RESTORED, not FILE_STATUS_SUCCESS:
+	 * the screen keeps its before/after preview closed for a restore.
 	 *
 	 * @param QueueItem $qItem
 	 * @return void
@@ -472,7 +477,7 @@ class ActionController
 
 		$qItem->addResult(array(
 			'apiStatus'  => BulkApi::STATUS_NOT_API,
-			'fileStatus' => QueueItem::FILE_STATUS_SUCCESS,
+			'fileStatus' => QueueItem::FILE_STATUS_RESTORED,
 			'is_done'    => true,
 			'is_error'   => false,
 			'message'    => __('Original restored', 'enable-media-replace'),

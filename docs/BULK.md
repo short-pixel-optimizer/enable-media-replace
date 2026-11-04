@@ -69,7 +69,9 @@ the three plugins never see each other's items.
    errors, date), resets the queue and unschedules the cron event.
 5. **Restore.** The `bulk-restore` custom operation enqueues the marked
    attachments of an operation; each item copies its backup back through
-   the same replace flow and deletes the marker.
+   the same replace flow and deletes the marker. Its result carries
+   `FILE_STATUS_RESTORED` (SPIO's value), so the process panel shows no
+   before/after preview during a restore.
 
 ## Driving the queue
 

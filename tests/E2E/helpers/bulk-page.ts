@@ -273,6 +273,7 @@ export class BulkPage {
 		// The arming checkbox is bound on `click` (no data-event), so a real click, not a DOM change.
 		await this.page.locator(`input[data-target="emr-bulk-restore-${operation}"]`).check();
 		const button = this.page.locator(`#emr-bulk-restore-${operation}`);
+		await expect(button).toHaveText(operation === 'upscale' ? 'Restore upscaled images' : 'Restore background removals');
 		await expect(button).toBeEnabled();
 		await withEmrEvent(this.page, 'emr.bulk.started', () => button.click(), 60_000);
 		await this.expectPanel('process');

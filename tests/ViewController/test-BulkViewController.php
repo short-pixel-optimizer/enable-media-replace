@@ -222,7 +222,18 @@ class BulkViewControllerTest extends WP_UnitTestCase {
 		$html = $this->render();
 
 		$this->assertStringContainsString( 'Restore 1 original', $html );
-		$this->assertStringContainsString( 'data-action="BulkRestore" data-operation="upscale"', $html );
+		$this->assertMatchesRegularExpression( '/data-action="BulkRestore" data-operation="upscale" disabled>Restore upscaled images</', $html, 'The button names what comes back.' );
+		$this->assertStringNotContainsString( 'Restore:', $html );
+	}
+
+	public function test_load_offers_restore_of_background_removals_with_its_own_button_text() {
+		update_option( 'emr_shortpixel_api_key', 'abcdEFGHIJKLMNOPwxyz' );
+		$image = BulkImage::getById( $this->makeImageAttachment( 100, 100 ) );
+		$image->setMarker( 'background', array( 'ts' => time() ), BackupController::backup( $image ) );
+		$html = $this->render();
+
+		$this->assertMatchesRegularExpression( '/data-action="BulkRestore" data-operation="background" disabled>Restore background removals</', $html );
+		$this->assertStringNotContainsString( 'Restore upscaled images', $html );
 	}
 
 	public function test_load_lists_the_history_with_a_link_to_the_log_of_a_run_with_errors() {

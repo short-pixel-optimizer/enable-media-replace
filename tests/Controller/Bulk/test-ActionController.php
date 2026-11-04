@@ -364,6 +364,9 @@ class BulkActionControllerTest extends WP_UnitTestCase {
 		$this->assertFalse( $restore->result()->is_error, $restore->result()->message );
 		$this->assertTrue( $restore->result()->is_done );
 		$this->assertSame( BulkApi::STATUS_NOT_API, $restore->result()->apiStatus );
+		$this->assertSame( QueueItem::FILE_STATUS_RESTORED, $restore->result()->fileStatus, 'Restored, not done: the screen opens no preview.' );
+		$this->assertNull( $restore->result()->original, 'No before/after URLs for a restore.' );
+		$this->assertNull( $restore->result()->optimized );
 		$this->assertStringContainsString( 'Restore completed', $restore->result()->message );
 		$this->assertSame( $originalBytes, file_get_contents( get_attached_file( $id ) ) );
 		$this->assertSame( 400, wp_get_attachment_metadata( $id )['width'] );

@@ -8,7 +8,7 @@
  * customOperation, displayOperation (the operation, or 'restore' during a
  * restore), errorLog, factors, factorList, maxFactor, maxThreshold,
  * signupUrl, backupPath, operations (per operation: available, reason,
- * count, restorable, label), error, errorTitle, errorContent (HTML).
+ * count, restorable, label, restoreLabel), error, errorTitle, errorContent (HTML).
  *
  * The layout follows ShortPixel Image Optimizer's bulk page (white header
  * bar, rounded panels, the step bar, the stats table, the preview boxes).

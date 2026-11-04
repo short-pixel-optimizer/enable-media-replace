@@ -30,7 +30,7 @@ foreach ($view->operations as $info) {
 				<input type="checkbox" data-action="ToggleButton" data-target="emr-bulk-restore-<?php echo esc_attr($operation); ?>">
 				<span><?php printf(esc_html(_n('I want to restore the %1$s original of "%2$s". This cannot be undone.', 'I want to restore the %1$s originals of "%2$s". This cannot be undone.', $info->restorable, 'enable-media-replace')), esc_html(number_format_i18n($info->restorable)), esc_html($info->label)); ?></span>
 			</label>
-			<button type="button" class="button button-primary" id="emr-bulk-restore-<?php echo esc_attr($operation); ?>" data-action="BulkRestore" data-operation="<?php echo esc_attr($operation); ?>" disabled><?php printf(esc_html__('Restore: %s', 'enable-media-replace'), esc_html($info->label)); ?></button>
+			<button type="button" class="button button-primary" id="emr-bulk-restore-<?php echo esc_attr($operation); ?>" data-action="BulkRestore" data-operation="<?php echo esc_attr($operation); ?>" disabled><?php echo esc_html($info->restoreLabel); ?></button>
 		</div>
 	<?php endforeach; ?>
 	<?php if (0 === $emr_restorable) : ?>

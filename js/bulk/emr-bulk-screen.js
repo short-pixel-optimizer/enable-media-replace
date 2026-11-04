@@ -412,6 +412,7 @@ class EmrBulkScreen {
 
 	/* ---- Results ---- */
 
+	/** The before/after preview of the last applied result. FILE_DONE only: a restore (FILE_RESTORED) has nothing to compare. */
 	HandleImage(resultItem, type) {
 		if (this.processor.fStatus[resultItem.fileStatus] !== 'FILE_DONE') {
 			return false;

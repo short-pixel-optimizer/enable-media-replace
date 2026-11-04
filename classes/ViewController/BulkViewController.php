@@ -91,8 +91,9 @@ class BulkViewController extends ViewController
 				'available'  => (true === $can),
 				'reason'     => is_wp_error($can) ? $can->get_error_message() : '',
 				'count'      => is_null($selector) ? 0 : $selector->countSource(),
-				'restorable' => $this->countRestorable($operation),
-				'label'      => $this->getOperationLabel($operation),
+				'restorable'   => $this->countRestorable($operation),
+				'label'        => $this->getOperationLabel($operation),
+				'restoreLabel' => $this->getRestoreLabel($operation),
 			);
 		}
 
@@ -207,6 +208,24 @@ class BulkViewController extends ViewController
 				return __('Restore originals', 'enable-media-replace');
 			default:
 				return __('Remove background', 'enable-media-replace');
+		}
+	}
+
+	/**
+	 * The restore panel's button for an operation: names what comes back,
+	 * not the operation ("Restore: Remove background" read as if it would
+	 * run it again).
+	 *
+	 * @param string $operation
+	 * @return string
+	 */
+	public function getRestoreLabel($operation)
+	{
+		switch ($operation) {
+			case BulkQueue::OPERATION_UPSCALE:
+				return __('Restore upscaled images', 'enable-media-replace');
+			default:
+				return __('Restore background removals', 'enable-media-replace');
 		}
 	}
 

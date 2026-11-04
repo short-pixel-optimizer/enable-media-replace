@@ -89,6 +89,9 @@ test.describe('Bulk page: upscale', () => {
 			expect(request.request?.bg_remove).toBeUndefined();
 		}
 
+		// The last result's before/after preview opened during the run.
+		await expect(page.locator('.emr-bulk-preview')).not.toHaveAttribute('hidden', '');
+
 		await bulk.finish(emr);
 		await expect(bulk.restoreButton('upscale')).toHaveText(/Restore 3 originals/);
 		await expect(bulk.panel('dashboard').locator('.emr-bulk-history tbody tr')).toHaveCount(1);
@@ -97,6 +100,8 @@ test.describe('Bulk page: upscale', () => {
 		await bulk.startRestore('upscale');
 		await bulk.driveToFinish(emr);
 		await expect(bulk.stat('done')).toHaveText('3');
+		// A restore has nothing to compare: the preview stays closed (SPIO's FILE_RESTORED).
+		await expect(page.locator('.emr-bulk-preview')).toHaveAttribute('hidden', '');
 		for (const id of queued) {
 			expect(await widthOf(emr, id), `attachment ${id} must be back to its original width`).toBe(before.get(id));
 		}

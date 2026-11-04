@@ -294,7 +294,9 @@ docs/                      - the documentation and test plan, the bulk design no
   `js/bulk/emr-processor.js` posts ticks through the Web Worker
   `js/bulk/emr-worker.js` to `wp_ajax_emr_bulk_process` and hands the
   answers to `js/bulk/emr-bulk-screen.js`, which switches the panels and
-  writes the stats into `data-stats-media` / `data-stats-total` elements.
+  writes the stats into `data-stats-media` / `data-stats-total` elements;
+  the before/after preview opens on `FILE_STATUS_SUCCESS` results only (a
+  restore answers `FILE_STATUS_RESTORED`, as in SPIO, and shows none).
   Screen actions go to `wp_ajax_emr_bulk_request` (`screen_action`:
   createBulk, startBulk, finishBulk, startRestore, getStatus,
   skipPreparing, recheckActive, loadLogFile), settings to
