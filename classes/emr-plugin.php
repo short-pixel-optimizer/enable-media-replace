@@ -297,6 +297,68 @@ class EnableMediaReplacePlugin
     }
 
 
+    /** Campaign of the promotional banner: id, first and last moment (US Eastern, both inclusive). */
+    const PROMO_ID    = 'black-friday-2026';
+    const PROMO_START = '2026-11-23 00:00:00';
+    const PROMO_END   = '2026-11-30 23:59:59';
+
+    /** @var \EnableMediaReplace\PromoBanner\PromoBanner|null The banner, built once by promoBanner(). */
+    protected $promoBanner;
+
+    /**
+     * The Black Friday banner (bundled module build/shortpixel/promo-banner).
+     *
+     * Shown on the Bulk Enhance page (screen `media_page_emr-bulk`) and on the
+     * replace, remove background and upscale screens (isPromoBannerScreen()),
+     * from PROMO_START to PROMO_END in America/New_York, to users with
+     * `manage_options`; dismissible per user. Printed by views/bulk/view-bulk.php,
+     * views/screen.php, views/prepare-remove-background.php and
+     * views/prepare-upscale.php right after their header bar. Hooks (from the module):
+     * `emr/promo_banner/show`, `emr/promo_banner/capability`,
+     * `emr/promo_banner/url`, `emr/settings/no_banner`; the constant
+     * SHORTPIXEL_NO_BANNER switches it off too.
+     *
+     * @return \EnableMediaReplace\PromoBanner\PromoBanner
+     */
+    public function promoBanner()
+    {
+        if (null === $this->promoBanner) {
+            $this->promoBanner = new \EnableMediaReplace\PromoBanner\PromoBanner(array(
+                'id'         => self::PROMO_ID,
+                'start'      => self::PROMO_START,
+                'end'        => self::PROMO_END,
+                'timezone'   => 'America/New_York',
+                'url'        => 'https://shortpixel.com/pricing?utm_source=plugin&utm_medium=emr&utm_campaign=black_friday_2026',
+                'prefix'     => 'emr',
+                'assets_url' => plugins_url('build/shortpixel/promo-banner/assets/', EMR_ROOT_FILE),
+                'version'    => EMR_VERSION,
+                'screens'    => array('media_page_' . self::BULK_PAGE_SLUG),
+                'condition'  => array($this, 'isPromoBannerScreen'),
+                // Printed by the four views right after their header bar (render()), not on
+                // admin_notices: WordPress's script would move it there only after load (a flash).
+                'hook'       => false,
+            ));
+        }
+        return $this->promoBanner;
+    }
+
+    /**
+     * Is this the replace, remove background or upscale screen? (The banner's
+     * condition; the POST handlers and the success screen of the same page are left out.)
+     *
+     * @return bool
+     */
+    public function isPromoBannerScreen()
+    {
+        // The hidden EMR page, identified like route() does.
+        global $plugin_page;
+        if ('enable-media-replace/enable-media-replace.php' !== $plugin_page) {
+            return false;
+        }
+        $action = isset($_GET['action']) ? sanitize_key(wp_unslash($_GET['action'])) : '';
+        return in_array($action, array('media_replace', 'emr_prepare_remove', 'emr_prepare_upscale'), true);
+    }
+
     /**
      * Registers the admin UI hooks for users who passed the access check.
      *
@@ -334,6 +396,9 @@ class EnableMediaReplacePlugin
 
         // loads the dismiss hook.
         $notices = Notices::getInstance();
+
+        // The Black Friday banner on EMR's own screens (bundled promo-banner module).
+        $this->promoBanner()->register();
 
         // init plugin
         add_action('admin_menu', array($this, 'menu'));

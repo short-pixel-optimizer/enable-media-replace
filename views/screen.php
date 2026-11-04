@@ -101,6 +101,7 @@ $uiHelper = emr()->uiHelper();
 		<h1><?php esc_html_e('Enable Media Replace - Replace media', 'enable-media-replace'); ?></h1>
 	</header>
 	<hr class="wp-header-end">
+	<?php \emr()->promoBanner()->render(); // The Black Friday banner, when its campaign runs. ?>
 
 	<div class='emr_drop_area' id='emr-drop-area'><h3><?php _e('Drop file', 'enable-media-replace'); ?></h3></div>
 

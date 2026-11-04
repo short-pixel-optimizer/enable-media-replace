@@ -230,10 +230,11 @@ class PackageLoaderTest extends WP_UnitTestCase {
 		$loaders = $this->module_loaders();
 
 		$this->assertEqualsCanonicalizing(
-			array( 'EnableMediaReplace\FileSystem', 'EnableMediaReplace\Notices', 'EnableMediaReplace\ShortPixelLogger', 'EnableMediaReplace\Replacer', 'EnableMediaReplace\ShortQ' ),
+			array( 'EnableMediaReplace\FileSystem', 'EnableMediaReplace\Notices', 'EnableMediaReplace\ShortPixelLogger', 'EnableMediaReplace\Replacer', 'EnableMediaReplace\ShortQ', 'EnableMediaReplace\PromoBanner' ),
 			array_keys( $loaders )
 		);
-		$this->assertCount( 5, $loaders );
+		$this->assertCount( 6, $loaders );
+		$this->assertSame( array( 'promo-banner/src' ), $loaders['EnableMediaReplace\PromoBanner'][1]['classpaths'] );
 		$this->assertSame( array( 'shortq/src' ), $loaders['EnableMediaReplace\ShortQ'][1]['classpaths'] );
 		$this->assertSame( array( 'filesystem/src' ), $loaders['EnableMediaReplace\FileSystem'][1]['classpaths'] );
 		$this->assertSame( array( 'replacer2/src' ), $loaders['EnableMediaReplace\Replacer'][1]['classpaths'] );

@@ -28,6 +28,7 @@ if (! defined('ABSPATH')) {
 		<h1><?php esc_html_e('Enable Media Replace - Bulk Enhance', 'enable-media-replace'); ?></h1>
 	</header>
 	<hr class="wp-header-end">
+	<?php \emr()->promoBanner()->render(); // The Black Friday banner, when its campaign runs. ?>
 	<div class="emr-bulk-notices"></div>
 
 	<div id="emr-bulk-paused" class="emr-bulk-banner emr-bulk-banner-paused" data-action="ResumeBulk" hidden>

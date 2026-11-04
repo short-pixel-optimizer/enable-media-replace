@@ -78,6 +78,7 @@ $scale_checked = false;
 		<h1><?php esc_html_e('Enable Media Replace - Upscale image', 'enable-media-replace'); ?></h1>
 	</header>
 	<hr class="wp-header-end">
+	<?php \emr()->promoBanner()->render(); // The Black Friday banner, when its campaign runs. ?>
 
 	<form id="emr_replace_form" enctype="multipart/form-data" method="POST" action="<?php
 	echo $formurl; ?>" >

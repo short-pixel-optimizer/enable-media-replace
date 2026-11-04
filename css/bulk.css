@@ -1084,5 +1084,9 @@
     grid-template-columns: 1fr;
   }
 }
+.emr-bulk-wrapper > .shortpixel-bf {
+  max-width: 1200px;
+  margin: 20px auto 0;
+}
 
 /*# sourceMappingURL=bulk.css.map */

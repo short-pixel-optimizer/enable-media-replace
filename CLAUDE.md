@@ -35,7 +35,7 @@ module into `build/shortpixel/` and rewrites the namespace to
 hook prefixes (`shortpixel/replacer/*` becomes `emr/replacer/*`, see the
 `extra` block of `composer.json`). `build/shortpixel/` is generated output:
 never edit it by hand. The bundled modules are `filesystem`, `log`,
-`notices`, `replacer2` and `shortq`; all but `filesystem` are shared with
+`notices`, `promo-banner`, `replacer2` and `shortq`; all but `filesystem` are shared with
 ShortPixel Image Optimizer (SPIO), which bundles them under its own
 namespace. `buildSP` copies whatever is checked out in `../modules`, so
 check `git diff build/` after a rebuild and keep only the module changes you
@@ -234,6 +234,19 @@ docs/                      - the documentation and test plan, the bulk design no
   `emr_returnurl`, `emr_unique_filename`, `enable_media_replace_title`.
 - **Remote API:** only `api.shortpixel.com` (reducer, cleanup, api-status,
   notices). Tests stub it at the `pre_http_request` boundary.
+- **Promo banner:** the bundled `promo-banner` module (a reusable, plugin-neutral
+  campaign banner; assets in `build/shortpixel/promo-banner/assets/`).
+  `EnableMediaReplacePlugin::promoBanner()` configures the Black Friday 2026
+  campaign (`PROMO_START` / `PROMO_END`, America/New_York, inclusive) for the
+  Bulk Enhance page and, through `isPromoBannerScreen()`, the replace, remove
+  background and upscale screens; the four views print it right after their
+  header bar (`'hook' => false`: not on admin_notices, which WordPress's script
+  would move there only after load); `manage_options` only; dismissed per user in
+  the user meta `shortpixel_promo_dismissed_<id>` (shared by every ShortPixel
+  plugin). Hooks: `emr/promo_banner/show`, `emr/promo_banner/in_window`,
+  `emr/promo_banner/capability`, `emr/promo_banner/url`,
+  `emr/settings/no_banner` (and the SHORTPIXEL_NO_BANNER constant). The E2E
+  support option `emr_e2e_promo_window` opens the window for the browser tests.
 - **AI credits:** background removal and upscale use one AI credit per image.
   `ApiKeyManager::getAiCredits()` reads the `AIUnlimited` / `CaptionsCalls*`
   fields of api-status (the same fields SPIO shows as AI credits), cached in

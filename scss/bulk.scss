@@ -775,3 +775,10 @@
 	.emr-bulk-stats > div > span { display: block; width: auto; }
 	.emr-bulk-preview-images { grid-template-columns: 1fr; }
 }
+
+// The Black Friday banner (bundled promo-banner module) takes the width of the
+// panels below it: the same centred column as `.emr-bulk-screen`.
+.emr-bulk-wrapper > .shortpixel-bf {
+	max-width: 1200px;
+	margin: 20px auto 0;
+}

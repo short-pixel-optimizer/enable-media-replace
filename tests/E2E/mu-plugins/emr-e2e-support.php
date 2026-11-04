@@ -37,6 +37,8 @@
  *                         emr/feature/* filter outcome (true/false), null = default
  *   (option emr_e2e_classic_editor, set through POST option: turns the
  *   block editor off for every post, like the Classic Editor plugin)
+ *   (option emr_e2e_promo_window, set through POST option: puts "now"
+ *   inside the promo banner's campaign window)
  *   POST user             { role[, login] } a user with password "password"
  *   GET  mock             the mock knobs
  *   POST mock             merge knobs into the mock (see emr-e2e-mock-api.php)
@@ -141,6 +143,18 @@ function emr_e2e_use_block_editor( $use ) {
 	return get_option( 'emr_e2e_classic_editor' ) ? false : $use;
 }
 add_filter( 'use_block_editor_for_post', 'emr_e2e_use_block_editor', 999 );
+
+/**
+ * Promo banner preview: with the `emr_e2e_promo_window` option set, "now" is
+ * inside the Black Friday window (filter emr/promo_banner/in_window), so a
+ * spec can check the banner before 23 November. Every other condition (page,
+ * capability, dismissal) still applies. The seed removes the option and the
+ * dismissals.
+ */
+function emr_e2e_promo_window( $inWindow ) {
+	return get_option( 'emr_e2e_promo_window' ) ? true : $inWindow;
+}
+add_filter( 'emr/promo_banner/in_window', 'emr_e2e_promo_window', 999 );
 add_filter( 'use_block_editor_for_post_type', 'emr_e2e_use_block_editor', 999 );
 
 add_filter( 'emr/feature/background', 'emr_e2e_feature_background', 999 );
@@ -171,6 +185,8 @@ function emr_e2e_apply_seed() {
 	delete_transient( 'emr_ai_credits' ); // ApiKeyManager::CREDITS_TRANSIENT
 	delete_option( EMR_E2E_FEATURE_OPTION );
 	delete_option( 'emr_e2e_classic_editor' );
+	delete_option( 'emr_e2e_promo_window' );
+	delete_metadata( 'user', 0, 'shortpixel_promo_dismissed_black-friday-2026', '', true );
 
 	$previous = (array) get_option( EMR_E2E_SEED_OPTION, array() );
 	if ( ! empty( $previous['post_id'] ) ) {
