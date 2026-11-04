@@ -414,7 +414,7 @@ export class ReplaceScreen {
 	}
 
 	get heading(): Locator {
-		return this.page.getByRole('heading', { level: 1, name: 'Replace Media Upload' });
+		return this.page.getByRole('heading', { level: 1, name: 'Enable Media Replace - Replace media' });
 	}
 
 	get form(): Locator {
@@ -485,13 +485,14 @@ export class ReplaceScreen {
 		return this.page.locator('#remove_after_progress');
 	}
 
+	/** The "Remove background" operation button under the previews (views/operation-buttons.php). */
 	get removeBackgroundLink(): Locator {
-		return this.page.getByRole('link', { name: /remove the background of this image/i });
+		return this.page.locator('a.emr-operation-background');
 	}
 
-	/** "New! Click here to upscale/enlarge this image using AI!" (only when the image is upscalable). */
+	/** The "Upscale image" operation button, with the NEW! badge (only when the image is upscalable). */
 	get upscaleLink(): Locator {
-		return this.page.getByRole('link', { name: /upscale\/enlarge this image/i });
+		return this.page.locator('a.emr-operation-upscale');
 	}
 
 	/** The Upload submit; disabled until a file is chosen (js/emr_admin.js). */
@@ -515,7 +516,7 @@ export class SuccessScreen {
 	}
 
 	get heading(): Locator {
-		return this.root.getByRole('heading', { level: 1, name: 'Your image has been replaced!' });
+		return this.root.getByRole('heading', { level: 2, name: 'Your image has been replaced!' });
 	}
 
 	get counter(): Locator {
@@ -626,14 +627,23 @@ export class RemoveBackgroundScreen {
 		return this.page.locator('#bad-background-link');
 	}
 
+	/** The "Replace media" operation button under the previews. */
 	get replaceInsteadLink(): Locator {
-		return this.page.getByRole('link', { name: /Replace this image with another one instead/i });
+		return this.page.locator('a.emr-operation-replace');
 	}
 
-	// --- ShortPixel account section (manage_options only) ---
+	// --- ShortPixel account row (manage_options only): a <details>, collapsed on these screens ---
 
 	get account(): Locator {
-		return this.page.locator('section.emr-sp-account');
+		return this.page.locator('details.emr-sp-account');
+	}
+
+	/** Expand the account row (collapsed on the single screens) before using its controls. */
+	async openAccount(): Promise<void> {
+		if ((await this.account.getAttribute('open')) === null) {
+			await this.account.locator('> summary').click();
+		}
+		await expect(this.account).toHaveAttribute('open', '');
 	}
 
 	get apiKeyInput(): Locator {
@@ -649,7 +659,7 @@ export class RemoveBackgroundScreen {
 		return this.page.locator('#emr-change-key-toggle');
 	}
 
-	/** Remove Key asks window.confirm() first: accept it with page.once('dialog'). */
+	/** Remove key asks window.confirm() first: accept it with page.once('dialog'). */
 	get removeKey(): Locator {
 		return this.page.locator('#emr-remove-key');
 	}
@@ -665,7 +675,7 @@ export class RemoveBackgroundScreen {
 
 	/** The remove-background screen's link to the upscale screen (only for an upscalable image). */
 	get upscaleLink(): Locator {
-		return this.page.getByRole('link', { name: /upscale\/enlarge this image/i });
+		return this.page.locator('a.emr-operation-upscale');
 	}
 }
 

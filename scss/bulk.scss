@@ -2,11 +2,15 @@
 //
 // The look follows ShortPixel Image Optimizer's bulk page
 // (res/scss/shortpixel-bulk.scss, bulk/_dashboard.scss, elements/_header.scss):
-// white header bar, rounded white panels, the numbered step bar, light blue
+// white header bar (_page-header.scss), rounded white panels, the numbered step bar, light blue
 // option blocks, the stats table, the history log and the preview boxes.
+// The collapsible rows and the account row come from _shortpixel-account.scss,
+// shared with the single screens (single.scss).
 // Class names are EMR's own (`emr-bulk-*`); the rules mirror SPIO's.
 @use "sass:color";
-@use 'bulk-colors' as *;
+@use 'emr-colors' as *;
+@use 'page-header';
+@use 'shortpixel-account';
 
 @mixin emr-bulk-button {
 	display: inline-flex;
@@ -49,23 +53,6 @@
 }
 
 .emr-bulk-wrapper {
-	// The header bar spans the content area like SPIO's.
-	.emr-bulk-header {
-		background: #fff;
-		display: flex;
-		align-items: center;
-		margin: -10px -20px 10px -22px;
-		padding: 8px 24px;
-		box-shadow: 0 1px 4px 0 rgba(0, 0, 0, .1);
-
-		h1 {
-			margin: 0;
-			padding: 0;
-			font-size: 23px;
-			line-height: 50px;
-		}
-	}
-
 	.hidden { display: none !important; }
 	[hidden] { display: none !important; }
 
@@ -98,7 +85,7 @@
 			cursor: not-allowed;
 		}
 
-		&.emr-bulk-button-danger {
+		&.emr-button-danger {
 			color: $emr-red;
 			border-color: $emr-red;
 
@@ -356,145 +343,6 @@
 			visibility: visible;
 		}
 	}
-}
-
-// Collapsible rows: <details>/<summary>, the whole summary is the toggle.
-.emr-bulk-collapsible {
-	margin-top: 24px;
-	border: 1px solid color.adjust($blue_background, $lightness: -4%);
-	border-radius: 15px;
-	background: #fff;
-
-	> summary {
-		display: flex;
-		align-items: center;
-		gap: 10px;
-		padding: 14px 20px;
-		border-radius: 15px;
-		background: $blue_background;
-		cursor: pointer;
-		list-style: none;
-		font-size: 14px;
-
-		&::-webkit-details-marker { display: none; }
-		&::marker { content: ''; }
-
-		&:hover { background: color.adjust($blue_background, $lightness: -2%); }
-
-		&:focus-visible {
-			outline: 2px solid $blue_default;
-			outline-offset: 2px;
-		}
-	}
-
-	&[open] > summary { border-radius: 15px 15px 0 0; }
-
-	.emr-bulk-collapsible-title {
-		display: inline-flex;
-		align-items: center;
-		gap: 6px;
-		font-weight: 700;
-		color: #000;
-
-		.dashicons { color: $blue_default; }
-	}
-
-	.emr-bulk-chevron {
-		margin-left: auto;
-		color: $blue_dark;
-		transition: transform .2s linear;
-	}
-
-	&[open] .emr-bulk-chevron { transform: rotate(180deg); }
-
-	.emr-bulk-collapsible-content { padding: 16px 20px 20px; }
-}
-
-// ShortPixel Account row. Resets the shared box rules of admin.css.
-.emr-bulk-account.emr-sp-account {
-	margin: 24px 0 0;
-
-	.emr-bulk-account-status {
-		display: inline-flex;
-		align-items: center;
-
-		&::before {
-			content: '\2014';
-			margin-right: 8px;
-			color: #a7aaad;
-			font-weight: 400;
-		}
-
-		.dashicons { font-size: 18px; width: 18px; height: 18px; }
-	}
-
-	.emr-bulk-account-connected { color: $emr-green; font-weight: 600; }
-	.emr-bulk-account-disconnected { color: #996800; font-weight: 600; }
-
-	.emr-bulk-account-plan {
-		color: #3c434a;
-
-		&::before {
-			content: '\2014';
-			margin-right: 8px;
-			color: #a7aaad;
-		}
-	}
-
-	.emr-sp-account-body { padding: 16px 20px 20px; }
-	.emr-sp-intro { margin: 0 0 12px; font-size: 13px; color: $emr-text-muted; }
-
-	.emr-sp-key-card {
-		display: flex;
-		flex-wrap: wrap;
-		align-items: center;
-		justify-content: space-between;
-		gap: 12px;
-		padding: 12px 16px;
-		background: $blue_background;
-		border: 0;
-		border-radius: 10px;
-	}
-
-	.emr-sp-key-status { display: flex; align-items: center; gap: 10px; }
-	.emr-sp-key-value { font-size: 13px; }
-	.emr-sp-key-actions { display: flex; gap: 8px; }
-
-	.emr-sp-edit-form {
-		margin-top: 12px;
-		padding: 0;
-		border: 0;
-		background: none;
-
-		label {
-			display: block;
-			margin-bottom: 6px;
-			font-size: 13px;
-			font-weight: 600;
-			text-transform: none;
-			letter-spacing: 0;
-			color: #1d2327;
-		}
-	}
-
-	.emr-sp-edit-row {
-		display: flex;
-		flex-wrap: wrap;
-		align-items: center;
-		gap: 8px;
-	}
-
-	// Wide enough for the whole 20-character key and the placeholder.
-	.emr-sp-edit-row input.emr-bulk-key-input {
-		flex: 0 1 auto;
-		width: 26ch;
-		max-width: 100%;
-		min-height: 36px;
-		font-family: Consolas, Monaco, monospace;
-		font-size: 14px;
-	}
-
-	.description { margin: 8px 0 0; }
 }
 
 // History log (SPIO's .dashboard-log).
@@ -923,7 +771,6 @@
 }
 
 @media (max-width: 782px) {
-	.emr-bulk-wrapper .emr-bulk-header { margin: -10px -10px 10px -12px; }
 	.emr-bulk-steps .text { font-size: 10px; }
 	.emr-bulk-stats > div > span { display: block; width: auto; }
 	.emr-bulk-preview-images { grid-template-columns: 1fr; }

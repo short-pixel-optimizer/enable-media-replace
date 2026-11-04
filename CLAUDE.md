@@ -183,12 +183,18 @@ classes/
   installHelper.php        - deactivation and uninstall
   compat.php               - polyfills for old WordPress versions
 views/                     - PHP templates (screen, prepare-remove-background, prepare-upscale,
-                             shortpixel-account (the API key box both screens include), success, error, upsell,
+                             shortpixel-account (the collapsible API key row of the bulk page and both
+                             single screens, $emr_account_context), operation-buttons (the SVG tiles to the
+                             other operations under the previews, UIHelper::getOperationButton(), which the
+                             media modal fields reuse), success, error, upsell,
                              bulk/ (view-bulk + the dashboard, selection, summary, process, finished, restore panels,
-                             part-steps (the step bar) and part-account (the collapsible API key row)))
+                             part-steps (the step bar)))
 js/, css/, scss/, img/     - assets, no build step; js/bulk/ holds the bulk processor, worker and screen
-                             (vanilla JS, no jQuery); scss/bulk.scss (+ _bulk-colors.scss, SPIO's palette)
-                             compiles to css/bulk.css with `sass`
+                             (vanilla JS, no jQuery); js/emr-magnifier.js is the preview hover lens;
+                             scss/bulk.scss, scss/single.scss (the single screens) and scss/media-modal.scss
+                             (the modal tiles) share _emr-colors (SPIO's palette), _page-header,
+                             _shortpixel-account and _operation-buttons, and compile to css/*.css with `sass`; img/icons/ holds the operation
+                             SVGs and SPIO's new.svg badge
 build/shortpixel/          - bundled modules (generated, do not edit)
 tests/                     - PHPUnit suites, E2E stack, fixtures (see TESTING.md)
 docs/                      - the documentation and test plan, the bulk design note (BULK.md)

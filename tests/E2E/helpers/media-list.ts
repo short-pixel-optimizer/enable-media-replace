@@ -83,15 +83,15 @@ export class MediaGrid {
 	}
 
 	get replaceButton(): Locator {
-		return this.field('enable-media-replace').getByRole('link', { name: 'Upload a new file' });
+		return this.field('enable-media-replace').getByRole('link', { name: /^Replace media/ });
 	}
 
 	get removeBackgroundButton(): Locator {
-		return this.field('emr-remove-background').getByRole('link', { name: 'Remove background' });
+		return this.field('emr-remove-background').getByRole('link', { name: /^Remove background/ });
 	}
 
 	get upscaleButton(): Locator {
-		return this.field('emr-upscale').getByRole('link', { name: 'Upscale image' });
+		return this.field('emr-upscale').getByRole('link', { name: /^Upscale image/ });
 	}
 }
 
@@ -107,17 +107,17 @@ export class EditAttachment {
 		return this.page.locator('#emr-replace-box');
 	}
 
-	/** "Upload a new file" in the Replace Media meta box. */
+	/** The "Replace media" tile in the Replace Media meta box. */
 	get replaceButton(): Locator {
-		return this.replaceBox.getByRole('link', { name: 'Upload a new file' });
+		return this.replaceBox.getByRole('link', { name: /^Replace media/ });
 	}
 
 	get removeBackgroundButton(): Locator {
-		return this.replaceBox.getByRole('link', { name: 'Remove background' });
+		return this.replaceBox.getByRole('link', { name: /^Remove background/ });
 	}
 
 	get upscaleButton(): Locator {
-		return this.replaceBox.getByRole('link', { name: 'Upscale image' });
+		return this.replaceBox.getByRole('link', { name: /^Upscale image/ });
 	}
 
 	/** "Replaced Thumbnails Preview", shown after a replace (emr_replaced=1). */

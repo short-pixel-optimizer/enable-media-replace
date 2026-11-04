@@ -440,6 +440,47 @@ class UIHelperTest extends WP_UnitTestCase {
 		$this->assertTrue( UIHelper::getInstance()->is_author_restricted() );
 	}
 
+	public function test_get_max_upscale_factor_follows_the_factor_limits() {
+		$helper = UIHelper::getInstance();
+		$cases  = array( 1000 => 4, 1023 => 4, 1024 => 3, 1199 => 3, 1200 => 0, 5000 => 0 );
+		foreach ( $cases as $width => $factor ) {
+			$id = $this->image_of_width( $width, 'emr-up-' . $width . '.jpg' );
+			$this->assertSame( $factor, $helper->getMaxUpscaleFactor( $id ), $width . ' px' );
+		}
+		$unknown = $this->attachment_object( 'emr-up-unknown.jpg', 'image/jpeg' );
+		$this->assertSame( 4, $helper->getMaxUpscaleFactor( $unknown ), 'An unknown width gets the largest factor.' );
+	}
+
+	public function test_supports_upscale_ignores_the_width_but_not_the_type_or_the_feature() {
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
+		$this->set_upscale_feature( true );
+		$helper = UIHelper::getInstance();
+		$wide   = $this->image_of_width( 5000, 'emr-up-wide.jpg' );
+		$pdf    = $this->attachment_object( 'emr-up.pdf', 'application/pdf' );
+
+		$this->assertFalse( $helper->isUpscalable( get_post( $wide ) ), 'Precondition: too wide for isUpscalable().' );
+		$this->assertTrue( $helper->supportsUpscale( $wide ) );
+		$this->assertTrue( $helper->supportsUpscale( get_post( $wide ) ), 'A post object works too.' );
+		$this->assertFalse( $helper->supportsUpscale( $pdf ) );
+		$this->assertFalse( $helper->supportsUpscale( 0 ) );
+
+		$this->set_upscale_feature( false );
+		$this->assertFalse( $helper->supportsUpscale( $wide ), 'The feature flag (and the author restriction in it) still applies.' );
+	}
+
+	public function test_get_operation_button_renders_a_link_or_an_inactive_tile() {
+		$helper = UIHelper::getInstance();
+		$link   = $helper->getOperationButton( array( 'id' => 'replace', 'url' => 'https://example.org/?a=1&b=2', 'icon' => 'icon-media-replace.svg', 'title' => 'T <b>', 'text' => 'X' ) );
+		$this->assertStringStartsWith( '<a class="emr-operation emr-operation-replace" href="https://example.org/?a=1&#038;b=2">', $link );
+		$this->assertStringContainsString( '<span class="emr-operation-title">T &lt;b&gt;</span>', $link );
+		$this->assertStringNotContainsString( 'emr-operation-new', $link );
+
+		$off = $helper->getOperationButton( array( 'id' => 'upscale', 'url' => null, 'icon' => 'icon-image-upscale.svg', 'title' => 'U', 'text' => 'Y', 'new' => true, 'tooltip' => 'Too "large"' ) );
+		$this->assertStringStartsWith( '<span class="emr-operation emr-operation-upscale is-disabled" aria-disabled="true" title="Too &quot;large&quot;">', $off );
+		$this->assertStringContainsString( '/img/icons/new.svg', $off );
+		$this->assertStringNotContainsString( 'href=', $off );
+	}
+
 	/* ------------------------------------------------------------------
 	 * Preview size lookup
 	 * ------------------------------------------------------------------ */
@@ -472,16 +513,15 @@ class UIHelperTest extends WP_UnitTestCase {
 		$this->assertSame( array( '', 0, 0 ), UIHelper::getInstance()->findImageSizeByMax( 100 ), 'A zero-width size never matches.' );
 	}
 
-	public function test_set_preview_sizes_stores_the_size_found_for_600_pixels() {
-		add_image_size( 'emr_test_preview', 555, 444 );
+	public function test_set_preview_sizes_stores_the_size_found_for_1024_pixels() {
 		$helper = UIHelper::getInstance();
 		$this->assertSame( '', $this->prop( $helper, 'preview_size' ), 'Precondition: empty until set.' );
 
 		$this->assertNull( $helper->setPreviewSizes() );
 
-		$this->assertSame( 'emr_test_preview', $this->prop( $helper, 'preview_size' ) );
-		$this->assertSame( 555, $this->prop( $helper, 'preview_width' ) );
-		$this->assertSame( 444, $this->prop( $helper, 'preview_height' ) );
+		$this->assertSame( 'large', $this->prop( $helper, 'preview_size' ), 'The core "large" size is exactly 1024 wide.' );
+		$this->assertSame( 1024, (int) $this->prop( $helper, 'preview_width' ) );
+		$this->assertSame( 1024, (int) $this->prop( $helper, 'preview_height' ) );
 	}
 
 	/* ------------------------------------------------------------------
@@ -601,49 +641,52 @@ class UIHelperTest extends WP_UnitTestCase {
 		$this->assertSame( 50, $this->prop( $helper, 'preview_height' ) );
 	}
 
-	public function test_get_preview_image_scales_a_wide_image_to_600_pixels() {
-		$id     = $this->upload_generated( 1200, 800 );
+	public function test_get_preview_image_scales_a_wide_image_to_1024_pixels() {
+		$id     = $this->upload_generated( 2048, 1536 );
 		$helper = UIHelper::getInstance();
 
 		$html = $helper->getPreviewImage( $id, $this->file_of( $id ) );
 
-		$this->assertStringContainsString( "width='600' height='400'", $html );
-		$this->assertStringContainsString( 'width:600px; height:400px', $html );
-		$this->assertSame( 600.0, $this->prop( $helper, 'preview_width' ) );
-		$this->assertSame( 400.0, $this->prop( $helper, 'preview_height' ) );
+		$this->assertStringContainsString( "width='1024' height='768'", $html );
+		$this->assertStringContainsString( 'width:1024px; height:768px', $html );
+		$this->assertSame( 1024.0, $this->prop( $helper, 'preview_width' ) );
+		$this->assertSame( 768.0, $this->prop( $helper, 'preview_height' ) );
 	}
 
 	public function test_get_preview_image_scales_by_the_larger_ratio() {
-		$id     = $this->upload_generated( 900, 1500 );
+		$id     = $this->upload_generated( 1536, 2560 );
 		$helper = UIHelper::getInstance();
 
 		$html = $helper->getPreviewImage( $id, $this->file_of( $id ) );
 
-		$this->assertStringContainsString( "width='360' height='600'", $html );
-		$this->assertSame( 360.0, $this->prop( $helper, 'preview_width' ) );
-		$this->assertSame( 600.0, $this->prop( $helper, 'preview_height' ) );
+		$this->assertStringContainsString( "width='614' height='1024'", $html, '2560 / 1024 = 2.5: 1536 / 2.5 = 614.4, floored.' );
+		$this->assertSame( 614.0, $this->prop( $helper, 'preview_width' ) );
+		$this->assertSame( 1024.0, $this->prop( $helper, 'preview_height' ) );
 	}
 
-	public function test_get_preview_image_does_not_scale_exactly_600_pixels() {
-		$id     = $this->upload_generated( 600, 300 );
+	public function test_get_preview_image_does_not_scale_exactly_1024_pixels() {
+		$id     = $this->upload_generated( 1024, 300 );
 		$helper = UIHelper::getInstance();
 
 		$html = $helper->getPreviewImage( $id, $this->file_of( $id ) );
 
-		$this->assertStringContainsString( "width='600' height='300'", $html );
-		$this->assertSame( 600, $this->prop( $helper, 'preview_width' ) );
+		$this->assertStringContainsString( "width='1024' height='300'", $html );
+		$this->assertSame( 1024, $this->prop( $helper, 'preview_width' ) );
 	}
 
 	public function test_get_preview_image_uses_the_preview_size() {
 		$id     = $this->upload_generated( 1200, 800, true );
 		$helper = UIHelper::getInstance();
 		$helper->setPreviewSizes();
-		$this->assertSame( 'medium', $this->prop( $helper, 'preview_size' ), 'Precondition: medium is the preview size.' );
+		$this->assertSame( 'large', $this->prop( $helper, 'preview_size' ), 'Precondition: large is the preview size.' );
 
 		$html = $helper->getPreviewImage( $id, $this->file_of( $id ) );
 
-		$this->assertStringContainsString( '-300x200.jpg', $html );
-		$this->assertStringContainsString( "width='300' height='200'", $html );
+		$this->assertStringContainsString( '-1024x683.jpg', $html );
+		$this->assertStringContainsString( "width='1024' height='683'", $html );
+		$this->assertStringContainsString( "data-zoom-src='", $html, 'The full-size file for the magnifier.' );
+		$this->assertMatchesRegularExpression( "/data-zoom-src='[^']*\/[^'\/]+\.jpg'/", $html );
+		$this->assertDoesNotMatchRegularExpression( "/data-zoom-src='[^']*-1024x683\.jpg'/", $html, 'Not the preview size.' );
 	}
 
 	public function test_get_preview_image_args_override_the_defaults() {

@@ -12,8 +12,10 @@ jQuery(document).ready(function ($) {
 	backgroundInputs(); // init initial
 	transparancyOptions();
 
- $('.replace_type.wrapper input').on('change', function () {
+ // A changed option invalidates the preview: Replace waits for a new one, Preview is offered again.
+ $('.replace_type.wrapper input').on('change input', function () {
 	 	 $('#replace_image_button').prop('disabled', 'disabled');
+	 	 $('#remove_background_button').prop('disabled', false);
  });
 
   // Remove bg click
@@ -60,6 +62,7 @@ jQuery(document).ready(function ($) {
 				var preview = $('.image_placeholder').last();
 				preview.find('img').remove();
 				preview.find('.textlayer').text('');
+				preview.find('.emr-preview-hint').remove();
        // $('#preview-area').hide();
       },
       success: function (response) {
@@ -88,7 +91,7 @@ jQuery(document).ready(function ($) {
 				 $('input[name="key"]').val(response.key);
 				 $('input[type=radio][name=background_type]').attr('disabled', false);
          $('input[type=radio][name=compression_level]').attr('disabled', false);
-         $('#remove_background_button').attr('disabled', false);
+         // Preview stays disabled until an option changes: the same settings give the same result.
 
 				 var badBg = document.getElementById('bad-background-link');
 				 if (badBg) { // Not on the upscale page.
@@ -98,7 +101,7 @@ jQuery(document).ready(function ($) {
 
 					 badBg.setAttribute('href', href);
 
-					 badBg.style.visibility = 'visible';
+					 badBg.parentNode.classList.add('is-ready'); // Shows the link and its hint.
 				 }
          /* $('#removed_image').html(`
 						<div class="img-comp-container">

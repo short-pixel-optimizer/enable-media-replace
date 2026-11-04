@@ -542,7 +542,7 @@ class RemoveBackgroundFlowTest extends EMR_AjaxTestCase {
 		$this->assertFalse( emr()->useFeature( 'background' ) );
 		$this->assertFalse( emr()->useFeature( 'upscale' ), 'The author restriction covers upscale as well.' );
 		$this->assertSame( array( 'media_replace' ), array_keys( $actions ) );
-		$this->assertStringContainsString( 'Upload a new file', $box );
+		$this->assertStringContainsString( '<span class="emr-operation-title">Replace media</span>', $box );
 		$this->assertStringNotContainsString( 'Remove background', $box );
 		$this->assertSame( array( 'enable-media-replace' ), array_keys( $fields ) );
 		$this->assertSame( 'error', $exit->template );

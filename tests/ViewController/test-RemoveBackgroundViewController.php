@@ -408,14 +408,17 @@ class RemoveBackgroundViewControllerTest extends WP_UnitTestCase {
 
 		list( , $output ) = $this->load( $id );
 
-		$this->assertMatchesRegularExpression( '/<section class="emr-sp-account wrapper" data-confirm-remove="[^"]+">/', $output );
-		$this->assertStringContainsString( 'data-confirm-remove="Remove the saved ShortPixel API Key? Background removal will fall back to the Free plan (100 image limit)."', $output );
-		$this->assertStringContainsString( 'Background Removal is limited to 100 images on the Free plan.', $output );
+		// The single screens work on the Free plan: the row is collapsed and says so.
+		$this->assertMatchesRegularExpression( '/<details class="emr-sp-account emr-collapsible emr-sp-account-background" data-confirm-remove="[^"]+">/', $output, 'Collapsed: no open attribute.' );
+		$this->assertStringContainsString( 'data-confirm-remove="Remove the API key? Background removal and upscale go back to the Free plan (10 images)."', $output );
+		$this->assertStringContainsString( 'Free plan (10 images)', $output );
+		$this->assertStringContainsString( 'The Free plan includes 10 background removals and upscales.', $output );
+		$this->assertStringNotContainsString( '100 image', $output );
 		$this->assertStringContainsString( 'id="emr-new-api-key"', $output );
 		$this->assertStringContainsString( 'Activate', $output );
 		$this->assertStringNotContainsString( '<script', $output, 'The key box is driven by js/shortpixel-account.js, not an inline script.' );
-		$this->assertStringContainsString( 'https://shortpixel.com/free-sign-up', $output );
-		$this->assertStringNotContainsString( '<span class="emr-sp-key-value">', $output );
+		$this->assertStringContainsString( 'https://shortpixel.com/free-sign-up?utm_source=plugin&#038;utm_medium=emr&#038;utm_campaign=emr_background', $output );
+		$this->assertStringNotContainsString( 'class="emr-sp-key-value"', $output );
 	}
 
 	public function test_prepare_screen_with_api_key_shows_the_masked_key() {
@@ -428,10 +431,53 @@ class RemoveBackgroundViewControllerTest extends WP_UnitTestCase {
 
 		list( , $output ) = $this->load( $id );
 
-		$this->assertStringContainsString( '<span class="emr-sp-key-value">' . esc_html( $manager->getMaskedKey() ) . '</span>', $output );
+		$this->assertStringContainsString( '<code class="emr-sp-key-value">' . esc_html( $manager->getMaskedKey() ) . '</code>', $output );
 		$this->assertStringNotContainsString( $key, $output );
 		$this->assertStringContainsString( 'id="emr-remove-key"', $output );
+		$this->assertStringContainsString( '>Remove key<', $output );
+		$this->assertStringContainsString( '>Change key<', $output );
+		$this->assertStringContainsString( 'Unlimited plan active.', $output );
 		$this->assertStringNotContainsString( 'Enter your 20-character API Key', $output );
+	}
+
+	public function test_prepare_screen_has_the_header_bar_and_the_new_labels() {
+		$id = $this->upload();
+
+		list( , $output ) = $this->load( $id );
+
+		$this->assertStringContainsString( '<h1>Enable Media Replace - Remove background</h1>', $output );
+		$this->assertStringContainsString( 'Transparent (white for JPG)', $output );
+		$this->assertStringNotContainsString( 'Transparent/white background', $output );
+		$this->assertStringNotContainsString( 'If a CDN is used', $output, 'The CDN reminder moved to the success screen.' );
+		$this->assertStringContainsString( "<span class='emr-preview-hint'>Click Preview to see the result</span>", $output );
+		$this->assertStringContainsString( '>Report a bad result</a>', $output );
+		$this->assertStringContainsString( '<span class="bad-button-hint">Opens an email to ShortPixel support with the link to the result and your settings.</span>', $output );
+		$this->assertMatchesRegularExpression( "/<img [^>]*class='image' data-zoom-src='[^']+'/", $output, 'The full-size file for the magnifier.' );
+	}
+
+	public function test_prepare_screen_offers_the_replace_and_upscale_buttons_but_not_itself() {
+		$id = $this->upload();
+
+		list( , $output ) = $this->load( $id );
+
+		$this->assertMatchesRegularExpression( '#<a class="emr-operation emr-operation-replace" href="[^"]*action=media_replace#', $output );
+		$this->assertStringContainsString( 'emr-operation-upscale', $output );
+		$this->assertStringNotContainsString( 'emr-operation-background', $output );
+		$this->assertSame( 1, substr_count( $output, 'class="emr-operation-new"' ), 'Only the upscale button carries the NEW! badge.' );
+	}
+
+	public function test_prepare_screen_greys_out_upscale_for_an_image_that_is_too_large() {
+		$id = $this->upload();
+		$meta          = wp_get_attachment_metadata( $id );
+		$meta['width'] = 1300;
+		wp_update_attachment_metadata( $id, $meta );
+		$this->assertFalse( emr()->uiHelper()->isUpscalable( get_post( $id ) ), 'Precondition: too wide.' );
+
+		list( , $output ) = $this->load( $id );
+
+		$this->assertStringContainsString( '<span class="emr-operation emr-operation-upscale is-disabled" aria-disabled="true" title="This image is too large to be upscaled.">', $output );
+		$this->assertStringContainsString( 'This image is already large enough', $output );
+		$this->assertStringNotContainsString( 'action=emr_prepare_upscale', $output );
 	}
 
 	public function test_prepare_screen_hides_the_key_section_without_manage_options() {
@@ -462,7 +508,10 @@ class RemoveBackgroundViewControllerTest extends WP_UnitTestCase {
 
 		list( , $output ) = $this->load( $id );
 
-		$this->assertStringContainsString( 'New! Click here to upscale/enlarge this image using AI!', $output );
+		$this->assertMatchesRegularExpression( '#<a class="emr-operation emr-operation-upscale" href="[^"]+">\s*<img class="emr-operation-icon" src="[^"]*/img/icons/icon-image-upscale\.svg"#', $output );
+		$this->assertMatchesRegularExpression( '#<img class="emr-operation-new" src="[^"]*/img/icons/new\.svg"#', $output, 'SPIO\'s NEW! badge.' );
+		$this->assertStringContainsString( 'Enlarge this image up to 4× with AI', $output );
+		$this->assertMatchesRegularExpression( '/<div class="emr-operations-buttons">/', $output, 'Two buttons: two centred columns.' );
 		$this->assertSame( 1, preg_match( '/href="([^"]*action=emr_prepare_upscale[^"]*)"/', $output, $link ) );
 		$this->assertSame( 1, preg_match( '/_wpnonce=([0-9a-f]+)/', html_entity_decode( $link[1] ), $nonce ) );
 		$this->assertSame( 1, wp_verify_nonce( $nonce[1], 'emr_prepare_upscale' ) );

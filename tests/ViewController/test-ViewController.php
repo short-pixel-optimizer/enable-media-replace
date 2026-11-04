@@ -516,7 +516,9 @@ class ViewControllerTest extends WP_UnitTestCase {
 		);
 
 		$this->assertStringContainsString( "<div class='enable-media-replace emr-screen success-screen'>", $output );
-		$this->assertStringContainsString( '<h1>Your image has been replaced!</h1>', $output );
+		$this->assertStringContainsString( '<h1>Enable Media Replace</h1>', $output, 'The header bar.' );
+		$this->assertStringContainsString( '<h2>Your image has been replaced!</h2>', $output );
+		$this->assertStringContainsString( 'If you use a CDN or cache, clear it to see the new version.', $output );
 		$this->assertStringContainsString( '<span id="redirect_counter"></span>', $output );
 		$this->assertStringContainsString( '<a id="redirect_url" href="https://example.org/wp-admin/post.php?action=edit&#038;post=7&#038;emr_replaced=1">', $output );
 	}
@@ -581,7 +583,7 @@ class ViewControllerTest extends WP_UnitTestCase {
 			}
 		);
 
-		$this->assertStringContainsString( '<h1>Your image has been replaced!</h1>', $output );
+		$this->assertStringContainsString( '<h2>Your image has been replaced!</h2>', $output );
 		$this->assertStringNotContainsString( 'Did you know that you can also optimize', $output );
 	}
 

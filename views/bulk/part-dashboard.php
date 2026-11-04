@@ -74,18 +74,17 @@ $emr_icons = array(
 	</div>
 
 	<?php
-	if (current_user_can('manage_options')) {
-		$controller->loadView('bulk/part-account');
-	}
+	$emr_account_context = 'bulk';
+	include \emr()->plugin_path('views/shortpixel-account.php');
 	?>
 
 	<?php if (count($view->logs) > 0) : ?>
-		<details class="emr-bulk-collapsible emr-bulk-history">
+		<details class="emr-collapsible emr-bulk-history">
 			<summary>
-				<span class="emr-bulk-collapsible-title"><span class="dashicons dashicons-backup" aria-hidden="true"></span> <?php esc_html_e('Bulk history', 'enable-media-replace'); ?></span>
-				<span class="emr-bulk-chevron dashicons dashicons-arrow-down-alt2" aria-hidden="true"></span>
+				<span class="emr-collapsible-title"><span class="dashicons dashicons-backup" aria-hidden="true"></span> <?php esc_html_e('Bulk history', 'enable-media-replace'); ?></span>
+				<span class="emr-collapsible-chevron dashicons dashicons-arrow-down-alt2" aria-hidden="true"></span>
 			</summary>
-			<div class="emr-bulk-collapsible-content">
+			<div class="emr-collapsible-content">
 				<table class="emr-bulk-log">
 					<thead><tr>
 						<?php foreach ($view->logHeaders as $header) : ?>

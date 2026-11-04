@@ -76,22 +76,26 @@ test.describe('Remove background', () => {
 	test('API key: a valid Unlimited key is saved, then removed', async ({ page, emr, consoleErrors }) => {
 		const screen = new RemoveBackgroundScreen(page);
 		await screen.goto(emr.seed.attachment_id);
-		await expect(screen.account).toContainText('limited to 100 images on the Free plan');
+		await expect(screen.account).toContainText('Free plan (10 images)');
+		await expect(screen.account).not.toHaveAttribute('open', '');
 
+		await screen.openAccount();
 		await screen.apiKeyInput.fill(KEY);
 		await screen.apiKeySave.click();
 		await expect(screen.apiKeyNotice).toHaveText('API Key saved and verified successfully. You now have unlimited background removal.');
 		await expect(screen.apiKeyNotice).toHaveClass(/notice-success/);
 		// The page reloads itself; the connected-key card replaces the form.
 		await expect(screen.maskedKey).toHaveText('E2EK************ABCD');
-		await expect(screen.account).toContainText('Your ShortPixel API Key is connected');
+		await expect(screen.account).toContainText('Connected');
+		await expect(screen.account).toContainText('Unlimited plan active.');
 		expect((await emr.getOption<string>('emr_shortpixel_api_key')).value).toBe(KEY);
 
 		page.once('dialog', (dialog) => {
 			expect(dialog.type()).toBe('confirm');
-			expect(dialog.message()).toContain('Remove the saved ShortPixel API Key?');
+			expect(dialog.message()).toBe('Remove the API key? Background removal and upscale go back to the Free plan (10 images).');
 			void dialog.accept();
 		});
+		await screen.openAccount();
 		await screen.removeKey.click();
 		await expect(screen.apiKeyNotice).toHaveText('API Key removed.');
 		// Reloaded: the form for a new key is back.
@@ -107,6 +111,7 @@ test.describe('Remove background', () => {
 		await screen.goto(emr.seed.attachment_id);
 
 		await emr.mock({ apiStatusCode: -401, apiStatusMessage: 'Wrong API Key' });
+		await screen.openAccount();
 		await screen.apiKeyInput.fill(KEY);
 		await screen.apiKeySave.click();
 		await expect(screen.apiKeyNotice).toHaveText('The API Key is not correct. Please try again.');
@@ -149,8 +154,11 @@ test.describe('Remove background', () => {
 		await expect(screen.resultPreview).toHaveClass(/is_image/);
 		await expect(screen.resultKey).not.toHaveValue('');
 		await expect(screen.replaceButton).toBeEnabled();
-		await expect(screen.previewButton).toBeEnabled();
+		// The same settings give the same result: Preview waits for a changed option.
+		await expect(screen.previewButton).toBeDisabled();
 		await expect(screen.badBackgroundLink).toHaveAttribute('href', /^mailto:support@shortpixel\.com\?.*bg_remove:#ff000040/);
+		await expect(screen.badBackgroundLink).toBeVisible();
+		await expect(screen.badBackgroundLink).toHaveText('Report a bad result');
 
 		// Free path: the reducer got the source URL and the colour with the alpha suffix.
 		const calls = await emr.mockRequests('free-reducer.php');

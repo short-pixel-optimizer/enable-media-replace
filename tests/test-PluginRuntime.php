@@ -46,6 +46,7 @@ class PluginRuntimeTest extends EMR_MainTestCase {
 			array( 'submenu_file', array( $plugin, 'hide_sub_menu' ), 10 ),
 			array( 'current_screen', array( $plugin, 'setScreen' ), 10 ),
 			array( 'admin_enqueue_scripts', array( $plugin, 'admin_scripts' ), 10 ),
+			array( 'wp_enqueue_media', array( $plugin, 'enqueueMediaModal' ), 10 ),
 			array( 'media_row_actions', array( $plugin, 'add_media_action' ), 10 ),
 			array( 'attachment_submitbox_misc_actions', array( $plugin, 'admin_date_replaced_media_on_edit_media_screen' ), 91 ),
 			array( 'add_meta_boxes_attachment', array( $plugin, 'add_meta_boxes' ), 10 ),

@@ -314,6 +314,7 @@ class EnableMediaReplacePlugin
      * @hook filter submenu_file                       hide_sub_menu() (registered with add_action)
      * @hook action current_screen                     setScreen()
      * @hook action admin_enqueue_scripts              admin_scripts()
+     * @hook action wp_enqueue_media                   enqueueMediaModal()
      * @hook filter media_row_actions                  add_media_action()
      * @hook action attachment_submitbox_misc_actions  admin_date_replaced_media_on_edit_media_screen(), priority 91
      * @hook action add_meta_boxes_attachment          add_meta_boxes()
@@ -340,6 +341,7 @@ class EnableMediaReplacePlugin
 
         add_action('current_screen', array($this, 'setScreen')); // annoying workaround for notices in edit-attachment screen
         add_action('admin_enqueue_scripts', array($this, 'admin_scripts'));
+        add_action('wp_enqueue_media', array($this, 'enqueueMediaModal')); // the tiles of attachment_editor()
 
 
         // content filters
@@ -502,6 +504,7 @@ class EnableMediaReplacePlugin
             case 'enable-media-replace/enable-media-replace.php':
                 $action = isset($_GET['action']) ? sanitize_text_field($_GET['action']) : '';
                 wp_enqueue_style('emr_style');
+                wp_enqueue_style('emr_single');
                 wp_enqueue_script('jquery-ui-datepicker');
                 wp_enqueue_style('jquery-ui-datepicker');
                 wp_enqueue_script('emr_admin');
@@ -511,6 +514,7 @@ class EnableMediaReplacePlugin
                 if ($action == 'media_replace') {
                     if (array_key_exists("attachment_id", $_GET) && intval($_GET["attachment_id"]) > 0) {
                         wp_enqueue_script('emr_upsell');
+                        wp_enqueue_script('emr_magnifier');
 
                         $controller = \EnableMediaReplace\ViewController\ReplaceViewController::getInstance();
                         $controller->load();
@@ -527,6 +531,7 @@ class EnableMediaReplacePlugin
                     //We're adding a timestamp to the image URL for cache busting
 
                     wp_enqueue_script('emr_remove_bg');
+                    wp_enqueue_script('emr_magnifier');
 
                     wp_enqueue_style('emr_style');
                     wp_enqueue_style('emr-remove-background');
@@ -547,6 +552,7 @@ class EnableMediaReplacePlugin
                     //	require_once($this->plugin_path . 'views/do-replace-background.php');
                 } elseif ('emr_prepare_upscale' === $action && $this->useFeature('upscale')) {
                     wp_enqueue_script('emr_remove_bg'); // Same preview flow, sends the upscale factor.
+                    wp_enqueue_script('emr_magnifier');
                     wp_enqueue_style('emr-remove-background');
                     wp_enqueue_script('emr_upsell');
 
@@ -598,7 +604,8 @@ class EnableMediaReplacePlugin
      * they need.
      *
      * Styles registered: emr_style (css/admin.css, or css/rtl/admin.css for
-     * RTL), emr_edit-attachment and emr-remove-background.
+     * RTL), emr_edit-attachment, emr-remove-background and emr_single
+     * (css/single.css, the single screens; depends on the two others).
      *
      * Scripts registered and their localised objects:
      * - emr_admin (js/emr_admin.js) -> `emr_options`: dateFormat (from
@@ -617,6 +624,8 @@ class EnableMediaReplacePlugin
      *   Enqueued by views/shortpixel-account.php for users with
      *   `manage_options`.
      * - emr_success (js/emr_success.js) -> `emr_success_options`: timeout.
+     * - emr_magnifier (js/emr-magnifier.js, no dependencies, nothing
+     *   localised): the hover magnifier of the preview panes.
      *
      * @return void
      *
@@ -634,6 +643,10 @@ class EnableMediaReplacePlugin
         wp_register_style('emr_edit-attachment', plugins_url('css/edit_attachment.css', EMR_ROOT_FILE));
 
         wp_register_style('emr-remove-background', plugins_url('css/remove_background.css', EMR_ROOT_FILE));
+
+        // The single screens: header bar, operation buttons, account row, magnifier (after the two above).
+        wp_register_style('emr_single', plugins_url('css/single.css', EMR_ROOT_FILE), array('emr_style', 'emr-remove-background'), EMR_VERSION);
+        wp_register_script('emr_magnifier', plugins_url('js/emr-magnifier.js', EMR_ROOT_FILE), array(), EMR_VERSION, true);
 
 
         $mimes = array_values(get_allowed_mime_types());
@@ -916,6 +929,7 @@ class EnableMediaReplacePlugin
         }
 
         add_meta_box('emr-replace-box', __('Replace Media', 'enable-media-replace'), array($this, 'replace_meta_box'), 'attachment', 'side', 'low');
+        $this->enqueueMediaModal(); // The tiles of replace_meta_box(); added before the admin header prints the styles.
 
         if (isset($_GET['emr_replaced']) && intval($_GET['emr_replaced'] == 1)) {
             add_meta_box('emr-showthumbs-box', __('Replaced Thumbnails Preview', 'enable-media-replace'), array($this, 'show_thumbs_box'), 'attachment', 'side', 'low');
@@ -925,44 +939,35 @@ class EnableMediaReplacePlugin
     /**
      * Prints the "Replace Media" meta box.
      *
-     * An "Upload a new file" button to the replace screen (nonce
-     * 'media_replace'), a "Remove background" button (nonce
-     * 'emr_prepare_remove') when UIHelper::isBackgroundRemovable() is true,
-     * and an "Upscale image" button (nonce 'emr_prepare_upscale') when
-     * UIHelper::isUpscalable() is true.
+     * The SVG tiles of the single screens, stacked (UIHelper::getOperationButtonArgs()
+     * and getOperationButton(), styled by css/media-modal.css, which
+     * add_meta_boxes() enqueues): Replace media (nonce 'media_replace'),
+     * Remove background (nonce 'emr_prepare_remove') when
+     * UIHelper::isBackgroundRemovable() is true, and Upscale image (nonce
+     * 'emr_prepare_upscale') when UIHelper::supportsUpscale() is true, greyed
+     * out without a link when UIHelper::getMaxUpscaleFactor() is 0.
      *
      * @param \WP_Post $post Attachment being edited.
      * @return void
      */
     public function replace_meta_box($post)
     {
+        $uiHelper = $this->uiHelper();
+        $buttons  = array($uiHelper->getOperationButtonArgs('replace', $post));
 
-        //Replace media button
-        $replace_url = $this->getMediaReplaceURL($post->ID);
-
-        $replace_action = "media_replace";
-        $replace_editurl = wp_nonce_url($replace_url, $replace_action);
-
-        $replace_link = "href=\"$replace_editurl\"";
-
-        echo "<p><a class='button-secondary' $replace_link>" . esc_html__("Upload a new file", "enable-media-replace") . "</a></p><p>" . esc_html__("To replace the current file, click the link and upload a replacement file.", "enable-media-replace") . "</p>";
-        //Remove background button
-        $removeBg_url = $this->getRemoveBgURL($post->ID);
-
-        $removeBg_action = "emr_prepare_remove";
-        $removeBg_editurl = wp_nonce_url($removeBg_url, $removeBg_action);
-
-        $removeBg_link = "href=\"$removeBg_editurl\"";
-
-        if ($this->uiHelper()->isBackgroundRemovable($post)) {
-            echo "<p><a class='button-secondary' $removeBg_link>" . esc_html__("Remove background", "enable-media-replace") . "</a></p><p>" . esc_html__("To remove the background, click the link and select the options.", "enable-media-replace") . "</p>";
+        if ($uiHelper->isBackgroundRemovable($post)) {
+            $buttons[] = $uiHelper->getOperationButtonArgs('background', $post);
+        }
+        // Upscale: a greyed-out tile when the image is too large.
+        if ($uiHelper->supportsUpscale($post)) {
+            $buttons[] = $uiHelper->getOperationButtonArgs('upscale', $post);
         }
 
-        //Upscale button
-        if ($this->uiHelper()->isUpscalable($post)) {
-            $upscale_link = "href=\"" . wp_nonce_url($this->getUpscaleURL($post->ID), 'emr_prepare_upscale') . "\"";
-            echo "<p><a class='button-secondary' $upscale_link>" . esc_html__("Upscale image", "enable-media-replace") . "</a></p><p>" . esc_html__("To enlarge a small image, click the link and select the options.", "enable-media-replace") . "</p>";
+        echo "<div class='emr-operations-box'>";
+        foreach ($buttons as $button) {
+            echo $uiHelper->getOperationButton($button); // Escaped by getOperationButton().
         }
+        echo "</div>";
     }
 
     /**
@@ -1024,18 +1029,38 @@ class EnableMediaReplacePlugin
     }
 
     /**
+     * Loads css/media-modal.css, the SVG tiles of attachment_editor() and
+     * replace_meta_box(): wherever WordPress loads the media modal (Media
+     * Library grid, post editors), and from add_meta_boxes() on Edit Media.
+     *
+     * Registers and enqueues in one call: on the block editor
+     * wp_enqueue_media() runs before admin_enqueue_scripts, so admin_scripts()
+     * has not registered anything yet.
+     *
+     * @return void
+     *
+     * @hook action wp_enqueue_media
+     */
+    public function enqueueMediaModal()
+    {
+        wp_enqueue_style('emr_media_modal', plugins_url('css/media-modal.css', EMR_ROOT_FILE), array(), EMR_VERSION);
+    }
+
+    /**
      * Adds the EMR buttons to the attachment fields (media modal and
      * attachment details).
      *
      * Skipped when checkImagePermission() fails, and on the 'attachment'
-     * edit screen, which has the meta box instead. Adds the
-     * `enable-media-replace` field (replace button, nonce 'media_replace')
-     * and, when the background is removable and the user is not author
-     * restricted, the `emr-remove-background` field (nonce
-     * 'emr_prepare_remove'). The author check repeats the one already
-     * inside isBackgroundRemovable(). When UIHelper::isUpscalable() is true
-     * it also adds the `emr-upscale` field (nonce 'emr_prepare_upscale');
-     * that check carries the author restriction through useFeature().
+     * edit screen, which has the meta box instead. Each field holds one SVG
+     * tile from UIHelper::getOperationButton() (css/media-modal.css, loaded
+     * by enqueueMediaModal()). Adds the `enable-media-replace` field (nonce
+     * 'media_replace') and, when the background is removable and the user is
+     * not author restricted, the `emr-remove-background` field (nonce
+     * 'emr_prepare_remove'). The author check repeats the one already inside
+     * isBackgroundRemovable(). When UIHelper::supportsUpscale() is true it
+     * also adds the `emr-upscale` field (nonce 'emr_prepare_upscale'), a
+     * greyed-out tile when UIHelper::getMaxUpscaleFactor() is 0; that check
+     * carries the author restriction through useFeature().
      *
      * @param array    $form_fields Attachment form fields.
      * @param \WP_Post $post        Attachment.
@@ -1058,38 +1083,29 @@ class EnableMediaReplacePlugin
             }
         }
 
-        $url = $this->getMediaReplaceURL($post->ID);
-        $action = "media_replace";
-        $editurl = wp_nonce_url($url, $action);
+        $uiHelper = $this->uiHelper();
 
-        $link = "href=\"$editurl\"";
+        // The same SVG tiles and wording as the single screens (UIHelper::getOperationButtonArgs()), styled by css/media-modal.css.
         $form_fields["enable-media-replace"] = array(
             "label" => esc_html__("Replace media", "enable-media-replace"),
             "input" => "html",
-            "html" => "<a class='button-secondary' $link>" . esc_html__("Upload a new file", "enable-media-replace") . "</a>",
-            "helps" => esc_html__("To replace the current file, click the link and upload a replacement file.", "enable-media-replace")
+            "html" => $uiHelper->getOperationButton($uiHelper->getOperationButtonArgs('replace', $post)),
         );
 
-        $uiHelper = $this->uiHelper(); 
-
         if ($uiHelper->isBackgroundRemovable($post) && false === $uiHelper->is_author_restricted() ) {
-            $link = $this->getRemoveBgURL($post->ID);
-            $link = "href='" . wp_nonce_url($link, 'emr_prepare_remove') . "'";
             $form_fields["emr-remove-background"] = array(
                 "label" => esc_html__("Remove background", "enable-media-replace"),
                 "input" => "html",
-                "html" => "<a class='button-secondary' $link>" . esc_html__("Remove background", "enable-media-replace") . "</a>",
-                "helps" => esc_html__("To remove the background, click the link.", "enable-media-replace")
+                "html" => $uiHelper->getOperationButton($uiHelper->getOperationButtonArgs('background', $post)),
             );
         }
 
-        if ($uiHelper->isUpscalable($post)) {
-            $link = "href='" . wp_nonce_url($this->getUpscaleURL($post->ID), 'emr_prepare_upscale') . "'";
+        // Upscale: a greyed-out tile when the image is too large.
+        if ($uiHelper->supportsUpscale($post)) {
             $form_fields["emr-upscale"] = array(
                 "label" => esc_html__("Upscale image", "enable-media-replace"),
                 "input" => "html",
-                "html" => "<a class='button-secondary' $link>" . esc_html__("Upscale image", "enable-media-replace") . "</a>",
-                "helps" => esc_html__("To enlarge a small image, click the link.", "enable-media-replace")
+                "html" => $uiHelper->getOperationButton($uiHelper->getOperationButtonArgs('upscale', $post)),
             );
         }
         return $form_fields;

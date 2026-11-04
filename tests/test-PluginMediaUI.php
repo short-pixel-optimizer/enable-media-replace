@@ -321,9 +321,13 @@ class PluginMediaUITest extends EMR_MainTestCase {
 			}
 		);
 
-		$this->assertStringContainsString( 'Upload a new file', $html );
-		$this->assertStringContainsString( 'Remove background', $html );
-		$this->assertStringContainsString( 'Upscale image', $html );
+		// The SVG tiles of the single screens, stacked, with the same wording.
+		$this->assertStringStartsWith( "<div class='emr-operations-box'><a class=\"emr-operation emr-operation-replace\"", $html );
+		$this->assertStringContainsString( '<span class="emr-operation-title">Replace media</span><span class="emr-operation-text">Upload another file in place of this one</span>', $html );
+		$this->assertStringContainsString( '<span class="emr-operation-title">Remove background</span><span class="emr-operation-text">Make this image transparent or a solid color, with AI</span>', $html );
+		$this->assertStringContainsString( '<span class="emr-operation-title">Upscale image</span><span class="emr-operation-text">Enlarge this image up to 4× with AI</span>', $html );
+		$this->assertStringContainsString( '/img/icons/new.svg', $html );
+		$this->assertStringNotContainsString( 'button-secondary', $html, 'No plain WordPress buttons any more.' );
 		$this->assertSame( 1, preg_match( '/href="([^"]*action=media_replace[^"]*)"/', $html, $replace ) );
 		$this->assertSame( 1, wp_verify_nonce( $this->nonce_in( $replace[1] ), 'media_replace' ) );
 		$this->assertStringContainsString( 'attachment_id=' . $id, $replace[1] );
@@ -332,7 +336,24 @@ class PluginMediaUITest extends EMR_MainTestCase {
 		$this->assertSame( 1, preg_match( '/href="([^"]*action=emr_prepare_upscale[^"]*)"/', $html, $upscale ) );
 		$this->assertSame( 1, wp_verify_nonce( $this->nonce_in( $upscale[1] ), 'emr_prepare_upscale' ) );
 		$this->assertStringContainsString( 'attachment_id=' . $id, $upscale[1] );
-		$this->assertStringContainsString( 'To enlarge a small image, click the link and select the options.', $html );
+	}
+
+	public function test_replace_meta_box_modal_and_replace_screen_print_the_same_tile() {
+		$this->as_admin();
+		set_current_screen( 'upload' );
+		$id     = $this->make_attachment();
+		$helper = emr()->uiHelper();
+		$tile   = $helper->getOperationButton( $helper->getOperationButtonArgs( 'background', $id ) );
+
+		$box    = $this->capture(
+			function () use ( $id ) {
+				emr()->replace_meta_box( get_post( $id ) );
+			}
+		);
+		$fields = emr()->attachment_editor( array(), get_post( $id ) );
+
+		$this->assertStringContainsString( $tile, $box );
+		$this->assertSame( $tile, $fields['emr-remove-background']['html'] );
 	}
 
 	public function test_replace_meta_box_omits_remove_background_and_upscale_for_a_pdf() {
@@ -345,14 +366,14 @@ class PluginMediaUITest extends EMR_MainTestCase {
 			}
 		);
 
-		$this->assertStringContainsString( 'Upload a new file', $html );
+		$this->assertStringContainsString( '<span class="emr-operation-title">Replace media</span>', $html );
 		$this->assertStringNotContainsString( 'Remove background', $html );
 		$this->assertStringNotContainsString( 'emr_prepare_remove', $html );
 		$this->assertStringNotContainsString( 'Upscale image', $html );
 		$this->assertStringNotContainsString( 'emr_prepare_upscale', $html );
 	}
 
-	public function test_replace_meta_box_omits_upscale_for_an_image_wider_than_the_limit() {
+	public function test_replace_meta_box_greys_out_upscale_for_an_image_wider_than_the_limit() {
 		$this->as_admin();
 		$id = $this->make_attachment();
 		$this->set_width( $id, 1201 );
@@ -364,7 +385,25 @@ class PluginMediaUITest extends EMR_MainTestCase {
 		);
 
 		$this->assertStringContainsString( 'Remove background', $html, 'Remove background has no size limit.' );
-		$this->assertStringNotContainsString( 'Upscale image', $html );
+		$this->assertStringContainsString( '<span class="emr-operation emr-operation-upscale is-disabled" aria-disabled="true" title="This image is too large to be upscaled.">', $html );
+		$this->assertStringContainsString( 'This image is already large enough', $html );
+		$this->assertStringNotContainsString( 'emr_prepare_upscale', $html, 'No link to the upscale screen.' );
+	}
+
+	public function test_replace_meta_box_greys_out_upscale_at_exactly_the_limit_where_no_factor_fits() {
+		$this->as_admin();
+		$id = $this->make_attachment();
+		$this->set_width( $id, 1200 );
+		$this->assertTrue( emr()->uiHelper()->isUpscalable( get_post( $id ) ), 'Precondition: isUpscalable() still lets 1200 px through.' );
+		$this->assertSame( 0, emr()->uiHelper()->getMaxUpscaleFactor( $id ), 'Precondition: no factor fits 1200 px.' );
+
+		$html = $this->capture(
+			function () use ( $id ) {
+				emr()->replace_meta_box( get_post( $id ) );
+			}
+		);
+
+		$this->assertStringContainsString( 'emr-operation-upscale is-disabled', $html );
 		$this->assertStringNotContainsString( 'emr_prepare_upscale', $html );
 	}
 
@@ -534,20 +573,44 @@ class PluginMediaUITest extends EMR_MainTestCase {
 		$this->assertSame( 1, wp_verify_nonce( $this->nonce_in( $fields['emr-remove-background']['html'] ), 'emr_prepare_remove' ) );
 		$this->assertSame( 'Upscale image', $fields['emr-upscale']['label'] );
 		$this->assertSame( 'html', $fields['emr-upscale']['input'] );
-		$this->assertSame( 'To enlarge a small image, click the link.', $fields['emr-upscale']['helps'] );
+		$this->assertArrayNotHasKey( 'helps', $fields['emr-upscale'], 'The tile carries its own text.' );
+		// The SVG tiles of the single screens.
+		$this->assertMatchesRegularExpression( '#^<a class="emr-operation emr-operation-replace" href="[^"]+"><img class="emr-operation-icon" src="[^"]*/img/icons/icon-media-replace\.svg"#', $fields['enable-media-replace']['html'] );
+		$this->assertStringContainsString( '<span class="emr-operation-title">Replace media</span>', $fields['enable-media-replace']['html'] );
+		$this->assertStringContainsString( 'Make this image transparent or a solid color, with AI', $fields['emr-remove-background']['html'] );
+		$this->assertStringContainsString( '/img/icons/icon-background-removal.svg', $fields['emr-remove-background']['html'] );
+		$this->assertStringContainsString( '/img/icons/icon-image-upscale.svg', $fields['emr-upscale']['html'] );
+		$this->assertStringContainsString( '/img/icons/new.svg', $fields['emr-upscale']['html'] );
+		$this->assertStringContainsString( 'Enlarge this image up to 4× with AI', $fields['emr-upscale']['html'] );
 		$this->assertSame( 1, wp_verify_nonce( $this->nonce_in( $fields['emr-upscale']['html'] ), 'emr_prepare_upscale' ) );
 		$this->assertStringContainsString( 'action=emr_prepare_upscale', $fields['emr-upscale']['html'] );
 		$this->assertStringContainsString( 'attachment_id=' . $id, $fields['emr-upscale']['html'] );
 	}
 
-	public function test_attachment_editor_omits_upscale_for_an_image_wider_than_the_limit() {
+	public function test_attachment_editor_greys_out_upscale_for_an_image_wider_than_the_limit() {
 		$this->as_admin();
 		$id = $this->make_attachment();
 		$this->set_width( $id, 1201 );
 
 		$fields = emr()->attachment_editor( array(), get_post( $id ) );
 
-		$this->assertSame( array( 'enable-media-replace', 'emr-remove-background' ), array_keys( $fields ) );
+		$this->assertSame( array( 'enable-media-replace', 'emr-remove-background', 'emr-upscale' ), array_keys( $fields ) );
+		$this->assertStringStartsWith( '<span class="emr-operation emr-operation-upscale is-disabled" aria-disabled="true" title="This image is too large to be upscaled.">', $fields['emr-upscale']['html'] );
+		$this->assertStringContainsString( 'This image is already large enough', $fields['emr-upscale']['html'] );
+		$this->assertStringNotContainsString( 'href=', $fields['emr-upscale']['html'] );
+		$this->assertStringNotContainsString( 'emr_prepare_upscale', $fields['emr-upscale']['html'] );
+	}
+
+	public function test_enqueue_media_modal_loads_the_tile_stylesheet() {
+		wp_dequeue_style( 'emr_media_modal' );
+		wp_deregister_style( 'emr_media_modal' );
+
+		emr()->enqueueMediaModal();
+
+		$this->assertTrue( wp_style_is( 'emr_media_modal', 'enqueued' ) );
+		$this->assertStringEndsWith( '/css/media-modal.css', wp_styles()->registered['emr_media_modal']->src );
+		wp_dequeue_style( 'emr_media_modal' );
+		wp_deregister_style( 'emr_media_modal' );
 	}
 
 	public function test_attachment_editor_omits_upscale_when_the_upscale_feature_is_off() {

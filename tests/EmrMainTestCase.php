@@ -223,6 +223,7 @@ abstract class EMR_MainTestCase extends WP_UnitTestCase {
 		remove_action( 'submenu_file', array( $plugin, 'hide_sub_menu' ) );
 		remove_action( 'current_screen', array( $plugin, 'setScreen' ) );
 		remove_action( 'admin_enqueue_scripts', array( $plugin, 'admin_scripts' ) );
+		remove_action( 'wp_enqueue_media', array( $plugin, 'enqueueMediaModal' ) );
 		remove_filter( 'media_row_actions', array( $plugin, 'add_media_action' ), 10 );
 		remove_action( 'attachment_submitbox_misc_actions', array( $plugin, 'admin_date_replaced_media_on_edit_media_screen' ), 91 );
 		remove_action( 'add_meta_boxes_attachment', array( $plugin, 'add_meta_boxes' ), 10 );

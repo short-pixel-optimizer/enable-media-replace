@@ -34,12 +34,13 @@
  * for users with `manage_options`; see that file) and views/upsell.php
  * (filter `emr/upsell`).
  *
- * Links: "Replace this image with another one instead" goes to
- * `action=media_replace` with a nonce for `media_replace`; "upscale/enlarge
- * this image" (only when UIHelper::isUpscalable() is true) goes to
- * `action=emr_prepare_upscale` with a nonce for `emr_prepare_upscale`; the
- * report link is a mailto: to support whose {url} and {settings} placeholders
- * the script fills; Cancel calls history.back().
+ * Header: the white `.emr-page-header` bar. Under the previews,
+ * views/operation-buttons.php shows the Replace media and Upscale image
+ * buttons. "Report a bad result" is a mailto: to support whose {url} and
+ * {settings} placeholders the script fills, shown with its hint once a
+ * preview exists (`.bad-button.is-ready`); Cancel calls history.back(). The
+ * result pane says "Click Preview to see the result" until the first preview;
+ * js/emr-magnifier.js adds the hover magnifier to both panes.
  *
  * @todo The form action $formurl is echoed without escaping; wrap it in esc_url().
  */
@@ -66,7 +67,7 @@ $uiHelper->setPreviewSizes();
 $uiHelper->setSourceSizes($attachment_id);
 
 $base_image = $uiHelper->getPreviewImage($attachment_id, $view->sourceFile );
-$replace_image = $uiHelper->getPreviewImage(-1, $view->sourceFile, array('remove_bg_ui' => true) );
+$replace_image = $uiHelper->getPreviewImage(-1, $view->sourceFile, array('remove_bg_ui' => true, 'hint' => __('Click Preview to see the result', 'enable-media-replace')) );
 
 $formurl = $uiHelper->getFormUrl($attachment_id, 'do_background_replace');
 //$formurl = wp_nonce_url( $formurl, "do_background_replace" );
@@ -76,12 +77,6 @@ $linebreak_double = $linebreak . $linebreak;
 $email_subject = __('Bad remove of background report', 'enable-media-replace');
 $email_body = sprintf(__('Hello! %s This is a report of a background removal that did not go well %s Url: {url} %s Settings : {settings} %s Thank you! %s', 'enable-media-replace'), $linebreak_double, $linebreak_double, $linebreak, $linebreak_double, $linebreak_double);
 
-$replace_url = add_query_arg(array(
-'page' => 'enable-media-replace/enable-media-replace.php',
-'action' => 'media_replace',
-'attachment_id' => $attachment_id,
-), admin_url("upload.php"));
-
 ?>
 
 <div id="emr-bg-notice" class="notice notice-error is-dismissible" style="display:none;">
@@ -90,6 +85,10 @@ $replace_url = add_query_arg(array(
 </div>
 
 <div class="wrap emr_upload_form" id="remove-background-form">
+	<header class="emr-page-header">
+		<h1><?php esc_html_e('Enable Media Replace - Remove background', 'enable-media-replace'); ?></h1>
+	</header>
+	<hr class="wp-header-end">
 
 	<form id="emr_replace_form" enctype="multipart/form-data" method="POST" action="<?php
 	echo $formurl; ?>" >
@@ -110,30 +109,23 @@ $replace_url = add_query_arg(array(
 				</div>
 
 				<div class='bad-button'>
-						<a href="" data-link="mailto:support@shortpixel.com?subject=<?php echo esc_attr($email_subject) ?>&body=<?php echo esc_attr($email_body) ?>" id="bad-background-link" class="button"><?php esc_html_e('Report bad background removal','enable-media-replace'); ?></a>
-
+						<span class="bad-button-hint"><?php esc_html_e('Opens an email to ShortPixel support with the link to the result and your settings.', 'enable-media-replace'); ?></span>
+						<a href="" data-link="mailto:support@shortpixel.com?subject=<?php echo esc_attr($email_subject) ?>&body=<?php echo esc_attr($email_body) ?>" id="bad-background-link" class="button"><?php esc_html_e('Report a bad result','enable-media-replace'); ?></a>
 				</div>
 
+				<?php
+				$emr_operation_current = 'background';
+				include __DIR__ . '/operation-buttons.php';
+				?>
 			</section>
 
-			<?php if ($uiHelper->isUpscalable($view->attachment)) : ?>
-			<p><a href="<?php echo esc_attr(wp_nonce_url(add_query_arg('action', 'emr_prepare_upscale', $replace_url), 'emr_prepare_upscale')); ?>">
-					<?php esc_html_e('New! Click here to upscale/enlarge this image using AI!', 'enable-media-replace'); ?>
-			</a></p>
-			<?php endif; ?>
-			<p><a href="<?php echo esc_attr(wp_nonce_url($replace_url, 'media_replace')); ?>">
-					<?php esc_html_e('Replace this image with another one instead!', 'enable-media-replace'); ?>
-			</a></p>
 			<div class="option-flex-wrapper">
 				<section class="replace_type wrapper">
 					<div class="section-header"><?php esc_html_e('Background Removal Options', 'enable-media-replace'); ?></div>
 					<div class="option replace ">
-						<p>
-							<?php esc_html_e('If a CDN is used, remember to clear the cache for this image!', 'enable-media-replace'); ?>
-						</p>
 						<label for="transparent_background">
 							<input id="transparent_background" type="radio" name="background_type" value="transparent" <?php checked('transparent', $view->settings['bg_type']); ?> >
-							<?php esc_html_e('Transparent/white background', 'enable-media-replace'); ?>
+							<?php esc_html_e('Transparent (white for JPG)', 'enable-media-replace'); ?>
 						</label>
 						<p class="howto">
 							<?php esc_html_e('Returns a transparent background if it is a PNG image, or a white one if it is a JPG image.', 'enable-media-replace'); ?>
@@ -172,7 +164,10 @@ $replace_url = add_query_arg(array(
 
 			</div>
 
-			<?php include( __DIR__ . '/shortpixel-account.php' ); ?>
+			<?php
+			$emr_account_context = 'background';
+			include( __DIR__ . '/shortpixel-account.php' );
+			?>
 
 			<button type="button" class="button button-primary" id="remove_background_button"><?php esc_html_e('Preview', 'enable-media-replace'); ?></button>
 			<button type="submit" class="button button-primary" id="replace_image_button" disabled><?php esc_html_e('Replace', 'enable-media-replace'); ?></button>

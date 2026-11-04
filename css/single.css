@@ -1,0 +1,423 @@
+.emr-page-header {
+  background: #fff;
+  display: flex;
+  align-items: center;
+  margin-block: -10px 10px;
+  margin-inline: -22px -20px;
+  padding: 8px 24px;
+  box-shadow: 0 1px 4px 0 rgba(0, 0, 0, 0.1);
+}
+.emr-page-header h1 {
+  margin: 0;
+  padding: 0;
+  font-size: 23px;
+  font-weight: 600;
+  line-height: 50px;
+}
+
+@media (max-width: 782px) {
+  .emr-page-header {
+    margin-inline: -12px -10px;
+  }
+}
+.emr-collapsible {
+  margin-block-start: 24px;
+  border: 1px solid rgb(89.4005602241%, 96.1456582633%, 97.1092436975%);
+  border-radius: 15px;
+  background: #fff;
+}
+.emr-collapsible > summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 20px;
+  border-radius: 15px;
+  background: #F4FBFC;
+  cursor: pointer;
+  list-style: none;
+  font-size: 14px;
+}
+.emr-collapsible > summary::-webkit-details-marker {
+  display: none;
+}
+.emr-collapsible > summary::marker {
+  content: "";
+}
+.emr-collapsible > summary:hover {
+  background: rgb(92.5434173669%, 97.2885154062%, 97.9663865546%);
+}
+.emr-collapsible > summary:focus-visible {
+  outline: 2px solid #1ABDCA;
+  outline-offset: 2px;
+}
+.emr-collapsible[open] > summary {
+  border-radius: 15px 15px 0 0;
+}
+.emr-collapsible .emr-collapsible-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
+  color: #000;
+}
+.emr-collapsible .emr-collapsible-title .dashicons {
+  color: #1ABDCA;
+}
+.emr-collapsible .emr-collapsible-chevron {
+  margin-inline-start: auto;
+  color: #116C7E;
+  transition: transform 0.2s linear;
+}
+.emr-collapsible[open] .emr-collapsible-chevron {
+  transform: rotate(180deg);
+}
+.emr-collapsible .emr-collapsible-content {
+  padding: 16px 20px 20px;
+}
+
+.emr-sp-account .emr-sp-account-status,
+.emr-sp-account .emr-sp-account-plan {
+  display: inline-flex;
+  align-items: center;
+}
+.emr-sp-account .emr-sp-account-status::before,
+.emr-sp-account .emr-sp-account-plan::before {
+  content: "—";
+  margin-inline-end: 8px;
+  color: #a7aaad;
+  font-weight: 400;
+}
+.emr-sp-account .emr-sp-account-status .dashicons,
+.emr-sp-account .emr-sp-account-plan .dashicons {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+}
+.emr-sp-account .emr-sp-account-connected {
+  color: #008a20;
+  font-weight: 600;
+}
+.emr-sp-account .emr-sp-account-disconnected {
+  color: #996800;
+  font-weight: 600;
+}
+.emr-sp-account .emr-sp-account-free,
+.emr-sp-account .emr-sp-account-plan {
+  color: #3c434a;
+}
+.emr-sp-account .emr-sp-intro {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: #50575e;
+}
+.emr-sp-account .emr-sp-key-card {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  background: #F4FBFC;
+  border-radius: 10px;
+}
+.emr-sp-account .emr-sp-key-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.emr-sp-account .emr-sp-status-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #46b450;
+  box-shadow: 0 0 0 3px rgba(70, 180, 80, 0.15);
+}
+.emr-sp-account .emr-sp-key-value {
+  font-size: 13px;
+}
+.emr-sp-account .emr-sp-key-actions {
+  display: flex;
+  gap: 8px;
+}
+.emr-sp-account .button.emr-button-danger {
+  color: #d63638;
+  border-color: #d63638;
+}
+.emr-sp-account .button.emr-button-danger:hover, .emr-sp-account .button.emr-button-danger:focus {
+  background: #d63638;
+  border-color: #d63638;
+  color: #fff;
+}
+.emr-sp-account .emr-sp-edit-form {
+  margin-block-start: 12px;
+}
+.emr-sp-account .emr-sp-edit-form label {
+  display: block;
+  margin-block-end: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #1d2327;
+}
+.emr-sp-account .emr-sp-edit-form[hidden] {
+  display: none;
+}
+.emr-sp-account .emr-sp-edit-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.emr-sp-account input.emr-sp-key-input {
+  width: 26ch;
+  max-width: 100%;
+  min-height: 36px;
+  font-family: Consolas, Monaco, monospace;
+  font-size: 14px;
+}
+.emr-sp-account .emr-sp-cancel-link {
+  font-size: 12px;
+  color: #50575e;
+}
+.emr-sp-account .description {
+  margin: 8px 0 0;
+}
+.emr-sp-account #emr-apikey-notice {
+  margin: 12px 0 0;
+  border-radius: 4px;
+}
+.emr-sp-account #emr-apikey-notice[hidden] {
+  display: none;
+}
+.emr-sp-account #emr-apikey-notice p {
+  margin: 6px 0;
+}
+
+.emr-operation {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 280px;
+  padding-block: 12px;
+  padding-inline: 12px 18px;
+  background: #F4FBFC;
+  border: 1px solid rgb(86.2577030812%, 95.0028011204%, 96.2521008403%);
+  border-radius: 12px;
+  color: #1d2327;
+  text-decoration: none;
+  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+.emr-operation:hover, .emr-operation:focus {
+  border-color: #1ABDCA;
+  box-shadow: 0 2px 8px rgba(17, 108, 126, 0.15);
+  color: #1d2327;
+}
+.emr-operation:focus-visible {
+  outline: 2px solid #116C7E;
+  outline-offset: 2px;
+}
+.emr-operation .emr-operation-icon {
+  flex: 0 0 auto;
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+}
+.emr-operation .emr-operation-label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.emr-operation .emr-operation-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #116C7E;
+}
+.emr-operation .emr-operation-text {
+  font-size: 12px;
+  color: #50575e;
+}
+.emr-operation .emr-operation-new {
+  position: absolute;
+  top: -14px;
+  inset-inline-end: -12px;
+  width: 58px;
+  height: auto;
+  pointer-events: none;
+}
+
+.emr-operation.is-disabled {
+  cursor: not-allowed;
+  background: #F5F5F5;
+  border-color: #D7D7D7;
+  box-shadow: none;
+}
+.emr-operation.is-disabled .emr-operation-icon,
+.emr-operation.is-disabled .emr-operation-new {
+  filter: grayscale(1);
+  opacity: 0.55;
+}
+.emr-operation.is-disabled .emr-operation-title,
+.emr-operation.is-disabled .emr-operation-text {
+  color: #8c8f94;
+}
+.emr-operation.is-disabled:hover, .emr-operation.is-disabled:focus {
+  border-color: #D7D7D7;
+  box-shadow: none;
+}
+
+.emr-operations {
+  margin-block: 20px 4px;
+}
+.emr-operations .emr-operations-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  justify-items: center;
+}
+.emr-operations .emr-operations-buttons.is-single {
+  grid-template-columns: 1fr;
+}
+@media (max-width: 720px) {
+  .emr-operations .emr-operations-buttons {
+    grid-template-columns: 1fr;
+  }
+}
+.emr-operations .emr-operations-option {
+  margin-block: 14px 0;
+  text-align: center;
+}
+
+.emr_upload_form:not(#remove-background-form) .image_chooser .image_previews {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+.emr_upload_form:not(#remove-background-form) .image_chooser .image_previews .image_placeholder {
+  width: 100% !important;
+  max-width: none;
+  height: 440px !important;
+  margin: 0;
+}
+.emr_upload_form:not(#remove-background-form) .image_chooser .image_previews .image_placeholder img {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  position: absolute;
+  inset: 0;
+  margin: auto;
+}
+@media (max-width: 720px) {
+  .emr_upload_form:not(#remove-background-form) .image_chooser .image_previews {
+    grid-template-columns: 1fr;
+  }
+  .emr_upload_form:not(#remove-background-form) .image_chooser .image_previews .image_placeholder {
+    height: 320px !important;
+  }
+}
+
+.emr_upload_form:not(#remove-background-form) .image_chooser .image_previews .image_placeholder.is_image .upload-title {
+  width: auto;
+  left: auto;
+  right: auto;
+  inset-inline-end: 50%;
+  margin-inline-end: 4px;
+}
+.emr_upload_form:not(#remove-background-form) .image_chooser .image_previews .image_placeholder.is_image .textlayer {
+  top: 18px;
+  left: auto;
+  right: auto;
+  inset-inline-start: 50%;
+  margin-inline-start: 4px;
+  transform: translateY(-50%);
+  padding: 3px 8px;
+  border: 0;
+  border-radius: 4px;
+  background-color: rgba(0, 0, 0, 0.45);
+  color: #fff;
+  font-size: 12px;
+  line-height: 1;
+  white-space: nowrap;
+  opacity: 1 !important;
+}
+.emr_upload_form:not(#remove-background-form) .image_chooser .image_previews .image_placeholder.is_image .textlayer:empty {
+  display: none;
+}
+
+#remove-background-form .image_previews .image_placeholder.is_image:last-child {
+  background-color: #fff;
+  background-image: linear-gradient(45deg, #e6e7e9 25%, transparent 25%), linear-gradient(-45deg, #e6e7e9 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e6e7e9 75%), linear-gradient(-45deg, transparent 75%, #e6e7e9 75%);
+  background-size: 20px 20px;
+  background-position: 0 0, 0 10px, 10px -10px, -10px 0;
+}
+
+.image_previews .emr-preview-hint {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  text-align: center;
+  font-size: 15px;
+  color: #50575e;
+}
+
+.image_previews .image_placeholder.is_image {
+  cursor: zoom-in;
+}
+
+.emr-magnifier {
+  position: absolute;
+  z-index: 20;
+  width: 220px;
+  height: 220px;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  overflow: hidden;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(0, 0, 0, 0.15);
+  pointer-events: none;
+  background-color: #fff;
+  background-image: linear-gradient(45deg, #e6e7e9 25%, transparent 25%), linear-gradient(-45deg, #e6e7e9 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e6e7e9 75%), linear-gradient(-45deg, transparent 75%, #e6e7e9 75%);
+  background-size: 16px 16px;
+  background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+}
+.emr-magnifier[hidden] {
+  display: none;
+}
+.emr-magnifier .emr-magnifier-image {
+  width: 100%;
+  height: 100%;
+  background-repeat: no-repeat;
+}
+
+.emr_upload_form .emr-sp-account {
+  margin-block: 24px;
+}
+
+.emr-success-wrap .enable-media-replace.emr-screen {
+  width: auto;
+  max-width: 900px;
+  margin: 20px 0;
+  border: 0;
+  border-radius: 16px;
+  box-shadow: 1px 0 4px 0 rgba(0, 0, 0, 0.12);
+}
+.emr-success-wrap .enable-media-replace.emr-screen .content {
+  padding: 30px 36px;
+}
+.emr-success-wrap .enable-media-replace.emr-screen h2 {
+  margin-top: 0;
+  font-size: 22px;
+  font-weight: 700;
+  color: #3c434a;
+}
+.emr-success-wrap .enable-media-replace.emr-screen .emr-success-cache {
+  padding: 10px 14px;
+  border-inline-start: 4px solid #1ABDCA;
+  background: #F4FBFC;
+  border-radius: 4px;
+}
+
+/*# sourceMappingURL=single.css.map */

@@ -1,0 +1,43 @@
+// The SVG tiles of the single screens, fitted to two narrow places: the EMR
+// fields of the media modal ("Attachment details" in the Media Library grid
+// and the post editors) and the "Replace Media" box of Edit Media. Compiled
+// to css/media-modal.css, enqueued by EnableMediaReplacePlugin::enqueueMediaModal().
+@use 'operation-buttons';
+
+.compat-field-enable-media-replace,
+.compat-field-emr-remove-background,
+.compat-field-emr-upscale {
+	.field { padding-top: 4px; }
+
+	.emr-operation {
+		min-width: 0;
+		max-width: 100%;
+		box-sizing: border-box;
+		margin-block-end: 6px;
+	}
+
+	.emr-operation-new {
+		top: -10px;
+		inset-inline-end: -6px;
+		width: 48px;
+	}
+}
+
+// Edit Media: the "Replace Media" side box, tiles stacked.
+#emr-replace-box .emr-operations-box {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	padding-block: 6px 4px;
+
+	.emr-operation {
+		min-width: 0;
+		box-sizing: border-box;
+	}
+
+	.emr-operation-new {
+		top: -10px;
+		inset-inline-end: -6px;
+		width: 48px;
+	}
+}

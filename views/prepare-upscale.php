@@ -29,10 +29,13 @@
  * shows the new dimensions. The Replace submit button stays disabled until a preview
  * succeeds. The result preview is a placeholder with `upscale_ui`.
  *
- * Includes views/shortpixel-account.php with `$emr_account_feature` 'upscale' (the API
- * key box with upscale wording, for users with `manage_options`) and views/upsell.php.
- * Links: "Replace this image with another one instead" goes to `action=media_replace`
- * with a nonce for `media_replace`; Cancel calls history.back().
+ * Includes views/shortpixel-account.php with `$emr_account_context` 'upscale' (the
+ * collapsible API key row, for users with `manage_options`) and views/upsell.php.
+ * Header: the white `.emr-page-header` bar. Under the previews,
+ * views/operation-buttons.php shows the Replace media and Remove background
+ * buttons. The result pane says "Click Preview to see the result" until the
+ * first preview; js/emr-magnifier.js adds the hover magnifier to both panes.
+ * Cancel calls history.back().
  *
  * @todo The form action $formurl is echoed without escaping; wrap it in esc_url().
  */
@@ -53,15 +56,9 @@ $uiHelper->setPreviewSizes();
 $uiHelper->setSourceSizes($attachment_id);
 
 $base_image = $uiHelper->getPreviewImage($attachment_id, $view->sourceFile );
-$replace_image = $uiHelper->getPreviewImage(-1, $view->sourceFile, array('upscale_ui' => true) );
+$replace_image = $uiHelper->getPreviewImage(-1, $view->sourceFile, array('upscale_ui' => true, 'hint' => __('Click Preview to see the result', 'enable-media-replace')) );
 
 $formurl = $uiHelper->getFormUrl($attachment_id, 'do_upscale_replace');
-
-$replace_url = add_query_arg(array(
-'page' => 'enable-media-replace/enable-media-replace.php',
-'action' => 'media_replace',
-'attachment_id' => $attachment_id,
-), admin_url("upload.php"));
 
 $meta = wp_get_attachment_metadata($attachment_id);
 $image_width = (is_array($meta) && isset($meta['width'])) ? intval($meta['width']) : 0;
@@ -77,6 +74,10 @@ $scale_checked = false;
 </div>
 
 <div class="wrap emr_upload_form emr-upscale-form" id="remove-background-form">
+	<header class="emr-page-header">
+		<h1><?php esc_html_e('Enable Media Replace - Upscale image', 'enable-media-replace'); ?></h1>
+	</header>
+	<hr class="wp-header-end">
 
 	<form id="emr_replace_form" enctype="multipart/form-data" method="POST" action="<?php
 	echo $formurl; ?>" >
@@ -96,18 +97,16 @@ $scale_checked = false;
 
 				</div>
 
+				<?php
+				$emr_operation_current = 'upscale';
+				include __DIR__ . '/operation-buttons.php';
+				?>
 			</section>
 
-			<p><a href="<?php echo esc_attr(wp_nonce_url($replace_url, 'media_replace')); ?>">
-					<?php esc_html_e('Replace this image with another one instead!', 'enable-media-replace'); ?>
-			</a></p>
 			<div class="option-flex-wrapper">
 				<section class="replace_type wrapper">
 					<div class="section-header"><?php esc_html_e('Upscale Options', 'enable-media-replace'); ?></div>
 					<div class="option replace ">
-						<p>
-							<?php esc_html_e('If a CDN is used, remember to clear the cache for this image!', 'enable-media-replace'); ?>
-						</p>
 						<?php foreach ($uiHelper->getUpscaleFactors() as $factor => $max_width) :
 							$disabled = ($image_width > 0 && $max_width <= $image_width);
 							$checked = (false === $disabled && false === $scale_checked);
@@ -139,7 +138,7 @@ $scale_checked = false;
 			</div>
 
 			<?php
-			$emr_account_feature = 'upscale';
+			$emr_account_context = 'upscale';
 			include( __DIR__ . '/shortpixel-account.php' );
 			?>
 

@@ -117,6 +117,7 @@ test.describe('Smoke: remove-background screen', () => {
 		await expect(screen.account).toBeVisible();
 		await expect(screen.maskedKey).toHaveCount(0);
 
+		await screen.openAccount();
 		await screen.apiKeyInput.fill(key);
 		await screen.apiKeySave.click();
 		await expect(screen.apiKeyNotice).toContainText('API Key saved and verified successfully');

@@ -47,9 +47,9 @@ async function pickInLibrary(page: Page, attachmentId: number): Promise<Locator>
 	return modal;
 }
 
-/** EMR's "Upload a new file" compat field inside the open media modal. */
+/** EMR's "Replace media" tile (compat field) inside the open media modal. */
 function modalReplaceButton(page: Page): Locator {
-	return page.locator('.media-modal tr.compat-field-enable-media-replace').getByRole('link', { name: 'Upload a new file' });
+	return page.locator('.media-modal tr.compat-field-enable-media-replace').getByRole('link', { name: /^Replace media/ });
 }
 
 async function expectReplaceScreenFor(page: Page, attachmentId: number): Promise<void> {
@@ -60,7 +60,7 @@ async function expectReplaceScreenFor(page: Page, attachmentId: number): Promise
 }
 
 test.describe('Editors: Replace from the media modal', () => {
-	test('block editor: Replace › Open Media Library shows the EMR fields and Upload a new file opens the replace screen', async ({ page, emr }) => {
+	test('block editor: Replace › Open Media Library shows the EMR fields and Replace media opens the replace screen', async ({ page, emr }) => {
 		await page.goto(adminUrls.editPost(emr.seed.post_id));
 		await expect(page.locator('.editor-header, .edit-post-header')).toBeVisible({ timeout: 30_000 });
 
@@ -93,7 +93,7 @@ test.describe('Editors: Replace from the media modal', () => {
 		await expectReplaceScreenFor(page, emr.seed.attachment_id);
 	});
 
-	test('classic editor: the image toolbar Edit › Replace shows the EMR fields and Upload a new file opens the replace screen', async ({ page, emr }) => {
+	test('classic editor: the image toolbar Edit › Replace shows the EMR fields and Replace media opens the replace screen', async ({ page, emr }) => {
 		await emr.setClassicEditor(true);
 		await page.goto(adminUrls.editPost(emr.seed.post_id));
 		await expect(page.locator('#post')).toBeVisible();

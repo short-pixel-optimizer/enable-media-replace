@@ -92,9 +92,8 @@ test.describe('Upscale', () => {
 		await expect(page.locator('input[name="background_type"]')).toHaveCount(0);
 		await expect(screen.badBackgroundLink).toHaveCount(0);
 
-		await expect(screen.account).toContainText('Image Upscale is limited on the Free plan');
-		await expect(screen.account).not.toContainText('Background Removal');
-		await expect(screen.account).toHaveAttribute('data-confirm-remove', 'Remove the saved ShortPixel API Key? Image upscale will fall back to the Free plan.');
+		await expect(screen.account).toContainText('Free plan (10 images)');
+		await expect(screen.account).toHaveAttribute('data-confirm-remove', 'Remove the API key? Background removal and upscale go back to the Free plan (10 images).');
 		await expect(screen.apiKeySave).toHaveText('Activate');
 
 		expectOnlyKnownErrors(consoleErrors, KNOWN);
@@ -126,6 +125,15 @@ test.describe('Upscale', () => {
 		await expect(list.rowActionLink(huge.id, 'remove_background')).toHaveCount(1);
 		await expect(list.rowActionLink(huge.id, 'upscale_image')).toHaveCount(0);
 
+		// Edit Media keeps the Upscale tile in the Replace Media box, greyed out and without a link.
+		const edit = new EditAttachment(page);
+		await edit.goto(huge.id);
+		await expect(edit.upscaleButton).toHaveCount(0);
+		const greyed = page.locator('#emr-replace-box .emr-operation-upscale.is-disabled');
+		await expect(greyed).toBeVisible();
+		await expect(greyed).toHaveAttribute('aria-disabled', 'true');
+		await expect(greyed).toContainText('This image is already large enough');
+
 		expectOnlyKnownErrors(consoleErrors, KNOWN);
 	});
 
@@ -148,7 +156,11 @@ test.describe('Upscale', () => {
 		await expect(screen.resultDimensions).toHaveText('50 x 50');
 		await expect(screen.resultKey).not.toHaveValue('');
 		await expect(screen.replaceButton).toBeEnabled();
+		await expect(screen.previewButton).toBeDisabled();
+		// Another factor invalidates the result: Preview again, Replace waits.
+		await screen.factor(2).check();
 		await expect(screen.previewButton).toBeEnabled();
+		await expect(screen.replaceButton).toBeDisabled();
 
 		const calls = await emr.mockRequests('free-reducer.php');
 		expect(calls.length).toBe(1);

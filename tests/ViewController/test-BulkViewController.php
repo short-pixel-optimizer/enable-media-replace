@@ -268,7 +268,7 @@ class BulkViewControllerTest extends WP_UnitTestCase {
 		update_option( 'emr_shortpixel_api_key', 'abcdEFGHIJKLMNOPwxyz' );
 		$html = $this->render();
 
-		$this->assertMatchesRegularExpression( '/<details class="emr-sp-account emr-bulk-collapsible emr-bulk-account"[^>]*data-confirm-remove="Remove the API key\? Bulk Enhance will stop working until you add one\."\s*>/', $html, 'Collapsed: no open attribute.' );
+		$this->assertMatchesRegularExpression( '/<details class="emr-sp-account emr-collapsible emr-sp-account-bulk"[^>]*data-confirm-remove="Remove the API key\? Bulk Enhance will stop working until you add one\."\s*>/', $html, 'Collapsed: no open attribute.' );
 		$this->assertStringContainsString( 'Connected', $html );
 		$this->assertStringContainsString( 'Unlimited plan active.', $html );
 		$this->assertStringContainsString( 'abcd************wxyz', $html );
@@ -307,7 +307,7 @@ class BulkViewControllerTest extends WP_UnitTestCase {
 		), false );
 		$html = $this->render();
 
-		$this->assertMatchesRegularExpression( '/<details class="emr-bulk-collapsible emr-bulk-history">\s*<summary>/', $html );
+		$this->assertMatchesRegularExpression( '/<details class="emr-collapsible emr-bulk-history">\s*<summary>/', $html );
 		$this->assertStringContainsString( 'Bulk history', $html );
 	}
 

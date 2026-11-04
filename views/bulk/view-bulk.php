@@ -24,7 +24,7 @@ if (! defined('ABSPATH')) {
 }
 ?>
 <div class="wrap emr-bulk-wrapper">
-	<header class="emr-bulk-header">
+	<header class="emr-page-header">
 		<h1><?php esc_html_e('Enable Media Replace - Bulk Enhance', 'enable-media-replace'); ?></h1>
 	</header>
 	<hr class="wp-header-end">

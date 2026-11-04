@@ -489,28 +489,31 @@ class UpscaleViewControllerTest extends WP_UnitTestCase {
 		$this->assertStringContainsString( 'id="remove_background_button"', $output, 'The id the shared script binds to.' );
 		$this->assertStringContainsString( '<button type="submit" class="button button-primary" id="replace_image_button" disabled>Replace</button>', $output );
 		$this->assertStringContainsString( '<a class="button" href="javascript:history.back()">Cancel</a>', $output );
-		$this->assertStringContainsString( 'Replace this image with another one instead!', $output );
+		$this->assertMatchesRegularExpression( '#<a class="emr-operation emr-operation-replace" href="[^"]+">\s*<img class="emr-operation-icon" src="[^"]*/img/icons/icon-media-replace\.svg"#', $output );
+		$this->assertStringContainsString( '<span class="emr-operation-title">Replace media</span>', $output );
+		$this->assertStringNotContainsString( 'emr-operation-upscale', $output, 'No button to the screen itself.' );
 		$this->assertSame( 1, preg_match( '/href="([^"]*action=media_replace[^"]*)"/', $output, $link ) );
 		$this->assertSame( 1, preg_match( '/_wpnonce=([0-9a-f]+)/', html_entity_decode( $link[1] ), $nonce ) );
 		$this->assertSame( 1, wp_verify_nonce( $nonce[1], 'media_replace' ) );
 	}
 
-	public function test_screen_account_box_uses_the_upscale_wording_without_a_key() {
+	public function test_screen_account_row_is_collapsed_on_the_free_plan_without_a_key() {
 		$id = $this->upload();
 		$this->assertFalse( ApiKeyManager::getInstance()->hasApiKey(), 'Precondition.' );
 
 		list( , $output ) = $this->load( $id );
 
-		$this->assertStringContainsString( 'data-confirm-remove="Remove the saved ShortPixel API Key? Image upscale will fall back to the Free plan."', $output );
-		$this->assertStringContainsString( 'Image Upscale is limited on the Free plan. Add your ShortPixel Unlimited or Unlimited AI plan API Key to remove that limit.', $output );
-		$this->assertStringNotContainsString( 'Background Removal', $output );
-		$this->assertStringNotContainsString( '100 images', $output );
+		$this->assertMatchesRegularExpression( '/<details class="emr-sp-account emr-collapsible emr-sp-account-upscale" data-confirm-remove="[^"]+">/', $output, 'Collapsed: no open attribute.' );
+		$this->assertStringContainsString( 'data-confirm-remove="Remove the API key? Background removal and upscale go back to the Free plan (10 images)."', $output );
+		$this->assertStringContainsString( 'Free plan (10 images)', $output );
+		$this->assertStringContainsString( 'utm_campaign=emr_upscale', $output );
+		$this->assertStringNotContainsString( '100 image', $output );
 		$this->assertStringContainsString( 'id="emr-new-api-key"', $output );
 		$this->assertStringContainsString( 'Activate', $output );
 		$this->assertTrue( wp_script_is( 'emr_shortpixel_account', 'enqueued' ) );
 	}
 
-	public function test_screen_account_box_uses_the_upscale_wording_with_a_key() {
+	public function test_screen_account_row_shows_the_connected_unlimited_key() {
 		$key = 'ABCDEFGHIJ0123456789';
 		update_option( ApiKeyManager::OPTION_NAME, $key, false );
 		$this->set_static( ApiKeyManager::class, 'instance', null );
@@ -520,10 +523,30 @@ class UpscaleViewControllerTest extends WP_UnitTestCase {
 
 		list( , $output ) = $this->load( $id );
 
-		$this->assertStringContainsString( 'Your ShortPixel API Key is connected. Image Upscale is unlimited as long as your Unlimited or Unlimited AI plan is active.', $output );
-		$this->assertStringContainsString( '<span class="emr-sp-key-value">' . esc_html( $manager->getMaskedKey() ) . '</span>', $output );
+		$this->assertStringContainsString( 'Unlimited plan active. Background removal and upscale have no limit while your plan is active.', $output );
+		$this->assertStringContainsString( '<code class="emr-sp-key-value">' . esc_html( $manager->getMaskedKey() ) . '</code>', $output );
 		$this->assertStringNotContainsString( $key, $output );
-		$this->assertStringNotContainsString( 'Background Removal', $output );
+		$this->assertMatchesRegularExpression( '/<span class="emr-sp-account-status emr-sp-account-connected">.*Connected<\/span>/', $output );
+	}
+
+	public function test_screen_has_the_header_bar_the_preview_hint_and_no_cdn_line() {
+		$id = $this->upload();
+
+		list( , $output ) = $this->load( $id );
+
+		$this->assertStringContainsString( '<h1>Enable Media Replace - Upscale image</h1>', $output );
+		$this->assertStringContainsString( "<span class='emr-preview-hint'>Click Preview to see the result</span>", $output );
+		$this->assertStringNotContainsString( 'If a CDN is used', $output );
+		$this->assertMatchesRegularExpression( "/<img [^>]*class='image' data-zoom-src='[^']+'/", $output, 'The full-size file for the magnifier.' );
+	}
+
+	public function test_screen_offers_the_remove_background_button() {
+		$id = $this->upload();
+		$this->assertTrue( emr()->uiHelper()->isBackgroundRemovable( get_post( $id ) ), 'Precondition: a JPEG with the background feature on.' );
+
+		list( , $output ) = $this->load( $id );
+
+		$this->assertMatchesRegularExpression( '#<a class="emr-operation emr-operation-background" href="[^"]*action=emr_prepare_remove[^"]*_wpnonce=[0-9a-f]+[^"]*">\s*<img class="emr-operation-icon" src="[^"]*/img/icons/icon-background-removal\.svg"#', $output );
 	}
 
 	public function test_screen_hides_the_account_box_without_manage_options() {

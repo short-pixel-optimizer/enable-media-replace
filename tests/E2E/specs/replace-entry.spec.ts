@@ -1,7 +1,7 @@
 /**
  * Entry points to the replace screen:
  *   - the "Replace media" row action of the Media Library list view;
- *   - the "Upload a new file" button of the edit-attachment "Replace Media"
+ *   - the "Replace media" tile of the edit-attachment "Replace Media"
  *     meta box;
  *   - the three buttons of the attachment details modal of the Media
  *     Library grid view (the same compat fields the editors' media modal
@@ -40,7 +40,7 @@ test.describe('Replace entry points', () => {
 		await expect(page.locator('.explainer b.underline')).toHaveText('emr-seed.jpg');
 	});
 
-	test('the Upload a new file button of the edit-attachment meta box opens the replace screen', async ({ page, emr }) => {
+	test('the Replace media tile of the edit-attachment meta box opens the replace screen', async ({ page, emr }) => {
 		const edit = new EditAttachment(page);
 		await edit.goto(emr.seed.attachment_id);
 		await expect(edit.replaceBox).toBeVisible();
@@ -59,7 +59,7 @@ test.describe('Replace entry points', () => {
 		await expect(screen.form.locator('input[name="ID"]')).toHaveValue(String(emr.seed.attachment_id));
 	});
 
-	test('the grid view attachment details offer the three buttons, and Upload a new file opens the replace screen', async ({ page, emr }) => {
+	test('the grid view attachment details offer the three buttons, and Replace media opens the replace screen', async ({ page, emr }) => {
 		const grid = new MediaGrid(page);
 		await grid.goto();
 		await grid.open(emr.seed.attachment_id);
