@@ -51,6 +51,9 @@ $emr_errors = '<span class="hidden" data-check-media-fatalerrors-finished data-s
 	<nav>
 		<button type="button" class="button button-primary" data-action="FinishBulk"><?php esc_html_e('Back to Bulk Enhance', 'enable-media-replace'); ?></button>
 		<button type="button" class="button" data-action="FinishAndRestore" <?php echo $controller->operationOnly('background upscale'); ?>><?php esc_html_e('Restore originals', 'enable-media-replace'); ?></button>
-		<a class="button" href="<?php echo esc_url(admin_url('upload.php')); ?>"><?php esc_html_e('View in Media Library', 'enable-media-replace'); ?></a>
+		<?php // Filtered on the operation that just ran (MediaLibraryFilterController); after a restore the markers are gone, so unfiltered. ?>
+		<a class="button" href="<?php echo esc_url(\EnableMediaReplace\Controller\MediaLibraryFilterController::getInstance()->getUrl('background')); ?>" <?php echo $controller->operationOnly('background'); ?>><?php esc_html_e('View in Media Library', 'enable-media-replace'); ?></a>
+		<a class="button" href="<?php echo esc_url(\EnableMediaReplace\Controller\MediaLibraryFilterController::getInstance()->getUrl('upscale')); ?>" <?php echo $controller->operationOnly('upscale'); ?>><?php esc_html_e('View in Media Library', 'enable-media-replace'); ?></a>
+		<a class="button" href="<?php echo esc_url(admin_url('upload.php')); ?>" <?php echo $controller->operationOnly('restore'); ?>><?php esc_html_e('View in Media Library', 'enable-media-replace'); ?></a>
 	</nav>
 </section>

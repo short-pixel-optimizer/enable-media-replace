@@ -149,6 +149,7 @@ classes/
   emr-plugin.php           - EnableMediaReplacePlugin: hooks, routing, permissions, UI entry points
   Controller/
     ReplaceController.php  - the replace flow (source/target, copy, metadata, replacer, dates, cache)
+    MediaLibraryFilterController.php - the Bulk Enhance filter of the Media Library (list and grid dropdown, query on _emr_bulk)
     RemoteNoticeController.php - remote notices from api.shortpixel.com
     Bulk/                  - the bulk queue, ported from SPIO's queue layer (PSR-4, autoloaded)
       BulkAjaxController.php - wp_ajax_emr_bulk_process / _request / _settings, the two-tab processor key
@@ -296,7 +297,15 @@ docs/                      - the documentation and test plan, the bulk design no
   answers to `js/bulk/emr-bulk-screen.js`, which switches the panels and
   writes the stats into `data-stats-media` / `data-stats-total` elements;
   the before/after preview opens on `FILE_STATUS_SUCCESS` results only (a
-  restore answers `FILE_STATUS_RESTORED`, as in SPIO, and shows none).
+  restore answers `FILE_STATUS_RESTORED`, as in SPIO, and shows none). The
+  finished panel's "View in Media Library", and the dashboard's next to each
+  "Restore N originals", open the list filtered on the
+  operation (`upload.php?mode=list&emr_bulk=<op>`): `MediaLibraryFilterController`
+  (PSR-4) ports SPIO's status filter, a dropdown on `restrict_manage_posts`, the
+  same dropdown in the grid and media modal toolbar (`js/emr-media-filter.js`,
+  `wp_enqueue_media`, localized `emrMediaFilter`) and a `pre_get_posts` listener
+  that appends a `posts_where` clause matching the serialized operation key in
+  the `_emr_bulk` meta; a restore removes the marker, so restored images drop out.
   Screen actions go to `wp_ajax_emr_bulk_request` (`screen_action`:
   createBulk, startBulk, finishBulk, startRestore, getStatus,
   skipPreparing, recheckActive, loadLogFile), settings to

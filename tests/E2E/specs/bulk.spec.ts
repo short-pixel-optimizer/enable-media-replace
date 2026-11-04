@@ -10,6 +10,7 @@
  * result was applied, and the restore brings the original width back.
  */
 import { test, expect } from '../fixtures';
+import { adminUrls } from '../helpers/wp-admin';
 import { BulkPage } from '../helpers/bulk-page';
 import type { EmrSupport } from '../helpers/emr';
 import { loginAs } from '../helpers/journeys';
@@ -95,6 +96,26 @@ test.describe('Bulk page: upscale', () => {
 		await bulk.finish(emr);
 		await expect(bulk.restoreButton('upscale')).toHaveText(/Restore 3 originals/);
 		await expect(bulk.panel('dashboard').locator('.emr-bulk-history tbody tr')).toHaveCount(1);
+
+		// The Media Library filter (MediaLibraryFilterController): the dashboard's "View in Media Library" next to
+		// the restore button opens the list, which shows the three upscaled images only...
+		await bulk.card('upscale').getByRole('link', { name: 'View in Media Library' }).click();
+		await expect(page).toHaveURL(/upload\.php\?mode=list&emr_bulk=upscale/);
+		await expect(page.locator('select#emr_bulk')).toHaveValue('upscale');
+		await expect(page.locator('table.wp-list-table.media tbody tr[id^="post-"]')).toHaveCount(3);
+		for (const id of queued) {
+			await expect(page.locator(`tr#post-${id}`)).toBeVisible();
+		}
+		await expect(page.locator(`tr#post-${wide}`)).toHaveCount(0);
+		// ...and the grid toolbar has the same dropdown, filtering through the attachments query.
+		await page.goto(adminUrls.mediaGrid);
+		const gridFilter = page.locator('select#emr-media-filter');
+		await expect(gridFilter).toBeVisible();
+		await expect(page.locator('li.attachment')).toHaveCount(4);
+		await gridFilter.selectOption('upscale');
+		await expect(page.locator('li.attachment')).toHaveCount(3);
+		await expect(page.locator(`li.attachment[data-id="${wide}"]`)).toHaveCount(0);
+		await bulk.goto();
 
 		// Restore: the backups under EMR_Backups replace the results in place.
 		await bulk.startRestore('upscale');

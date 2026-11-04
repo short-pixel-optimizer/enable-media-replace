@@ -67,6 +67,10 @@ the three plugins never see each other's items.
    done with an error.
 4. **Finish.** `finishBulk()` writes the log entry (operation, images,
    errors, date), resets the queue and unschedules the cron event.
+   The finished panel's "View in Media Library", and the dashboard's next
+   to each "Restore N originals", open the list filtered on the operation: `Controller/MediaLibraryFilterController` (SPIO's status
+   filter ported) adds a Bulk Enhance dropdown to the list and grid views
+   and keeps the attachments whose `_emr_bulk` marker holds the operation.
 5. **Restore.** The `bulk-restore` custom operation enqueues the marked
    attachments of an operation; each item copies its backup back through
    the same replace flow and deletes the marker. Its result carries

@@ -67,6 +67,7 @@ $emr_icons = array(
 					<span class="emr-bulk-tooltip"<?php echo ('' !== $emr_tooltip) ? ' data-tooltip="' . esc_attr($emr_tooltip) . '"' : ''; ?>><button type="button" class="button button-primary" data-action="open-panel" data-panel="selection" data-select-operation="<?php echo esc_attr($operation); ?>" <?php disabled(! $info->available || $view->error); ?>><?php esc_html_e('Start', 'enable-media-replace'); ?></button></span>
 					<?php if ($info->restorable > 0) : ?>
 						<button type="button" class="button" data-action="open-panel" data-panel="restore" data-select-operation="<?php echo esc_attr($operation); ?>"><?php printf(esc_html(_n('Restore %s original', 'Restore %s originals', $info->restorable, 'enable-media-replace')), esc_html(number_format_i18n($info->restorable))); ?></button>
+						<a class="button" href="<?php echo esc_url(\EnableMediaReplace\Controller\MediaLibraryFilterController::getInstance()->getUrl($operation)); ?>"><?php esc_html_e('View in Media Library', 'enable-media-replace'); ?></a>
 					<?php endif; ?>
 				</nav>
 			</div>

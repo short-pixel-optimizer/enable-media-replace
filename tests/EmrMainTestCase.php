@@ -229,6 +229,11 @@ abstract class EMR_MainTestCase extends WP_UnitTestCase {
 		remove_action( 'add_meta_boxes_attachment', array( $plugin, 'add_meta_boxes' ), 10 );
 		remove_filter( 'attachment_fields_to_edit', array( $plugin, 'attachment_editor' ), 10 );
 		remove_filter( 'wp_get_attachment_image_src', array( $plugin, 'attempt_uncache_image' ), 10 );
+		$filter = \EnableMediaReplace\Controller\MediaLibraryFilterController::getInstance();
+		remove_action( 'restrict_manage_posts', array( $filter, 'addFilterDropdown' ) );
+		remove_filter( 'pre_get_posts', array( $filter, 'filterListener' ) );
+		remove_action( 'wp_enqueue_media', array( $filter, 'enqueueGridFilter' ) );
+		remove_filter( 'posts_where', array( $filter, 'filterAddWhere' ), 10 );
 		$notices = $this->notice_static( 'instance' );
 		if ( is_object( $notices ) ) {
 			remove_action( 'admin_notices', array( $notices, 'admin_notices' ) );

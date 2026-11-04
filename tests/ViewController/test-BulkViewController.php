@@ -141,6 +141,16 @@ class BulkViewControllerTest extends WP_UnitTestCase {
 		$this->assertCount( 1, $remaining, 'hide_sub_menu() removes the hidden EMR page, not the bulk page.' );
 	}
 
+	public function test_the_finished_panel_links_to_the_media_library_filtered_on_the_operation_that_ran() {
+		update_option( 'emr_shortpixel_api_key', 'abcdEFGHIJKLMNOPwxyz' );
+		$html = $this->render();
+
+		$this->assertMatchesRegularExpression( '~href="[^"]*upload\.php\?mode=list&#038;emr_bulk=background" data-operation-only="background"~', $html );
+		$this->assertMatchesRegularExpression( '~href="[^"]*upload\.php\?mode=list&#038;emr_bulk=upscale" data-operation-only="upscale"~', $html );
+		$this->assertMatchesRegularExpression( '~href="[^"]*upload\.php" data-operation-only="restore"~', $html, 'After a restore the markers are gone: unfiltered.' );
+		$this->assertSame( 3, substr_count( $html, '>View in Media Library</a>' ) );
+	}
+
 	public function test_load_renders_every_panel_with_the_data_attributes_the_script_binds_to() {
 		update_option( 'emr_shortpixel_api_key', 'abcdEFGHIJKLMNOPwxyz' );
 		$html = $this->render();
@@ -222,6 +232,8 @@ class BulkViewControllerTest extends WP_UnitTestCase {
 		$html = $this->render();
 
 		$this->assertStringContainsString( 'Restore 1 original', $html );
+		$this->assertMatchesRegularExpression( '~Restore 1 original</button>\s*<a class="button" href="[^"]*upload\.php\?mode=list&#038;emr_bulk=upscale">View in Media Library</a>~', $html, 'Next to the restore button: the library filtered on the operation.' );
+		$this->assertStringNotContainsString( 'emr_bulk=background">View in Media Library', $html, 'Nothing to view for the operation that never ran.' );
 		$this->assertMatchesRegularExpression( '/data-action="BulkRestore" data-operation="upscale" disabled>Restore upscaled images</', $html, 'The button names what comes back.' );
 		$this->assertStringNotContainsString( 'Restore:', $html );
 	}

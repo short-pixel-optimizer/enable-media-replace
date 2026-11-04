@@ -41,6 +41,7 @@ class PluginRuntimeTest extends EMR_MainTestCase {
 	/** The admin hooks plugin_actions() registers, with their priority. */
 	private function admin_hooks() {
 		$plugin = emr();
+		$filter = \EnableMediaReplace\Controller\MediaLibraryFilterController::getInstance();
 		return array(
 			array( 'admin_menu', array( $plugin, 'menu' ), 10 ),
 			array( 'submenu_file', array( $plugin, 'hide_sub_menu' ), 10 ),
@@ -51,6 +52,10 @@ class PluginRuntimeTest extends EMR_MainTestCase {
 			array( 'attachment_submitbox_misc_actions', array( $plugin, 'admin_date_replaced_media_on_edit_media_screen' ), 91 ),
 			array( 'add_meta_boxes_attachment', array( $plugin, 'add_meta_boxes' ), 10 ),
 			array( 'attachment_fields_to_edit', array( $plugin, 'attachment_editor' ), 10 ),
+			// The Media Library filter (MediaLibraryFilterController::register()).
+			array( 'restrict_manage_posts', array( $filter, 'addFilterDropdown' ), 10 ),
+			array( 'pre_get_posts', array( $filter, 'filterListener' ), 10 ),
+			array( 'wp_enqueue_media', array( $filter, 'enqueueGridFilter' ), 10 ),
 		);
 	}
 

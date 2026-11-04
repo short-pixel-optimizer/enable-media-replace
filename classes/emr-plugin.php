@@ -390,6 +390,9 @@ class EnableMediaReplacePlugin
      * @hook filter attachment_fields_to_edit          attachment_editor()
      * @hook filter wp_get_attachment_image_src        attempt_uncache_image(), only with emr_replaced=1
      * @hook filter postbox_classes_attachment_emr-showthumbs-box Adds 'closed', only with emr_replaced=1
+     * Also registers the promo banner (promoBanner()) and the Media Library
+     * filter (MediaLibraryFilterController::register(): restrict_manage_posts,
+     * pre_get_posts, wp_enqueue_media).
      *
      * @todo The `emr_replaced` check is written `intval($_GET['emr_replaced'] == 1)`:
      *       the parenthesis closes after the loose comparison, so intval()
@@ -406,6 +409,9 @@ class EnableMediaReplacePlugin
 
         // The Black Friday banner on EMR's own screens (bundled promo-banner module).
         $this->promoBanner()->register();
+
+        // The Bulk Enhance filter of the Media Library (list dropdown, grid dropdown, query).
+        \EnableMediaReplace\Controller\MediaLibraryFilterController::getInstance()->register();
 
         // init plugin
         add_action('admin_menu', array($this, 'menu'));
