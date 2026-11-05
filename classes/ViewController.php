@@ -169,10 +169,6 @@ abstract class ViewController
 		 * errorMessage set before the call is overwritten. Unknown codes get a generic
 		 * message.
 		 *
-		 * @todo The ERROR_DIRECTORY_SECURITY description ("Path: %s is not within basedir
-		 *       reported as: %s") uses the 'shortpixel-image-optimiser' text domain, so it is
-		 *       never translated through EMR's files. Suggested fix: use 'enable-media-replace'.
-		 *
 		 * @param int|null $errorCode One of the ERROR_* constants.
 		 * @param array    $errorData Optional extra data; `path` and `basedir` are used for
 		 *                            ERROR_DIRECTORY_SECURITY.
@@ -224,7 +220,7 @@ abstract class ViewController
 
 						if ($path !== false && $basedir !== false)
 						{
-							 $description  = sprintf(__('Path: %s is not within basedir reported as: %s', 'shortpixel-image-optimiser'), $path, $basedir);
+							 $description  = sprintf(__('Path: %s is not within basedir reported as: %s', 'enable-media-replace'), $path, $basedir);
 						}
 					break;
 					case self::ERROR_DIRECTORY_NOTEXIST:

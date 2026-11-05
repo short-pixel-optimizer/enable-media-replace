@@ -88,12 +88,33 @@ class Api {
 
 
 
+	/** The upgrade page the quota and plan messages point to, and the text they name it by. */
+	const PRICING_URL  = 'https://shortpixel.com/pricing';
+	const PRICING_TEXT = 'shortpixel.com/pricing';
+
 	/**
 	 * Creates the client. No setup.
 	 */
 	public function __construct()
 	{
 
+	}
+
+	/**
+	 * Adds `message_html` to a quota or plan result: the escaped message with
+	 * PRICING_TEXT turned into a link to PRICING_URL. The screen script prints
+	 * it as is; the plain `message` stays for logs, tests and the bulk. Built
+	 * here so no script has to find a URL inside a translated sentence.
+	 *
+	 * @param \stdClass $result With `message` set.
+	 * @return \stdClass
+	 */
+	protected function addNoticeHtml($result)
+	{
+		$message = (string) $result->message;
+		$link    = '<a href="' . esc_url(self::PRICING_URL) . '" target="_blank" rel="noopener">' . esc_html(self::PRICING_TEXT) . '</a>';
+		$result->message_html = str_replace(esc_html(self::PRICING_TEXT), $link, esc_html($message));
+		return $result;
 	}
 	/**
 	 * Create ShortPixel api request
@@ -163,7 +184,8 @@ class Api {
 	 * @param  array $posted_data `attachment_id`, `upscale`, `background.type`, `.color`
 	 *                            and `.transparency`.
 	 * @return stdClass $result `success`, `image`, `message`, and depending on the outcome
-	 *                          `url`, `settings`, `plan_expired`, `quota_exceeded`.
+	 *                          `url`, `settings`, `plan_expired`, `quota_exceeded`, `message_html`
+	 *                          (the quota and plan messages with their link, addNoticeHtml()).
 	 */
 	public function request( array $posted_data ) {
 		$bg_remove         = '1';
@@ -249,7 +271,7 @@ class Api {
 				$result->success      = false;
 				$result->plan_expired = true;
 				$result->message      = __( 'Your Unlimited plan is no longer active. Please renew at shortpixel.com/pricing or remove your API key to use the Free plan.', 'enable-media-replace' );
-				return $result;
+				return $this->addNoticeHtml( $result );
 			}
 			$data['key']     = $apiKey;
 			$data['urllist'] = array( esc_url_raw( $url ) );
@@ -348,7 +370,7 @@ class Api {
 						if ( ! empty( $result->message ) && stripos( $result->message, 'Quota exceeded' ) !== false ) {
 							$result->quota_exceeded = true;
 							// With a key the monthly AI credits ran out; without one the Free plan did.
-							// "shortpixel.com/pricing" stays in the text: js/remove_bg.js turns it into a link.
+							// addNoticeHtml() turns "shortpixel.com/pricing" into the link the screen prints.
 							if ( ! empty( $apiKey ) ) {
 								ApiKeyManager::getInstance()->forgetAiCredits();
 								$result->message = __( 'You have no AI credits left this month. Upgrade to Unlimited AI at shortpixel.com/pricing for no limit, or wait until your credits renew.', 'enable-media-replace' );
@@ -357,6 +379,7 @@ class Api {
 									? __( 'The Free plan limit is reached. Add an API key from a ShortPixel Unlimited plan (shortpixel.com/pricing) to continue upscaling images.', 'enable-media-replace' )
 									: __( 'The Free plan limit is reached. Add an API key from a ShortPixel Unlimited plan (shortpixel.com/pricing) to continue removing backgrounds.', 'enable-media-replace' );
 							}
+							$this->addNoticeHtml( $result );
 						}
 					}
 				}

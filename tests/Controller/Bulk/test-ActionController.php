@@ -285,6 +285,7 @@ class BulkActionControllerTest extends WP_UnitTestCase {
 		$this->assertSame( BulkImage::FILE_STATUS_ERROR, $qItem->result()->fileStatus );
 		$this->assertStringContainsString( 'Invalid image format', $qItem->result()->message );
 		$this->assertStringContainsString( (string) $id, $qItem->result()->message, 'Attachment ID appended to API errors.' );
+		$this->assertStringContainsString( '(' . basename( get_attached_file( $id ) ) . ')', $qItem->result()->message, 'The file name is composed in PHP, not by the screen script.' );
 		$this->assertSame( ShortQ::QSTATUS_FATAL, (int) $this->queueRows( $id )[0]->status );
 		$this->assertNull( $qItem->result()->error );
 
@@ -369,7 +370,7 @@ class BulkActionControllerTest extends WP_UnitTestCase {
 		$this->assertTrue( $restore->result()->success, 'SPIO\'s restore result shape.' );
 		$this->assertNull( $restore->result()->original, 'No before/after URLs for a restore.' );
 		$this->assertNull( $restore->result()->optimized );
-		$this->assertStringContainsString( 'Restore completed', $restore->result()->message );
+		$this->assertSame( 'Original restored for ' . basename( get_attached_file( $id ) ), $restore->result()->message, 'One translatable sentence, not the action key.' );
 		$this->assertSame( $originalBytes, file_get_contents( get_attached_file( $id ) ) );
 		$this->assertSame( 400, wp_get_attachment_metadata( $id )['width'] );
 		$this->assertSame( array(), BulkImage::getById( $id )->getMarker() );

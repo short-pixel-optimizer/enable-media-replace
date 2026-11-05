@@ -79,7 +79,7 @@ jQuery(document).ready(function ($) {
 
 				 var img = new Image();
 				 img.onload = function () { // Dimensions of the new image, shown on the upscale screen.
-					 preview.find('.textlayer').text(img.naturalWidth + ' x ' + img.naturalHeight);
+					 preview.find('.textlayer').text(emrObject.strings.dimensions.replace('%1$s', img.naturalWidth).replace('%2$s', img.naturalHeight));
 				 };
          img.src = response.image;
 				 img.setAttribute('style', 'height: inherit;');
@@ -116,27 +116,19 @@ jQuery(document).ready(function ($) {
           $('#overlay').css('visibility', 'hidden');
           if (response.plan_expired || response.quota_exceeded) {
             // Leave the preview empty; surface the message as a dismissible notice instead.
+            // The text and the link come from PHP: message_html is escaped there (Api::addNoticeHtml()).
             var $p = $('#emr-bg-notice').find('p').empty();
-            $('<strong></strong>').text('Enable Media Replace: ').appendTo($p);
-
-            var msg = response.message;
-            var linkText = 'shortpixel.com/pricing';
-            var idx = msg.indexOf(linkText);
-            if (idx !== -1) {
-              $p.append(document.createTextNode(msg.substring(0, idx)));
-              $('<a></a>')
-                .attr({ href: 'https://shortpixel.com/pricing', target: '_blank', rel: 'noopener' })
-                .text(linkText)
-                .appendTo($p);
-              $p.append(document.createTextNode(msg.substring(idx + linkText.length)));
+            $('<strong></strong>').text(emrObject.strings.noticePrefix).appendTo($p);
+            if (response.message_html) {
+              $p.append(response.message_html);
             } else {
-              $p.append(document.createTextNode(msg));
+              $p.append(document.createTextNode(response.message));
             }
 
             $('#emr-bg-notice').show();
             $('html, body').animate({ scrollTop: 0 }, 400);
           } else {
-            preview.prepend(`<h1 class='response'>${response.message}</h1>`);
+            preview.prepend($('<h1></h1>').addClass('response').text(response.message)); // the API's message, as text
           }
           $('#remove_background_button').attr('disabled', false)
           $('input[type=radio][name=background_type]').attr('disabled', false)

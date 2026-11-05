@@ -697,7 +697,8 @@ class EnableMediaReplacePlugin
      * - emr_upsell (js/upsell.js) -> `emr_upsell`: ajax URL and the
      *   "Installing ..." label.
      * - emr_remove_bg (js/remove_bg.js, versioned by file mtime) ->
-     *   `emrObject`: ajax_url and a nonce for 'emr_remove_background'. The
+     *   `emrObject`: ajax_url, a nonce for 'emr_remove_background' and the `strings`
+     *   the script prints (noticePrefix, dimensions). The
      *   same script serves the upscale screen, where it also posts the
      *   selected `upscale` factor.
      * - emr_shortpixel_account (js/shortpixel-account.js, versioned by file
@@ -757,7 +758,13 @@ class EnableMediaReplacePlugin
         wp_register_script('emr_remove_bg', plugins_url('js/remove_bg.js', EMR_ROOT_FILE), array('jquery'), $emr_remove_bg_ver, true);
         wp_localize_script('emr_remove_bg', 'emrObject', array(
             'ajax_url' => $ajax_url,
-            'nonce'    => wp_create_nonce('emr_remove_background')
+            'nonce'    => wp_create_nonce('emr_remove_background'),
+            // Every text the script prints comes from here; it only inserts the server's values.
+            'strings'  => array(
+                'noticePrefix' => __('Enable Media Replace:', 'enable-media-replace') . ' ',
+                /* translators: %1$s: width in pixels, %2$s: height in pixels of the result image. */
+                'dimensions'   => __('%1$s x %2$s', 'enable-media-replace'),
+            ),
         ));
 
         $emr_account_path = plugin_dir_path(EMR_ROOT_FILE) . 'js/shortpixel-account.js';
@@ -1106,8 +1113,7 @@ class EnableMediaReplacePlugin
      * @todo The "Original" label is shown with the wp_get_attachment_url()
      *       image, which is the `-scaled` file when scaling happened, while
      *       $source_url (the real original) is not shown. Print $source_url
-     *       if the box is meant to show the original. The label also uses
-     *       __('Original') without the plugin text domain.
+     *       if the box is meant to show the original.
      * @todo The function_exists() guard is needed while readme.txt declares
      *       WordPress 4.9.7; drop it when the minimum is raised to 5.3+.
      */
@@ -1132,7 +1138,7 @@ class EnableMediaReplacePlugin
             $source_url_oldway = wp_get_attachment_url($post->ID);
 
             if ($source_url !== $source_url_oldway) {
-                echo "<div class='original previewwrapper'><img src='" . $source_url_oldway . "'><span class='label'>" . __('Original') . "</span></div>";
+                echo "<div class='original previewwrapper'><img src='" . $source_url_oldway . "'><span class='label'>" . __('Original', 'enable-media-replace') . "</span></div>";
             }
         }
 
@@ -1299,8 +1305,6 @@ class EnableMediaReplacePlugin
      * @todo The global $post fallback covers WordPress before 4.9, where the
      *       hook passes no post; dead on the readme minimum of 4.9.7. Remove
      *       it with the other old-WordPress shims.
-     * @todo The date format string __('M j, Y @ H:i') has no text domain, so
-     *       it is translated with WordPress core's strings only.
      */
     function admin_date_replaced_media_on_edit_media_screen($post)
     {
@@ -1316,7 +1320,8 @@ class EnableMediaReplacePlugin
 
         $post_id = $post->ID;
         if ($post->post_modified !== $post->post_date) {
-            $modified = date_i18n(__('M j, Y @ H:i'), strtotime($post->post_modified));
+            /* translators: date and time format of the "Revised" line on the edit-attachment screen, see https://wordpress.org/documentation/article/customize-date-and-time-format/ */
+            $modified = date_i18n(__('M j, Y @ H:i', 'enable-media-replace'), strtotime($post->post_modified));
 ?>
             <div class="misc-pub-section curtime">
                 <span id="timestamp"><?php echo esc_html__('Revised', 'enable-media-replace'); ?>: <b><?php echo esc_html($modified); ?></b></span>

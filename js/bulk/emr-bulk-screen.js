@@ -589,11 +589,8 @@ class EmrBulkScreen {
 
 	HandleItemError(result, type) {
 		var item = result;
-		var message = item.message ? String(item.message) : '';
+		var message = item.message ? String(item.message) : ''; // composed by ResponseController, file name included
 		var fatal = (item.is_done == true);
-		if (item.filename && message.indexOf(item.filename) === -1) {
-			message += ' (' + item.filename + ')';
-		}
 		var error = this.processor.aStatusError[item.error];
 		if (error === 'NOQUOTA' || error === 'PLAN_EXPIRED' || error === 'APIKEY_FAILED') {
 			this.ToggleOverQuotaNotice(true, message);

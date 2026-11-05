@@ -55,7 +55,6 @@
  * with the "remove the background after replacing" checkbox under them;
  * Cancel calls history.back().
  *
- * @todo The "file type does not seem to be allowed" string is passed to __() without the `enable-media-replace` text domain; add the domain.
  * @todo The source file path in the explainer's `title` attribute and $view->custom_basedir are echoed without escaping; wrap them in esc_attr() / esc_html().
  */
 namespace EnableMediaReplace;
@@ -140,7 +139,7 @@ $uiHelper = emr()->uiHelper();
 
     </p></div>
 
-    <div class='form-warning mimetype'><p><?php printf(__('The replacement file type does not seem to be allowed by WordPress. This can lead to unexpected issues')); ?></p></div>
+    <div class='form-warning mimetype'><p><?php esc_html_e('The replacement file type does not seem to be allowed by WordPress. This can lead to unexpected issues', 'enable-media-replace'); ?></p></div>
 
     <div class='image_previews'>
 

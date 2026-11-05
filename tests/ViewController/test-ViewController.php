@@ -295,18 +295,7 @@ class ViewControllerTest extends WP_UnitTestCase {
 		$this->assertSame( array( 'enable-media-replace' ), $this->domains['This can happen when the window is open for a long time and/or there has been a timeout. You can go back to the previous screen and try again. If this happens every time you replace a file, contact us.'] );
 	}
 
-	/**
-	 * viewError() translates the ERROR_DIRECTORY_SECURITY description
-	 * ("Path: %s is not within basedir reported as: %s") with the
-	 * 'shortpixel-image-optimiser' text domain instead of
-	 * 'enable-media-replace', so EMR's translations never apply to it. The
-	 * message above it uses the right domain.
-	 *
-	 * How to recognise the fix: the recorded domain becomes
-	 * 'enable-media-replace' and the assertSame on
-	 * 'shortpixel-image-optimiser' fails.
-	 */
-	public function test_directory_security_description_uses_the_spio_text_domain_pinned_for_deferred_fix() {
+	public function test_directory_security_description_uses_the_plugin_text_domain() {
 		$this->add_hook( 'gettext', array( $this, 'record_domain' ), 10, 3 );
 		$controller = new EMR_TestViewController();
 
@@ -314,8 +303,7 @@ class ViewControllerTest extends WP_UnitTestCase {
 
 		$this->assertSame( 'Path: /p is not within basedir reported as: /b', $controller->getView()->errorDescription );
 		$this->assertSame( array( 'enable-media-replace' ), $this->domains['Specified directory is outside the upload directory. This is not allowed for security reasons'] );
-		$this->assertSame( array( 'shortpixel-image-optimiser' ), $this->domains['Path: %s is not within basedir reported as: %s'] );
-		$this->assertNotContains( 'enable-media-replace', $this->domains['Path: %s is not within basedir reported as: %s'] );
+		$this->assertSame( array( 'enable-media-replace' ), $this->domains['Path: %s is not within basedir reported as: %s'] );
 	}
 
 	/*

@@ -867,6 +867,31 @@ class ApiTest extends WP_UnitTestCase {
 		$this->assertSame( 'The Free plan limit is reached. Add an API key from a ShortPixel Unlimited plan (shortpixel.com/pricing) to continue removing backgrounds.', $result->message );
 	}
 
+	/** The link is built in PHP (addNoticeHtml()); the screen script prints message_html as is and never searches a URL in a translated sentence. */
+	public function test_quota_and_plan_messages_carry_an_escaped_html_version_with_the_pricing_link() {
+		$this->mock->setKnob( 'quotaExceeded', true );
+		$result = $this->run_request( $this->post() );
+		$this->assertTrue( $result->quota_exceeded );
+		$this->assertSame(
+			'The Free plan limit is reached. Add an API key from a ShortPixel Unlimited plan (<a href="https://shortpixel.com/pricing" target="_blank" rel="noopener">shortpixel.com/pricing</a>) to continue removing backgrounds.',
+			$result->message_html
+		);
+		$this->assertStringNotContainsString( '<', $result->message, 'The plain message stays plain.' );
+
+		$this->mock->setKnob( 'quotaExceeded', false );
+		$this->use_key();
+		$this->mock->setKnob( 'unlimited', 'false' );
+		$expired = $this->run_request( $this->post() );
+		$this->assertTrue( $expired->plan_expired );
+		$this->assertStringContainsString( 'renew at <a href="https://shortpixel.com/pricing"', $expired->message_html );
+
+		$this->mock->setKnob( 'unlimited', 'true' );
+		$this->mock->setKnob( 'forceStatusCode', '-201' );
+		$error = $this->run_request( $this->post() );
+		$this->assertFalse( $error->success );
+		$this->assertObjectNotHasProperty( 'message_html', $error, 'Only the quota and plan notices carry a link.' );
+	}
+
 	public function test_quota_exceeded_with_a_key_means_no_ai_credits_left_this_month() {
 		$this->use_key();
 		$this->mock->setKnob( 'quotaExceeded', true );

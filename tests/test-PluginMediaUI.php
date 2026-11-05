@@ -478,14 +478,11 @@ class PluginMediaUITest extends EMR_MainTestCase {
 	/**
 	 * show_thumbs_box() labels the wp_get_attachment_url() image "Original",
 	 * but on a scaled upload that URL is the `-scaled` file; the real
-	 * original (wp_get_original_image_url()) is never shown. The label also
-	 * uses __('Original') without the plugin text domain, so it is looked up
-	 * in WordPress core's strings ('default').
+	 * original (wp_get_original_image_url()) is never shown.
 	 *
 	 * How to recognise the fix: the Original block shows
 	 * wp_get_original_image_url() (`emr-main-photo.jpg`) instead of the
-	 * `-scaled` file, and the gettext spy records 'enable-media-replace' for
-	 * 'Original'.
+	 * `-scaled` file.
 	 */
 	public function test_show_thumbs_box_labels_the_scaled_file_original_pinned_for_deferred_fix() {
 		$this->as_admin();
@@ -505,7 +502,7 @@ class PluginMediaUITest extends EMR_MainTestCase {
 		$this->assertSame( 3, substr_count( $html, 'previewwrapper' ), 'Two sizes plus the Original block.' );
 		$this->assertStringContainsString( "<div class='original previewwrapper'><img src='" . $scaled_url . "'><span class='label'>Original</span></div>", $html );
 		$this->assertStringNotContainsString( $original_url, $html );
-		$this->assertSame( array( 'default' ), $this->gettext_domains['Original'] );
+		$this->assertSame( array( 'enable-media-replace' ), $this->gettext_domains['Original'], 'The label carries the plugin text domain.' );
 	}
 
 	/**
@@ -833,7 +830,7 @@ class PluginMediaUITest extends EMR_MainTestCase {
 	 * How to recognise the fix: the gettext spy records
 	 * 'enable-media-replace' for the format string.
 	 */
-	public function test_replaced_date_format_has_no_text_domain_pinned_for_deferred_fix() {
+	public function test_replaced_date_format_uses_the_plugin_text_domain() {
 		$this->add_test_filter( 'gettext', array( $this, 'gettext_spy' ), 10, 3 );
 		$post = new WP_Post(
 			(object) array(
@@ -851,7 +848,7 @@ class PluginMediaUITest extends EMR_MainTestCase {
 
 		$this->assertStringContainsString( 'Revised', $html );
 		$this->assertArrayHasKey( 'M j, Y @ H:i', $this->gettext_domains );
-		$this->assertSame( array( 'default' ), $this->gettext_domains['M j, Y @ H:i'] );
+		$this->assertSame( array( 'enable-media-replace' ), $this->gettext_domains['M j, Y @ H:i'] );
 		$this->assertSame( array( 'enable-media-replace' ), $this->gettext_domains['Revised'] );
 	}
 

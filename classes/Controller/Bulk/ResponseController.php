@@ -153,7 +153,9 @@ class ResponseController
 	}
 
 	/**
-	 * Appends the attachment ID to error messages from the API or the file system.
+	 * Appends the file name (when the text does not name it already) and, for
+	 * terminal failures, the attachment ID to error messages from the API or
+	 * the file system. The screen prints the line as it comes.
 	 *
 	 * @param \stdClass $item
 	 * @param string    $text
@@ -163,6 +165,8 @@ class ResponseController
 	{
 		if (self::ISSUE_BACKUP_CREATE === $item->issue_type && ! empty($item->fileName)) {
 			$text .= sprintf(__(' - file %s', 'enable-media-replace'), $item->fileName);
+		} elseif (! empty($item->fileName) && false === strpos($text, (string) $item->fileName)) {
+			$text .= sprintf(__(' (%s)', 'enable-media-replace'), $item->fileName);
 		}
 		if (BulkImage::FILE_STATUS_ERROR === $item->fileStatus || BulkApi::STATUS_FAIL === $item->apiStatus) {
 			$text .= sprintf(__(' (Attachment ID %d)', 'enable-media-replace'), $item->item_id);
@@ -191,7 +195,10 @@ class ResponseController
 				$text = ('scale_image' === $item->action) ? __('Image upscaled', 'enable-media-replace') : __('Background removed', 'enable-media-replace');
 				break;
 			case BulkApi::STATUS_NOT_API:
-				$text = sprintf(__('%s completed for %s', 'enable-media-replace'), ucfirst((string) $item->action), (string) $item->fileName);
+				// One translatable sentence per local action; never the raw action key.
+				$text = ('restore' === $item->action)
+					? sprintf(__('Original restored for %s', 'enable-media-replace'), (string) $item->fileName)
+					: sprintf(__('Done: %s', 'enable-media-replace'), (string) $item->fileName);
 				break;
 		}
 		return $text;
