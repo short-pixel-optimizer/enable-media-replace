@@ -15,7 +15,7 @@ use EnableMediaReplace\Controller\Bulk\BulkQueue;
 $settings = $view->settings;
 ?>
 <section class="emr-bulk-panel emr-bulk-selection" data-panel="selection" data-status="loaded" hidden>
-	<?php $controller->loadSteps('selection'); ?>
+	<?php $controller->loadView('bulk/part-steps', false, array('part' => 'selection')); ?>
 
 	<div class="emr-bulk-selection-form">
 		<div class="emr-bulk-option-block">

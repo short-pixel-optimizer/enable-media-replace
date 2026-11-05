@@ -88,8 +88,6 @@ class BulkQueue
 		'enqueue_limit'   => 200,
 	);
 
-	/** @var float Request start, for the time limit guard in prepareItems(). */
-	protected $started;
 
 	/**
 	 * @param string $queueName ShortQ queue name, InstallHelper::QUEUE_NAME by default.
@@ -99,7 +97,6 @@ class BulkQueue
 		$shortQ          = new ShortQ(InstallHelper::QUEUE_SLUG);
 		$this->q         = $shortQ->getQueue($queueName);
 		$this->queueName = $queueName;
-		$this->started   = microtime(true);
 
 		$this->options = apply_filters('emr/bulk/queue_options', $this->options);
 		$this->q->setOptions($this->options);
@@ -464,7 +461,8 @@ class BulkQueue
 			$imageCount++;
 			$this->checkQueueCache($item_id);
 
-			if (true === $this->isOverLimit($i)) {
+			$env = \emr()->env();
+			if ($env->IsOverMemoryLimit($i) || $env->IsOverTimeLimit()) { // as SPIO's Queue::prepareItems()
 				Log::addWarn('Bulk prepare: over limit, breaking at index ' . $i);
 				$this->q->setStatus('last_item_id', $item_id);
 				$return['overlimit'] = true;
@@ -484,26 +482,6 @@ class BulkQueue
 		$return['results'] = count($items);
 
 		return $return;
-	}
-
-	/**
-	 * Whether the request is close to its memory or time limit.
-	 *
-	 * @param int $index Position in the current page (unused, kept for parity with SPIO).
-	 * @return bool
-	 */
-	protected function isOverLimit($index)
-	{
-		$limit = wp_convert_hr_to_bytes((string) ini_get('memory_limit'));
-		if ($limit > 0 && memory_get_usage(true) > 0.9 * $limit) {
-			return true;
-		}
-
-		$maxTime = (int) ini_get('max_execution_time');
-		if ($maxTime > 0 && (microtime(true) - $this->started) > ($maxTime - 5)) {
-			return true;
-		}
-		return false;
 	}
 
 	/**

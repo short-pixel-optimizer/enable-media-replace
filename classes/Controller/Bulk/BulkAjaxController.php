@@ -358,7 +358,7 @@ class BulkAjaxController
 			$results[] = $entry;
 		}
 
-		$json->log->title    = (is_array($logData) && isset($logData['date'])) ? date_i18n(get_option('date_format') . ' ' . get_option('time_format'), (int) $logData['date']) : $name;
+		$json->log->title    = (is_array($logData) && isset($logData['date'])) ? \EnableMediaReplace\UIHelper::formatTS((int) $logData['date']) : $name;
 		$json->log->results  = $results;
 		$json->log->is_error = false;
 		$json->status        = true;

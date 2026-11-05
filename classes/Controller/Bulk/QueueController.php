@@ -11,6 +11,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 use EnableMediaReplace\ApiKeyManager;
+use EnableMediaReplace\UIHelper;
 use EnableMediaReplace\Model\Bulk\BulkImage;
 use EnableMediaReplace\Model\Bulk\QueueItem;
 use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
@@ -387,7 +388,8 @@ class QueueController
 	}
 
 	/**
-	 * Locale-aware number formatting of every stat value (percentages with two decimals).
+	 * Locale-aware number formatting of every stat value (percentages with two
+	 * decimals), through UIHelper::formatNumber() as SPIO's goes through UiHelper.
 	 *
 	 * @param \stdClass $results
 	 * @return \stdClass
@@ -399,40 +401,18 @@ class QueueController
 				foreach ($item->stats as $key => $value) {
 					if (is_object($value)) {
 						foreach ($value as $key2 => $val2) {
-							$value->$key2 = $this->formatNumber($val2, 0);
+							$value->$key2 = UIHelper::formatNumber($val2, 0);
 						}
 					} elseif (false !== strpos($key, 'percentage')) {
-						$value = $this->formatNumber($value, 2);
+						$value = UIHelper::formatNumber($value, 2);
 					} elseif (is_numeric($value) && ! is_bool($value)) {
-						$value = $this->formatNumber($value, 0);
+						$value = UIHelper::formatNumber($value, 0);
 					}
 					$results->$qn->stats->$key = $value;
 				}
 			}
 		}
 		return $results;
-	}
-
-	/**
-	 * number_format_i18n() without trailing ".00".
-	 *
-	 * @param mixed $number
-	 * @param int   $precision
-	 * @return string
-	 */
-	private function formatNumber($number, $precision = 2)
-	{
-		global $wp_locale;
-		if (! is_numeric($number)) {
-			return $number;
-		}
-		$decimalpoint = (isset($wp_locale) && isset($wp_locale->number_format['decimal_point'])) ? $wp_locale->number_format['decimal_point'] : '.';
-		$formatted    = number_format_i18n((float) $number, $precision);
-		$pos          = strpos($formatted, $decimalpoint);
-		if (false !== $pos && '00' === substr($formatted, $pos + 1)) {
-			$formatted = substr($formatted, 0, $pos);
-		}
-		return $formatted;
 	}
 
 	/**
@@ -448,6 +428,6 @@ class QueueController
 		$fileLog = \emr()->filesystem()->getFile($dir->getPath() . BulkController::currentLogName($Q->getOperation()));
 		$name    = is_object($qItem->imageModel) ? $qItem->imageModel->getFileName() : '';
 		$message = ResponseController::formatQItem($qItem);
-		$fileLog->append(date_i18n('Y-m-d H:i:s') . '|' . $name . '| ' . $qItem->item_id . '|' . $message . ';' . PHP_EOL);
+		$fileLog->append(UIHelper::formatTS(time()) . '|' . $name . '| ' . $qItem->item_id . '|' . $message . ';' . PHP_EOL); // SPIO's log line: formatTS|file| id|message;
 	}
 }

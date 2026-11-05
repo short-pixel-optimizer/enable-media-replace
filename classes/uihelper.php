@@ -76,6 +76,47 @@ class UIHelper
 	const NOTICE_NEW_FEATURE = 'EMR001';
 
 	/**
+	 * A number for display: number_format_i18n() without a trailing ".00",
+	 * and a plain space for a locale's non-breaking thousands separator
+	 * (SPIO's UiHelper::formatNumber()). A non-numeric value is returned as is.
+	 *
+	 * @param mixed $number
+	 * @param int   $precision Maximum decimals. Default 2.
+	 * @return mixed The formatted string, or $number when it is not numeric.
+	 */
+	public static function formatNumber($number, $precision = 2)
+	{
+		global $wp_locale;
+		if (! is_numeric($number)) {
+			return $number;
+		}
+		$decimalpoint = (isset($wp_locale) && isset($wp_locale->number_format['decimal_point'])) ? $wp_locale->number_format['decimal_point'] : '.';
+		$formatted    = number_format_i18n((float) $number, $precision);
+		$pos          = strpos($formatted, $decimalpoint);
+		if (false !== $pos && '00' === substr($formatted, $pos + 1)) {
+			$formatted = substr($formatted, 0, $pos);
+		}
+		return str_replace('&nbsp;', ' ', $formatted);
+	}
+
+	/**
+	 * A Unix timestamp as "date @ time" in the site's formats and timezone
+	 * (SPIO's UiHelper::formatTS()): the bulk history, the log titles and
+	 * the per-item log lines.
+	 *
+	 * @param int $ts
+	 * @return string
+	 */
+	public static function formatTS($ts)
+	{
+		$ts = (int) $ts;
+		if (function_exists('wp_date')) {
+			return wp_date(get_option('date_format'), $ts) . ' @ ' . wp_date(get_option('time_format'), $ts);
+		}
+		return date_i18n(get_option('date_format'), $ts) . ' @ ' . date_i18n(get_option('time_format'), $ts);
+	}
+
+	/**
 	 * Returns the singleton, creating it on first call.
 	 *
 	 * The class is instantiated as `UiHelper`; class names are

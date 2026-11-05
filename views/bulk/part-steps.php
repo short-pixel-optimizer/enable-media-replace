@@ -2,15 +2,19 @@
 /**
  * Bulk step bar: Select, Summary, Process, Results (SPIO's part-progressbar).
  *
- * Rendered by BulkViewController::loadSteps(); $part (selection, summary,
- * process or finished) is the current step. Every step up to and including
- * the current one is `active`; the current one is also `current`.
+ * Included with `$controller->loadView('bulk/part-steps', false, array('part' => ...))`;
+ * `$view->template_args['part']` (selection, summary, process or finished) is
+ * the current step, as SPIO's part-progressbar reads its `part`. Every step
+ * up to and including the current one is `active`; the current one is also
+ * `current`.
  */
 namespace EnableMediaReplace;
 
 if (! defined('ABSPATH')) {
 	exit;
 }
+
+$part = (isset($view->template_args) && is_array($view->template_args) && isset($view->template_args['part'])) ? $view->template_args['part'] : '';
 
 $emr_steps = array(
 	'selection' => __('Select', 'enable-media-replace'),

@@ -124,21 +124,6 @@ class BulkViewController extends ViewController
 		$this->loadView($this->view_name);
 	}
 
-	/**
-	 * Renders the step bar (views/bulk/part-steps.php) with $part as the current step.
-	 *
-	 * loadView() includes a template once and passes no arguments, while the
-	 * step bar appears on four panels with a different current step.
-	 *
-	 * @param string $part selection, summary, process or finished.
-	 * @return void
-	 */
-	public function loadSteps($part)
-	{
-		$view       = $this->view;
-		$controller = $this;
-		include \emr()->plugin_path('views/bulk/part-steps.php');
-	}
 
 	/**
 	 * Attributes for an element shown for some operations only.
@@ -291,7 +276,7 @@ class BulkViewController extends ViewController
 				'name'   => $name,
 				'images' => isset($logData['total_images']) ? (int) $logData['total_images'] : (int) $logData['processed'],
 				'errors' => (int) $logData['fatal_errors'],
-				'date'   => date_i18n(get_option('date_format') . ' ' . get_option('time_format'), (int) $logData['date']),
+				'date'   => \EnableMediaReplace\UIHelper::formatTS((int) $logData['date']),
 				'file'   => $exists ? substr($file, 0, -4) : false,
 			);
 		}

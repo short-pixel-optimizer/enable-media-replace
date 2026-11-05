@@ -173,8 +173,9 @@ class CronController
 	 * Options (filter `emr/bulk/cron/options`): `max_runs` (10), `timelimit`
 	 * in seconds (50), `wait` seconds between ticks (1). The loop ends when
 	 * the queue reports empty or preparing-done, the tick is refused (key,
-	 * plan, quota), the run limit or the time limit is reached. Afterwards
-	 * the scheduler decides whether the event stays.
+	 * plan, quota), the run limit or the time limit is reached
+	 * (EnvHelper::IsOverTimeLimit(), 90 % of `timelimit` measured from the
+	 * loop's start). Afterwards the scheduler decides whether the event stays.
 	 *
 	 * @return \stdClass|null The last tick's answer, null when nothing ran.
 	 */
@@ -194,7 +195,7 @@ class CronController
 		}
 
 		$controller = new QueueController(array('is_bulk' => true));
-		$started    = microtime(true);
+		$started    = time();
 		$last       = null;
 
 		for ($i = 0; $i < max(1, (int) $args['max_runs']); $i++) {
@@ -208,7 +209,8 @@ class CronController
 			if (in_array($qstatus, array(BulkQueue::RESULT_QUEUE_EMPTY, BulkQueue::RESULT_PREPARING_DONE), true)) {
 				break;
 			}
-			if ((microtime(true) - $started) >= (float) $args['timelimit']) {
+			// As SPIO's processQueueHook(): the environment judges the time budget (90 % of the limit).
+			if (\emr()->env()->IsOverTimeLimit(array('limit' => (int) $args['timelimit'], 'start' => $started))) {
 				Log::addDebug('Bulk cron: over time limit, returning');
 				break;
 			}

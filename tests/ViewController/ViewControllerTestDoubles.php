@@ -91,19 +91,19 @@ if ( ! class_exists( 'EMR_ViewExit', false ) ) {
 			parent::viewSuccess();
 		}
 
-		protected function loadView( $template = null, $unique = true ) {
+		public function loadView( $template = null, $unique = true, $args = array() ) {
 			$this->loadedViews[] = $template;
 			if ( 'error' === $template || 'success' === $template ) {
 				throw new EMR_ViewExit( $template, 'error' === $template ? $this->lastError : 0 );
 			}
-			return parent::loadView( $template, $unique );
+			return parent::loadView( $template, $unique, $args );
 		}
 
 		/**
 		 * The real ViewController::loadView(), including 'error' and 'success'.
 		 */
-		public function renderView( $template = null, $unique = true ) {
-			return parent::loadView( $template, $unique );
+		public function renderView( $template = null, $unique = true, $args = array() ) {
+			return parent::loadView( $template, $unique, $args );
 		}
 
 		/** @return stdClass */

@@ -164,7 +164,8 @@ classes/
       Selector/            - the prepare-phase sources: WooCommerceProductImages (background), UpscaleCandidates (upscale)
   Model/Bulk/              - QueueItem (attachment + action + data + result), QueueItemData, QueueItemResult,
                              BulkImage (attachment adapter: file, URL, width, upscale factor, the _emr_bulk_<operation> markers)
-  ViewController.php       - abstract base: view loading, error codes, viewError()/viewSuccess()
+  ViewController.php       - abstract base: view loading (loadView($template, $unique, $args), $args as
+                             $view->template_args like SPIO's), error codes, viewError()/viewSuccess()
   ViewController/
     ReplaceViewController.php          - the replace screen
     UploadViewController.php           - the replace POST handler
@@ -177,8 +178,10 @@ classes/
   ApiKeyManager.php        - the ShortPixel API key option and plan check
   cache.php                - emrCache: cache-plugin detection and flushing
   uihelper.php             - UIHelper: screen URLs, previews, placeholders, author restriction,
-                             isBackgroundRemovable() / isUpscalable() and the upscale factor table
-  Helper/envHelper.php     - EnvHelper: multisite/ajax/cron flags
+                             isBackgroundRemovable() / isUpscalable() and the upscale factor table,
+                             formatNumber() / formatTS() (SPIO's UiHelper formatters: bulk stats, history, logs)
+  Helper/envHelper.php     - EnvHelper: multisite/ajax/cron flags, IsOverMemoryLimit() / IsOverTimeLimit()
+                             (SPIO's EnvironmentModel budget checks; filters emr/process/max_memory, emr/process/max_execution)
   externals.php            - Externals: loads the integrations below
   external/                - Elementor, WPBakery, SiteOrigin, WP Offload Media, the upsell installer
   installHelper.php        - deactivation and uninstall
@@ -298,7 +301,9 @@ docs/                      - the documentation and test plan, the bulk design no
   `emr/bulk/api/timeout`, `emr/bulk/plan_check_ttl`, `emr/bulk/prepare_items`,
   `emr/bulk/item/done`, `emr/bulk/item/failed`, `emr/bulk/interval`,
   `emr/bulk/defer_interval`, `emr/bulk/upscale/threshold` (the default
-  threshold). The design note is `docs/BULK.md`. The bulk needs an API key on an Unlimited plan
+  threshold), `emr/process/max_memory`, `emr/process/max_execution` (the
+  prepare loop and the cron loop stop at 90 % of the budget, through
+  `EnvHelper`). The design note is `docs/BULK.md`. The bulk needs an API key on an Unlimited plan
   (checked once per hour, transient `emr_bulk_plan_ok`).
 - **Bulk screen:** `upload.php?page=emr-bulk` (`BulkViewController`,
   `manage_options`). The browser drives the queue like SPIO's bulk page:

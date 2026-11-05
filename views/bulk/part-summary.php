@@ -19,7 +19,7 @@ if (! defined('ABSPATH')) {
 }
 ?>
 <section class="emr-bulk-panel emr-bulk-summary" data-panel="summary" hidden>
-	<?php $controller->loadSteps('summary'); ?>
+	<?php $controller->loadView('bulk/part-steps', false, array('part' => 'summary')); ?>
 
 	<h2 class="emr-bulk-heading"><?php esc_html_e('Ready to start', 'enable-media-replace'); ?></h2>
 

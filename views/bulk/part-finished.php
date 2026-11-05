@@ -20,7 +20,7 @@ $emr_errors = '<span class="hidden" data-check-media-fatalerrors-finished data-s
 	. '<a href="#" class="emr-bulk-errors-link" data-action="ToggleErrorBox" aria-expanded="false" data-check-visibility data-control="data-check-media-fatalerrors-finished" hidden><strong data-stats-media="fatal_errors">0</strong></a>';
 ?>
 <section class="emr-bulk-panel emr-bulk-finished" data-panel="finished" hidden>
-	<?php $controller->loadSteps('finished'); ?>
+	<?php $controller->loadView('bulk/part-steps', false, array('part' => 'finished')); ?>
 
 	<div class="emr-bulk-finished-icon"><span class="dashicons dashicons-yes" aria-hidden="true"></span></div>
 	<h2 class="emr-bulk-heading"><?php esc_html_e('All done', 'enable-media-replace'); ?></h2>

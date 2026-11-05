@@ -104,7 +104,7 @@ the three plugins never see each other's items.
   the bulk stops.
 - **Look.** The page copies SPIO's bulk layout and palette: the white
   header bar, rounded panels, the Select / Summary / Process / Results step
-  bar (`views/bulk/part-steps.php`, `BulkViewController::loadSteps()`), the
+  bar (`views/bulk/part-steps.php`, included with `loadView()` and its `$args`, read as `$view->template_args`), the
   light blue option blocks, the stats table, the preview boxes and the
   collapsible history, and the operation icons of `img/icons/` (64 px
   SVGs; `icon-media-replace.svg` is meant for the single-item screens). A

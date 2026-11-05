@@ -18,7 +18,7 @@ if (! defined('ABSPATH')) {
 $placeholder = plugins_url('img/bulk/placeholder.svg', EMR_ROOT_FILE);
 ?>
 <section class="emr-bulk-panel emr-bulk-process" data-panel="process" hidden>
-	<?php $controller->loadSteps('process'); ?>
+	<?php $controller->loadView('bulk/part-steps', false, array('part' => 'process')); ?>
 
 	<h2 class="emr-bulk-heading">
 		<span <?php echo $controller->operationOnly('background'); ?>><?php esc_html_e('Removing backgrounds…', 'enable-media-replace'); ?></span>

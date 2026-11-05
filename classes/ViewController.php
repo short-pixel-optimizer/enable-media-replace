@@ -127,9 +127,12 @@ abstract class ViewController
 		 *
 		 * @param string|null $template Template name without directory and `.php`.
 		 * @param bool        $unique   Whether to skip templates that are already loaded.
+		 * @param array       $args     Values for this template only, read as
+		 *                              `$view->template_args` (SPIO's loadView(): the
+		 *                              step bar's current step, for instance).
 		 * @return false|void False when the template name is null or empty; nothing otherwise.
 		 */
-		protected function loadView($template = null, $unique = true)
+		public function loadView($template = null, $unique = true, $args = array())
 		{
 				if (is_null($template) )
 				{
@@ -141,6 +144,7 @@ abstract class ViewController
 				}
 
 				$view = $this->view;
+				$view->template_args = $args; // local pass for this template, as in SPIO.
 				$controller = $this;
 				$template_path = emr()->plugin_path('views/' . $template  . '.php');
 

@@ -1246,4 +1246,47 @@ class UIHelperTest extends WP_UnitTestCase {
 		$this->assertStringContainsString( 'New beta feature!', $notice->message );
 		$this->assertStringContainsString( 'remove the background of an image and upscale it', $notice->message );
 	}
+
+	/* ------------------------------------------------------------------
+	 * formatNumber() / formatTS() (SPIO's UiHelper formatters).
+	 * ------------------------------------------------------------------ */
+
+	public function test_format_number_localizes_and_drops_a_trailing_double_zero() {
+		$this->assertSame( '1,234', UIHelper::formatNumber( 1234 ) );
+		$this->assertSame( '1,234', UIHelper::formatNumber( 1234.0 ) );
+		$this->assertSame( '33.33', UIHelper::formatNumber( 100 / 3 ) );
+		$this->assertSame( '33', UIHelper::formatNumber( 33.333, 0 ) );
+		$this->assertSame( '0', UIHelper::formatNumber( 0 ) );
+		$this->assertSame( '2,000', UIHelper::formatNumber( '2000' ) );
+		$this->assertTrue( UIHelper::formatNumber( true ), 'A non-numeric value passes through untouched.' );
+		$this->assertSame( 'n/a', UIHelper::formatNumber( 'n/a' ) );
+	}
+
+	public function test_format_number_replaces_a_non_breaking_thousands_separator_with_a_space() {
+		global $wp_locale;
+		$saved                                     = $wp_locale->number_format;
+		$wp_locale->number_format['thousands_sep'] = '&nbsp;';
+		$wp_locale->number_format['decimal_point'] = ',';
+
+		$this->assertSame( '1 234', UIHelper::formatNumber( 1234 ) );
+		$this->assertSame( '1 234,5', UIHelper::formatNumber( 1234.5, 1 ) );
+
+		$wp_locale->number_format = $saved;
+	}
+
+	public function test_format_ts_joins_the_site_date_and_time_formats_with_an_at_sign() {
+		$saved = array( 'date_format' => get_option( 'date_format' ), 'time_format' => get_option( 'time_format' ), 'timezone_string' => get_option( 'timezone_string' ), 'gmt_offset' => get_option( 'gmt_offset' ) );
+		update_option( 'date_format', 'Y-m-d' );
+		update_option( 'time_format', 'H:i' );
+		update_option( 'timezone_string', 'UTC' );
+
+		$this->assertSame( '2023-11-14 @ 22:13', UIHelper::formatTS( 1700000000 ) );
+
+		update_option( 'timezone_string', 'Europe/Bucharest' );
+		$this->assertSame( '2023-11-15 @ 00:13', UIHelper::formatTS( 1700000000 ), 'The site timezone, not UTC.' );
+
+		foreach ( $saved as $name => $value ) {
+			update_option( $name, $value );
+		}
+	}
 }
