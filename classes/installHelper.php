@@ -84,7 +84,7 @@ class InstallHelper
 
 		/**
 		 * Deactivation callback: clears the stored admin notices, the bulk cron
-		 * event, the bulk processor key and the cached AI credits.
+		 * event, the bulk processor key, the cached plan check and the cached AI credits.
 		 *
 		 * NoticeController::resetNotices() deletes the `EnableMediaReplace-notices`
 		 * option, which holds persistent notices and their dismissal state, so a
@@ -101,6 +101,7 @@ class InstallHelper
 			Notices::resetNotices();
 			wp_clear_scheduled_hook( CronController::EVENT );
 			delete_transient( BulkAjaxController::SECRET_TRANSIENT );
+			delete_transient( QueueController::PLAN_TRANSIENT ); // as SPIO drops its quota cache on deactivation too
 			ApiKeyManager::getInstance()->forgetAiCredits();
 		}
 }

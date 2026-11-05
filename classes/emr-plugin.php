@@ -412,8 +412,10 @@ class EnableMediaReplacePlugin
         // The Black Friday banner on EMR's own screens (bundled promo-banner module).
         $this->promoBanner()->register();
 
-        // The Bulk Enhance filter of the Media Library (list dropdown, grid dropdown, query).
-        \EnableMediaReplace\Controller\MediaLibraryFilterController::getInstance()->register();
+        // The Bulk Enhance filter of the Media Library (list dropdown, grid dropdown, query); admin only, as SPIO hooks its filter.
+        if (is_admin()) {
+            \EnableMediaReplace\Controller\MediaLibraryFilterController::getInstance()->register();
+        }
 
         // init plugin
         add_action('admin_menu', array($this, 'menu'));

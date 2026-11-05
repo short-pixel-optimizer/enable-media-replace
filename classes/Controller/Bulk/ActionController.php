@@ -482,6 +482,7 @@ class ActionController
 			'fileStatus' => BulkImage::FILE_STATUS_RESTORED,
 			'is_done'    => true,
 			'is_error'   => false,
+			'success'    => true, // SPIO's restore result carries it; nothing reads it in EMR yet
 			'message'    => __('Original restored', 'enable-media-replace'),
 		));
 		do_action('emr/bulk/item/done', $image, 'restore', $qItem);

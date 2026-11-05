@@ -11,6 +11,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 use EnableMediaReplace\Controller\Bulk\BulkQueue;
+use EnableMediaReplace\Model\Bulk\BulkImage;
 
 /**
  * Selects every JPEG and PNG attachment of the media library, newest
@@ -24,7 +25,7 @@ use EnableMediaReplace\Controller\Bulk\BulkQueue;
 class UpscaleCandidates extends Selector
 {
 	/** MIME types the API accepts. */
-	const MIME_TYPES = array('image/jpeg', 'image/png');
+	const MIME_TYPES = BulkImage::MIME_TYPES;
 
 	/**
 	 * @return bool

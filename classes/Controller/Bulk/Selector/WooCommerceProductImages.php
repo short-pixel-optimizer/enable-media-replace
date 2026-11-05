@@ -98,8 +98,8 @@ class WooCommerceProductImages extends Selector
 
 		$queue->setSelectorCursor(min($postIds));
 
-		$idList = implode(',', $postIds);
-		$rows   = $wpdb->get_results("SELECT meta_key, meta_value FROM {$wpdb->postmeta} WHERE post_id IN ($idList) AND meta_key IN ('_thumbnail_id', '_product_image_gallery')");
+		$idList = implode(',', array_fill(0, count($postIds), '%d'));
+		$rows   = $wpdb->get_results($wpdb->prepare("SELECT meta_key, meta_value FROM {$wpdb->postmeta} WHERE post_id IN ($idList) AND meta_key IN ('_thumbnail_id', '_product_image_gallery')", $postIds)); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- placeholders only
 
 		$ids = array();
 		foreach ((array) $rows as $row) {

@@ -67,6 +67,9 @@ class BulkImageTest extends WP_UnitTestCase {
 		$id = $this->makeImageAttachment( 10, 10 );
 		wp_update_post( array( 'ID' => $id, 'post_mime_type' => 'image/gif' ) );
 		$this->assertFalse( BulkImage::getById( $id )->isSupportedType() );
+		wp_update_post( array( 'ID' => $id, 'post_mime_type' => 'image/x-png' ) );
+		$this->assertFalse( BulkImage::getById( $id )->isSupportedType(), 'Exact mime types only, the list the upscale selector queries.' );
+		$this->assertSame( BulkImage::MIME_TYPES, \EnableMediaReplace\Controller\Bulk\Selector\UpscaleCandidates::MIME_TYPES );
 	}
 
 	/**

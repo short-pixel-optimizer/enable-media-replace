@@ -135,6 +135,7 @@ class PluginRuntimeTest extends EMR_MainTestCase {
 
 	public function test_runtime_for_an_author_registers_the_admin_ui() {
 		$this->login_as( 'author' );
+		set_current_screen( 'upload' ); // is_admin(): the Media Library filter is registered in the admin only.
 		$externals = $this->callback_count( 'emr_display_replace_type_options' );
 
 		emr()->runtime();
@@ -148,6 +149,7 @@ class PluginRuntimeTest extends EMR_MainTestCase {
 
 	public function test_runtime_for_an_administrator_registers_the_admin_ui_and_the_notices_controller() {
 		$this->login_as( 'administrator' );
+		set_current_screen( 'upload' );
 
 		emr()->runtime();
 
@@ -156,6 +158,20 @@ class PluginRuntimeTest extends EMR_MainTestCase {
 		}
 		$this->assertIsObject( $this->notice_static( 'instance' ), 'plugin_actions() loads the notices controller.' );
 		$this->assertSame( trailingslashit( dirname( EMR_ROOT_FILE ) ), $this->plugin_prop( 'plugin_path' ) );
+	}
+
+	/** As SPIO wraps its filter_listener in is_admin(): a front-end request of an allowed user registers no Media Library filter. */
+	public function test_runtime_on_the_front_end_registers_the_admin_ui_but_not_the_media_library_filter() {
+		$this->login_as( 'administrator' );
+		$this->assertFalse( is_admin(), 'Precondition: no admin screen.' );
+		$filter = \EnableMediaReplace\Controller\MediaLibraryFilterController::getInstance();
+
+		emr()->runtime();
+
+		$this->assertSame( 10, has_action( 'admin_menu', array( emr(), 'menu' ) ) );
+		$this->assertFalse( has_action( 'restrict_manage_posts', array( $filter, 'addFilterDropdown' ) ) );
+		$this->assertFalse( has_filter( 'pre_get_posts', array( $filter, 'filterListener' ) ) );
+		$this->assertFalse( has_action( 'wp_enqueue_media', array( $filter, 'enqueueGridFilter' ) ) );
 	}
 
 	public function test_runtime_with_emr_replaced_adds_the_cache_busting_filters() {

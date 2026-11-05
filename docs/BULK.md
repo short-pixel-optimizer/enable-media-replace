@@ -109,11 +109,11 @@ the three plugins never see each other's items.
   collapsible history, and the operation icons of `img/icons/` (64 px
   SVGs; `icon-media-replace.svg` is meant for the single-item screens). A
   greyed-out Start button explains itself in a CSS tooltip (`data-tooltip`
-  on its wrapper). `scss/_bulk-colors.scss` holds SPIO's color
+  on its wrapper). `scss/_emr-colors.scss` holds SPIO's color
   variables under the same names. Texts that depend on the operation carry
   `data-operation-only` (`BulkViewController::operationOnly()` sets the
   initial state, the screen script toggles it). The API key box is a bulk
-  variant (`views/bulk/part-account.php`): a `<details>` row, collapsed
+  variant (`views/shortpixel-account.php` with `$emr_account_context = 'bulk'`): a `<details>` row, collapsed
   while a key is stored, with the shared box's element IDs, so
   `js/shortpixel-account.js` drives it unchanged.
 - **WP-Cron.** With the `background_process` setting on, `startBulk()`

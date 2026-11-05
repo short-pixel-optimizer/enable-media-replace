@@ -136,6 +136,7 @@ abstract class EMR_MainTestCase extends WP_UnitTestCase {
 	}
 
 	public function tear_down() {
+		set_current_screen( 'front' ); // tests that needed is_admin() set an admin screen.
 		foreach ( $this->added_filters as $filter ) {
 			remove_filter( $filter[0], $filter[1], $filter[2] );
 		}

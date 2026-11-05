@@ -78,6 +78,7 @@ class InstallHelperTest extends WP_UnitTestCase {
 	public function test_uninstall_and_deactivation_drop_the_processor_key_and_the_cached_ai_credits() {
 		foreach ( array( 'unInstallPlugin', 'deactivatePlugin' ) as $hook ) {
 			set_transient( 'emr_bulk_secret', 'tab-one', 120 );
+			set_transient( 'emr_bulk_plan_ok', 1, 600 );
 			set_transient( 'emr_ai_credits', array( 'unlimited' => false, 'quota' => 1000, 'used' => 1, 'remaining' => 999, 'key' => md5( 'k' ) ), 600 );
 			$this->assertSame( 'tab-one', get_transient( 'emr_bulk_secret' ), 'Precondition.' );
 			$this->assertIsArray( get_transient( 'emr_ai_credits' ), 'Precondition.' );
@@ -85,6 +86,7 @@ class InstallHelperTest extends WP_UnitTestCase {
 			InstallHelper::$hook();
 
 			$this->assertFalse( get_transient( 'emr_bulk_secret' ), $hook . ' drops the processor key.' );
+			$this->assertFalse( get_transient( 'emr_bulk_plan_ok' ), $hook . ' drops the cached plan check.' );
 			$this->assertFalse( get_transient( 'emr_ai_credits' ), $hook . ' drops the cached AI credits.' );
 		}
 	}

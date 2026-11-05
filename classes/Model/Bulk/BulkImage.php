@@ -213,20 +213,18 @@ class BulkImage
 		return $this->getFile()->exists();
 	}
 
+	/** The mime types the API accepts (the upscale selector queries the same list). */
+	const MIME_TYPES = array('image/jpeg', 'image/png');
+
 	/**
-	 * Whether the API accepts this image: JPEG or PNG, as the single flow requires.
+	 * Whether the API accepts this image: JPEG or PNG, as the single flow
+	 * requires, by exact mime type (the list the upscale selector queries).
 	 *
 	 * @return bool
 	 */
 	public function isSupportedType()
 	{
-		$mime = $this->getMime();
-		foreach (array('jpg', 'png', 'jpeg') as $extension) {
-			if (false !== strpos($mime, $extension)) {
-				return true;
-			}
-		}
-		return false;
+		return in_array($this->getMime(), self::MIME_TYPES, true);
 	}
 
 	/**
