@@ -118,7 +118,7 @@ test.describe('Bulk page: upscale', () => {
 		await bulk.goto();
 
 		// Restore: the backups under EMR_Backups replace the results in place.
-		await bulk.startRestore('upscale');
+		await bulk.startRestoreAll('upscale');
 		await bulk.driveToFinish(emr);
 		await expect(bulk.stat('done')).toHaveText('3');
 		// A restore has nothing to compare: the preview stays closed (SPIO's FILE_RESTORED).

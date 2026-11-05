@@ -118,9 +118,10 @@ class QueueController
 	/**
 	 * One processing tick.
 	 *
+	 * @param string[] $queueTypes Ignored (SPIO's 'media' / 'custom'); EMR has one queue.
 	 * @return \stdClass status, media (tick result), total; or status false with error and message.
 	 */
-	public function processQueue()
+	public function processQueue($queueTypes = array())
 	{
 		$queue = $this->getQueue();
 

@@ -142,8 +142,9 @@ class EmrBulkScreen {
 		var panel = this.panels[targetName];
 		panel.hidden = false;
 		setTimeout(function () { panel.classList.add('active'); }, 0);
+		var oldCurrentPanel = this.currentPanel; // for the event, as SPIO's screen-bulk.js
 		this.currentPanel = targetName;
-		window.dispatchEvent(new CustomEvent('emr.bulk.onSwitchPanel', { detail: { panelLoad: targetName } }));
+		window.dispatchEvent(new CustomEvent('emr.bulk.onSwitchPanel', { detail: { panelLoad: targetName, panelUnload: oldCurrentPanel } }));
 	}
 
 	/* ---- Selection -> prepare ---- */
@@ -339,16 +340,17 @@ class EmrBulkScreen {
 		this.FinishBulk();
 	}
 
-	BulkRestore(event) {
+	/** SPIO's BulkRestoreAll(): the restore of one operation's images (the `data-operation` of the button). */
+	BulkRestoreAll(event) {
 		var operation = event.currentTarget.getAttribute('data-operation') || this.operation;
 		this.operation = operation;
 		this.UpdateOperationLabels('restore');
 		this.UpdatePanelStatus('loading', 'selection');
 		this.SwitchPanel('selection');
 
-		window.addEventListener('emr.startRestore', this.PrepareBulk.bind(this), { once: true });
+		window.addEventListener('emr.startRestoreAll', this.PrepareBulk.bind(this), { once: true });
 		window.addEventListener('emr.bulk.onSwitchPanel', this.StartBulk.bind(this), { once: true });
-		this.processor.AjaxRequest({ screen_action: 'startRestore', callback: 'emr.startRestore', operation: operation });
+		this.processor.AjaxRequest({ screen_action: 'startRestoreAll', callback: 'emr.startRestoreAll', operation: operation });
 	}
 
 	ReloadScreen(event) {
@@ -368,7 +370,7 @@ class EmrBulkScreen {
 	}
 
 	SaveBackgroundSetting(event) {
-		this.processor.SettingsRequest({ background_process: event.target.checked, callback: 'emr.settingsSaved' });
+		this.processor.SettingsRequest({ screen_action: 'saveBulkSettings', background_process: event.target.checked, callback: 'emr.settingsSaved' });
 	}
 
 	TogglePauseNotice(event) {
@@ -648,11 +650,12 @@ class EmrBulkScreen {
 		}
 		modal.hidden = false;
 		modal.querySelector('.emr-bulk-log-table').innerHTML = '';
-		window.addEventListener('emr.showLog', this.ShowLog.bind(this), { once: true });
-		this.processor.AjaxRequest({ screen_action: 'loadLogFile', callback: 'emr.showLog', loadFile: file });
+		window.addEventListener('emr.showLogModal', this.ShowLogModal.bind(this), { once: true });
+		this.processor.AjaxRequest({ screen_action: 'loadLogFile', callback: 'emr.showLogModal', loadFile: file, type: 'log' });
 	}
 
-	ShowLog(event) {
+	/** SPIO's ShowLogModal(): fills the log modal from the `log` of the answer. */
+	ShowLogModal(event) {
 		var log = event.detail.log;
 		var modal = document.getElementById('emr-bulk-log-modal');
 		if (! modal) {

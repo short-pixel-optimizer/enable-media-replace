@@ -234,7 +234,7 @@ class BulkViewControllerTest extends WP_UnitTestCase {
 		$this->assertStringContainsString( 'Restore 1 original', $html );
 		$this->assertMatchesRegularExpression( '~Restore 1 original</button>\s*<a class="button" href="[^"]*upload\.php\?mode=list&#038;emr_bulk=upscale">View in Media Library</a>~', $html, 'Next to the restore button: the library filtered on the operation.' );
 		$this->assertStringNotContainsString( 'emr_bulk=background">View in Media Library', $html, 'Nothing to view for the operation that never ran.' );
-		$this->assertMatchesRegularExpression( '/data-action="BulkRestore" data-operation="upscale" disabled>Restore upscaled images</', $html, 'The button names what comes back.' );
+		$this->assertMatchesRegularExpression( '/data-action="BulkRestoreAll" data-operation="upscale" disabled>Restore upscaled images</', $html, 'The button names what comes back.' );
 		$this->assertStringNotContainsString( 'Restore:', $html );
 	}
 
@@ -244,7 +244,7 @@ class BulkViewControllerTest extends WP_UnitTestCase {
 		$image->setMarker( 'background', array( 'ts' => time() ), BackupController::backup( $image ) );
 		$html = $this->render();
 
-		$this->assertMatchesRegularExpression( '/data-action="BulkRestore" data-operation="background" disabled>Restore background removals</', $html );
+		$this->assertMatchesRegularExpression( '/data-action="BulkRestoreAll" data-operation="background" disabled>Restore background removals</', $html );
 		$this->assertStringNotContainsString( 'Restore upscaled images', $html );
 	}
 
@@ -392,7 +392,7 @@ class BulkViewControllerTest extends WP_UnitTestCase {
 		update_option( 'emr_shortpixel_api_key', 'abcdEFGHIJKLMNOPwxyz' );
 		$html = $this->render();
 
-		$this->assertStringNotContainsString( 'data-action="BulkRestore"', $html );
+		$this->assertStringNotContainsString( 'data-action="BulkRestoreAll"', $html );
 		$this->assertStringContainsString( 'There are no originals to restore.', $html );
 	}
 

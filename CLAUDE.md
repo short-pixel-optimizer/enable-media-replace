@@ -326,10 +326,16 @@ docs/                      - the documentation and test plan, the bulk design no
   file statuses `FILE_STATUS_*` live on `BulkImage` (SPIO: `ImageModel`); a
   tick answers status 1 and keeps item errors on the items.
   Screen actions go to `wp_ajax_emr_bulk_request` (`screen_action`:
-  createBulk, startBulk, finishBulk, startRestore, getStatus,
+  createBulk, startBulk, finishBulk, startRestoreAll, getStatus,
   skipPreparing, recheckActive, loadLogFile), settings to
-  `wp_ajax_emr_bulk_settings`. Every action needs its own nonce and
-  `manage_options`. The first processor claims the `emr_bulk_secret`
+  `wp_ajax_emr_bulk_settings` (`screen_action` saveBulkSettings). Every action
+  needs its own nonce and passes `checkActionAccess($action, $access)` with
+  SPIO's level (`is_author`, `is_editor`, `is_admin_user`), all of which map to
+  `manage_options` in `BulkAjaxController::ACCESS_LEVELS`. The screen's method,
+  action and event names are SPIO's (`BulkRestoreAll` / `startRestoreAll`,
+  `ShowLogModal` / `emr.showLogModal`, `panelLoad` and `panelUnload` on
+  `emr.bulk.onSwitchPanel`), and the bulk controller methods keep SPIO's
+  ignored queue-type parameters. The first processor claims the `emr_bulk_secret`
   transient (2 min, renewed per tick; deleted on deactivation and uninstall
   with the `emr_ai_credits` transient, as SPIO drops `bulk-secret` and
   `quotaData`); other tabs get PROCESSOR_ACTIVE and

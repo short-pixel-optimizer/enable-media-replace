@@ -21,11 +21,16 @@ use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
  * | Action              | Nonce               | Purpose                                                        |
  * |---------------------|---------------------|----------------------------------------------------------------|
  * | emr_bulk_process    | emr_bulk_process    | one tick: QueueController::processQueue(), needs the processor key |
- * | emr_bulk_request    | emr_bulk_request    | screen actions: createBulk, startBulk, finishBulk, startRestore, getStatus, skipPreparing, recheckActive, loadLogFile |
- * | emr_bulk_settings   | emr_bulk_settings   | the bulk settings (background process, upscale threshold)      |
+ * | emr_bulk_request    | emr_bulk_request    | screen actions: createBulk, startBulk, finishBulk, startRestoreAll, getStatus, skipPreparing, recheckActive, loadLogFile |
+ * | emr_bulk_settings   | emr_bulk_settings   | screen action saveBulkSettings: the bulk settings (background process, upscale threshold) |
  *
- * Every action needs `manage_options` (the bulk is never offered to author
- * restricted users) and a `nonce` POST field for its own action. Responses
+ * Every action needs a `nonce` POST field for its own action and passes
+ * checkActionAccess() with SPIO's access level for that action (`is_author`
+ * for a tick, `is_editor` to create, start and finish, `is_admin_user` to
+ * restore and for the settings); in EMR every level resolves to
+ * `manage_options` (ACCESS_LEVELS: the bulk is never offered to author
+ * restricted users), so the levels document SPIO's intent and are the one
+ * place to loosen. Responses
  * go through send(): wp_send_json() of a stdClass that always carries
  * `status`, echoes the posted `callback` (the browser dispatches a window
  * event of that name) and the current `processorKey`.
@@ -53,6 +58,16 @@ class BulkAjaxController
 
 	/** Capability the bulk requires. */
 	const CAPABILITY = 'manage_options';
+
+	/**
+	 * SPIO's access levels (AccessModel::userIsAllowed()) to EMR capabilities.
+	 * All three are `manage_options` today; see the class docblock.
+	 */
+	const ACCESS_LEVELS = array(
+		'is_author'     => self::CAPABILITY,
+		'is_editor'     => self::CAPABILITY,
+		'is_admin_user' => self::CAPABILITY,
+	);
 
 	/**
 	 * Error codes for the browser (js/bulk/emr-processor.js aStatusError), on
@@ -108,7 +123,7 @@ class BulkAjaxController
 	public function ajaxProcessQueue()
 	{
 		$this->checkNonce('emr_bulk_process');
-		$this->checkAccess('processQueue');
+		$this->checkActionAccess('processQueue', 'is_author');
 		$this->checkProcessorKey();
 
 		$controller = new QueueController(array('is_bulk' => true));
@@ -123,25 +138,29 @@ class BulkAjaxController
 	public function ajaxRequest()
 	{
 		$this->checkNonce('emr_bulk_request');
-		$this->checkAccess('ajax');
 
 		$action = isset($_POST['screen_action']) ? sanitize_text_field(wp_unslash($_POST['screen_action'])) : '';
+		$this->checkActionAccess($action, 'is_author');
 
 		$json         = new \stdClass();
 		$json->status = false;
 
 		switch ($action) {
 			case 'createBulk':
+				$this->checkActionAccess($action, 'is_editor');
 				$json = $this->createBulk($json);
 				break;
 			case 'startBulk':
+				$this->checkActionAccess($action, 'is_editor');
 				$json = $this->startBulk($json);
 				break;
 			case 'finishBulk':
+				$this->checkActionAccess($action, 'is_editor');
 				$json = $this->finishBulk($json);
 				break;
-			case 'startRestore':
-				$json = $this->startRestore($json);
+			case 'startRestoreAll':
+				$this->checkActionAccess($action, 'is_admin_user');
+				$json = $this->startRestoreAll($json);
 				break;
 			case 'getStatus':
 				$json = $this->getStatus($json);
@@ -167,14 +186,26 @@ class BulkAjaxController
 	}
 
 	/**
-	 * Saves the bulk settings posted as `background_process` and `threshold`.
+	 * The settings endpoint: dispatches `screen_action` as SPIO's
+	 * settingsRequest() does; `saveBulkSettings` stores the posted
+	 * `background_process` and `threshold`, anything else is NO_ACTION.
 	 *
 	 * @return void Ends the request.
 	 */
 	public function settingsRequest()
 	{
 		$this->checkNonce('emr_bulk_settings');
-		$this->checkAccess('settings');
+		$action = isset($_POST['screen_action']) ? sanitize_text_field(wp_unslash($_POST['screen_action'])) : '';
+		$this->checkActionAccess($action, 'is_admin_user');
+
+		if ('saveBulkSettings' !== $action) {
+			$json          = new \stdClass();
+			$json->status  = false;
+			$json->error   = self::NO_ACTION;
+			$json->message = __('Unknown bulk settings action', 'enable-media-replace');
+			$this->send($json);
+			return;
+		}
 
 		$settings = BulkController::getSettings();
 		if (isset($_POST['background_process'])) {
@@ -247,7 +278,7 @@ class BulkAjaxController
 			$args['replace_transparency'] = (int) $settings['bg_transparency'];
 		}
 
-		$bulk->createNewBulk($args);
+		$bulk->createNewBulk('media', $args);
 
 		return $this->withStartupData($json);
 	}
@@ -278,12 +309,14 @@ class BulkAjaxController
 	}
 
 	/**
-	 * Creates a restore bulk for the posted `operation`.
+	 * Creates a restore bulk for the posted `operation` (SPIO's
+	 * startRestoreAll(), which restores every optimised image; EMR's restores
+	 * every image of one operation).
 	 *
 	 * @param \stdClass $json
 	 * @return \stdClass
 	 */
-	protected function startRestore($json)
+	protected function startRestoreAll($json)
 	{
 		$operation = isset($_POST['operation']) ? sanitize_key(wp_unslash($_POST['operation'])) : BulkQueue::OPERATION_BACKGROUND;
 		if (! in_array($operation, array(BulkQueue::OPERATION_BACKGROUND, BulkQueue::OPERATION_UPSCALE), true)) {
@@ -291,7 +324,7 @@ class BulkAjaxController
 		}
 
 		QueueController::resetQueues();
-		BulkController::getInstance()->createNewBulk(array('operation' => $operation, 'customOp' => BulkQueue::CUSTOM_OP_RESTORE));
+		BulkController::getInstance()->createNewBulk('media', array('operation' => $operation, 'customOp' => BulkQueue::CUSTOM_OP_RESTORE));
 
 		return $this->withStartupData($json);
 	}
@@ -414,14 +447,17 @@ class BulkAjaxController
 	}
 
 	/**
-	 * Requires the bulk capability; ends the request with NO_ACCESS otherwise.
+	 * Requires the capability of an access level (ACCESS_LEVELS); ends the
+	 * request with NO_ACCESS otherwise. SPIO's checkActionAccess($action, $access).
 	 *
-	 * @param string $action For the message only.
+	 * @param string $action The screen action, echoed in the answer.
+	 * @param string $access 'is_author', 'is_editor' or 'is_admin_user'; an unknown level needs CAPABILITY.
 	 * @return void
 	 */
-	protected function checkAccess($action)
+	protected function checkActionAccess($action, $access)
 	{
-		if (! current_user_can(self::CAPABILITY)) {
+		$capability = isset(self::ACCESS_LEVELS[ $access ]) ? self::ACCESS_LEVELS[ $access ] : self::CAPABILITY;
+		if (! current_user_can($capability)) {
 			$json          = new \stdClass();
 			$json->message = __('This user is not allowed to perform this action', 'enable-media-replace');
 			$json->action  = $action;

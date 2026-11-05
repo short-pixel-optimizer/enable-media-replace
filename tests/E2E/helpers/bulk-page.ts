@@ -267,7 +267,7 @@ export class BulkPage {
 	}
 
 	/** dashboard → restore panel → arm and click the restore button → process (restore ticks). */
-	async startRestore(operation: BulkOperation): Promise<void> {
+	async startRestoreAll(operation: BulkOperation): Promise<void> {
 		await this.restoreButton(operation).click();
 		await this.expectPanel('restore');
 		// The arming checkbox is bound on `click` (no data-event), so a real click, not a DOM change.

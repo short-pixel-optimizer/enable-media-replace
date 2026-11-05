@@ -18,7 +18,8 @@ use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
  * bulk logs.
  *
  * Port of ShortPixel Image Optimizer's BulkController for one queue and
- * two operations. createNewBulk() stores the operation and its options in
+ * two operations; the methods keep SPIO's queue-type parameters and ignore
+ * them, so SPIO patches apply verbatim. createNewBulk() stores the operation and its options in
  * the queue and puts it in the preparing state; the restore custom
  * operation lowers the ShortQ limits as SPIO does (numitems 5,
  * retry_limit 5, process_timeout 3000). finishBulk() writes the log entry
@@ -150,6 +151,10 @@ class BulkController
 	/**
 	 * Creates a new bulk: resets the queue, stores the options, flags preparing.
 	 *
+	 * SPIO's signature, createNewBulk($type, $args): the queue type is ignored
+	 * (EMR has one queue), and the options may be passed alone.
+	 *
+	 * @param string|array $type 'media' (ignored), or the options array alone.
 	 * @param array $args {
 	 *     @type string      $operation            'background' (default) or 'upscale'.
 	 *     @type string|null $customOp             'bulk-restore' for a restore of $operation; null otherwise.
@@ -161,8 +166,12 @@ class BulkController
 	 * }
 	 * @return \stdClass The queue stats after creation.
 	 */
-	public function createNewBulk($args = array())
+	public function createNewBulk($type = 'media', $args = array())
 	{
+		if (is_array($type)) { // the options alone: EMR has one queue, the type can be left out.
+			$args = $type;
+			$type = 'media';
+		}
 		$defaults = array(
 			'operation' => BulkQueue::OPERATION_BACKGROUND,
 			'customOp'  => null,
@@ -233,9 +242,10 @@ class BulkController
 	/**
 	 * Whether a bulk has unfinished items.
 	 *
+	 * @param string $type Ignored ('media'); SPIO's signature.
 	 * @return bool
 	 */
-	public function isBulkRunning()
+	public function isBulkRunning($type = 'media')
 	{
 		$stats = $this->queue()->getStats();
 		return (false === $stats->is_finished && $stats->total > 0);
@@ -244,9 +254,10 @@ class BulkController
 	/**
 	 * The custom operation of the queue, false when none.
 	 *
+	 * @param string $qname Ignored ('media'); SPIO's signature.
 	 * @return string|false
 	 */
-	public function getCustomOperation()
+	public function getCustomOperation($qname = 'media')
 	{
 		return $this->queue()->getCustomDataItem('customOperation');
 	}
@@ -254,9 +265,10 @@ class BulkController
 	/**
 	 * Starts the run (preparing to running).
 	 *
+	 * @param string|string[] $types Ignored ('media'); SPIO's signature.
 	 * @return \stdClass The queue stats.
 	 */
-	public function startBulk()
+	public function startBulk($types = 'media')
 	{
 		$q = $this->queue();
 		$q->startBulk();
@@ -267,9 +279,10 @@ class BulkController
 	/**
 	 * Finishes the run: writes the log entry and resets the queue.
 	 *
+	 * @param string $type Ignored ('media'); SPIO's signature.
 	 * @return void
 	 */
-	public function finishBulk()
+	public function finishBulk($type = 'media')
 	{
 		$q = $this->queue();
 		$this->addLog($q);

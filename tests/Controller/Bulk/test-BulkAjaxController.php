@@ -291,8 +291,8 @@ class BulkAjaxControllerTest extends WP_Ajax_UnitTestCase {
 		$this->assertFalse( ( new BulkQueue() )->getStats()->bulk_running );
 	}
 
-	public function test_startRestore_creates_the_restore_bulk_for_the_operation() {
-		$json = $this->request( 'startRestore', array( 'operation' => 'upscale' ) );
+	public function test_startRestoreAll_creates_the_restore_bulk_for_the_operation() {
+		$json = $this->request( 'startRestoreAll', array( 'operation' => 'upscale' ) );
 		$this->assertTrue( $json->status );
 		$this->assertSame( BulkQueue::CUSTOM_OP_RESTORE, $json->media->stats->customOperation );
 		$q = new BulkQueue();
@@ -303,6 +303,7 @@ class BulkAjaxControllerTest extends WP_Ajax_UnitTestCase {
 	public function test_settings_request_saves_background_process_and_threshold() {
 		$json = $this->call( 'emr_bulk_settings', array(
 			'nonce'              => wp_create_nonce( 'emr_bulk_settings' ),
+			'screen_action'      => 'saveBulkSettings',
 			'background_process' => 'false',
 			'threshold'          => '5000',
 		) );
@@ -310,6 +311,21 @@ class BulkAjaxControllerTest extends WP_Ajax_UnitTestCase {
 		$this->assertFalse( $json->settings->background_process );
 		$this->assertSame( 1200, $json->settings->upscale_threshold, 'Above the widest source: capped to the factor table.' );
 		$this->assertSame( 1200, BulkController::getSettings()['upscale_threshold'] );
+	}
+
+	/** As SPIO's settingsRequest(): the settings endpoint dispatches a screen_action and refuses the rest. */
+	public function test_settings_request_without_the_save_action_answers_NO_ACTION_and_saves_nothing() {
+		$before = BulkController::getSettings();
+		foreach ( array( 'unknownAction', '' ) as $action ) {
+			$json = $this->call( 'emr_bulk_settings', array(
+				'nonce'              => wp_create_nonce( 'emr_bulk_settings' ),
+				'screen_action'      => $action,
+				'background_process' => 'true',
+			) );
+			$this->assertFalse( $json->status, var_export( $action, true ) );
+			$this->assertSame( BulkAjaxController::NO_ACTION, $json->error );
+		}
+		$this->assertSame( $before, BulkController::getSettings(), 'Nothing saved.' );
 	}
 
 	public function test_loadLogFile_parses_a_finished_log_and_refuses_bad_names() {
