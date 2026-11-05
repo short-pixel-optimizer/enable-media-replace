@@ -23,7 +23,7 @@
  *   disabled when its maximum width is at or below the metadata width of the image,
  *   the first enabled one is checked, and with none enabled the help text reads "This
  *   image is too large to be upscaled" and the Preview button is disabled
- * The Preview button (`#remove_background_button`, the id the shared script expects)
+ * The Preview button (`#emr_preview_button`, shared with the remove-background screen)
  * triggers the AJAX call with the checked factor; the result panel's text layer then
  * shows the new dimensions. The Replace submit button stays disabled until a preview
  * succeeds. The result preview is a placeholder with `upscale_ui`.
@@ -34,7 +34,7 @@
  * views/operation-buttons.php shows the Replace media and Remove background
  * buttons. The result pane says "Click Preview to see the result" until the
  * first preview; js/emr-magnifier.js adds the hover magnifier to both panes.
- * Cancel calls history.back().
+ * Cancel is the shared `data-action="history-back"` link (js/emr_admin.js).
  *
  * @todo The form action $formurl is echoed without escaping; wrap it in esc_url().
  */
@@ -67,7 +67,7 @@ $scale_checked = false;
 
 ?>
 
-<div id="emr-bg-notice" class="notice notice-error is-dismissible" style="display:none;">
+<div id="emr-bg-notice" class="notice notice-error is-dismissible" hidden>
 	<p></p>
 	<button type="button" class="notice-dismiss"><span class="screen-reader-text"><?php esc_html_e('Dismiss this notice.', 'enable-media-replace'); ?></span></button>
 </div>
@@ -141,9 +141,9 @@ $scale_checked = false;
 			include( __DIR__ . '/shortpixel-account.php' );
 			?>
 
-			<button type="button" class="button button-primary" id="remove_background_button" <?php disabled(! $has_scale_option); ?>><?php esc_html_e('Preview', 'enable-media-replace'); ?></button>
+			<button type="button" class="button button-primary" id="emr_preview_button" <?php disabled(! $has_scale_option); ?>><?php esc_html_e('Preview', 'enable-media-replace'); ?></button>
 			<button type="submit" class="button button-primary" id="replace_image_button" disabled><?php esc_html_e('Replace', 'enable-media-replace'); ?></button>
-			<a class="button" href="javascript:history.back()"><?php esc_html_e('Cancel', 'enable-media-replace'); ?></a>
+			<a class="button emr-cancel" href="<?php echo esc_url(admin_url('upload.php')); ?>" data-action="history-back"><?php esc_html_e('Cancel', 'enable-media-replace'); ?></a>
 		</div> <!--- editor wrapper -->
 		<?php include_once( 'upsell.php' ); ?>
 	</form>

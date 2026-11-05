@@ -435,7 +435,8 @@ class ViewControllerTest extends WP_UnitTestCase {
 		$this->assertStringContainsString( '<p class="description">See &lt;script&gt;x&lt;/script&gt;</p>', $output );
 		$this->assertStringNotContainsString( '<b>thing</b>', $output );
 		$this->assertStringNotContainsString( '<script>x</script>', $output );
-		$this->assertStringContainsString( '<a href="javascript:history.back()">', $output );
+		$this->assertStringContainsString( '<a href="' . admin_url( 'upload.php' ) . '" data-action="history-back">', $output, 'The shared history-back link.' );
+		$this->assertStringNotContainsString( 'javascript:', $output );
 		$this->assertStringContainsString( 'https://shortpixel.com/knowledge-base/category/308-enable-media-replace', $output );
 	}
 

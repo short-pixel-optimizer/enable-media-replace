@@ -53,7 +53,8 @@
  * views/operation-buttons.php shows the Upscale image and Remove background
  * buttons (each only when possible and the user is not author restricted),
  * with the "remove the background after replacing" checkbox under them;
- * Cancel calls history.back().
+ * Cancel: the shared `data-action="history-back"` link (js/emr_admin.js calls
+ * history.back(); the href, the Media Library, is the fallback without scripts).
  *
  * @todo The source file path in the explainer's `title` attribute and $view->custom_basedir are echoed without escaping; wrap them in esc_attr() / esc_html().
  */
@@ -297,7 +298,7 @@ $uiHelper = emr()->uiHelper();
   </div>
   <section class='form_controls wrapper'>
 		<input id="submit" type="submit" class="button button-primary" disabled="disabled" value="<?php echo esc_attr__("Replace", "enable-media-replace"); ?>" />
-        <a href="#" class="button" onclick="history.back();"><?php echo esc_html__("Cancel", "enable-media-replace"); ?></a>
+        <a class="button emr-cancel" href="<?php echo esc_url(admin_url('upload.php')); ?>" data-action="history-back"><?php echo esc_html__("Cancel", "enable-media-replace"); ?></a>
   </section>
 </div>
 

@@ -1,8 +1,9 @@
 jQuery(document).ready(function ($) {
 
 	// Dismiss handler for the in-form notice.
+	// Showing and hiding goes through the `hidden` attribute, as everywhere else in the plugin.
 	$(document).on('click', '#emr-bg-notice .notice-dismiss', function () {
-		$('#emr-bg-notice').fadeOut(150);
+		$('#emr-bg-notice').prop('hidden', true);
 	});
 
 	// Init
@@ -15,11 +16,11 @@ jQuery(document).ready(function ($) {
  // A changed option invalidates the preview: Replace waits for a new one, Preview is offered again.
  $('.replace_type.wrapper input').on('change input', function () {
 	 	 $('#replace_image_button').prop('disabled', 'disabled');
-	 	 $('#remove_background_button').prop('disabled', false);
+	 	 $('#emr_preview_button').prop('disabled', false);
  });
 
   // Remove bg click
-  $('#remove_background_button').on('click', () => {
+  $('#emr_preview_button').on('click', () => {
     const method = 'POST'
     const url = emrObject.ajax_url;
    // const image = emrObject.base_url;
@@ -55,9 +56,9 @@ jQuery(document).ready(function ($) {
         }, 1000);
         $('input[type=radio][name=background_type]').attr('disabled', 'disabled');
         $('input[type=radio][name=compression_level]').attr('disabled', 'disabled');
-        $('#remove_background_button').attr('disabled', 'disabled');
+        $('#emr_preview_button').attr('disabled', 'disabled');
 				$('h1.response').remove();
-				$('#emr-bg-notice').hide().find('p').empty();
+				$('#emr-bg-notice').prop('hidden', true).find('p').empty();
         $('#overlay').css('visibility', 'visible');
 				var preview = $('.image_placeholder').last();
 				preview.find('img').remove();
@@ -125,12 +126,12 @@ jQuery(document).ready(function ($) {
               $p.append(document.createTextNode(response.message));
             }
 
-            $('#emr-bg-notice').show();
+            $('#emr-bg-notice').prop('hidden', false);
             $('html, body').animate({ scrollTop: 0 }, 400);
           } else {
             preview.prepend($('<h1></h1>').addClass('response').text(response.message)); // the API's message, as text
           }
-          $('#remove_background_button').attr('disabled', false)
+          $('#emr_preview_button').attr('disabled', false)
           $('input[type=radio][name=background_type]').attr('disabled', false)
           $('input[type=radio][name=compression_level]').attr('disabled', false)
          //$('#preview-area').show();
@@ -140,14 +141,8 @@ jQuery(document).ready(function ($) {
   });
 
   function backgroundInputs () {
-    const bgInputs = $('#solid_selecter');
-		var input = $('input[type=radio][name=background_type]:checked');
-    if (input.val() === 'solid') {
-      bgInputs.show();
-    } else {
-      bgInputs.hide();
-    }
-
+    var input = $('input[type=radio][name=background_type]:checked');
+    $('#solid_selecter').prop('hidden', input.val() !== 'solid'); // PHP renders the initial state the same way.
   };
 
   $('#bg_display_picker').on('input', function () {

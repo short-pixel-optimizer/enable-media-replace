@@ -619,7 +619,12 @@ export class RemoveBackgroundScreen {
 	}
 
 	get previewButton(): Locator {
-		return this.page.locator('#remove_background_button');
+		return this.page.locator('#emr_preview_button');
+	}
+
+	/** The shared Cancel link: data-action="history-back", handled by js/emr_admin.js. */
+	get cancelButton(): Locator {
+		return this.form.locator('a.emr-cancel[data-action="history-back"]');
 	}
 
 	get replaceButton(): Locator {

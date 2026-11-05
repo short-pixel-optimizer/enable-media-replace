@@ -355,6 +355,7 @@ class RemoveBackgroundViewControllerTest extends WP_UnitTestCase {
 		$this->assertSame( 'replace', $settings['replace_type'] );
 		$this->assertMatchesRegularExpression( "/id=\"solid_background\" type=\"radio\" name=\"background_type\" value=\"solid\"\s+checked='checked'/", $output );
 		$this->assertStringContainsString( '<input type="hidden"  value="#123456" name="bg_color" id="bg_color" />', $output );
+		$this->assertStringContainsString( '<div id="solid_selecter">', $output, 'A stored solid choice renders its options visible from PHP.' );
 	}
 
 	/*
@@ -384,6 +385,9 @@ class RemoveBackgroundViewControllerTest extends WP_UnitTestCase {
 
 		$this->assertMatchesRegularExpression( "/id=\"transparent_background\" type=\"radio\" name=\"background_type\" value=\"transparent\"\s+checked='checked'/", $output );
 		$this->assertMatchesRegularExpression( '/id="solid_background" type="radio" name="background_type" value="solid"\s*>/', $output );
+		$this->assertStringContainsString( '<div id="solid_selecter" hidden>', $output, 'Transparent by default: PHP renders the solid options hidden.' );
+		$this->assertStringContainsString( '<div id="emr-bg-notice" class="notice notice-error is-dismissible" hidden>', $output );
+		$this->assertStringNotContainsString( 'style="display:none', $output );
 		$this->assertStringContainsString( '<input type="color" value="#ffffff" name="bg_display_picker" id="bg_display_picker" />', $output );
 		$this->assertStringContainsString( '<input type="hidden"  value="#ffffff" name="bg_color" id="bg_color" />', $output );
 		$this->assertStringContainsString( '<input type="range" min="0" max="100" value="100" name="bg_transparency" id="bg_transparency" />', $output );
@@ -394,9 +398,11 @@ class RemoveBackgroundViewControllerTest extends WP_UnitTestCase {
 
 		list( , $output ) = $this->load( $id );
 
-		$this->assertStringContainsString( '<button type="button" class="button button-primary" id="remove_background_button">Preview</button>', $output );
+		$this->assertStringContainsString( '<button type="button" class="button button-primary" id="emr_preview_button">Preview</button>', $output );
 		$this->assertStringContainsString( '<button type="submit" class="button button-primary" id="replace_image_button" disabled>Replace</button>', $output );
-		$this->assertStringContainsString( '<a class="button" href="javascript:history.back()">Cancel</a>', $output );
+		$this->assertStringContainsString( '<a class="button emr-cancel" href="' . admin_url( 'upload.php' ) . '" data-action="history-back">Cancel</a>', $output, 'The shared Cancel link: no inline handler, the Media Library as fallback.' );
+		$this->assertStringNotContainsString( 'javascript:', $output );
+		$this->assertStringNotContainsString( 'onclick=', $output );
 		$this->assertStringContainsString( 'action=media_replace', $output, 'The "replace with another image" link.' );
 	}
 
@@ -485,7 +491,7 @@ class RemoveBackgroundViewControllerTest extends WP_UnitTestCase {
 
 		list( , $output ) = $this->load( $id );
 
-		$this->assertStringContainsString( 'id="remove_background_button"', $output );
+		$this->assertStringContainsString( 'id="emr_preview_button"', $output );
 		$this->assertStringNotContainsString( 'emr-sp-account', $output );
 		$this->assertStringNotContainsString( 'emr_save_api_key', $output );
 		$this->assertFalse( wp_script_is( 'emr_shortpixel_account', 'enqueued' ), 'The account script is only enqueued with the box.' );
@@ -526,7 +532,7 @@ class RemoveBackgroundViewControllerTest extends WP_UnitTestCase {
 		try {
 			list( , $output ) = $this->load( $id );
 
-			$this->assertStringContainsString( 'id="remove_background_button"', $output );
+			$this->assertStringContainsString( 'id="emr_preview_button"', $output );
 			$this->assertStringNotContainsString( 'emr_prepare_upscale', $output );
 		} finally {
 			remove_filter( 'emr/feature/upscale', '__return_false' );

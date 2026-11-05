@@ -221,6 +221,14 @@ docs/                      - the documentation and test plan, the bulk design no
   renders `views/error.php` and ends the request with `exit()`. Error codes
   are constants on `ViewController` and `ReplaceController` (the 20-25
   range is shared between them).
+- **Entry points and controls:** the Media Library row actions are plain text
+  links by WordPress convention; the SVG operation tiles are for the meta box,
+  the media modal fields and the single screens. Every "Cancel" and "previous
+  page" link is the same `data-action="history-back"` anchor with the Media
+  Library as href fallback, handled in `js/emr_admin.js` (no inline handlers,
+  no `javascript:` URLs). Elements are hidden with the `hidden` attribute, set
+  by PHP for the initial state and toggled by the scripts; no inline styles.
+  The Preview button of both single screens is `#emr_preview_button`.
 - **Permissions:** `EnableMediaReplacePlugin::checkImagePermission($post)`
   is the single gate. Users without `edit_others_posts` are "author
   restricted": no remove background, no upscale and no replace-and-search.

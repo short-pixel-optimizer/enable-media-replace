@@ -421,7 +421,7 @@ class UpscaleViewControllerTest extends WP_UnitTestCase {
 		$this->assertStringNotContainsString( 'disabled', $this->radio( $output, 3 ) );
 		$this->assertStringContainsString( "disabled='disabled'", $this->radio( $output, 4 ) );
 		$this->assertStringNotContainsString( 'checked', $this->radio( $output, 4 ) );
-		$this->assertMatchesRegularExpression( '/id="remove_background_button"\s*>Preview<\/button>/', $output );
+		$this->assertMatchesRegularExpression( '/id="emr_preview_button"\s*>Preview<\/button>/', $output );
 	}
 
 	public function test_screen_at_exactly_1024_pixels_still_offers_2x_and_3x_only() {
@@ -447,7 +447,7 @@ class UpscaleViewControllerTest extends WP_UnitTestCase {
 		}
 		$this->assertStringContainsString( 'This image is too large to be upscaled.', $output );
 		$this->assertStringNotContainsString( 'Enlarges the image with the selected factor', $output );
-		$this->assertMatchesRegularExpression( '/id="remove_background_button"\s+disabled=\'disabled\'\s*>Preview<\/button>/', $output );
+		$this->assertMatchesRegularExpression( '/id="emr_preview_button"\s+disabled=\'disabled\'\s*>Preview<\/button>/', $output );
 	}
 
 	public function test_screen_has_no_background_options_and_no_report_link() {
@@ -480,9 +480,12 @@ class UpscaleViewControllerTest extends WP_UnitTestCase {
 
 		list( , $output ) = $this->load( $id );
 
-		$this->assertStringContainsString( 'id="remove_background_button"', $output, 'The id the shared script binds to.' );
+		$this->assertStringContainsString( 'id="emr_preview_button"', $output, 'The id the shared script binds to, named after what it does.' );
+		$this->assertStringNotContainsString( 'remove_background_button', $output );
 		$this->assertStringContainsString( '<button type="submit" class="button button-primary" id="replace_image_button" disabled>Replace</button>', $output );
-		$this->assertStringContainsString( '<a class="button" href="javascript:history.back()">Cancel</a>', $output );
+		$this->assertStringContainsString( '<a class="button emr-cancel" href="' . admin_url( 'upload.php' ) . '" data-action="history-back">Cancel</a>', $output );
+		$this->assertStringContainsString( '<div id="emr-bg-notice" class="notice notice-error is-dismissible" hidden>', $output );
+		$this->assertStringNotContainsString( 'style="display:none', $output );
 		$this->assertMatchesRegularExpression( '#<a class="emr-operation emr-operation-replace" href="[^"]+">\s*<img class="emr-operation-icon" src="[^"]*/img/icons/icon-media-replace\.svg"#', $output );
 		$this->assertStringContainsString( '<span class="emr-operation-title">Replace media</span>', $output );
 		$this->assertStringNotContainsString( 'emr-operation-upscale', $output, 'No button to the screen itself.' );
@@ -552,7 +555,7 @@ class UpscaleViewControllerTest extends WP_UnitTestCase {
 		list( $controller, $output ) = $this->load( $id );
 
 		$this->assertSame( 0, $controller->errorCalls, 'load() does not apply the author restriction.' );
-		$this->assertStringContainsString( 'id="remove_background_button"', $output );
+		$this->assertStringContainsString( 'id="emr_preview_button"', $output );
 		$this->assertStringNotContainsString( 'emr-sp-account', $output );
 		$this->assertFalse( wp_script_is( 'emr_shortpixel_account', 'enqueued' ) );
 	}

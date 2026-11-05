@@ -25,7 +25,7 @@
  * - bg_transparency (range, 0-100)
  * loadPost() runs the request again with these three on the original (nothing of the
  * preview is stored), so they are posted with the form.
- * The Preview button (`#remove_background_button`) triggers the AJAX call
+ * The Preview button (`#emr_preview_button`) triggers the AJAX call
  * (js/remove_bg.js, localised as `emrObject` with nonce `emr_remove_background`);
  * the Replace submit button stays disabled until a preview succeeds.
  *
@@ -37,7 +37,8 @@
  * views/operation-buttons.php shows the Replace media and Upscale image
  * buttons. "Report a bad result" is a mailto: to support whose {url} and
  * {settings} placeholders the script fills, shown with its hint once a
- * preview exists (`.bad-button.is-ready`); Cancel calls history.back(). The
+ * preview exists (`.bad-button.is-ready`); Cancel is the shared
+ * `data-action="history-back"` link (js/emr_admin.js). The
  * result pane says "Click Preview to see the result" until the first preview;
  * js/emr-magnifier.js adds the hover magnifier to both panes.
  *
@@ -78,7 +79,7 @@ $email_body = sprintf(__('Hello! %s This is a report of a background removal tha
 
 ?>
 
-<div id="emr-bg-notice" class="notice notice-error is-dismissible" style="display:none;">
+<div id="emr-bg-notice" class="notice notice-error is-dismissible" hidden>
 	<p></p>
 	<button type="button" class="notice-dismiss"><span class="screen-reader-text"><?php esc_html_e('Dismiss this notice.', 'enable-media-replace'); ?></span></button>
 </div>
@@ -138,7 +139,7 @@ $email_body = sprintf(__('Hello! %s This is a report of a background removal tha
 						<p class="howto">
 							<?php esc_html_e('If you select this option, the image will have a solid color background and you can choose the color code from the color picker below.', 'enable-media-replace'); ?>
 						</p>
-						<div id="solid_selecter" style="display:none;">
+						<div id="solid_selecter"<?php echo ('solid' === $view->settings['bg_type']) ? '' : ' hidden'; ?>>
 							<label for="bg_display_picker">
 								<p><?php esc_html_e('Background color','enable-media-replace'); ?>: <strong>
 									<span id="color_range">
@@ -168,9 +169,9 @@ $email_body = sprintf(__('Hello! %s This is a report of a background removal tha
 			include( __DIR__ . '/shortpixel-account.php' );
 			?>
 
-			<button type="button" class="button button-primary" id="remove_background_button"><?php esc_html_e('Preview', 'enable-media-replace'); ?></button>
+			<button type="button" class="button button-primary" id="emr_preview_button"><?php esc_html_e('Preview', 'enable-media-replace'); ?></button>
 			<button type="submit" class="button button-primary" id="replace_image_button" disabled><?php esc_html_e('Replace', 'enable-media-replace'); ?></button>
-			<a class="button" href="javascript:history.back()"><?php esc_html_e('Cancel', 'enable-media-replace'); ?></a>
+			<a class="button emr-cancel" href="<?php echo esc_url(admin_url('upload.php')); ?>" data-action="history-back"><?php esc_html_e('Cancel', 'enable-media-replace'); ?></a>
 		</div> <!--- editor wrapper -->
 		<?php include_once( 'upsell.php' ); ?>
 	</form>

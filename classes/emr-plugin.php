@@ -1237,6 +1237,11 @@ class EnableMediaReplacePlugin
      * Function called by filter 'media_row_actions'
      * Enables linking to EMR straight from the media library
      *
+     * The row actions stay plain text links on purpose: WordPress renders the
+     * row-actions line as a list of text links, and the SVG operation tiles
+     * (UIHelper::getOperationButton(), used by the meta box, the media modal
+     * fields and the single screens) do not belong in it.
+     *
      * Adds a "Replace media" row action (when checkImagePermission() passes),
      * a "Remove background" row action (when the background is removable
      * and the user is not author restricted) and an "Upscale image" row

@@ -53,11 +53,15 @@ test.describe('Remove background', () => {
 		await expect(screen.replaceButton).toBeDisabled();
 		await expect(screen.replaceInsteadLink).toHaveAttribute('href', /action=media_replace.*_wpnonce=/);
 
-		// Defaults: transparent, white, fully opaque; the solid options hidden.
+		// Defaults: transparent, white, fully opaque; the solid options hidden with the `hidden` attribute PHP renders, no inline style.
 		await expect(screen.backgroundType('transparent')).toBeChecked();
 		await expect(page.locator('#solid_selecter')).toBeHidden();
+		await expect(page.locator('#solid_selecter')).toHaveAttribute('hidden', '');
+		await expect(page.locator('#solid_selecter')).not.toHaveAttribute('style', /display/);
+		await expect(screen.notice).toHaveAttribute('hidden', '');
 		await screen.backgroundType('solid').check();
 		await expect(page.locator('#solid_selecter')).toBeVisible();
+		await expect(page.locator('#solid_selecter')).not.toHaveAttribute('hidden', '');
 		await expect(screen.colorPicker).toHaveValue('#ffffff');
 		await expect(screen.transparency).toHaveValue('100');
 
@@ -70,6 +74,21 @@ test.describe('Remove background', () => {
 		await screen.backgroundType('transparent').check();
 		await expect(page.locator('#solid_selecter')).toBeHidden();
 
+		expectOnlyKnownErrors(consoleErrors, KNOWN);
+	});
+
+	test('Cancel goes back to the page the screen was opened from, through the shared history-back link', async ({ page, emr, consoleErrors }) => {
+		const list = new MediaList(page);
+		await list.goto();
+		const screen = new RemoveBackgroundScreen(page);
+		await screen.goto(emr.seed.attachment_id);
+		await expect(screen.cancelButton).toHaveText('Cancel');
+		await expect(screen.cancelButton).toHaveAttribute('href', /\/wp-admin\/upload\.php$/); // the fallback without scripts
+		await expect(screen.cancelButton).not.toHaveAttribute('onclick', /.*/);
+
+		await Promise.all([page.waitForURL(/upload\.php\?mode=list/), screen.cancelButton.click()]);
+
+		await expect(page.locator('table.wp-list-table.media')).toBeVisible();
 		expectOnlyKnownErrors(consoleErrors, KNOWN);
 	});
 

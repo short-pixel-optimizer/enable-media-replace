@@ -458,3 +458,14 @@ else
         }
     }
     setTimeout(emrDelayedInit, 3000);
+
+// "Cancel" and "previous page" on every EMR screen: one shared link with
+// data-action="history-back" (its href, the Media Library, is the fallback
+// without scripts), handled here instead of inline onclick / javascript: URLs.
+document.addEventListener('click', function (event) {
+  var link = event.target.closest('[data-action="history-back"]');
+  if (link) {
+    event.preventDefault();
+    window.history.back();
+  }
+});
