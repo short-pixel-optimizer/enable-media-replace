@@ -596,6 +596,11 @@ class EmrBulkScreen {
 		if (error === 'NOQUOTA' || error === 'PLAN_EXPIRED' || error === 'APIKEY_FAILED') {
 			this.ToggleOverQuotaNotice(true, message);
 		}
+		if (error === 'QUEUE_FULL') {
+			// The remote API's queue is full (or in maintenance): wait a while, as SPIO's screen does.
+			this.processor.timesEmpty = 10;
+			this.processor.StopProcess({ defer: true });
+		}
 		if (! fatal) {
 			return;
 		}

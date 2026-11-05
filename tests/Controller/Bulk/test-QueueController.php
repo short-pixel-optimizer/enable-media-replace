@@ -107,7 +107,7 @@ class BulkQueueControllerTest extends WP_UnitTestCase {
 		} ) );
 	}
 
-	public function test_error_constants_match_spios_ajax_controller_plus_plan_expired() {
+	public function test_error_constants_match_spios_ajax_controller_and_plan_expired_takes_the_next_value() {
 		$this->assertSame( -1, QueueController::PROCESSOR_ACTIVE );
 		$this->assertSame( -2, QueueController::NONCE_FAILED );
 		$this->assertSame( -3, QueueController::NO_ACTION );
@@ -115,7 +115,8 @@ class BulkQueueControllerTest extends WP_UnitTestCase {
 		$this->assertSame( -5, QueueController::NOQUOTA );
 		$this->assertSame( -6, QueueController::SERVER_ERROR );
 		$this->assertSame( -7, QueueController::NO_ACCESS );
-		$this->assertSame( -8, QueueController::PLAN_EXPIRED );
+		$this->assertSame( -8, QueueController::QUEUE_FULL, 'SPIO\'s -8: the API queue is full, the screen defers.' );
+		$this->assertSame( -9, QueueController::PLAN_EXPIRED, 'EMR\'s own code must not collide with SPIO\'s.' );
 		$this->assertSame( 'emr_bulk_plan_ok', QueueController::PLAN_TRANSIENT );
 	}
 
@@ -289,7 +290,12 @@ class BulkQueueControllerTest extends WP_UnitTestCase {
 		$this->assertSame( '1', $json->media->stats->in_process );
 	}
 
-	public function test_processQueue_stops_with_NOQUOTA_when_the_api_reports_quota_exceeded() {
+	/**
+	 * As SPIO: a tick answers status 1 whatever its items met; a quota error
+	 * stays on the item, where the processor's HandleItemError() pauses, and
+	 * it does not reach the bulk log (only terminal file errors do).
+	 */
+	public function test_processQueue_keeps_a_quota_error_on_the_item_answers_status_1_and_logs_nothing() {
 		update_option( 'emr_shortpixel_api_key', 'abcdEFGHIJKLMNOPwxyz' );
 		set_transient( QueueController::PLAN_TRANSIENT, 1, 600 );
 		$this->answerUnlimited( 'true', function () {
@@ -305,11 +311,57 @@ class BulkQueueControllerTest extends WP_UnitTestCase {
 
 		$json = $c->processQueue();
 
-		$this->assertFalse( $json->status );
-		$this->assertSame( QueueController::NOQUOTA, $json->error );
+		$this->assertSame( 1, $json->status, 'The tick itself succeeded.' );
+		$this->assertObjectNotHasProperty( 'error', $json, 'No top-level error: the item carries it.' );
+		$this->assertObjectNotHasProperty( 'error', $json->media );
 		$this->assertSame( QueueController::NOQUOTA, $json->media->results[0]->error );
+		$this->assertSame( '1', $json->media->stats->in_process, 'The stats of the tick still reach the screen.' );
 		$this->assertFalse( get_transient( QueueController::PLAN_TRANSIENT ), 'The cached plan check is dropped.' );
 		$this->assertFalse( $json->media->results[0]->is_done, 'Quota is retryable, the item stays.' );
+		$this->assertFalse( $this->currentLog( 'background' )->exists(), 'A retried item writes no log line.' );
+	}
+
+	public function test_processQueue_logs_a_terminal_file_error_once_and_maps_a_full_api_queue_to_QUEUE_FULL() {
+		update_option( 'emr_shortpixel_api_key', 'abcdEFGHIJKLMNOPwxyz' );
+		set_transient( QueueController::PLAN_TRANSIENT, 1, 600 );
+		$this->answerUnlimited( 'true', function () {
+			return $this->response( array( 'Status' => array( 'Code' => -201, 'Message' => 'Invalid image format' ) ) );
+		} );
+		$id   = $this->makeImageAttachment( 300, 200 );
+		$ctrl = BulkController::getInstance();
+		$ctrl->createNewBulk( array( 'operation' => 'background', 'items' => array( $id ) ) );
+		$c = new QueueController();
+		while ( BulkQueue::RESULT_PREPARING_DONE !== $c->processQueue()->media->qstatus ) {
+		}
+		$ctrl->startBulk();
+
+		$json = $c->processQueue();
+
+		$this->assertSame( 1, $json->status );
+		$this->assertTrue( $json->media->results[0]->is_done );
+		$this->assertSame( QueueItem::FILE_STATUS_ERROR, $json->media->results[0]->fileStatus );
+		$log = $this->currentLog( 'background' );
+		$this->assertTrue( $log->exists(), 'A terminal file error is logged.' );
+		$lines = array_filter( explode( PHP_EOL, file_get_contents( $log->getFullPath() ) ) );
+		$this->assertCount( 1, $lines );
+		$this->assertStringContainsString( '| ' . $id . '|', $lines[0] );
+		$this->assertStringContainsString( 'Invalid image format', $lines[0] );
+
+		// The API queue being full is SPIO's QUEUE_FULL (-8), a deferral, not a server failure.
+		$full = new QueueItem( array( 'imageModel' => BulkImage::getById( $this->makeImageAttachment( 300, 200 ) ) ) );
+		$full->newRemoveBackgroundAction();
+		$controller = \EnableMediaReplace\Controller\Bulk\ActionController::getInstance();
+		$controller->setCurrentQueue( $c->getQueue(), $c );
+		$full->addResult( $controller->api()->returnRetry( BulkApi::STATUS_QUEUE_FULL, 'Queue full' ) );
+		$controller->handleAPIResult( $full );
+		$this->assertSame( QueueController::QUEUE_FULL, $full->result()->error );
+		$this->assertFalse( $full->result()->is_done );
+	}
+
+	/** The current bulk log file of an operation. */
+	private function currentLog( $operation ) {
+		$dir = \EnableMediaReplace\Controller\Bulk\BackupController::getBackupDirectory();
+		return \emr()->filesystem()->getFile( $dir->getPath() . BulkController::currentLogName( $operation ) );
 	}
 
 	public function test_addItemToQueue_enqueues_appends_actions_and_refuses_unknown_actions() {

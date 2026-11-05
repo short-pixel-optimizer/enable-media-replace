@@ -66,7 +66,8 @@ window.EmrProcessor = {
 		'-5': 'NOQUOTA',
 		'-6': 'SERVER_ERROR',
 		'-7': 'NO_ACCESS',
-		'-8': 'PLAN_EXPIRED',
+		'-8': 'QUEUE_FULL',
+		'-9': 'PLAN_EXPIRED',
 		'-903': 'TIMEOUT'
 	},
 

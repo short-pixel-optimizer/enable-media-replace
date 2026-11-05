@@ -41,7 +41,7 @@ use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
  * see BulkController::getSettings().
  *
  * Lifecycle: instantiated by Ajax, which registers the hooks. Hooks:
- * - action wp_ajax_emr_bulk_process, wp_ajax_emr_bulk_request, wp_ajax_emr_bulk_settings (registered).
+ * - action wp_ajax_emr_bulk_process, wp_ajax_emr_bulk_request, wp_ajax_emr_bulk_settings (registered by Ajax on getInstance()).
  */
 class BulkAjaxController
 {
@@ -54,14 +54,21 @@ class BulkAjaxController
 	/** Capability the bulk requires. */
 	const CAPABILITY = 'manage_options';
 
+	/** @var static|null */
+	protected static $instance;
+
 	/**
-	 * Registers the three actions.
+	 * The shared instance (SPIO's AjaxController::getInstance()). The actions
+	 * are registered by Ajax, the plugin's AJAX entry point, not here.
+	 *
+	 * @return static
 	 */
-	public function __construct()
+	public static function getInstance()
 	{
-		add_action('wp_ajax_emr_bulk_process', array($this, 'ajaxProcessQueue'));
-		add_action('wp_ajax_emr_bulk_request', array($this, 'ajaxRequest'));
-		add_action('wp_ajax_emr_bulk_settings', array($this, 'settingsRequest'));
+		if (is_null(static::$instance)) {
+			static::$instance = new static();
+		}
+		return static::$instance;
 	}
 
 	/**

@@ -362,7 +362,10 @@ class BulkQueue
 	}
 
 	/**
-	 * Attachments the bulk already processed for $operation, newest first.
+	 * Attachments the bulk already processed for $operation, newest first:
+	 * BulkImage::queryMarked(), one meta key per operation, so the page is
+	 * made of matches and the restore cannot end on a page of the other
+	 * operation's rows.
 	 *
 	 * @param string $operation
 	 * @param int    $last_id
@@ -371,25 +374,7 @@ class BulkQueue
 	 */
 	protected function queryMarkedItems($operation, $last_id, $limit)
 	{
-		global $wpdb;
-		$sql     = "SELECT post_id, meta_value FROM {$wpdb->postmeta} WHERE meta_key = %s";
-		$prepare = array(BulkImage::MARKER_META);
-		if ($last_id > 0) {
-			$sql      .= ' AND post_id < %d';
-			$prepare[] = $last_id;
-		}
-		$sql      .= ' ORDER BY post_id DESC LIMIT %d';
-		$prepare[] = $limit;
-
-		$rows = $wpdb->get_results($wpdb->prepare($sql, $prepare));
-		$ids  = array();
-		foreach ((array) $rows as $row) {
-			$marker = maybe_unserialize($row->meta_value);
-			if (is_array($marker) && (false === $operation || isset($marker[ $operation ]))) {
-				$ids[] = (int) $row->post_id;
-			}
-		}
-		return $ids;
+		return BulkImage::queryMarked($operation, $last_id, $limit);
 	}
 
 	/**

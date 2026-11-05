@@ -304,7 +304,7 @@ class BulkActionControllerTest extends WP_UnitTestCase {
 		$server->newRemoveBackgroundAction();
 		$server->addResult( $controller->api()->returnRetry( BulkApi::STATUS_MAINTENANCE, 'Maintenance' ) );
 		$controller->handleAPIResult( $server );
-		$this->assertSame( QueueController::SERVER_ERROR, $server->result()->error );
+		$this->assertSame( QueueController::QUEUE_FULL, $server->result()->error, 'Maintenance and a full API queue defer, as in SPIO.' );
 	}
 
 	public function test_a_waiting_result_keeps_the_item_pending_until_the_retry_limit() {

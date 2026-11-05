@@ -164,7 +164,8 @@ class BulkAjaxControllerTest extends WP_Ajax_UnitTestCase {
 
 	public function test_the_first_tick_claims_the_processor_key_and_another_key_is_refused_until_it_expires() {
 		update_option( 'emr_shortpixel_api_key', self::API_KEY );
-		$this->assertFalse( ( new BulkAjaxController() )->getProcessorKey() );
+		$this->assertFalse( BulkAjaxController::getInstance()->getProcessorKey() );
+		$this->assertSame( BulkAjaxController::getInstance(), BulkAjaxController::getInstance(), 'One shared instance, as SPIO\'s AjaxController.' );
 
 		$first = $this->tick( array( 'bulk-secret' => 'tab-one' ) );
 		$this->assertSame( 1, $first->status, wp_json_encode( $first ) );

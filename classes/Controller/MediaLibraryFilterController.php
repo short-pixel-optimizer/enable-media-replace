@@ -25,12 +25,12 @@ use EnableMediaReplace\Model\Bulk\BulkImage;
  * caught on `pre_get_posts` so the grid's `query-attachments` AJAX request
  * is filtered too) and `res/js/shortpixel-media.js` (the grid dropdown).
  *
- * The filter reads the `_emr_bulk` post meta (BulkImage::MARKER_META), the
- * marker a bulk operation leaves and a restore removes, so a restored image
- * drops out of the list. The marker is a serialized array keyed by
- * operation, so the query matches the serialized key (`s:10:"background";`,
- * `s:7:"upscale";`) in the meta value, as countRestorable() unserializes
- * the same rows.
+ * The filter reads the marker post meta of the operation
+ * (BulkImage::getMarkerKey(), `_emr_bulk_background` / `_emr_bulk_upscale`),
+ * the marker a bulk operation leaves and a restore removes, so a restored
+ * image drops out of the list. One meta key per operation, so the query is
+ * SPIO's `ID IN (SELECT post_id ... WHERE meta_key = %s)` form (its
+ * `_shortpixel_prevent_optimize` filter).
  *
  * One difference from SPIO: a request does not need the list form's
  * `filter_action` field for the value to count, so a plain link such as
@@ -185,9 +185,8 @@ class MediaLibraryFilterController
 			return $where;
 		}
 		$where .= $wpdb->prepare(
-			" AND {$wpdb->posts}.ID IN (SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = %s AND meta_value LIKE %s)",
-			BulkImage::MARKER_META,
-			'%' . $wpdb->esc_like(serialize($operation)) . '%'
+			" AND {$wpdb->posts}.ID IN (SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = %s)",
+			BulkImage::getMarkerKey($operation)
 		);
 		return $where;
 	}

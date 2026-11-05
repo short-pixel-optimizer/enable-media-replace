@@ -230,23 +230,15 @@ class BulkViewController extends ViewController
 	}
 
 	/**
-	 * Number of attachments carrying a bulk marker for $operation (restore candidates).
+	 * Number of attachments carrying the bulk marker of $operation (restore
+	 * candidates): BulkImage::countMarked(), a COUNT on the operation's meta key.
 	 *
 	 * @param string $operation
 	 * @return int
 	 */
 	protected function countRestorable($operation)
 	{
-		global $wpdb;
-		$rows  = $wpdb->get_col($wpdb->prepare("SELECT meta_value FROM {$wpdb->postmeta} WHERE meta_key = %s", \EnableMediaReplace\Model\Bulk\BulkImage::MARKER_META));
-		$count = 0;
-		foreach ((array) $rows as $value) {
-			$marker = maybe_unserialize($value);
-			if (is_array($marker) && isset($marker[ $operation ]) && ! empty($marker['backup'])) {
-				$count++;
-			}
-		}
-		return $count;
+		return \EnableMediaReplace\Model\Bulk\BulkImage::countMarked($operation);
 	}
 
 	/**

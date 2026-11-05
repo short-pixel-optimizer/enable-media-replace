@@ -346,6 +346,30 @@ class BulkQueueTest extends WP_UnitTestCase {
 		$this->assertSame( 'restore', $value->action );
 	}
 
+	/**
+	 * The restore source pages by matches of the operation's own marker key.
+	 * With a page of two and the two newest marked attachments belonging to
+	 * the other operation, the older upscaled one must still be found.
+	 */
+	public function test_restore_prepare_finds_an_older_marked_attachment_behind_a_page_of_the_other_operation() {
+		$upscaled = BulkImage::getById( $this->makeImageAttachment( 100, 100 ) );
+		$upscaled->setMarker( 'upscale', array( 'ts' => time() ), BackupController::backup( $upscaled ) );
+		$newer = array();
+		for ( $i = 0; $i < 2; $i++ ) {
+			$image = BulkImage::getById( $this->makeImageAttachment( 100, 100 ) );
+			$image->setMarker( 'background', array( 'ts' => time() ), BackupController::backup( $image ) );
+			$newer[] = $image->get( 'id' );
+		}
+		$this->assertGreaterThan( $upscaled->get( 'id' ), min( $newer ), 'Precondition: the background ones are newer.' );
+
+		$q = new BulkQueue();
+		$q->createNewBulk( array( 'operation' => 'upscale', 'customOp' => BulkQueue::CUSTOM_OP_RESTORE, 'enqueue_limit' => 2 ) );
+		$this->assertSame( 2, (int) $q->getShortQ()->getOption( 'enqueue_limit' ), 'Precondition: pages of two.' );
+		$this->prepareAll( $q );
+
+		$this->assertSame( array( $upscaled->get( 'id' ) ), array_map( 'intval', wp_list_pluck( $this->queueRows(), 'item_id' ) ) );
+	}
+
 	public function test_dequeue_converts_rows_to_queue_items_with_image_tries_and_row_attached() {
 		$id = $this->makeImageAttachment( 300, 200 );
 		$q  = new BulkQueue();

@@ -149,7 +149,7 @@ classes/
   emr-plugin.php           - EnableMediaReplacePlugin: hooks, routing, permissions, UI entry points
   Controller/
     ReplaceController.php  - the replace flow (source/target, copy, metadata, replacer, dates, cache)
-    MediaLibraryFilterController.php - the Bulk Enhance filter of the Media Library (list and grid dropdown, query on _emr_bulk)
+    MediaLibraryFilterController.php - the Bulk Enhance filter of the Media Library (list and grid dropdown, query on the marker meta)
     RemoteNoticeController.php - remote notices from api.shortpixel.com
     Bulk/                  - the bulk queue, ported from SPIO's queue layer (PSR-4, autoloaded)
       BulkAjaxController.php - wp_ajax_emr_bulk_process / _request / _settings, the two-tab processor key
@@ -163,7 +163,7 @@ classes/
       ResponseController.php - per-item messages for the bulk screen and the log
       Selector/            - the prepare-phase sources: WooCommerceProductImages (background), UpscaleCandidates (upscale)
   Model/Bulk/              - QueueItem (attachment + action + data + result), QueueItemData, QueueItemResult,
-                             BulkImage (attachment adapter: file, URL, width, upscale factor, _emr_bulk marker)
+                             BulkImage (attachment adapter: file, URL, width, upscale factor, the _emr_bulk_<operation> markers)
   ViewController.php       - abstract base: view loading, error codes, viewError()/viewSuccess()
   ViewController/
     ReplaceViewController.php          - the replace screen
@@ -172,7 +172,7 @@ classes/
     UpscaleViewController.php          - the upscale screen and POST handler (subclass: own template and nonce)
     BulkViewController.php             - the visible Media > Bulk Enhance page (slug emr-bulk, manage_options)
   ajax.php                 - wp_ajax_emr_remove_background (also the upscale preview) / _save_api_key / _delete_api_key;
-                             instantiates BulkAjaxController for the bulk actions
+                             registers the bulk actions on BulkAjaxController::getInstance()
   api.php                  - the remove-background and upscale API client
   ApiKeyManager.php        - the ShortPixel API key option and plan check
   cache.php                - emrCache: cache-plugin detection and flushing
@@ -273,8 +273,10 @@ docs/                      - the documentation and test plan, the bulk design no
   `running`; `finishBulk()` logs and resets. Results are applied in place
   through `ReplaceController` with the single flow's parameters, after the
   original was copied to `EMR_Backups`; the attachment then carries the
-  `_emr_bulk` post meta (operation data and backup path), which a later run
-  of the same operation skips and a restore consumes. The prepare phase
+  `_emr_bulk_<operation>` post meta (one key per operation, SPIO's one-flag-
+  per-fact style: operation data and backup path; `BulkImage::getMarkerKey()`,
+  `countMarked()`, `queryMarked()` are the only queries on it), which a later
+  run of the same operation skips and a restore consumes. The prepare phase
   takes its IDs from the explicit `items` list of the bulk options when one
   is given, else from the `emr/bulk/source_ids` filter, else from the
   operation's `Selector` (`Selector::forOperation()`, replaceable through
@@ -304,8 +306,10 @@ docs/                      - the documentation and test plan, the bulk design no
   (PSR-4) ports SPIO's status filter, a dropdown on `restrict_manage_posts`, the
   same dropdown in the grid and media modal toolbar (`js/emr-media-filter.js`,
   `wp_enqueue_media`, localized `emrMediaFilter`) and a `pre_get_posts` listener
-  that appends a `posts_where` clause matching the serialized operation key in
-  the `_emr_bulk` meta; a restore removes the marker, so restored images drop out.
+  that appends a `posts_where` clause on the operation's marker meta key; a
+  restore removes the markers, so restored images drop out. Browser error codes
+  are SPIO's -1 to -8 (`QUEUE_FULL` -8 defers the processor) plus EMR's
+  `PLAN_EXPIRED` -9; a tick answers status 1 and keeps item errors on the items.
   Screen actions go to `wp_ajax_emr_bulk_request` (`screen_action`:
   createBulk, startBulk, finishBulk, startRestore, getStatus,
   skipPreparing, recheckActive, loadLogFile), settings to

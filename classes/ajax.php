@@ -23,8 +23,8 @@ use EnableMediaReplace\Controller\Bulk\BulkAjaxController;
  * | wp_ajax_emr_delete_api_key     | delete_api_key()    | `manage_options`, nonce `emr_save_api_key`               |
  *
  * The bulk screen's actions (`wp_ajax_emr_bulk_process`, `wp_ajax_emr_bulk_request`,
- * `wp_ajax_emr_bulk_settings`) are registered by the BulkAjaxController this
- * constructor creates.
+ * `wp_ajax_emr_bulk_settings`) are registered here too, on the shared
+ * BulkAjaxController (getInstance()), the way SPIO's plugin file hooks its AjaxController.
  *
  * Only `wp_ajax_` (logged-in) actions are registered. Lifecycle: not a singleton; the
  * constructor registers the hooks. It is instantiated at the bottom of this file when
@@ -53,7 +53,11 @@ class Ajax {
 			add_action( "wp_ajax_emr_{$action}", array( $this, $action ) );
 		}
 
-		new BulkAjaxController();
+		// The bulk screen's actions, on the shared controller (as SPIO registers its AjaxController from the plugin file).
+		$bulk = BulkAjaxController::getInstance();
+		add_action( 'wp_ajax_emr_bulk_process', array( $bulk, 'ajaxProcessQueue' ) );
+		add_action( 'wp_ajax_emr_bulk_request', array( $bulk, 'ajaxRequest' ) );
+		add_action( 'wp_ajax_emr_bulk_settings', array( $bulk, 'settingsRequest' ) );
 	}
 
 	/**

@@ -34,7 +34,10 @@ use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
  */
 class QueueController
 {
-	/** Error codes for the browser, same values as SPIO's AjaxController. */
+	/**
+	 * Error codes for the browser (js/bulk/emr-processor.js aStatusError):
+	 * -1 to -8 are SPIO's AjaxController values; PLAN_EXPIRED is EMR's own.
+	 */
 	const PROCESSOR_ACTIVE = -1;
 	const NONCE_FAILED     = -2;
 	const NO_ACTION        = -3;
@@ -42,7 +45,8 @@ class QueueController
 	const NOQUOTA          = -5;
 	const SERVER_ERROR     = -6;
 	const NO_ACCESS        = -7;
-	const PLAN_EXPIRED     = -8;
+	const QUEUE_FULL       = -8; // the API's queue is full or in maintenance: the screen defers
+	const PLAN_EXPIRED     = -9;
 
 	/** Transient holding a positive Unlimited plan check. */
 	const PLAN_TRANSIENT = 'emr_bulk_plan_ok';
@@ -150,16 +154,13 @@ class QueueController
 			}
 		}
 
+		// As SPIO: the answer of a tick is status 1; an item's error (quota, key,
+		// queue full) stays on its result in media.results, where the processor's
+		// HandleItemError() acts on it while the stats of the tick still update.
 		$results         = new \stdClass();
 		$results->status = 1;
 		$results->media  = $this->runTick($queue);
 		$results->total  = (object) array('stats' => $results->media->stats);
-
-		if (isset($results->media->error)) {
-			$results->status  = false;
-			$results->error   = $results->media->error;
-			$results->message = $results->media->message;
-		}
 
 		return $this->numberFormatStats($results);
 	}
@@ -194,7 +195,6 @@ class QueueController
 		ResponseController::setQ($Q);
 
 		$items     = (isset($result->items) && is_array($result->items)) ? $result->items : array();
-		$stopError = null;
 
 		foreach ($items as $mainIndex => $qItem) {
 			$action     = $qItem->data()->action;
@@ -238,11 +238,13 @@ class QueueController
 			}
 
 			if (true === $qItem->result()->is_error) {
-				$this->logBulk($Q, $qItem);
-				$error = $qItem->result()->error;
-				if (in_array($error, array(self::NOQUOTA, self::APIKEY_FAILED), true)) {
-					$stopError = $error;
-					delete_transient(self::PLAN_TRANSIENT);
+				// As SPIO: only terminal file errors reach the bulk log; a quota, key,
+				// queue-full or connection retry does not write a line per tick.
+				if (true === $this->args['is_bulk'] && true === $qItem->result()->is_done && QueueItem::FILE_STATUS_ERROR === $qItem->result()->fileStatus) {
+					$this->logBulk($Q, $qItem);
+				}
+				if (in_array($qItem->result()->error, array(self::NOQUOTA, self::APIKEY_FAILED), true)) {
+					delete_transient(self::PLAN_TRANSIENT); // the next tick asks the API about the plan again
 				}
 			}
 
@@ -250,14 +252,7 @@ class QueueController
 		}
 
 		$result->stats = $Q->getStats();
-		$json          = $this->queueToJson($result);
-
-		if (! is_null($stopError)) {
-			$json->error   = $stopError;
-			$json->message = (self::NOQUOTA === $stopError) ? __('Quota exceeded', 'enable-media-replace') : __('Invalid API key', 'enable-media-replace');
-		}
-
-		return $json;
+		return $this->queueToJson($result);
 	}
 
 	/**

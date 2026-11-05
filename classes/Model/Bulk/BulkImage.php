@@ -29,8 +29,18 @@ use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
  */
 class BulkImage
 {
-	/** Post meta that records what the bulk did to an attachment (and where its backup is). */
-	const MARKER_META = '_emr_bulk';
+	/**
+	 * Prefix of the marker post meta: one key per operation
+	 * (`_emr_bulk_background`, `_emr_bulk_upscale`, getMarkerKey()), each an
+	 * array of the operation's data plus the relative `backup` path. One key
+	 * per fact, as SPIO's `_shortpixel_*` flags, so the restore source, the
+	 * dashboard count and the Media Library filter all query `meta_key = %s`
+	 * (queryMarked(), countMarked()) instead of parsing a serialized value.
+	 */
+	const MARKER_META_PREFIX = '_emr_bulk_';
+
+	/** The operations a marker can record. */
+	const OPERATIONS = array('background', 'upscale');
 
 	/** @var int */
 	protected $id;
@@ -231,14 +241,52 @@ class BulkImage
 	}
 
 	/**
-	 * The bulk marker meta: what was done and where the backup is.
+	 * The marker meta key of an operation.
+	 *
+	 * @param string $operation 'background' or 'upscale'.
+	 * @return string
+	 */
+	public static function getMarkerKey($operation)
+	{
+		return self::MARKER_META_PREFIX . sanitize_key($operation);
+	}
+
+	/**
+	 * The bulk marker: what was done and where the backup is, merged over
+	 * the operations: `['background' => data, 'upscale' => data, 'backup' => path]`.
+	 * Every operation backs up the same file (the original before the first
+	 * one, BackupController::backup() keeps an existing backup), so one
+	 * `backup` entry stands for all.
 	 *
 	 * @return array Empty when the bulk never touched this attachment.
 	 */
 	public function getMarker()
 	{
-		$marker = get_post_meta($this->id, self::MARKER_META, true);
-		return is_array($marker) ? $marker : array();
+		$marker = array();
+		foreach (self::OPERATIONS as $operation) {
+			$data = $this->getOperationMarker($operation);
+			if (array() === $data) {
+				continue;
+			}
+			if (isset($data['backup']) && ! isset($marker['backup'])) {
+				$marker['backup'] = $data['backup'];
+			}
+			unset($data['backup']);
+			$marker[ $operation ] = $data;
+		}
+		return $marker;
+	}
+
+	/**
+	 * The stored marker of one operation, `backup` included.
+	 *
+	 * @param string $operation
+	 * @return array Empty when the operation never ran on this attachment.
+	 */
+	public function getOperationMarker($operation)
+	{
+		$data = get_post_meta($this->id, self::getMarkerKey($operation), true);
+		return is_array($data) ? $data : array();
 	}
 
 	/**
@@ -251,20 +299,23 @@ class BulkImage
 	 */
 	public function setMarker($operation, $data, $backup)
 	{
-		$marker = $this->getMarker();
-		$marker[ $operation ] = $data;
-		$marker['backup'] = $backup;
-		update_post_meta($this->id, self::MARKER_META, $marker);
+		$data['backup'] = $backup;
+		update_post_meta($this->id, self::getMarkerKey($operation), $data);
 	}
 
 	/**
-	 * Removes the bulk marker (after a restore).
+	 * Removes the bulk marker: one operation's, or every operation's (after a
+	 * restore, which puts the original back and undoes them all).
 	 *
+	 * @param string|null $operation
 	 * @return void
 	 */
-	public function deleteMarker()
+	public function deleteMarker($operation = null)
 	{
-		delete_post_meta($this->id, self::MARKER_META);
+		$operations = is_null($operation) ? self::OPERATIONS : array($operation);
+		foreach ($operations as $op) {
+			delete_post_meta($this->id, self::getMarkerKey($op));
+		}
 	}
 
 	/**
@@ -275,7 +326,49 @@ class BulkImage
 	 */
 	public function hasOperation($operation)
 	{
-		$marker = $this->getMarker();
-		return isset($marker[ $operation ]);
+		return array() !== $this->getOperationMarker($operation);
+	}
+
+	/**
+	 * Number of attachments carrying the marker of an operation (the restore
+	 * candidates of the dashboard).
+	 *
+	 * @param string $operation
+	 * @return int
+	 */
+	public static function countMarked($operation)
+	{
+		global $wpdb;
+		return (int) $wpdb->get_var($wpdb->prepare(
+			"SELECT COUNT(DISTINCT post_id) FROM {$wpdb->postmeta} WHERE meta_key = %s",
+			self::getMarkerKey($operation)
+		));
+	}
+
+	/**
+	 * A page of attachments carrying the marker of an operation, newest
+	 * first, below $last_id (the restore's source, paged like SPIO's
+	 * MediaLibraryQueue on `last_item_id`). Pages by matches, so a page is
+	 * empty only when no marked attachment is left.
+	 *
+	 * @param string|false $operation One operation, or false for any.
+	 * @param int          $last_id   Only IDs below this one; 0 for the newest page.
+	 * @param int          $limit
+	 * @return int[]
+	 */
+	public static function queryMarked($operation, $last_id, $limit)
+	{
+		global $wpdb;
+		$keys    = (false === $operation) ? array_map(array(__CLASS__, 'getMarkerKey'), self::OPERATIONS) : array(self::getMarkerKey($operation));
+		$sql     = "SELECT DISTINCT post_id FROM {$wpdb->postmeta} WHERE meta_key IN (" . implode(', ', array_fill(0, count($keys), '%s')) . ')';
+		$prepare = $keys;
+		if ($last_id > 0) {
+			$sql      .= ' AND post_id < %d';
+			$prepare[] = (int) $last_id;
+		}
+		$sql      .= ' ORDER BY post_id DESC LIMIT %d';
+		$prepare[] = max(1, (int) $limit);
+
+		return array_map('intval', (array) $wpdb->get_col($wpdb->prepare($sql, $prepare)));
 	}
 }

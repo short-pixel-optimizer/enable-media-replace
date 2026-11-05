@@ -306,7 +306,7 @@ class BulkFlowTest extends EMR_IntegrationTestCase {
 	// Failures.
 	// ---------------------------------------------------------------------
 
-	public function test_quota_exceeded_stops_the_tick_with_NOQUOTA_and_keeps_the_items() {
+	public function test_quota_exceeded_marks_the_item_NOQUOTA_keeps_it_and_answers_status_1() {
 		$id   = $this->image();
 		$bulk = BulkController::getInstance();
 		$bulk->createNewBulk( array( 'operation' => 'background', 'items' => array( $id ) ) );
@@ -316,8 +316,8 @@ class BulkFlowTest extends EMR_IntegrationTestCase {
 
 		$json = ( new QueueController() )->processQueue();
 
-		$this->assertFalse( $json->status );
-		$this->assertSame( QueueController::NOQUOTA, $json->error );
+		$this->assertSame( 1, $json->status, 'As SPIO: the tick succeeded, the error is the item\'s.' );
+		$this->assertObjectNotHasProperty( 'error', $json );
 		$this->assertSame( QueueController::NOQUOTA, $json->media->results[0]->error );
 		$this->assertFalse( $json->media->results[0]->is_done );
 		$this->assertSame( BulkApi::STATUS_QUOTA_EXCEEDED, $json->media->results[0]->apiStatus );

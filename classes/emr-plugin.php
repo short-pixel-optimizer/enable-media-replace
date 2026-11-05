@@ -800,7 +800,7 @@ class EnableMediaReplacePlugin
      */
     public function bulkScriptData()
     {
-        $ajax     = new BulkAjaxController();
+        $ajax     = BulkAjaxController::getInstance();
         $queue    = new QueueController(array('is_bulk' => true));
         $isBulk   = (isset($_GET['page']) && self::BULK_PAGE_SLUG === sanitize_key(wp_unslash($_GET['page'])));
         $settings = \EnableMediaReplace\Controller\Bulk\BulkController::getSettings();

@@ -737,7 +737,7 @@ function emr_e2e_route_mock_requests( WP_REST_Request $request ) {
  * status option (a half-finished bulk would otherwise skip the dashboard on
  * the next page load), the bulk logs, the plan-check and processor-key
  * transients (the LIKE delete in reset() covers these two as well) and the
- * cron event. The _emr_bulk markers go with the attachments; the
+ * cron event. The _emr_bulk_<operation> markers go with the attachments; the
  * EMR_Backups folder goes with the upload directories.
  */
 function emr_e2e_reset_bulk() {

@@ -32,7 +32,8 @@ use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
  * remove-background and upscale flows use (MODE_REPLACE, modified date
  * updated), so thumbnails are regenerated and `wp_handle_replace`,
  * `enable-media-replace-upload-done` and the offload hooks fire as in a
- * manual replace. The attachment then carries the `_emr_bulk` marker.
+ * manual replace. The attachment then carries the operation's marker meta
+ * (BulkImage::getMarkerKey(), `_emr_bulk_<operation>`).
  *
  * A restore copies the backup over the main file the same way and removes
  * the marker and the backup. Its result carries FILE_STATUS_RESTORED and no
@@ -276,7 +277,7 @@ class ActionController
 			} elseif (BulkApi::STATUS_NO_KEY === $apistatus) {
 				$error_code = QueueController::APIKEY_FAILED;
 			} elseif (BulkApi::STATUS_QUEUE_FULL === $apistatus || BulkApi::STATUS_MAINTENANCE === $apistatus) {
-				$error_code = QueueController::SERVER_ERROR;
+				$error_code = QueueController::QUEUE_FULL; // the screen defers, as SPIO's does
 			}
 
 			if (! is_null($error_code)) {
@@ -435,7 +436,8 @@ class ActionController
 
 	/**
 	 * Restores an item from its bulk backup: copies the backup over the main
-	 * file through ReplaceController and removes marker and backup. The
+	 * file through ReplaceController and removes the backup and the markers
+	 * of every operation (the original is back, so all of them are undone). The
 	 * result's file status is FILE_STATUS_RESTORED, not FILE_STATUS_SUCCESS:
 	 * the screen keeps its before/after preview closed for a restore.
 	 *

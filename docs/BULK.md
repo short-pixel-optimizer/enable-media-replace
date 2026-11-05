@@ -14,9 +14,12 @@ Both apply the result **in place** through the single-image replace flow
 (`ReplaceController`, `MODE_REPLACE`: same file name, thumbnails
 regenerated, references untouched), after copying the original to
 `uploads/EMR_Backups/<yyyy>/<mm>/`. The attachment then carries the
-`_emr_bulk` post meta (operation, options, backup path), which a later run
-of the same operation skips and which a **bulk restore** consumes to put the
-original back. The bulk needs a ShortPixel API key on an Unlimited plan.
+operation's marker post meta (`_emr_bulk_background` or `_emr_bulk_upscale`,
+`BulkImage::getMarkerKey()`: the operation's data and the backup path; one
+key per operation, as SPIO's `_shortpixel_*` flags, so every query on it is
+a `meta_key = %s`), which a later run of the same operation skips and which
+a **bulk restore** consumes to put the original back (removing the markers
+of every operation). The bulk needs a ShortPixel API key on an Unlimited plan.
 
 ## Layout
 
@@ -70,7 +73,7 @@ the three plugins never see each other's items.
    The finished panel's "View in Media Library", and the dashboard's next
    to each "Restore N originals", open the list filtered on the operation: `Controller/MediaLibraryFilterController` (SPIO's status
    filter ported) adds a Bulk Enhance dropdown to the list and grid views
-   and keeps the attachments whose `_emr_bulk` marker holds the operation.
+   and keeps the attachments carrying the operation's marker meta.
 5. **Restore.** The `bulk-restore` custom operation enqueues the marked
    attachments of an operation; each item copies its backup back through
    the same replace flow and deletes the marker. Its result carries
@@ -124,7 +127,12 @@ the three plugins never see each other's items.
 Every AJAX action needs `manage_options` and its own nonce. A tick also
 needs the processor key and a key on an Unlimited plan, checked once per
 hour (`emr_bulk_plan_ok`, `emr/bulk/plan_check_ttl`); a failed check
-answers `PLAN_EXPIRED` and the screen pauses with the over-quota notice.
+answers `PLAN_EXPIRED` (-9, EMR's own code after SPIO's -1 to -8) and the
+screen pauses with the over-quota notice. A tick itself always answers
+status 1, as in SPIO: an item's quota, key or queue-full error stays on its
+result, where the processor pauses (quota, key) or defers (`QUEUE_FULL`,
+the API's queue is full or in maintenance). Only terminal file errors reach
+the bulk log; retried items do not write a line per tick.
 The background operation is unavailable without the `product` post type
 (`BulkController::canRun()`).
 
