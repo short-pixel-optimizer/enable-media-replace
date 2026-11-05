@@ -10,10 +10,11 @@
  * EMR_ViewExit instead of rendering and exiting. loadView() for the
  * remove-background screen is the real one, captured with output buffering.
  *
- * loadPost() runs end to end: the processed image is "downloaded" from
- * MockEmrApi's `/f/` endpoint (the URL is stored in the `emr_<key>`
- * transient the way Api::request() stores it), and ReplaceController
- * replaces the attachment's file for real. A fail-fast `pre_http_request`
+ * loadPost() runs end to end: as in SPIO's editor preview, the apply step
+ * sends the image to MockEmrApi's reducer again with the form's options,
+ * "downloads" the answered result from the mock's `/f/` endpoint, and
+ * ReplaceController replaces the attachment's file for real. Nothing of the
+ * preview is stored. A fail-fast `pre_http_request`
  * filter at priority 9999 refuses and records any request the mock does
  * not answer; tear_down() asserts there was none.
  *
@@ -241,21 +242,15 @@ class RemoveBackgroundViewControllerTest extends WP_UnitTestCase {
 		return array( $controller, $output );
 	}
 
-	/** A valid loadPost() form for the current user. */
-	private function valid_post( $id, $key = 'emrtestkey' ) {
-		$_POST = array(
-			'emr_nonce' => wp_create_nonce( 'media_remove_background' ),
-			'key'       => $key,
-			'ID'        => (string) $id,
-		);
-	}
-
-	/** Stores a download URL under the transient key, as Api::request() does. */
-	private function stash_result( $key, $bytes = null ) {
-		$url = $this->mock->stashImage( $bytes );
-		set_transient( 'emr_' . $key, $url, 60 );
-		$this->transients[] = 'emr_' . $key;
-		return $url;
+	/** A valid loadPost() form for the current user: the nonce, the ID and the background options. */
+	private function valid_post( $id, array $fields = array() ) {
+		$_POST = array_merge( array(
+			'emr_nonce'       => wp_create_nonce( 'media_remove_background' ),
+			'ID'              => (string) $id,
+			'background_type' => 'transparent',
+			'bg_color'        => '#ffffff',
+			'bg_transparency' => '100',
+		), $fields );
 	}
 
 	/** JPEG bytes that differ from test-image.jpg. */
@@ -366,7 +361,7 @@ class RemoveBackgroundViewControllerTest extends WP_UnitTestCase {
 	 * views/prepare-remove-background.php.
 	 */
 
-	public function test_prepare_screen_has_the_form_nonce_id_and_key() {
+	public function test_prepare_screen_has_the_form_nonce_id_and_the_posted_options_but_no_result_key() {
 		$id = $this->upload();
 
 		list( , $output ) = $this->load( $id );
@@ -378,7 +373,8 @@ class RemoveBackgroundViewControllerTest extends WP_UnitTestCase {
 		$this->assertNotEmpty( $nonce );
 		$this->assertSame( 1, wp_verify_nonce( $nonce[1], 'media_remove_background' ) );
 		$this->assertStringContainsString( '<input type="hidden" name="ID" value="' . $id . '" />', $output );
-		$this->assertStringContainsString( "<input type='hidden' name='key' value='' />", $output );
+		$this->assertStringNotContainsString( "name='key'", $output, 'Nothing of the preview is stored, so no key travels with the form.' );
+		$this->assertStringContainsString( 'name="bg_transparency" id="bg_transparency"', $output, 'The apply step re-sends the transparency.' );
 	}
 
 	public function test_prepare_screen_has_the_background_options() {
@@ -390,7 +386,7 @@ class RemoveBackgroundViewControllerTest extends WP_UnitTestCase {
 		$this->assertMatchesRegularExpression( '/id="solid_background" type="radio" name="background_type" value="solid"\s*>/', $output );
 		$this->assertStringContainsString( '<input type="color" value="#ffffff" name="bg_display_picker" id="bg_display_picker" />', $output );
 		$this->assertStringContainsString( '<input type="hidden"  value="#ffffff" name="bg_color" id="bg_color" />', $output );
-		$this->assertStringContainsString( '<input type="range" min="0" max="100" value="100" id="bg_transparency" />', $output );
+		$this->assertStringContainsString( '<input type="range" min="0" max="100" value="100" name="bg_transparency" id="bg_transparency" />', $output );
 	}
 
 	public function test_prepare_screen_has_the_preview_replace_and_cancel_buttons() {
@@ -560,7 +556,7 @@ class RemoveBackgroundViewControllerTest extends WP_UnitTestCase {
 
 	public function test_load_post_with_bad_nonce_shows_the_nonce_error() {
 		$id    = $this->upload();
-		$_POST = array( 'emr_nonce' => wp_create_nonce( 'media_replace_upload' ), 'key' => 'k', 'ID' => (string) $id );
+		$_POST = array( 'emr_nonce' => wp_create_nonce( 'media_replace_upload' ), 'ID' => (string) $id );
 		$controller = new EMR_TestRemoveBackgroundViewController();
 
 		$exit = $this->expect_exit( array( $controller, 'loadPost' ) );
@@ -570,26 +566,11 @@ class RemoveBackgroundViewControllerTest extends WP_UnitTestCase {
 	}
 
 	public function test_load_post_without_nonce_shows_the_nonce_error() {
-		$_POST = array( 'key' => 'k', 'ID' => '5' );
+		$_POST = array( 'ID' => '5' );
 
 		$exit = $this->expect_exit( array( new EMR_TestRemoveBackgroundViewController(), 'loadPost' ) );
 
 		$this->assertSame( ViewController::ERROR_NONCE, $exit->getCode() );
-	}
-
-	public function test_load_post_with_empty_or_missing_key_shows_the_key_error() {
-		$id = $this->upload();
-		foreach ( array( '', '<b></b>', null ) as $key ) {
-			$this->valid_post( $id, $key );
-			if ( null === $key ) {
-				unset( $_POST['key'] );
-			}
-			$controller = new EMR_TestRemoveBackgroundViewController();
-
-			$exit = $this->expect_exit( array( $controller, 'loadPost' ) );
-
-			$this->assertSame( ViewController::ERROR_KEY, $exit->getCode(), var_export( $key, true ) );
-		}
 	}
 
 	public function test_load_post_without_id_shows_the_form_error() {
@@ -627,54 +608,43 @@ class RemoveBackgroundViewControllerTest extends WP_UnitTestCase {
 		$this->assertObjectNotHasProperty( 'post_id', $controller->getView() );
 	}
 
-	public function test_load_post_with_an_unknown_key_shows_download_failed() {
+	public function test_load_post_with_a_refused_api_answer_shows_download_failed_with_the_reason() {
 		$id = $this->upload();
-		$this->valid_post( $id, 'emr-no-such-key' );
-		$this->assertFalse( get_transient( 'emr_emr-no-such-key' ), 'Precondition.' );
+		$this->valid_post( $id );
+		$this->mock->setKnob( 'forceStatusCode', '-201' );
+		$this->mock->setKnob( 'errorMessage', 'Invalid image format' );
 		$controller = new EMR_TestRemoveBackgroundViewController();
 
 		$exit = $this->expect_exit( array( $controller, 'loadPost' ) );
 
 		$this->assertSame( ViewController::ERROR_DOWNLOAD_FAILED, $exit->getCode() );
-		$this->assertSame( $id, $controller->getView()->post_id, 'setView() ran before the download.' );
-		$this->assertSame( array(), $this->mock->getRequests() );
-	}
-
-	/**
-	 * loadPost() copies the download error from Api::handleDownload() into
-	 * `$this->view->errorMessage` and then calls
-	 * viewError(ERROR_DOWNLOAD_FAILED), which overwrites it with the generic
-	 * "The replacement image could not be downloaded or does not exist.". The
-	 * API's message ("This file seems not available anymore. Please try
-	 * again") never reaches the error screen. It should be shown, for
-	 * instance as the error description.
-	 *
-	 * How to recognise the fix: the view ends with the API message in
-	 * errorMessage or errorDescription, and the assertions on the generic
-	 * message / missing description fail.
-	 */
-	public function test_load_post_download_error_message_is_overwritten_pinned_for_deferred_fix() {
-		$id = $this->upload();
-		$this->valid_post( $id, 'emr-expired-key' );
-		$controller = new EMR_TestRemoveBackgroundViewController();
-
-		$exit = $this->expect_exit( array( $controller, 'loadPost' ) );
-
-		$this->assertSame( ViewController::ERROR_DOWNLOAD_FAILED, $exit->getCode() );
-		$this->assertSame( ViewController::ERROR_DOWNLOAD_FAILED, $controller->lastError );
-		$this->assertSame( 'This file does not seem to be available anymore. Please try again.', $controller->errorMessageBefore, 'Set from the API result before viewError().' );
+		$this->assertSame( $id, $controller->getView()->post_id, 'setView() ran before the request.' );
+		$this->assertCount( 1, $this->mock->requestsTo( 'reducer.php' ), 'The apply step asked the API once.' );
+		$this->assertSame( array(), $this->mock->requestsTo( '/f/' ), 'Nothing to download.' );
 		$this->assertSame( 'The replacement image could not be downloaded or does not exist.', $controller->getView()->errorMessage );
-		$this->assertObjectNotHasProperty( 'errorDescription', $controller->getView() );
+		$this->assertSame( 'Invalid image format', $controller->getView()->errorDescription, 'The API\'s reason is the description.' );
 	}
 
-	public function test_load_post_downloads_the_result_and_replaces_the_file_in_place() {
+	public function test_load_post_over_quota_shows_download_failed_with_the_quota_message() {
+		$id = $this->upload();
+		$this->valid_post( $id );
+		$this->mock->setKnob( 'quotaExceeded', true );
+		$controller = new EMR_TestRemoveBackgroundViewController();
+
+		$exit = $this->expect_exit( array( $controller, 'loadPost' ) );
+
+		$this->assertSame( ViewController::ERROR_DOWNLOAD_FAILED, $exit->getCode() );
+		$this->assertStringContainsString( 'The Free plan limit is reached', $controller->getView()->errorDescription );
+	}
+
+	public function test_load_post_requests_the_result_again_with_the_forms_options_downloads_it_and_replaces_the_file_in_place() {
 		$id       = $this->upload();
 		$file     = get_attached_file( $id );
 		$original = md5_file( $file );
 		$this->set_post_dates( $id, '2001-02-03 04:05:06' );
 		$bytes = $this->other_jpeg_bytes();
-		$this->stash_result( 'emrgoodkey', $bytes );
-		$this->valid_post( $id, 'emrgoodkey' );
+		$this->mock->setKnob( 'resultBytes', $bytes );
+		$this->valid_post( $id, array( 'background_type' => 'solid', 'bg_color' => '#ff0000', 'bg_transparency' => '50' ) );
 		$controller = new EMR_TestRemoveBackgroundViewController();
 		$before     = $this->track_temp_files();
 
@@ -684,6 +654,10 @@ class RemoveBackgroundViewControllerTest extends WP_UnitTestCase {
 		$this->assertSame( 'success', $exit->template );
 		$this->assertTrue( $controller->successCalled );
 		$this->assertSame( 0, $controller->errorCalls );
+		$reducer = $this->mock->requestsTo( 'reducer.php' );
+		$this->assertCount( 1, $reducer, 'The apply step sends the original to the API (free of charge).' );
+		$this->assertSame( '#ff000050', $reducer[0]['request']['bg_remove'], 'With the options the form carries.' );
+		$this->assertSame( array( urlencode( esc_url( wp_get_original_image_url( $id ) ) ) ), $reducer[0]['request']['urllist'] );
 		$this->assertCount( 1, $this->mock->requestsTo( '/f/' ) );
 		clean_post_cache( $id );
 		$this->assertSame( $file, get_attached_file( $id ), 'Same file name and location.' );
@@ -698,7 +672,7 @@ class RemoveBackgroundViewControllerTest extends WP_UnitTestCase {
 	}
 
 	/*
-	 * setView() and replaceBackground().
+	 * setView(), apiData() and fetchResult().
 	 */
 
 	public function test_set_view_sets_post_id_and_both_redirects_and_ignores_params() {
@@ -714,12 +688,28 @@ class RemoveBackgroundViewControllerTest extends WP_UnitTestCase {
 		$this->assertStringNotContainsString( 'emr_prepare_remove', $view->postUrl );
 	}
 
-	public function test_replace_background_downloads_to_a_temp_file() {
+	public function test_api_data_mirrors_the_preview_request_and_defaults_a_missing_type_to_transparent() {
+		$_POST = array( 'background_type' => "<b>solid</b>", 'bg_color' => '#abcdef', 'bg_transparency' => ' 7 ' );
+		$this->assertSame(
+			array( 'attachment_id' => 12, 'background' => array( 'type' => 'solid', 'color' => '#abcdef', 'transparency' => '7' ) ),
+			( new EMR_TestRemoveBackgroundViewController() )->callApiData( 12 )
+		);
+
+		$_POST = array();
+		$this->assertSame(
+			array( 'attachment_id' => 12, 'background' => array( 'type' => 'transparent', 'color' => '#ffffff', 'transparency' => 100 ) ),
+			( new EMR_TestRemoveBackgroundViewController() )->callApiData( 12 )
+		);
+	}
+
+	public function test_fetch_result_requests_then_downloads_to_a_temp_file() {
+		$id    = $this->upload();
 		$bytes = $this->other_jpeg_bytes();
-		$url   = $this->stash_result( 'emrdownload', $bytes );
+		$this->mock->setKnob( 'resultBytes', $bytes );
+		$this->valid_post( $id );
 		$before = $this->track_temp_files();
 
-		$result = ( new EMR_TestRemoveBackgroundViewController() )->callReplaceBackground( 12345, 'emrdownload' );
+		$result = ( new EMR_TestRemoveBackgroundViewController() )->callFetchResult( $id );
 		$this->untrack( $before );
 
 		$this->assertInstanceOf( stdClass::class, $result );
@@ -728,16 +718,22 @@ class RemoveBackgroundViewControllerTest extends WP_UnitTestCase {
 		$this->assertIsString( $result->image );
 		$this->assertFileExists( $result->image );
 		$this->assertSame( md5( $bytes ), md5_file( $result->image ) );
-		$this->assertSame( $url, $this->mock->lastRequest()['url'] );
+		$this->assertCount( 1, $this->mock->requestsTo( 'reducer.php' ) );
+		$this->assertStringStartsWith( MockEmrApi::DOWNLOAD_BASE, $this->mock->lastRequest()['url'] );
 	}
 
-	public function test_replace_background_with_unknown_key_returns_the_failure() {
-		$result = ( new EMR_TestRemoveBackgroundViewController() )->callReplaceBackground( 1, 'emr-none' );
+	public function test_fetch_result_with_a_refused_api_answer_returns_the_failure_without_downloading() {
+		$id = $this->upload();
+		$this->valid_post( $id );
+		$this->mock->setKnob( 'forceStatusCode', '-201' );
+		$this->mock->setKnob( 'errorMessage', 'Invalid image format' );
+
+		$result = ( new EMR_TestRemoveBackgroundViewController() )->callFetchResult( $id );
 
 		$this->assertFalse( $result->success );
 		$this->assertNull( $result->image );
-		$this->assertSame( 'This file does not seem to be available anymore. Please try again.', $result->message );
-		$this->assertSame( array(), $this->mock->getRequests() );
+		$this->assertSame( 'Invalid image format', $result->message );
+		$this->assertSame( array(), $this->mock->requestsTo( '/f/' ) );
 	}
 
 	private function set_post_dates( $id, $date ) {

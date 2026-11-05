@@ -18,7 +18,7 @@
  *
  * Snapshot/restore: $_POST, the current user, the `enable_media_replace`
  * and `emr_shortpixel_api_key` options, the ApiKeyManager singleton, the
- * `emr_<key>` transients created, the uploaded attachments and temp files.
+ * uploaded attachments and temp files.
  *
  * @package Enable_Media_Replace
  */
@@ -243,10 +243,10 @@ class ApiTest extends WP_UnitTestCase {
 		$ref->setValue( $api, $value );
 	}
 
-	private function track_transient( $result ) {
-		if ( isset( $result->key ) ) {
-			$this->assertNotFalse( get_transient( 'emr_' . $result->key ) );
-		}
+	/** The number of `emr_` transients in the options table (nothing of a preview may be stored). */
+	private function emr_transient_count() {
+		global $wpdb;
+		return (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->options} WHERE option_name LIKE '\\_transient\\_emr\\_%'" );
 	}
 
 	/*
@@ -363,14 +363,14 @@ class ApiTest extends WP_UnitTestCase {
 		$this->assertSame( $expected, get_option( self::SETTINGS_OPTION ) );
 	}
 
-	public function test_settings_default_when_background_is_absent_from_post() {
-		$_POST = array( 'attachment_id' => (string) $this->attachment_id );
+	public function test_settings_default_the_colour_and_transparency_when_the_posted_data_has_only_a_type() {
+		$_POST = array();
 
-		$this->run_request( array( 'background' => array( 'type' => 'transparent' ) ) );
+		$this->run_request( array( 'attachment_id' => (string) $this->attachment_id, 'background' => array( 'type' => 'transparent' ) ) );
 
 		$this->assertSame(
 			array(
-				'bg_type'         => false,
+				'bg_type'         => 'transparent',
 				'bg_color'        => '#ffffff',
 				'bg_transparency' => false,
 			),
@@ -497,7 +497,8 @@ class ApiTest extends WP_UnitTestCase {
 	 * How to recognise the fix: the reducer receives the URL of the
 	 * attachment passed in $posted_data.
 	 */
-	public function test_post_superglobal_wins_over_posted_data_pinned_for_deferred_fix() {
+	/** request() reads the posted array it is given (the AJAX $_POST, or the apply step's form data), never $_POST itself. */
+	public function test_the_posted_data_is_used_not_the_post_superglobal() {
 		$other_id  = $this->upload();
 		$other_url = wp_get_original_image_url( $other_id );
 		$this->assertNotSame( $this->attachment_id, $other_id );
@@ -512,9 +513,9 @@ class ApiTest extends WP_UnitTestCase {
 		$this->run_request( $posted );
 
 		$body = $this->reducer_body();
-		$this->assertSame( array( urlencode( esc_url( $this->source_url ) ) ), $body['urllist'] );
+		$this->assertSame( array( urlencode( esc_url( $other_url ) ) ), $body['urllist'] );
 		$this->assertSame( '#222222FF', $body['bg_remove'] );
-		$this->assertSame( '#111111', get_option( self::SETTINGS_OPTION )['bg_color'] );
+		$this->assertSame( '#222222', get_option( self::SETTINGS_OPTION )['bg_color'] );
 	}
 
 	/*
@@ -546,7 +547,7 @@ class ApiTest extends WP_UnitTestCase {
 
 			$this->assertTrue( $result->success, 'Factor ' . $factor );
 			$this->assertSame( (int) $factor, $this->reducer_body( $i )['upscale'] );
-			$this->track_transient( $result );
+			$this->assertObjectNotHasProperty( 'key', $result, 'Nothing is stored for the apply step.' );
 		}
 		$this->assertCount( 3, $this->mock->requestsTo( 'reducer.php' ) );
 	}
@@ -578,7 +579,7 @@ class ApiTest extends WP_UnitTestCase {
 			$body = $this->reducer_body( $i );
 			$this->assertSame( '1', $body['bg_remove'], 'Factor ' . $factor );
 			$this->assertArrayNotHasKey( 'upscale', $body );
-			$this->track_transient( $result );
+			$this->assertObjectNotHasProperty( 'key', $result, 'Nothing is stored for the apply step.' );
 		}
 	}
 
@@ -600,7 +601,7 @@ class ApiTest extends WP_UnitTestCase {
 
 		$this->assertTrue( $result->success );
 		$this->assertSame( array( 'bg_type' => 'solid', 'bg_color' => '#123456' ), get_option( self::SETTINGS_OPTION ), 'The remove-background choice is left alone.' );
-		$this->track_transient( $result );
+		$this->assertObjectNotHasProperty( 'key', $result, 'Nothing is stored for the apply step.' );
 	}
 
 	public function test_upscale_ignores_a_posted_solid_background() {
@@ -615,7 +616,7 @@ class ApiTest extends WP_UnitTestCase {
 		$this->assertArrayNotHasKey( 'bg_remove', $body );
 		$this->assertSame( 4, $body['upscale'] );
 		$this->assertStringNotContainsString( '#ff0000', wp_json_encode( $body ) );
-		$this->track_transient( $result );
+		$this->assertObjectNotHasProperty( 'key', $result, 'Nothing is stored for the apply step.' );
 	}
 
 	public function test_upscale_settings_summary_lists_the_factor_instead_of_bg_remove() {
@@ -624,7 +625,7 @@ class ApiTest extends WP_UnitTestCase {
 		$this->assertTrue( $result->success );
 		$this->assertSame( ' plugin_version:EMR4.2.0  lossy:0  upscale:2 ', $result->settings );
 		$this->assertStringNotContainsString( 'bg_remove', $result->settings );
-		$this->track_transient( $result );
+		$this->assertObjectNotHasProperty( 'key', $result, 'Nothing is stored for the apply step.' );
 	}
 
 	public function test_upscale_with_key_sends_key_item_id_and_the_factor_to_the_authenticated_endpoint() {
@@ -649,7 +650,7 @@ class ApiTest extends WP_UnitTestCase {
 			),
 			$requests[0]['request']
 		);
-		$this->track_transient( $result );
+		$this->assertObjectNotHasProperty( 'key', $result, 'Nothing is stored for the apply step.' );
 	}
 
 	public function test_upscale_quota_exceeded_message_names_upscaling() {
@@ -709,7 +710,7 @@ class ApiTest extends WP_UnitTestCase {
 		$this->assertTrue( $result->success );
 		$this->assertSame( 4, $this->reducer_body()['upscale'] );
 		$this->assertSame( array( urlencode( esc_url( wp_get_original_image_url( $wide ) ) ) ), $this->reducer_body()['urllist'] );
-		$this->track_transient( $result );
+		$this->assertObjectNotHasProperty( 'key', $result, 'Nothing is stored for the apply step.' );
 	}
 
 	/*
@@ -796,10 +797,11 @@ class ApiTest extends WP_UnitTestCase {
 	 * Responses.
 	 */
 
-	public function test_status_two_returns_the_result_and_stores_it_in_a_transient() {
+	public function test_status_two_returns_the_result_and_stores_nothing() {
 		$_POST          = $this->post();
 		$_POST['nonce'] = 'nonce-value';
 		$before         = time();
+		$transients     = $this->emr_transient_count();
 
 		$result = $this->run_request( $_POST );
 
@@ -816,10 +818,8 @@ class ApiTest extends WP_UnitTestCase {
 		$this->assertGreaterThanOrEqual( $before, (int) $query['ts'] );
 		$this->assertLessThanOrEqual( time(), (int) $query['ts'] );
 
-		$stored = remove_query_arg( 'ts', $result->image );
-		$this->assertIsString( $result->key );
-		$this->assertSame( wp_hash( 'nonce-value' . $stored, 'logged_in' ), $result->key );
-		$this->assertSame( $stored, get_transient( 'emr_' . $result->key ) );
+		$this->assertObjectNotHasProperty( 'key', $result, 'No stored result, no key: the apply step requests again (SPIO\'s model).' );
+		$this->assertSame( $transients, $this->emr_transient_count(), 'The preview leaves no transient behind.' );
 	}
 
 	public function test_keyed_settings_summary_includes_key_and_item_id() {
@@ -956,8 +956,7 @@ class ApiTest extends WP_UnitTestCase {
 		$this->assertCount( 1, $this->mock->requestsTo( 'api-status.php' ) );
 		$this->assertCount( 1, $this->mock->requestsTo( 'cleanup.php' ) );
 		$this->assertTrue( $result->success );
-		$this->assertIsString( $result->key );
-		$this->track_transient( $result );
+		$this->assertObjectNotHasProperty( 'key', $result );
 	}
 
 	public function test_attempt_limit_returns_the_timeout_message_without_request() {
@@ -973,41 +972,11 @@ class ApiTest extends WP_UnitTestCase {
 	}
 
 	/*
-	 * handleSuccess().
+	 * download(): the apply step's download of the result request() answered.
 	 */
 
-	public function test_handleSuccess_keys_the_transient_on_the_posted_nonce() {
-		$_POST  = array( 'nonce' => ' <b>abc</b> ' );
-		$result = (object) array( 'image' => 'https://api.shortpixel.com/f/one.jpg' );
-
-		$key = ( new Api() )->handleSuccess( $result );
-
-		$this->assertIsString( $key );
-		$this->assertSame( wp_hash( 'abc' . $result->image, 'logged_in' ), $key );
-		$this->assertSame( $result->image, get_transient( 'emr_' . $key ) );
-	}
-
-	public function test_handleSuccess_without_nonce_uses_a_created_nonce_and_thirty_minutes() {
-		$result = (object) array( 'image' => 'https://api.shortpixel.com/f/two.jpg' );
-		$before = time();
-
-		$key = ( new Api() )->handleSuccess( $result );
-
-		$this->assertSame( wp_hash( wp_create_nonce() . $result->image, 'logged_in' ), $key );
-		$this->assertSame( $result->image, get_transient( 'emr_' . $key ) );
-		if ( ! wp_using_ext_object_cache() ) {
-			$timeout = (int) get_option( '_transient_timeout_emr_' . $key );
-			$this->assertGreaterThanOrEqual( $before + 30 * MINUTE_IN_SECONDS, $timeout );
-			$this->assertLessThanOrEqual( time() + 30 * MINUTE_IN_SECONDS, $timeout );
-		}
-	}
-
-	/*
-	 * handleDownload().
-	 */
-
-	public function test_handleDownload_without_transient_returns_message() {
-		$result = ( new Api() )->handleDownload( 'no-such-key' );
+	public function test_download_without_a_url_returns_the_not_available_message() {
+		$result = ( new Api() )->download( '' );
 
 		$this->assertFalse( $result->success );
 		$this->assertNull( $result->image );
@@ -1015,11 +984,10 @@ class ApiTest extends WP_UnitTestCase {
 		$this->assertSame( array(), $this->mock->getRequests() );
 	}
 
-	public function test_handleDownload_saves_the_result_to_a_temp_file() {
+	public function test_download_saves_the_result_to_a_temp_file() {
 		$url = $this->mock->stashImage();
-		set_transient( 'emr_download-key', $url, 60 );
 
-		$result = ( new Api() )->handleDownload( 'download-key' );
+		$result = ( new Api() )->download( $url );
 		if ( is_string( $result->image ) ) {
 			$this->files[] = $result->image;
 		}
@@ -1030,12 +998,10 @@ class ApiTest extends WP_UnitTestCase {
 		$this->assertFileExists( $result->image );
 		$this->assertSame( file_get_contents( dirname( __DIR__ ) . '/fixtures/test-image.jpg' ), file_get_contents( $result->image ) );
 		$this->assertSame( $url, $this->mock->requestsTo( '/f/' )[0]['url'] );
-		$this->assertSame( $url, get_transient( 'emr_download-key' ) );
 	}
 
-	public function test_handleDownload_reports_download_failed_when_no_file_exists() {
-		$url = $this->mock->stashImage();
-		set_transient( 'emr_failed-key', $url, 60 );
+	public function test_download_reports_download_failed_when_no_file_exists() {
+		$url   = $this->mock->stashImage();
 		$files = &$this->files;
 		$this->add_test_filter(
 			'shortpixel_image_exists',
@@ -1046,7 +1012,7 @@ class ApiTest extends WP_UnitTestCase {
 			10
 		);
 
-		$result = ( new Api() )->handleDownload( 'failed-key' );
+		$result = ( new Api() )->download( $url );
 
 		$this->assertFalse( $result->success );
 		$this->assertNull( $result->image );
@@ -1054,23 +1020,22 @@ class ApiTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * handleDownload() creates its target with wp_tempnam(), which already
+	 * download() creates its target with wp_tempnam(), which already
 	 * creates an empty file, and FileSystemController::downloadFile() only
 	 * checks that the target exists. When both download attempts fail, the
 	 * empty temp file still exists, so the result is success with an empty
 	 * image and "Download failed" is never returned for a network error.
 	 * The download should be judged on the HTTP result (or a non-empty file).
 	 *
-	 * Where: Api::handleDownload() with FileSystemController::downloadFile().
+	 * Where: Api::download() with FileSystemController::downloadFile().
 	 *
 	 * How to recognise the fix: success is false and the message is
 	 * 'Download failed'.
 	 */
-	public function test_handleDownload_network_error_reports_success_pinned_for_deferred_fix() {
+	public function test_download_network_error_reports_success_pinned_for_deferred_fix() {
 		// A host the mock does not answer: the filter below fails every
 		// attempt before any byte is written to the target.
-		$url = 'https://results.example.test/f/broken.jpg';
-		set_transient( 'emr_error-key', $url, 60 );
+		$url      = 'https://results.example.test/f/broken.jpg';
 		$attempts = 0;
 		$this->add_test_filter(
 			'pre_http_request',
@@ -1084,7 +1049,7 @@ class ApiTest extends WP_UnitTestCase {
 			11
 		);
 
-		$result = ( new Api() )->handleDownload( 'error-key' );
+		$result = ( new Api() )->download( $url );
 		if ( is_string( $result->image ) ) {
 			$this->files[] = $result->image;
 		}

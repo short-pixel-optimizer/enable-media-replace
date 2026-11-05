@@ -150,7 +150,6 @@ class ViewControllerTest extends WP_UnitTestCase {
 			'ERROR_SECURITY'           => 6,
 			'ERROR_UPLOAD_FAILED'      => 7,
 			'ERROR_NONCE'              => 8,
-			'ERROR_KEY'                => 9,
 			'ERROR_TARGET_EXISTS'      => 20,
 			'ERROR_DESTINATION_FAIL'   => 21,
 			'ERROR_COPY_FAILED'        => 22,
@@ -229,25 +228,19 @@ class ViewControllerTest extends WP_UnitTestCase {
 		}
 	}
 
-	/**
-	 * ERROR_KEY (9) is documented in the class table as "remove-background
-	 * download key missing", but viewError() has no case for it, so
-	 * RemoveBackGroundViewController::loadPost() with an empty key shows the
-	 * generic "An unknown error has occurred." message. ERROR_KEY should get
-	 * its own message (the key of the processed image is missing, run the
-	 * preview again).
-	 *
-	 * How to recognise the fix: the message is no longer the unknown-error
-	 * text and the assertSame on it fails.
-	 */
-	public function test_error_key_shows_the_unknown_error_message_pinned_for_deferred_fix() {
+	/** ERROR_DOWNLOAD_FAILED carries the API's or the download's reason as the description. */
+	public function test_download_failed_shows_the_reason_passed_as_error_data() {
 		$controller = new EMR_TestViewController();
 
-		$exit = $this->error_exit( $controller, ViewController::ERROR_KEY );
+		$exit = $this->error_exit( $controller, ViewController::ERROR_DOWNLOAD_FAILED, array( 'message' => 'Quota exceeded at the API' ) );
 
-		$this->assertSame( 9, $exit->getCode() );
-		$this->assertSame( 'An unknown error has occurred.', $controller->getView()->errorMessage );
-		$this->assertObjectNotHasProperty( 'errorDescription', $controller->getView() );
+		$this->assertSame( 31, $exit->getCode() );
+		$this->assertSame( 'The replacement image could not be downloaded or does not exist.', $controller->getView()->errorMessage );
+		$this->assertSame( 'Quota exceeded at the API', $controller->getView()->errorDescription );
+
+		$plain = new EMR_TestViewController();
+		$this->error_exit( $plain, ViewController::ERROR_DOWNLOAD_FAILED );
+		$this->assertObjectNotHasProperty( 'errorDescription', $plain->getView(), 'No reason, no description.' );
 	}
 
 	public function test_view_error_overwrites_an_earlier_error_message() {

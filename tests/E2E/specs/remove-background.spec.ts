@@ -49,7 +49,7 @@ test.describe('Remove background', () => {
 			.toBe(true);
 		await expect(screen.resultImage).toHaveCount(0);
 		await expect(screen.form.locator('input[name="ID"]')).toHaveValue(String(emr.seed.attachment_id));
-		await expect(screen.resultKey).toHaveValue('');
+		await expect(screen.form.locator('input[name="key"]')).toHaveCount(0); // nothing of the preview is stored; the apply step requests again
 		await expect(screen.replaceButton).toBeDisabled();
 		await expect(screen.replaceInsteadLink).toHaveAttribute('href', /action=media_replace.*_wpnonce=/);
 
@@ -153,7 +153,6 @@ test.describe('Remove background', () => {
 			})
 			.toBe(true);
 		await expect(screen.resultPreview).toHaveClass(/is_image/);
-		await expect(screen.resultKey).not.toHaveValue('');
 		await expect(screen.replaceButton).toBeEnabled();
 		// The same settings give the same result: Preview waits for a changed option.
 		await expect(screen.previewButton).toBeDisabled();

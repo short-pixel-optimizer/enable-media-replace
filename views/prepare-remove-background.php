@@ -20,12 +20,11 @@
  * handled by RemoveBackGroundViewController::loadPost(). Nonce: action
  * `media_remove_background`, field `emr_nonce`. Inputs:
  * - ID (hidden) attachment id
- * - key (hidden) empty on load; js/remove_bg.js fills it with the result key
- *   returned by the `emr_remove_background` AJAX call; loadPost() uses it to
- *   fetch the processed image
  * - background_type `transparent` or `solid`
  * - bg_display_picker (colour picker) and bg_color (hidden hex copy used by the script)
- * - `#bg_transparency` range has no name and is only read by the script
+ * - bg_transparency (range, 0-100)
+ * loadPost() runs the request again with these three on the original (nothing of the
+ * preview is stored), so they are posted with the form.
  * The Preview button (`#remove_background_button`) triggers the AJAX call
  * (js/remove_bg.js, localised as `emrObject` with nonce `emr_remove_background`);
  * the Replace submit button stays disabled until a preview succeeds.
@@ -98,7 +97,6 @@ $email_body = sprintf(__('Hello! %s This is a report of a background removal tha
 
 
 	<input type="hidden" name="ID" value="<?php echo intval($attachment_id); ?>" />
-	<input type='hidden' name='key' value='' />
 
 		<div class="editor-wrapper" >
 			<section class='image_chooser wrapper'>
@@ -156,7 +154,7 @@ $email_body = sprintf(__('Hello! %s This is a report of a background removal tha
 									<strong>
 										<span id="transparency_range"><?php echo esc_attr($view->settings['bg_transparency']); ?></span></strong>
 								</p>
-								<input type="range" min="0" max="100" value="<?php echo esc_attr($view->settings['bg_transparency']); ?>" id="bg_transparency" />
+								<input type="range" min="0" max="100" value="<?php echo esc_attr($view->settings['bg_transparency']); ?>" name="bg_transparency" id="bg_transparency" />
 							</label>
 						</div>
 					</div>

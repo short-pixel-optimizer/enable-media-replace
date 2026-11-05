@@ -17,9 +17,10 @@ if (! defined('ABSPATH')) {
  * image (`action=do_upscale_replace`).
  *
  * Inherits load() and loadPost() from RemoveBackGroundViewController and changes only the
- * template and the nonce action: the preview runs over the same AJAX endpoint
- * (Ajax::remove_background() -> Api::request() with an `upscale` factor), the result is
- * downloaded and applied the same way. load() still reads the background settings into
+ * template, the nonce action and the operation: the preview runs over the same AJAX
+ * endpoint (Ajax::remove_background() -> Api::request() with an `upscale` factor), and the
+ * apply step runs the request again with the checked factor and applies the result the
+ * same way. load() still reads the background settings into
  * `$view->settings`; views/prepare-upscale.php does not use them.
  *
  * Lifecycle: its own singleton (the `$instance` property is redeclared so it does not share
@@ -48,6 +49,13 @@ class UpscaleViewController extends RemoveBackgroundViewController
 	 * @var string
 	 */
 	protected $nonce_action = 'media_upscale_image';
+
+	/**
+	 * The apply step re-sends the checked `upscale` factor.
+	 *
+	 * @var string
+	 */
+	protected $operation = 'upscale';
 
 	/**
 	 * Returns the singleton.

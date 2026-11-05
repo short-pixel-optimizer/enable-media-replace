@@ -33,7 +33,6 @@ use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
  * | 6    | ERROR_SECURITY           | file type/extension not allowed                      |
  * | 7    | ERROR_UPLOAD_FAILED      | no uploaded file                                     |
  * | 8    | ERROR_NONCE              | nonce missing or invalid                             |
- * | 9    | ERROR_KEY                | remove-background download key missing               |
  * | 20-25| ERROR_TARGET_EXISTS ... ERROR_DIRECTORY_NOTEXIST | same values as ReplaceController's constants |
  * | 31   | ERROR_DOWNLOAD_FAILED    | remove-background result could not be downloaded     |
  *
@@ -67,7 +66,6 @@ abstract class ViewController
 	 /** @var int Nonce missing or invalid. */
 	 const ERROR_NONCE = 8;
 	 /** @var int Download key missing when replacing backgrounds. */
-	 const ERROR_KEY = 9; // Missing key when replacing backgrounds.
 
 	 // These synced with ReplaceController
 	 /** @var int See ReplaceController::ERROR_TARGET_EXISTS. */
@@ -237,6 +235,10 @@ abstract class ViewController
 					// Remove Background
 					case self::ERROR_DOWNLOAD_FAILED:
 						$message = __('The replacement image could not be downloaded or does not exist.', 'enable-media-replace');
+						if (isset($errorData['message']) && is_string($errorData['message']) && '' !== $errorData['message'])
+						{
+							$description = $errorData['message']; // the API's or the download's reason
+						}
 					break;
 
 					default:

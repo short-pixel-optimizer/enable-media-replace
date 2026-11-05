@@ -9,10 +9,10 @@
  * nonce action, so this file covers what differs: the separate singleton,
  * the upscale screen (factor radios, their disabling by image width, the
  * account box wording, no background options) and the nonce loadPost()
- * accepts. The shared load() / loadPost() checks and the download are
- * covered in test-RemoveBackgroundViewController.php; one end-to-end
- * loadPost() here proves the inherited apply step works through this
- * controller.
+ * accepts and the `upscale` factor its apply step re-sends. The shared
+ * load() / loadPost() checks and the second request are covered in
+ * test-RemoveBackgroundViewController.php; one end-to-end loadPost() here
+ * proves the inherited apply step works through this controller.
  *
  * The controller is reached through EMR_TestUpscaleViewController (see
  * ViewControllerTestDoubles.php): viewError() and viewSuccess() run for
@@ -278,21 +278,13 @@ class UpscaleViewControllerTest extends WP_UnitTestCase {
 		return array( $controller, $output );
 	}
 
-	/** A valid loadPost() form for the current user. */
-	private function valid_post( $id, $key = 'emrupkey' ) {
+	/** A valid loadPost() form for the current user: the nonce, the ID and the checked factor. */
+	private function valid_post( $id, $factor = '2' ) {
 		$_POST = array(
 			'emr_nonce' => wp_create_nonce( 'media_upscale_image' ),
-			'key'       => $key,
 			'ID'        => (string) $id,
+			'upscale'   => (string) $factor,
 		);
-	}
-
-	/** Stores a download URL under the transient key, as Api::request() does. */
-	private function stash_result( $key, $bytes = null ) {
-		$url = $this->mock->stashImage( $bytes );
-		set_transient( 'emr_' . $key, $url, 60 );
-		$this->transients[] = 'emr_' . $key;
-		return $url;
 	}
 
 	/** JPEG bytes of a 120x90 image, visibly "upscaled" from the 50x50 fixture. */
@@ -384,7 +376,7 @@ class UpscaleViewControllerTest extends WP_UnitTestCase {
 		$this->assertSame( ViewController::ERROR_IMAGE_PERMISSION, $exit->getCode() );
 	}
 
-	public function test_screen_has_the_form_nonce_id_and_key() {
+	public function test_screen_has_the_form_nonce_and_id_but_no_result_key() {
 		$id = $this->upload();
 
 		list( , $output ) = $this->load( $id );
@@ -398,7 +390,7 @@ class UpscaleViewControllerTest extends WP_UnitTestCase {
 		$this->assertSame( 1, wp_verify_nonce( $nonce[1], 'media_upscale_image' ) );
 		$this->assertFalse( wp_verify_nonce( $nonce[1], 'media_remove_background' ), 'The upscale form has its own nonce action.' );
 		$this->assertStringContainsString( '<input type="hidden" name="ID" value="' . $id . '" />', $output );
-		$this->assertStringContainsString( "<input type='hidden' name='key' value='' />", $output );
+		$this->assertStringNotContainsString( "name='key'", $output, 'The apply step re-sends the checked factor; nothing of the preview is stored.' );
 	}
 
 	public function test_screen_offers_every_factor_for_a_small_image_with_the_smallest_checked() {
@@ -586,7 +578,7 @@ class UpscaleViewControllerTest extends WP_UnitTestCase {
 
 	public function test_load_post_refuses_the_remove_background_nonce() {
 		$id    = $this->upload();
-		$_POST = array( 'emr_nonce' => wp_create_nonce( 'media_remove_background' ), 'key' => 'k', 'ID' => (string) $id );
+		$_POST = array( 'emr_nonce' => wp_create_nonce( 'media_remove_background' ), 'ID' => (string) $id, 'upscale' => '2' );
 		$controller = new EMR_TestUpscaleViewController();
 
 		$exit = $this->expect_exit( array( $controller, 'loadPost' ) );
@@ -596,21 +588,23 @@ class UpscaleViewControllerTest extends WP_UnitTestCase {
 	}
 
 	public function test_load_post_without_nonce_shows_the_nonce_error() {
-		$_POST = array( 'key' => 'k', 'ID' => '5' );
+		$_POST = array( 'ID' => '5', 'upscale' => '2' );
 
 		$exit = $this->expect_exit( array( new EMR_TestUpscaleViewController(), 'loadPost' ) );
 
 		$this->assertSame( ViewController::ERROR_NONCE, $exit->getCode() );
 	}
 
-	public function test_load_post_with_the_upscale_nonce_but_no_key_shows_the_key_error() {
+	public function test_load_post_with_a_factor_outside_the_set_shows_download_failed_without_a_request() {
 		$id = $this->upload();
-		$this->valid_post( $id, '' );
+		$this->valid_post( $id, '5' );
 		$controller = new EMR_TestUpscaleViewController();
 
 		$exit = $this->expect_exit( array( $controller, 'loadPost' ) );
 
-		$this->assertSame( ViewController::ERROR_KEY, $exit->getCode() );
+		$this->assertSame( ViewController::ERROR_DOWNLOAD_FAILED, $exit->getCode() );
+		$this->assertSame( 'Invalid upscale factor', $controller->getView()->errorDescription );
+		$this->assertSame( array(), $this->mock->getRequests() );
 	}
 
 	public function test_load_post_for_an_author_restricted_owner_shows_the_image_permission_error() {
@@ -626,25 +620,28 @@ class UpscaleViewControllerTest extends WP_UnitTestCase {
 		$this->assertObjectNotHasProperty( 'post_id', $controller->getView() );
 	}
 
-	public function test_load_post_with_an_unknown_key_shows_download_failed() {
+	public function test_load_post_with_a_refused_api_answer_shows_download_failed_with_the_reason() {
 		$id = $this->upload();
-		$this->valid_post( $id, 'emr-no-such-key' );
+		$this->valid_post( $id );
+		$this->mock->setKnob( 'forceStatusCode', '-201' );
+		$this->mock->setKnob( 'errorMessage', 'Invalid image format' );
 		$controller = new EMR_TestUpscaleViewController();
 
 		$exit = $this->expect_exit( array( $controller, 'loadPost' ) );
 
 		$this->assertSame( ViewController::ERROR_DOWNLOAD_FAILED, $exit->getCode() );
-		$this->assertSame( array(), $this->mock->getRequests() );
+		$this->assertSame( 'Invalid image format', $controller->getView()->errorDescription );
+		$this->assertSame( array(), $this->mock->requestsTo( '/f/' ) );
 	}
 
-	public function test_load_post_downloads_the_result_and_replaces_the_file_in_place() {
+	public function test_load_post_requests_the_checked_factor_again_downloads_the_result_and_replaces_the_file_in_place() {
 		$id       = $this->upload();
 		$file     = get_attached_file( $id );
 		$original = md5_file( $file );
 		$this->assertSame( 50, wp_get_attachment_metadata( $id )['width'], 'Precondition.' );
 		$bytes = $this->upscaled_jpeg_bytes();
-		$this->stash_result( 'emrupgood', $bytes );
-		$this->valid_post( $id, 'emrupgood' );
+		$this->mock->setKnob( 'resultBytes', $bytes );
+		$this->valid_post( $id, '3' );
 		$controller = new EMR_TestUpscaleViewController();
 		$before     = $this->track_temp_files();
 
@@ -654,6 +651,10 @@ class UpscaleViewControllerTest extends WP_UnitTestCase {
 		$this->assertSame( 'success', $exit->template );
 		$this->assertTrue( $controller->successCalled );
 		$this->assertSame( 0, $controller->errorCalls );
+		$reducer = $this->mock->requestsTo( 'reducer.php' );
+		$this->assertCount( 1, $reducer );
+		$this->assertSame( 3, $reducer[0]['request']['upscale'], 'The form\'s factor, not a stored result.' );
+		$this->assertArrayNotHasKey( 'bg_remove', $reducer[0]['request'] );
 		$this->assertCount( 1, $this->mock->requestsTo( '/f/' ) );
 		clean_post_cache( $id );
 		$this->assertSame( $file, get_attached_file( $id ), 'Same file name and location.' );

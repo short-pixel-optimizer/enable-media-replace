@@ -66,6 +66,8 @@
  *     (the AI credits); null leaves the three out.
  *   - notices (array|string): notices.php body; an array is JSON-encoded,
  *     a string is sent verbatim.
+ *   - resultBytes (string|null): raw bytes the /f/ download URLs serve; when
+ *     null, the bytes of resultFixture.
  *   - resultFixture (string): file in tests/fixtures/ whose bytes the /f/
  *     download URLs serve.
  *
@@ -96,6 +98,7 @@ class MockEmrApi {
 		'captionsQuota'    => 1000,
 		'captionsMade'     => 0,
 		'notices'          => array(),
+		'resultBytes'      => null,
 		'resultFixture'    => 'test-image.jpg',
 	);
 
@@ -160,6 +163,9 @@ class MockEmrApi {
 
 	/** @var string See the class docblock. */
 	public $resultFixture = 'test-image.jpg';
+
+	/** @var string|null Raw result bytes; null serves $resultFixture. */
+	public $resultBytes = null;
 
 	public static function getInstance(): self {
 		if ( null === self::$instance ) {
@@ -498,6 +504,9 @@ class MockEmrApi {
 	 * @return string
 	 */
 	private function resultBytes() {
+		if ( is_string( $this->resultBytes ) ) {
+			return $this->resultBytes;
+		}
 		$path = dirname( __DIR__, 2 ) . '/fixtures/' . $this->resultFixture;
 		if ( file_exists( $path ) ) {
 			return (string) file_get_contents( $path ); // phpcs:ignore WordPress.WP.AlternativeFunctions

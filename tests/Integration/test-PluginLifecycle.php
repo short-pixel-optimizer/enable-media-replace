@@ -176,6 +176,8 @@ class PluginLifecycleTest extends EMR_IntegrationTestCase {
 		NoticeController::makePersistent( $notice, 'emr-lifecycle', HOUR_IN_SECONDS );
 		update_option( 'enable_media_replace', array( 'replace_type' => 'replace' ) );
 		update_option( 'emr_shortpixel_api_key', 'abcdEFGHIJKLMNOPwxyz' );
+		set_transient( 'emr_bulk_secret', 'tab-one', 120 );
+		set_transient( 'emr_ai_credits', array( 'unlimited' => true, 'quota' => 0, 'used' => 0, 'remaining' => 0, 'key' => md5( 'abcdEFGHIJKLMNOPwxyz' ) ), 600 );
 		$this->assertIsArray( get_option( self::NOTICES_OPTION ), 'Sentinel: the notice is stored.' );
 
 		do_action( 'deactivate_' . $this->basename() );
@@ -185,6 +187,8 @@ class PluginLifecycleTest extends EMR_IntegrationTestCase {
 		$this->assertFalse( NoticeController::getInstance()->getNoticeByID( 'emr-lifecycle' ), 'The next request loads no notice.' );
 		$this->assertSame( array( 'replace_type' => 'replace' ), get_option( 'enable_media_replace' ) );
 		$this->assertSame( 'abcdEFGHIJKLMNOPwxyz', get_option( 'emr_shortpixel_api_key' ) );
+		$this->assertFalse( get_transient( 'emr_bulk_secret' ), 'The processor key does not survive a deactivation (SPIO drops bulk-secret).' );
+		$this->assertFalse( get_transient( 'emr_ai_credits' ), 'The cached AI credits go with it (SPIO drops quotaData).' );
 	}
 
 	public function test_a_feature_notice_dismissed_before_deactivation_shows_again_after_reactivation() {

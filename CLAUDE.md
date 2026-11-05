@@ -225,8 +225,13 @@ docs/                      - the documentation and test plan, the bulk design no
   (`emr_remove_background`), `Api::request()` (an `upscale` factor of 2, 3
   or 4 in the posted data replaces `bg_remove` in the reducer body), the
   same script (`js/remove_bg.js`) and stylesheet, and the same
-  `loadPost()`; `UpscaleViewController` only swaps the template and the
-  nonce action (`media_upscale_image`). `UIHelper::getUpscaleFactors()` maps
+  `loadPost()`; `UpscaleViewController` only swaps the template, the
+  nonce action (`media_upscale_image`) and the `$operation`. As in SPIO's
+  editor preview, nothing is stored between the preview and the apply: the
+  preview answers the result URL for display, and `loadPost()` runs
+  `Api::request()` again with the form's options on the original
+  (`apiData()`, `fetchResult()`), then downloads that result
+  (`Api::download()`). The second API call is free of charge. `UIHelper::getUpscaleFactors()` maps
   each factor to the widest source it accepts; `isUpscalable()` hides the
   entry points above the largest one.
 - **Hooks for other plugins:** `wp_handle_replace` (before the swap),
@@ -315,7 +320,9 @@ docs/                      - the documentation and test plan, the bulk design no
   skipPreparing, recheckActive, loadLogFile), settings to
   `wp_ajax_emr_bulk_settings`. Every action needs its own nonce and
   `manage_options`. The first processor claims the `emr_bulk_secret`
-  transient (2 min, renewed per tick); other tabs get PROCESSOR_ACTIVE and
+  transient (2 min, renewed per tick; deleted on deactivation and uninstall
+  with the `emr_ai_credits` transient, as SPIO drops `bulk-secret` and
+  `quotaData`); other tabs get PROCESSOR_ACTIVE and
   recheck after three minutes. Everything the scripts need is localized as
   `emrBulk` (`EnableMediaReplacePlugin::bulkScriptData()`); nothing is
   inline. Settings live in `enable_media_replace` under `bulk_*` keys

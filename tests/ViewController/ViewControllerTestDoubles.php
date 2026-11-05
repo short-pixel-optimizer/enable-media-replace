@@ -191,8 +191,12 @@ if ( ! class_exists( 'EMR_ViewExit', false ) ) {
 			$this->setView( $post_id, $params );
 		}
 
-		public function callReplaceBackground( $post_id, $key ) {
-			return $this->replaceBackground( $post_id, $key );
+		public function callFetchResult( $post_id ) {
+			return $this->fetchResult( $post_id );
+		}
+
+		public function callApiData( $post_id ) {
+			return $this->apiData( $post_id );
 		}
 	}
 
@@ -206,8 +210,12 @@ if ( ! class_exists( 'EMR_ViewExit', false ) ) {
 			$this->setView( $post_id, $params );
 		}
 
-		public function callReplaceBackground( $post_id, $key ) {
-			return $this->replaceBackground( $post_id, $key );
+		public function callFetchResult( $post_id ) {
+			return $this->fetchResult( $post_id );
+		}
+
+		public function callApiData( $post_id ) {
+			return $this->apiData( $post_id );
 		}
 	}
 }

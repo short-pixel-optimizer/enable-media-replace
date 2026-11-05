@@ -18,9 +18,8 @@
  * handled by the inherited loadPost(). Nonce: action `media_upscale_image`, field
  * `emr_nonce`. Inputs:
  * - ID (hidden) attachment id
- * - key (hidden) empty on load; js/remove_bg.js fills it with the result key
- *   returned by the `emr_remove_background` AJAX call
- * - upscale (radio) one of the factors of UIHelper::getUpscaleFactors(); a factor is
+ * - upscale (radio; loadPost() runs the request again with the checked factor on the
+ *   original, nothing of the preview is stored) one of the factors of UIHelper::getUpscaleFactors(); a factor is
  *   disabled when its maximum width is at or below the metadata width of the image,
  *   the first enabled one is checked, and with none enabled the help text reads "This
  *   image is too large to be upscaled" and the Preview button is disabled
@@ -87,7 +86,6 @@ $scale_checked = false;
 
 
 	<input type="hidden" name="ID" value="<?php echo intval($attachment_id); ?>" />
-	<input type='hidden' name='key' value='' />
 
 		<div class="editor-wrapper" >
 			<section class='image_chooser wrapper'>

@@ -78,7 +78,7 @@ test.describe('Upscale', () => {
 		await expect(screen.resultImage).toHaveCount(0);
 		await expect(screen.resultPreview).toContainText('Upscaling image…');
 		await expect(screen.form.locator('input[name="ID"]')).toHaveValue(String(emr.seed.attachment_id));
-		await expect(screen.resultKey).toHaveValue('');
+		await expect(screen.form.locator('input[name="key"]')).toHaveCount(0); // nothing of the preview is stored; the apply step requests again
 		await expect(screen.replaceButton).toBeDisabled();
 		await expect(screen.previewButton).toBeEnabled();
 		await expect(screen.replaceInsteadLink).toHaveAttribute('href', /action=media_replace.*_wpnonce=/);
@@ -154,7 +154,6 @@ test.describe('Upscale', () => {
 			})
 			.toBe(true);
 		await expect(screen.resultDimensions).toHaveText('50 x 50');
-		await expect(screen.resultKey).not.toHaveValue('');
 		await expect(screen.replaceButton).toBeEnabled();
 		await expect(screen.previewButton).toBeDisabled();
 		// Another factor invalidates the result: Preview again, Replace waits.

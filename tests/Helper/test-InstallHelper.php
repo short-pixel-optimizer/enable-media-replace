@@ -74,6 +74,21 @@ class InstallHelperTest extends WP_UnitTestCase {
 		$this->assertFalse( get_option( 'emr_url_cache' ) );
 	}
 
+	/** As SPIO deletes `bulk-secret` and `quotaData` on uninstall and deactivation. */
+	public function test_uninstall_and_deactivation_drop_the_processor_key_and_the_cached_ai_credits() {
+		foreach ( array( 'unInstallPlugin', 'deactivatePlugin' ) as $hook ) {
+			set_transient( 'emr_bulk_secret', 'tab-one', 120 );
+			set_transient( 'emr_ai_credits', array( 'unlimited' => false, 'quota' => 1000, 'used' => 1, 'remaining' => 999, 'key' => md5( 'k' ) ), 600 );
+			$this->assertSame( 'tab-one', get_transient( 'emr_bulk_secret' ), 'Precondition.' );
+			$this->assertIsArray( get_transient( 'emr_ai_credits' ), 'Precondition.' );
+
+			InstallHelper::$hook();
+
+			$this->assertFalse( get_transient( 'emr_bulk_secret' ), $hook . ' drops the processor key.' );
+			$this->assertFalse( get_transient( 'emr_ai_credits' ), $hook . ' drops the cached AI credits.' );
+		}
+	}
+
 	public function test_uninstall_without_stored_options_returns_null_and_leaves_none() {
 		delete_option( 'enable_media_replace' );
 		delete_option( 'emr_news' );

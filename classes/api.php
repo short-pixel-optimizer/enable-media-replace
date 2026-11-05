@@ -18,16 +18,21 @@ use stdClass;
  *
  * Client for the ShortPixel remove-background service.
  *
- * Lifecycle: `new Api` per use (Ajax::remove_background() for the request,
- * RemoveBackGroundViewController::replaceBackground() for the download). Not a singleton,
+ * Lifecycle: `new Api` per use (Ajax::remove_background() for the preview,
+ * RemoveBackGroundViewController::fetchResult() for the apply step). Not a singleton,
  * registers no hooks. State: a retry counter and the `refresh` flag, both per instance, so
  * the retry loop in request() lives on one object.
  *
  * Two endpoints: without an API key the free reducer (`http://.../free-reducer.php`,
  * JSON headers, 60 s timeout, max 9 requests); with a key the authenticated reducer
  * (`https://.../reducer.php`, 15 s timeout, max 29 requests) after an Unlimited-plan check
- * and a one-time remote cache purge. The result URL is handed to the browser as a
- * transient key (handleSuccess()) and downloaded later (handleDownload()).
+ * and a one-time remote cache purge.
+ *
+ * Nothing is stored between the preview and the apply step, as in ShortPixel Image
+ * Optimizer's editor preview: the preview (Ajax::remove_background()) answers the result URL
+ * for display only, and the apply step (RemoveBackGroundViewController::loadPost()) runs
+ * request() again with the same options on the original and downloads that result
+ * (download()). The second call is free of charge at the API.
  */
 class Api {
 
@@ -98,15 +103,18 @@ class Api {
 	 * Serves both screens: a background removal (the default) or, when
 	 * `$posted_data['upscale']` is 2, 3 or 4, an upscale by that factor.
 	 *
+	 * Called twice per operation: by the AJAX preview with `$_POST`, and by the apply step
+	 * with the array RemoveBackGroundViewController::apiData() builds from the form.
+	 *
 	 * Sequence:
-	 * 1. Reads `attachment_id` directly from `$_POST` (not from $posted_data); null gives
+	 * 1. Reads `attachment_id` from $posted_data; a missing one gives
 	 *    "No attachment ID given", a failed checkImagePermission() "No permission for user".
 	 *    `upscale` is intval() of `$posted_data['upscale']`, 0 when absent; any value other
 	 *    than 0, 2, 3 or 4 gives "Invalid upscale factor" before anything is saved or sent.
 	 * 2. Saves `bg_type`, `bg_color` (default '#ffffff') and `bg_transparency` from
-	 *    `$_POST['background']` into the `enable_media_replace` option before any request is
-	 *    sent, and again on every retry. Skipped for an upscale, which has no background
-	 *    options to remember.
+	 *    `$posted_data['background']` into the `enable_media_replace` option before any
+	 *    request is sent, and again on every retry. Skipped for an upscale, which has no
+	 *    background options to remember.
 	 * 3. `bg_remove`: '1' for transparent; for type 'solid' the colour from
 	 *    `$posted_data['background']`, with a two-character alpha suffix when the
 	 *    transparency is 0-100 ('FF' for 100). `background.type` is read without isset(),
@@ -124,9 +132,9 @@ class Api {
 	 *    "reasonable amount of time" message. The free path can sleep about 60 s in total on
 	 *    top of 60 s per request timeout, which can hit PHP's max_execution_time.
 	 * 7. Response status (string compare): '2' is done: `image` is the LosslessURL (the
-	 *    LossyURL branch needs `lossy` '1'/'2' and never runs because it is the integer 0),
-	 *    handleSuccess() stores it and returns the `key`, and `url`, `settings` (a
-	 *    "key:value" summary of the body) and a `ts` cache-buster on `image` are added.
+	 *    LossyURL branch needs `lossy` '1'/'2' and never runs because it is the integer 0)
+	 *    with a `ts` cache-buster, `url` the source URL and `settings` a "key:value"
+	 *    summary of the body. Nothing is stored.
 	 *    '1' is still processing: request() calls itself recursively and returns that
 	 *    result. Anything else copies the API message; a message containing
 	 *    "Quota exceeded" is replaced with an upgrade message and `quota_exceeded` true.
@@ -152,17 +160,17 @@ class Api {
 	 *       (loadPost()) refuses. Suggested fix: refuse here, next to checkImagePermission(),
 	 *       with the permission message and no request, when the feature is off for the user.
 	 *
-	 * @param  array $posted_data The AJAX POST data; only `upscale`, `background.type`,
-	 *                            `.color` and `.transparency` are read from it.
+	 * @param  array $posted_data `attachment_id`, `upscale`, `background.type`, `.color`
+	 *                            and `.transparency`.
 	 * @return stdClass $result `success`, `image`, `message`, and depending on the outcome
-	 *                          `key`, `url`, `settings`, `plan_expired`, `quota_exceeded`.
+	 *                          `url`, `settings`, `plan_expired`, `quota_exceeded`.
 	 */
 	public function request( array $posted_data ) {
 		$bg_remove         = '1';
 		$compression_level = 0; //  intval($posted_data['compression_level']); // off for now.
 		$upscale           = isset($posted_data['upscale']) ? intval($posted_data['upscale']) : 0; // 0 is no upscale, else 2, 3 or 4.
 
-		$attachment_id = isset($_POST['attachment_id']) ? intval($_POST['attachment_id']) : null;
+		$attachment_id = isset($posted_data['attachment_id']) ? intval($posted_data['attachment_id']) : null;
 		$attachment = get_post($attachment_id);
 
 
@@ -193,9 +201,9 @@ class Api {
 		$url = $replaceController->getSourceUrl();
 
 		$settings = get_option('enable_media_replace', array()); // save settings and show last loaded.
-		$settings['bg_type'] = isset($_POST['background']['type']) ? sanitize_text_field($_POST['background']['type']) : false;
-		$settings['bg_color'] = isset($_POST['background']['color']) ? sanitize_text_field($_POST['background']['color']) : '#ffffff'; // default to white.
-		$settings['bg_transparency'] = isset($_POST['background']['transparency']) ? sanitize_text_field($_POST['background']['transparency']) : false;
+		$settings['bg_type'] = isset($posted_data['background']['type']) ? sanitize_text_field($posted_data['background']['type']) : false;
+		$settings['bg_color'] = isset($posted_data['background']['color']) ? sanitize_text_field($posted_data['background']['color']) : '#ffffff'; // default to white.
+		$settings['bg_transparency'] = isset($posted_data['background']['transparency']) ? sanitize_text_field($posted_data['background']['transparency']) : false;
 
 		if (0 === $upscale) { // Upscale has no background settings to remember.
 			update_option('enable_media_replace', $settings, false);
@@ -320,14 +328,10 @@ class Api {
 							$result->image = $json[0]->LosslessURL;
 						}
 
-						$key = $this->handleSuccess($result);
-						$result->key = $key;
 						$result->url = $url;
 						$result->image = add_query_arg('ts', time(), $result->image);
 
 						$result->settings = $settingsData;
-
-//						$this->handleSuccess($result);
 					} elseif ( is_array( $json ) && '1' === $json[0]->Status->Code ) {
 						return $this->request( $posted_data );
 					} else {
@@ -414,47 +418,24 @@ class Api {
 	}
 
 	/**
-	 * Stores the result image URL in a transient and returns its key.
+	 * Downloads a result image to a temporary file (the apply step, after a second
+	 * request() on the original).
 	 *
-	 * The key is `wp_hash($nonce . $result->image, 'logged_in')`, where $nonce is
-	 * `$_POST['nonce']` (the AJAX nonce) or, when absent, wp_create_nonce() for action -1.
-	 * The URL is stored as transient `emr_<key>` for 30 minutes (before the `ts`
-	 * cache-buster is added). The browser posts the key back to `do_background_replace`.
+	 * Downloads $url with FileSystemController::downloadFile() into a wp_tempnam() file.
 	 *
-	 * @param \stdClass $result Result object with `image` set to the remote URL.
-	 * @return string The transient key (without the `emr_` prefix).
-	 */
-	public function handleSuccess($result)
-	{
-		 // $fs = emr()->filesystem();
-		//	$result = $fs->downloadFile($result->image, wp_tempnam($result->image));
-		$nonce = isset($_POST['nonce']) ? sanitize_text_field($_POST['nonce']) : wp_create_nonce();
-		$key = wp_hash($nonce . $result->image, 'logged_in');
-
-		set_transient('emr_' . $key, $result->image, 30 * MINUTE_IN_SECONDS);
-		return $key;
-	}
-
-	/**
-	 * Downloads the result image stored under a transient key to a temporary file.
-	 *
-	 * Reads transient `emr_<key>`; when it has expired, returns a "not available anymore"
-	 * message. Otherwise downloads the URL with FileSystemController::downloadFile() into a
-	 * wp_tempnam() file. The transient is not deleted after use.
-	 *
-	 * @param string $key Transient key from handleSuccess().
+	 * @param string $url The result URL request() answered in `image`.
 	 * @return \stdClass `success`; `image` is the temp file path on success; `message` on
 	 *                   failure.
 	 */
-	public function handleDownload($key)
+	public function download($url)
 	{
-		$url = get_transient('emr_' . $key);
 		$result = $this->getResponseObject();
+		$url    = (string) $url;
 
-		if ($url === false)
+		if ('' === $url)
 		{
-			 	$result->message = __('This file does not seem to be available anymore. Please try again.', 'enable-media-replace');
-				return $result;
+			$result->message = __('This file does not seem to be available anymore. Please try again.', 'enable-media-replace');
+			return $result;
 		}
 
 		$fs = emr()->filesystem();

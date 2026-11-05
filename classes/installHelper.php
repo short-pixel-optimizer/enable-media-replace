@@ -9,6 +9,7 @@ use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
 use EnableMediaReplace\Notices\NoticeController as Notices;
 use EnableMediaReplace\Controller\Bulk\BulkController;
 use EnableMediaReplace\Controller\Bulk\CronController;
+use EnableMediaReplace\Controller\Bulk\BulkAjaxController;
 use EnableMediaReplace\Controller\Bulk\QueueController;
 use EnableMediaReplace\PromoBanner\PromoBanner;
 
@@ -48,8 +49,10 @@ class InstallHelper
 		 * the queue (its rows in the shared `shortpixel_queue` table and the
 		 * `shortqwp_emr` option; ShortQ drops the table itself only when no
 		 * rows of any plugin remain, so an active SPIO or RTA install keeps
-		 * its queue), the bulk logs option, the cached plan check and the
-		 * promo banner dismissals option (the module's own uninstall()).
+		 * its queue), the bulk logs option, the cached plan check, the bulk
+		 * processor key and the cached AI credits (as SPIO deletes `bulk-secret`
+		 * and `quotaData` on both hooks) and the promo banner dismissals option
+		 * (the module's own uninstall()).
 		 *
 		 * Registered from the root file as 'uninstallPlugin'; the declared name
 		 * differs only in case, which PHP resolves.
@@ -73,17 +76,23 @@ class InstallHelper
 			QueueController::uninstallPlugin();
 			BulkController::uninstallPlugin();
 			delete_transient( QueueController::PLAN_TRANSIENT );
+			delete_transient( BulkAjaxController::SECRET_TRANSIENT );
+			ApiKeyManager::getInstance()->forgetAiCredits();
 			wp_clear_scheduled_hook( CronController::EVENT );
 			PromoBanner::uninstall();
 		}
 
 		/**
-		 * Deactivation callback: clears the stored admin notices and the bulk cron event.
+		 * Deactivation callback: clears the stored admin notices, the bulk cron
+		 * event, the bulk processor key and the cached AI credits.
 		 *
 		 * NoticeController::resetNotices() deletes the `EnableMediaReplace-notices`
 		 * option, which holds persistent notices and their dismissal state, so a
 		 * dismissed notice (for example the feature notice) shows again after
-		 * reactivation.
+		 * reactivation. The processor key and the AI credits go the way SPIO
+		 * drops `bulk-secret` and `quotaData` on deactivation: a stale key would
+		 * block every bulk tab after reactivation, and the credits belong to a
+		 * key and plan that may change while the plugin is off.
 		 *
 		 * @return void
 		 */
@@ -91,5 +100,7 @@ class InstallHelper
 		{
 			Notices::resetNotices();
 			wp_clear_scheduled_hook( CronController::EVENT );
+			delete_transient( BulkAjaxController::SECRET_TRANSIENT );
+			ApiKeyManager::getInstance()->forgetAiCredits();
 		}
 }

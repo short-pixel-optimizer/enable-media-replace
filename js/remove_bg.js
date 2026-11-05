@@ -88,7 +88,6 @@ jQuery(document).ready(function ($) {
 				// preview.removeClass('not_image');
 				 preview.addClass('is_image');
 
-				 $('input[name="key"]').val(response.key);
 				 $('input[type=radio][name=background_type]').attr('disabled', false);
          $('input[type=radio][name=compression_level]').attr('disabled', false);
          // Preview stays disabled until an option changes: the same settings give the same result.

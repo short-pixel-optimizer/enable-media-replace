@@ -559,8 +559,9 @@ export class ErrorScreen {
  * The remove-background screen, views/prepare-remove-background.php and
  * js/remove_bg.js. Preview runs the `emr_remove_background` AJAX call; on
  * success the script prepends an <img> (the mock's LosslessURL, answered by
- * fixtures.ts from the mock stash) to the last `.image_placeholder`, fills
- * the hidden `key` and enables Replace.
+ * fixtures.ts from the mock stash) to the last `.image_placeholder` and
+ * enables Replace; the apply step sends the image to the API again with the
+ * form's options (nothing of the preview is stored).
  */
 export class RemoveBackgroundScreen {
 	constructor(readonly page: Page) {}
@@ -615,10 +616,6 @@ export class RemoveBackgroundScreen {
 
 	get transparency(): Locator {
 		return this.page.locator('#bg_transparency');
-	}
-
-	get resultKey(): Locator {
-		return this.page.locator('input[name="key"]');
 	}
 
 	get previewButton(): Locator {
