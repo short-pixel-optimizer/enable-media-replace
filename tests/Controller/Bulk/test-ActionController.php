@@ -19,6 +19,7 @@ require_once __DIR__ . '/BulkTestHelpers.php';
 use EnableMediaReplace\Controller\Bulk\ActionController;
 use EnableMediaReplace\Controller\Bulk\BackupController;
 use EnableMediaReplace\Controller\Bulk\BulkApi;
+use EnableMediaReplace\Controller\Bulk\BulkAjaxController;
 use EnableMediaReplace\Controller\Bulk\BulkController;
 use EnableMediaReplace\Controller\Bulk\BulkQueue;
 use EnableMediaReplace\Controller\Bulk\QueueController;
@@ -178,7 +179,7 @@ class BulkActionControllerTest extends WP_UnitTestCase {
 		wp_update_post( array( 'ID' => $gifId, 'post_mime_type' => 'image/gif' ) );
 		$gif = new QueueItem( array( 'imageModel' => BulkImage::getById( $gifId ) ) );
 		$this->assertFalse( $c->checkItem( $gif, 'remove_background' ) );
-		$this->assertSame( QueueItem::FILE_STATUS_ERROR, $gif->result()->fileStatus );
+		$this->assertSame( BulkImage::FILE_STATUS_ERROR, $gif->result()->fileStatus );
 
 		$missingId = $this->makeImageAttachment( 300, 200 );
 		unlink( get_attached_file( $missingId ) );
@@ -211,7 +212,7 @@ class BulkActionControllerTest extends WP_UnitTestCase {
 		$result = $qItem->result();
 		$this->assertFalse( $result->is_error, $result->message );
 		$this->assertTrue( $result->is_done );
-		$this->assertSame( QueueItem::FILE_STATUS_SUCCESS, $result->fileStatus );
+		$this->assertSame( BulkImage::FILE_STATUS_SUCCESS, $result->fileStatus );
 		$this->assertSame( 'remove_background', $result->action );
 		$this->assertSame( 'Background removed', $result->message );
 
@@ -281,7 +282,7 @@ class BulkActionControllerTest extends WP_UnitTestCase {
 		$qItem->addResult( $controller->api()->returnFailure( BulkApi::STATUS_ERROR, 'Invalid image format' ) );
 
 		$controller->handleAPIResult( $qItem );
-		$this->assertSame( QueueItem::FILE_STATUS_ERROR, $qItem->result()->fileStatus );
+		$this->assertSame( BulkImage::FILE_STATUS_ERROR, $qItem->result()->fileStatus );
 		$this->assertStringContainsString( 'Invalid image format', $qItem->result()->message );
 		$this->assertStringContainsString( (string) $id, $qItem->result()->message, 'Attachment ID appended to API errors.' );
 		$this->assertSame( ShortQ::QSTATUS_FATAL, (int) $this->queueRows( $id )[0]->status );
@@ -291,20 +292,20 @@ class BulkActionControllerTest extends WP_UnitTestCase {
 		$quota->newRemoveBackgroundAction();
 		$quota->addResult( $controller->api()->returnRetry( BulkApi::STATUS_QUOTA_EXCEEDED, 'Quota exceeded.' ) );
 		$controller->handleAPIResult( $quota );
-		$this->assertSame( QueueController::NOQUOTA, $quota->result()->error );
+		$this->assertSame( BulkAjaxController::NOQUOTA, $quota->result()->error );
 		$this->assertFalse( $quota->result()->is_done );
 
 		$key = new QueueItem( array( 'imageModel' => BulkImage::getById( $id ) ) );
 		$key->newRemoveBackgroundAction();
 		$key->addResult( $controller->api()->returnFailure( BulkApi::STATUS_NO_KEY, 'Wrong key' ) );
 		$controller->handleAPIResult( $key );
-		$this->assertSame( QueueController::APIKEY_FAILED, $key->result()->error );
+		$this->assertSame( BulkAjaxController::APIKEY_FAILED, $key->result()->error );
 
 		$server = new QueueItem( array( 'imageModel' => BulkImage::getById( $id ) ) );
 		$server->newRemoveBackgroundAction();
 		$server->addResult( $controller->api()->returnRetry( BulkApi::STATUS_MAINTENANCE, 'Maintenance' ) );
 		$controller->handleAPIResult( $server );
-		$this->assertSame( QueueController::QUEUE_FULL, $server->result()->error, 'Maintenance and a full API queue defer, as in SPIO.' );
+		$this->assertSame( BulkAjaxController::QUEUE_FULL, $server->result()->error, 'Maintenance and a full API queue defer, as in SPIO.' );
 	}
 
 	public function test_a_waiting_result_keeps_the_item_pending_until_the_retry_limit() {
@@ -315,7 +316,7 @@ class BulkActionControllerTest extends WP_UnitTestCase {
 		$controller->handleAPIResult( $qItem );
 		$this->assertFalse( $qItem->result()->is_error );
 		$this->assertFalse( $qItem->result()->is_done );
-		$this->assertSame( QueueItem::FILE_STATUS_PENDING, $qItem->result()->fileStatus );
+		$this->assertSame( BulkImage::FILE_STATUS_PENDING, $qItem->result()->fileStatus );
 		$this->assertSame( 'Processing - waiting for results', $qItem->result()->message );
 		$this->assertSame( ShortQ::QSTATUS_INPROCESS, (int) $this->queueRows( $id )[0]->status );
 
@@ -364,7 +365,7 @@ class BulkActionControllerTest extends WP_UnitTestCase {
 		$this->assertFalse( $restore->result()->is_error, $restore->result()->message );
 		$this->assertTrue( $restore->result()->is_done );
 		$this->assertSame( BulkApi::STATUS_NOT_API, $restore->result()->apiStatus );
-		$this->assertSame( QueueItem::FILE_STATUS_RESTORED, $restore->result()->fileStatus, 'Restored, not done: the screen opens no preview.' );
+		$this->assertSame( BulkImage::FILE_STATUS_RESTORED, $restore->result()->fileStatus, 'Restored, not done: the screen opens no preview.' );
 		$this->assertNull( $restore->result()->original, 'No before/after URLs for a restore.' );
 		$this->assertNull( $restore->result()->optimized );
 		$this->assertStringContainsString( 'Restore completed', $restore->result()->message );

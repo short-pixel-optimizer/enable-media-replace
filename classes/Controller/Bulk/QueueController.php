@@ -35,19 +35,6 @@ use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
  */
 class QueueController
 {
-	/**
-	 * Error codes for the browser (js/bulk/emr-processor.js aStatusError):
-	 * -1 to -8 are SPIO's AjaxController values; PLAN_EXPIRED is EMR's own.
-	 */
-	const PROCESSOR_ACTIVE = -1;
-	const NONCE_FAILED     = -2;
-	const NO_ACTION        = -3;
-	const APIKEY_FAILED    = -4;
-	const NOQUOTA          = -5;
-	const SERVER_ERROR     = -6;
-	const NO_ACCESS        = -7;
-	const QUEUE_FULL       = -8; // the API's queue is full or in maintenance: the screen defers
-	const PLAN_EXPIRED     = -9;
 
 	/** Transient holding a positive Unlimited plan check. */
 	const PLAN_TRANSIENT = 'emr_bulk_plan_ok';
@@ -142,14 +129,14 @@ class QueueController
 			if (false === $keyManager->hasApiKey()) {
 				$json          = $this->getJsonResponse();
 				$json->status  = false;
-				$json->error   = self::APIKEY_FAILED;
+				$json->error   = BulkAjaxController::APIKEY_FAILED;
 				$json->message = __('An API key is required for the bulk', 'enable-media-replace');
 				return $json;
 			}
 			if (false === $this->verifyPlan($keyManager)) {
 				$json          = $this->getJsonResponse();
 				$json->status  = false;
-				$json->error   = self::PLAN_EXPIRED;
+				$json->error   = BulkAjaxController::PLAN_EXPIRED;
 				$json->message = __('The bulk needs an active Unlimited plan. Please check your API key at shortpixel.com.', 'enable-media-replace');
 				return $json;
 			}
@@ -205,7 +192,7 @@ class QueueController
 
 			if (is_null($controller)) {
 				Log::addError('No controller found for this action', $action);
-				$qItem->addResult(array('fileStatus' => QueueItem::FILE_STATUS_UNPROCESSED, 'is_error' => true, 'is_done' => true, 'message' => __('No action found', 'enable-media-replace')));
+				$qItem->addResult(array('fileStatus' => BulkImage::FILE_STATUS_UNPROCESSED, 'is_error' => true, 'is_done' => true, 'message' => __('No action found', 'enable-media-replace')));
 				$Q->itemFailed($qItem, true);
 				$send = false;
 			} else {
@@ -216,7 +203,7 @@ class QueueController
 				$qItem->addResult(array(
 					'apiStatus'  => BulkApi::STATUS_NOT_API,
 					'message'    => __('File error. The attachment could not be loaded with this ID', 'enable-media-replace'),
-					'fileStatus' => QueueItem::FILE_STATUS_ERROR,
+					'fileStatus' => BulkImage::FILE_STATUS_ERROR,
 					'is_done'    => true,
 					'is_error'   => true,
 				));
@@ -241,10 +228,10 @@ class QueueController
 			if (true === $qItem->result()->is_error) {
 				// As SPIO: only terminal file errors reach the bulk log; a quota, key,
 				// queue-full or connection retry does not write a line per tick.
-				if (true === $this->args['is_bulk'] && true === $qItem->result()->is_done && QueueItem::FILE_STATUS_ERROR === $qItem->result()->fileStatus) {
+				if (true === $this->args['is_bulk'] && true === $qItem->result()->is_done && BulkImage::FILE_STATUS_ERROR === $qItem->result()->fileStatus) {
 					$this->logBulk($Q, $qItem);
 				}
-				if (in_array($qItem->result()->error, array(self::NOQUOTA, self::APIKEY_FAILED), true)) {
+				if (in_array($qItem->result()->error, array(BulkAjaxController::NOQUOTA, BulkAjaxController::APIKEY_FAILED), true)) {
 					delete_transient(self::PLAN_TRANSIENT); // the next tick asks the API about the plan again
 				}
 			}

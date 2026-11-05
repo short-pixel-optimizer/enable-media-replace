@@ -32,17 +32,6 @@ use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
  */
 class QueueItem
 {
-	/**
-	 * File status codes, same values as ShortPixel Image Optimizer's ImageModel.
-	 * The bulk screen opens the before/after preview on FILE_STATUS_SUCCESS
-	 * only; a restore answers FILE_STATUS_RESTORED, so it never does.
-	 */
-	const FILE_STATUS_ERROR = -1;
-	const FILE_STATUS_UNPROCESSED = 0;
-	const FILE_STATUS_PENDING = 1;
-	const FILE_STATUS_SUCCESS = 2;
-	const FILE_STATUS_RESTORED = 3;
-
 	/** @var BulkImage|null */
 	protected $imageModel;
 

@@ -42,6 +42,18 @@ class BulkImage
 	/** The operations a marker can record. */
 	const OPERATIONS = array('background', 'upscale');
 
+	/**
+	 * File status codes of a result (QueueItemResult::$fileStatus), on the
+	 * image as SPIO keeps them on its ImageModel, same values. The bulk screen
+	 * opens the before/after preview on FILE_STATUS_SUCCESS only; a restore
+	 * answers FILE_STATUS_RESTORED, so it never does.
+	 */
+	const FILE_STATUS_ERROR = -1;
+	const FILE_STATUS_UNPROCESSED = 0;
+	const FILE_STATUS_PENDING = 1;
+	const FILE_STATUS_SUCCESS = 2;
+	const FILE_STATUS_RESTORED = 3;
+
 	/** @var int */
 	protected $id;
 

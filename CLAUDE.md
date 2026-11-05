@@ -321,8 +321,10 @@ docs/                      - the documentation and test plan, the bulk design no
   `wp_enqueue_media`, localized `emrMediaFilter`) and a `pre_get_posts` listener
   that appends a `posts_where` clause on the operation's marker meta key; a
   restore removes the markers, so restored images drop out. Browser error codes
-  are SPIO's -1 to -8 (`QUEUE_FULL` -8 defers the processor) plus EMR's
-  `PLAN_EXPIRED` -9; a tick answers status 1 and keeps item errors on the items.
+  live on `BulkAjaxController` (SPIO: `AjaxController`): SPIO's -1 to -8
+  (`QUEUE_FULL` -8 defers the processor) plus EMR's `PLAN_EXPIRED` -9; the
+  file statuses `FILE_STATUS_*` live on `BulkImage` (SPIO: `ImageModel`); a
+  tick answers status 1 and keeps item errors on the items.
   Screen actions go to `wp_ajax_emr_bulk_request` (`screen_action`:
   createBulk, startBulk, finishBulk, startRestore, getStatus,
   skipPreparing, recheckActive, loadLogFile), settings to

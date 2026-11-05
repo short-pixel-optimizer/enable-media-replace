@@ -28,6 +28,7 @@ require_once __DIR__ . '/ReplaceFlowHelpers.php';
 use EnableMediaReplace\ApiKeyManager;
 use EnableMediaReplace\Controller\Bulk\BackupController;
 use EnableMediaReplace\Controller\Bulk\BulkApi;
+use EnableMediaReplace\Controller\Bulk\BulkAjaxController;
 use EnableMediaReplace\Controller\Bulk\BulkController;
 use EnableMediaReplace\Controller\Bulk\BulkQueue;
 use EnableMediaReplace\Controller\Bulk\QueueController;
@@ -318,7 +319,7 @@ class BulkFlowTest extends EMR_IntegrationTestCase {
 
 		$this->assertSame( 1, $json->status, 'As SPIO: the tick succeeded, the error is the item\'s.' );
 		$this->assertObjectNotHasProperty( 'error', $json );
-		$this->assertSame( QueueController::NOQUOTA, $json->media->results[0]->error );
+		$this->assertSame( BulkAjaxController::NOQUOTA, $json->media->results[0]->error );
 		$this->assertFalse( $json->media->results[0]->is_done );
 		$this->assertSame( BulkApi::STATUS_QUOTA_EXCEEDED, $json->media->results[0]->apiStatus );
 		$this->assertSame( '1', $json->media->stats->in_process, 'The item is kept for a later retry.' );
@@ -366,7 +367,7 @@ class BulkFlowTest extends EMR_IntegrationTestCase {
 		$json = ( new QueueController() )->processQueue();
 
 		$this->assertFalse( $json->status );
-		$this->assertSame( QueueController::PLAN_EXPIRED, $json->error );
+		$this->assertSame( BulkAjaxController::PLAN_EXPIRED, $json->error );
 		$this->assertCount( 1, $this->api->requestsTo( 'api-status.php' ) );
 		$this->assertCount( 0, $this->api->requestsTo( 'reducer.php' ) );
 		$this->assertTrue( ( new BulkQueue() )->getStats()->is_preparing, 'Nothing was prepared yet.' );

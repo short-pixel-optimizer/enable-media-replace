@@ -51,14 +51,14 @@ window.EmrProcessor = {
 		5: 'PREPARING_OVERLIMIT',
 		11: 'PREPARING_RECOUNT'
 	},
-	fStatus: { // QueueItem::FILE_STATUS_*
+	fStatus: { // BulkImage::FILE_STATUS_* (SPIO: ImageModel)
 		'-1': 'FILE_ERROR',
 		0: 'FILE_UNPROCESSED',
 		1: 'FILE_PENDING',
 		2: 'FILE_DONE',
 		3: 'FILE_RESTORED' // a restored item: no preview (SPIO's screen-bulk.js does the same)
 	},
-	aStatusError: {
+	aStatusError: { // BulkAjaxController error codes (SPIO: AjaxController)
 		'-1': 'PROCESSOR_ACTIVE',
 		'-2': 'NONCE_FAILED',
 		'-3': 'NO_ACTION',

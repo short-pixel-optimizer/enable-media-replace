@@ -10,6 +10,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+use EnableMediaReplace\Model\Bulk\BulkImage;
 use EnableMediaReplace\Model\Bulk\QueueItem;
 use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
 
@@ -163,7 +164,7 @@ class ResponseController
 		if (self::ISSUE_BACKUP_CREATE === $item->issue_type && ! empty($item->fileName)) {
 			$text .= sprintf(__(' - file %s', 'enable-media-replace'), $item->fileName);
 		}
-		if (QueueItem::FILE_STATUS_ERROR === $item->fileStatus || BulkApi::STATUS_FAIL === $item->apiStatus) {
+		if (BulkImage::FILE_STATUS_ERROR === $item->fileStatus || BulkApi::STATUS_FAIL === $item->apiStatus) {
 			$text .= sprintf(__(' (Attachment ID %d)', 'enable-media-replace'), $item->item_id);
 		}
 		return $text;

@@ -142,7 +142,7 @@ class ActionController
 			$qItem->addResult(array(
 				'message'    => __('File error. The attachment could not be loaded with this ID', 'enable-media-replace'),
 				'apiStatus'  => BulkApi::STATUS_NOT_API,
-				'fileStatus' => QueueItem::FILE_STATUS_ERROR,
+				'fileStatus' => BulkImage::FILE_STATUS_ERROR,
 				'is_done'    => true,
 				'is_error'   => true,
 			));
@@ -186,7 +186,7 @@ class ActionController
 				'message'    => $reason,
 				'is_error'   => true,
 				'is_done'    => true,
-				'fileStatus' => QueueItem::FILE_STATUS_ERROR,
+				'fileStatus' => BulkImage::FILE_STATUS_ERROR,
 			));
 			return false;
 		}
@@ -271,13 +271,13 @@ class ActionController
 			$error_code = null;
 
 			if (BulkApi::STATUS_ERROR === $apistatus) {
-				$qItem->addResult(array('fileStatus' => QueueItem::FILE_STATUS_ERROR));
+				$qItem->addResult(array('fileStatus' => BulkImage::FILE_STATUS_ERROR));
 			} elseif (BulkApi::STATUS_QUOTA_EXCEEDED === $apistatus) {
-				$error_code = QueueController::NOQUOTA;
+				$error_code = BulkAjaxController::NOQUOTA;
 			} elseif (BulkApi::STATUS_NO_KEY === $apistatus) {
-				$error_code = QueueController::APIKEY_FAILED;
+				$error_code = BulkAjaxController::APIKEY_FAILED;
 			} elseif (BulkApi::STATUS_QUEUE_FULL === $apistatus || BulkApi::STATUS_MAINTENANCE === $apistatus) {
-				$error_code = QueueController::QUEUE_FULL; // the screen defers, as SPIO's does
+				$error_code = BulkAjaxController::QUEUE_FULL; // the screen defers, as SPIO's does
 			}
 
 			if (! is_null($error_code)) {
@@ -338,7 +338,7 @@ class ActionController
 			if (BulkApi::STATUS_SUCCESS === $result->apiStatus) {
 				$applied = $this->applyResult($qItem);
 				if (true === $applied) {
-					$qItem->addResult(array('fileStatus' => QueueItem::FILE_STATUS_SUCCESS));
+					$qItem->addResult(array('fileStatus' => BulkImage::FILE_STATUS_SUCCESS));
 					$this->addPreview($qItem);
 					do_action('emr/bulk/item/done', $qItem->imageModel, $qItem->data()->action, $qItem);
 				}
@@ -357,7 +357,7 @@ class ActionController
 		}
 
 		if (BulkApi::STATUS_UNCHANGED === $result->apiStatus || BulkApi::STATUS_ENQUEUED === $result->apiStatus) {
-			$qItem->addResult(array('fileStatus' => QueueItem::FILE_STATUS_PENDING));
+			$qItem->addResult(array('fileStatus' => BulkImage::FILE_STATUS_PENDING));
 			$retry_limit = (int) $q->getShortQ()->getOption('retry_limit');
 			$tries       = (int) $qItem->data()->tries;
 
@@ -479,7 +479,7 @@ class ActionController
 
 		$qItem->addResult(array(
 			'apiStatus'  => BulkApi::STATUS_NOT_API,
-			'fileStatus' => QueueItem::FILE_STATUS_RESTORED,
+			'fileStatus' => BulkImage::FILE_STATUS_RESTORED,
 			'is_done'    => true,
 			'is_error'   => false,
 			'message'    => __('Original restored', 'enable-media-replace'),
@@ -565,7 +565,7 @@ class ActionController
 			'message'    => $message,
 			'is_error'   => true,
 			'is_done'    => true,
-			'fileStatus' => QueueItem::FILE_STATUS_ERROR,
+			'fileStatus' => BulkImage::FILE_STATUS_ERROR,
 		));
 	}
 

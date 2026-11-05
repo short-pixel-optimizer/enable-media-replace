@@ -54,6 +54,21 @@ class BulkAjaxController
 	/** Capability the bulk requires. */
 	const CAPABILITY = 'manage_options';
 
+	/**
+	 * Error codes for the browser (js/bulk/emr-processor.js aStatusError), on
+	 * the class that answers it, as SPIO keeps them on its AjaxController:
+	 * -1 to -8 are SPIO's values; PLAN_EXPIRED is EMR's own.
+	 */
+	const PROCESSOR_ACTIVE = -1;
+	const NONCE_FAILED     = -2;
+	const NO_ACTION        = -3;
+	const APIKEY_FAILED    = -4;
+	const NOQUOTA          = -5;
+	const SERVER_ERROR     = -6;
+	const NO_ACCESS        = -7;
+	const QUEUE_FULL       = -8; // the API's queue is full or in maintenance: the screen defers
+	const PLAN_EXPIRED     = -9;
+
 	/** @var static|null */
 	protected static $instance;
 
@@ -143,7 +158,7 @@ class BulkAjaxController
 				$json = $this->loadLogFile($json);
 				break;
 			default:
-				$json->error   = QueueController::NO_ACTION;
+				$json->error   = self::NO_ACTION;
 				$json->message = __('Unknown bulk action', 'enable-media-replace');
 				break;
 		}
@@ -199,7 +214,7 @@ class BulkAjaxController
 		$can  = $bulk->canRun($operation);
 		if (true !== $can) {
 			$json->status  = false;
-			$json->error   = QueueController::NO_ACTION;
+			$json->error   = self::NO_ACTION;
 			$json->message = is_wp_error($can) ? $can->get_error_message() : __('This bulk cannot run on this site', 'enable-media-replace');
 			return $json;
 		}
@@ -393,7 +408,7 @@ class BulkAjaxController
 			$json          = new \stdClass();
 			$json->message = __('Nonce is missing or wrong. Try to refresh the page', 'enable-media-replace');
 			$json->status  = false;
-			$json->error   = QueueController::NONCE_FAILED;
+			$json->error   = self::NONCE_FAILED;
 			$this->send($json);
 		}
 	}
@@ -411,7 +426,7 @@ class BulkAjaxController
 			$json->message = __('This user is not allowed to perform this action', 'enable-media-replace');
 			$json->action  = $action;
 			$json->status  = false;
-			$json->error   = QueueController::NO_ACCESS;
+			$json->error   = self::NO_ACCESS;
 			$this->send($json);
 		}
 	}
@@ -445,7 +460,7 @@ class BulkAjaxController
 		$json          = new \stdClass();
 		$json->message = __('The bulk is being processed in another window', 'enable-media-replace');
 		$json->status  = false;
-		$json->error   = QueueController::PROCESSOR_ACTIVE;
+		$json->error   = self::PROCESSOR_ACTIVE;
 		$this->send($json);
 	}
 

@@ -12,6 +12,7 @@
 require_once __DIR__ . '/BulkTestHelpers.php';
 
 use EnableMediaReplace\Controller\Bulk\BulkApi;
+use EnableMediaReplace\Controller\Bulk\BulkAjaxController;
 use EnableMediaReplace\Controller\Bulk\BulkController;
 use EnableMediaReplace\Controller\Bulk\BulkQueue;
 use EnableMediaReplace\Controller\Bulk\QueueController;
@@ -107,16 +108,17 @@ class BulkQueueControllerTest extends WP_UnitTestCase {
 		} ) );
 	}
 
+	/** On BulkAjaxController, the class that answers the browser, as SPIO keeps them on its AjaxController. */
 	public function test_error_constants_match_spios_ajax_controller_and_plan_expired_takes_the_next_value() {
-		$this->assertSame( -1, QueueController::PROCESSOR_ACTIVE );
-		$this->assertSame( -2, QueueController::NONCE_FAILED );
-		$this->assertSame( -3, QueueController::NO_ACTION );
-		$this->assertSame( -4, QueueController::APIKEY_FAILED );
-		$this->assertSame( -5, QueueController::NOQUOTA );
-		$this->assertSame( -6, QueueController::SERVER_ERROR );
-		$this->assertSame( -7, QueueController::NO_ACCESS );
-		$this->assertSame( -8, QueueController::QUEUE_FULL, 'SPIO\'s -8: the API queue is full, the screen defers.' );
-		$this->assertSame( -9, QueueController::PLAN_EXPIRED, 'EMR\'s own code must not collide with SPIO\'s.' );
+		$this->assertSame( -1, BulkAjaxController::PROCESSOR_ACTIVE );
+		$this->assertSame( -2, BulkAjaxController::NONCE_FAILED );
+		$this->assertSame( -3, BulkAjaxController::NO_ACTION );
+		$this->assertSame( -4, BulkAjaxController::APIKEY_FAILED );
+		$this->assertSame( -5, BulkAjaxController::NOQUOTA );
+		$this->assertSame( -6, BulkAjaxController::SERVER_ERROR );
+		$this->assertSame( -7, BulkAjaxController::NO_ACCESS );
+		$this->assertSame( -8, BulkAjaxController::QUEUE_FULL, 'SPIO\'s -8: the API queue is full, the screen defers.' );
+		$this->assertSame( -9, BulkAjaxController::PLAN_EXPIRED, 'EMR\'s own code must not collide with SPIO\'s.' );
 		$this->assertSame( 'emr_bulk_plan_ok', QueueController::PLAN_TRANSIENT );
 	}
 
@@ -203,7 +205,7 @@ class BulkQueueControllerTest extends WP_UnitTestCase {
 		$json = ( new QueueController() )->processQueue();
 
 		$this->assertFalse( $json->status );
-		$this->assertSame( QueueController::APIKEY_FAILED, $json->error );
+		$this->assertSame( BulkAjaxController::APIKEY_FAILED, $json->error );
 		$this->assertNotEmpty( $json->message );
 		$this->assertCount( 0, $this->requests );
 	}
@@ -215,7 +217,7 @@ class BulkQueueControllerTest extends WP_UnitTestCase {
 		$json = ( new QueueController() )->processQueue();
 
 		$this->assertFalse( $json->status );
-		$this->assertSame( QueueController::PLAN_EXPIRED, $json->error );
+		$this->assertSame( BulkAjaxController::PLAN_EXPIRED, $json->error );
 		$this->assertCount( 1, $this->urlsTo( 'api-status.php' ) );
 		$this->assertFalse( get_transient( QueueController::PLAN_TRANSIENT ) );
 	}
@@ -314,7 +316,7 @@ class BulkQueueControllerTest extends WP_UnitTestCase {
 		$this->assertSame( 1, $json->status, 'The tick itself succeeded.' );
 		$this->assertObjectNotHasProperty( 'error', $json, 'No top-level error: the item carries it.' );
 		$this->assertObjectNotHasProperty( 'error', $json->media );
-		$this->assertSame( QueueController::NOQUOTA, $json->media->results[0]->error );
+		$this->assertSame( BulkAjaxController::NOQUOTA, $json->media->results[0]->error );
 		$this->assertSame( '1', $json->media->stats->in_process, 'The stats of the tick still reach the screen.' );
 		$this->assertFalse( get_transient( QueueController::PLAN_TRANSIENT ), 'The cached plan check is dropped.' );
 		$this->assertFalse( $json->media->results[0]->is_done, 'Quota is retryable, the item stays.' );
@@ -339,7 +341,7 @@ class BulkQueueControllerTest extends WP_UnitTestCase {
 
 		$this->assertSame( 1, $json->status );
 		$this->assertTrue( $json->media->results[0]->is_done );
-		$this->assertSame( QueueItem::FILE_STATUS_ERROR, $json->media->results[0]->fileStatus );
+		$this->assertSame( BulkImage::FILE_STATUS_ERROR, $json->media->results[0]->fileStatus );
 		$log = $this->currentLog( 'background' );
 		$this->assertTrue( $log->exists(), 'A terminal file error is logged.' );
 		$lines = array_filter( explode( PHP_EOL, file_get_contents( $log->getFullPath() ) ) );
@@ -354,7 +356,7 @@ class BulkQueueControllerTest extends WP_UnitTestCase {
 		$controller->setCurrentQueue( $c->getQueue(), $c );
 		$full->addResult( $controller->api()->returnRetry( BulkApi::STATUS_QUEUE_FULL, 'Queue full' ) );
 		$controller->handleAPIResult( $full );
-		$this->assertSame( QueueController::QUEUE_FULL, $full->result()->error );
+		$this->assertSame( BulkAjaxController::QUEUE_FULL, $full->result()->error );
 		$this->assertFalse( $full->result()->is_done );
 	}
 
@@ -396,7 +398,7 @@ class BulkQueueControllerTest extends WP_UnitTestCase {
 
 		$this->assertTrue( $result->is_error );
 		$this->assertTrue( $result->is_done );
-		$this->assertSame( QueueItem::FILE_STATUS_ERROR, $result->fileStatus );
+		$this->assertSame( BulkImage::FILE_STATUS_ERROR, $result->fileStatus );
 		$this->assertCount( 0, $this->queueRows( $id ) );
 	}
 

@@ -225,7 +225,7 @@ class BulkCronControllerTest extends WP_UnitTestCase {
 
 		$last = CronController::getInstance()->processCronHook();
 		$this->assertFalse( $last->status );
-		$this->assertSame( \EnableMediaReplace\Controller\Bulk\QueueController::APIKEY_FAILED, $last->error );
+		$this->assertSame( \EnableMediaReplace\Controller\Bulk\BulkAjaxController::APIKEY_FAILED, $last->error );
 		$this->assertCount( 0, $this->mock->requests );
 		$this->assertTrue( CronController::getInstance()->isScheduled(), 'A refused tick keeps the event for a later try.' );
 

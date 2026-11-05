@@ -133,7 +133,7 @@ class BulkAjaxControllerTest extends WP_Ajax_UnitTestCase {
 		foreach ( array( 'emr_bulk_process', 'emr_bulk_request', 'emr_bulk_settings' ) as $action ) {
 			$json = $this->call( $action, array( 'nonce' => 'bad', 'screen_action' => 'getStatus' ) );
 			$this->assertFalse( $json->status, $action );
-			$this->assertSame( QueueController::NONCE_FAILED, $json->error, $action );
+			$this->assertSame( BulkAjaxController::NONCE_FAILED, $json->error, $action );
 		}
 	}
 
@@ -141,17 +141,17 @@ class BulkAjaxControllerTest extends WP_Ajax_UnitTestCase {
 		$this->_setRole( 'editor' );
 		$json = $this->request( 'getStatus' );
 		$this->assertFalse( $json->status );
-		$this->assertSame( QueueController::NO_ACCESS, $json->error );
+		$this->assertSame( BulkAjaxController::NO_ACCESS, $json->error );
 
 		$json = $this->tick();
-		$this->assertSame( QueueController::NO_ACCESS, $json->error );
+		$this->assertSame( BulkAjaxController::NO_ACCESS, $json->error );
 		$this->assertFalse( get_transient( BulkAjaxController::SECRET_TRANSIENT ), 'No key claimed.' );
 	}
 
 	public function test_an_unknown_screen_action_answers_NO_ACTION() {
 		$json = $this->request( 'doesNotExist' );
 		$this->assertFalse( $json->status );
-		$this->assertSame( QueueController::NO_ACTION, $json->error );
+		$this->assertSame( BulkAjaxController::NO_ACTION, $json->error );
 	}
 
 	public function test_the_callback_is_echoed_and_the_processor_key_added() {
@@ -174,7 +174,7 @@ class BulkAjaxControllerTest extends WP_Ajax_UnitTestCase {
 
 		$other = $this->tick( array( 'bulk-secret' => 'tab-two' ) );
 		$this->assertFalse( $other->status );
-		$this->assertSame( QueueController::PROCESSOR_ACTIVE, $other->error );
+		$this->assertSame( BulkAjaxController::PROCESSOR_ACTIVE, $other->error );
 		$this->assertSame( 'tab-one', $other->processorKey, 'The holder is told.' );
 		$this->assertSame( 'tab-one', get_transient( BulkAjaxController::SECRET_TRANSIENT ), 'Still the first key.' );
 
@@ -191,7 +191,7 @@ class BulkAjaxControllerTest extends WP_Ajax_UnitTestCase {
 		set_transient( BulkAjaxController::SECRET_TRANSIENT, 'tab-one', 120 );
 		$json = $this->request( 'recheckActive', array( 'bulk-secret' => 'tab-two' ) );
 		$this->assertFalse( $json->status );
-		$this->assertSame( QueueController::PROCESSOR_ACTIVE, $json->error );
+		$this->assertSame( BulkAjaxController::PROCESSOR_ACTIVE, $json->error );
 
 		delete_transient( BulkAjaxController::SECRET_TRANSIENT );
 		$json = $this->request( 'recheckActive', array( 'bulk-secret' => 'tab-two' ) );
@@ -203,7 +203,7 @@ class BulkAjaxControllerTest extends WP_Ajax_UnitTestCase {
 		delete_option( 'emr_shortpixel_api_key' );
 		$json = $this->tick();
 		$this->assertFalse( $json->status );
-		$this->assertSame( QueueController::APIKEY_FAILED, $json->error );
+		$this->assertSame( BulkAjaxController::APIKEY_FAILED, $json->error );
 	}
 
 	public function test_createBulk_stores_the_settings_creates_the_bulk_and_answers_the_stats() {
@@ -267,7 +267,7 @@ class BulkAjaxControllerTest extends WP_Ajax_UnitTestCase {
 		$json = $this->request( 'createBulk', array( 'operation' => 'background' ) );
 
 		$this->assertFalse( $json->status );
-		$this->assertSame( QueueController::NO_ACTION, $json->error );
+		$this->assertSame( BulkAjaxController::NO_ACTION, $json->error );
 		$this->assertStringContainsString( 'WooCommerce', $json->message );
 		$this->assertFalse( ( new BulkQueue() )->getStats()->is_preparing, 'No bulk was created.' );
 	}

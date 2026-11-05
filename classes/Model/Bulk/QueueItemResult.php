@@ -43,7 +43,7 @@ class QueueItemResult implements JsonSerializable
 	/** @var string|null Human-readable message; ResponseController decides the final wording. */
 	protected $message;
 
-	/** @var int|null File status, see QueueItem::FILE_STATUS_*. */
+	/** @var int|null File status, see BulkImage::FILE_STATUS_*. */
 	protected $fileStatus;
 
 	/** @var string|null File name of the attachment, for the bulk screen. */
