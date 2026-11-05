@@ -261,15 +261,12 @@ class AjaxTest extends WP_Ajax_UnitTestCase {
 				'background'    => array( 'type' => 'transparent' ),
 			)
 		);
-		if ( isset( $response['key'] ) ) {
-			$this->transients[] = 'emr_' . $response['key'];
-		}
 
 		$this->assertTrue( $response['success'] );
 		$this->assertArrayNotHasKey( 'data', $response, 'No success/data wrapper.' );
 		$this->assertStringStartsWith( MockEmrApi::DOWNLOAD_BASE, $response['image'] );
 		$this->assertSame( wp_get_original_image_url( $id ), $response['url'] );
-		$this->assertIsString( $response['key'] );
+		$this->assertArrayNotHasKey( 'key', $response, 'Nothing is stored for the apply step: it requests again (SPIO\'s model).' );
 		$this->assertCount( 1, $this->mock->requestsTo( 'free-reducer.php' ) );
 	}
 

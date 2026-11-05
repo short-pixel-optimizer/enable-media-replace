@@ -177,17 +177,16 @@ class MultisiteAjaxTest extends EMR_AjaxTestCase {
 		$url = urldecode( $sent[0]['request']['urllist'][0] );
 		$this->assertStringContainsString( '/sites/' . $this->blog . '/', $url, 'The subsite uploads URL is sent.' );
 		$this->assertSame( wp_get_original_image_url( $id ), $response->url );
-		$this->assertIsString( get_transient( 'emr_' . $response->key ), 'The result is kept in a subsite transient.' );
+		$this->assertObjectNotHasProperty( 'key', $response, 'Nothing of the preview is stored (the apply step requests again).' );
 		$this->assertSame( 'transparent', get_option( 'enable_media_replace' )['bg_type'], 'The settings are saved on the subsite.' );
 
 		$this->assertFalse( $this->mainOption( 'enable_media_replace' ), 'Nothing is saved on the main site.' );
-		$this->assertFalse( $this->mainOption( '_transient_emr_' . $response->key ), 'The transient is not on the main site.' );
 	}
 
 	/**
 	 * The upscale preview goes through the same endpoint with `upscale` =
-	 * factor; on a subsite it must send the subsite's URL, keep its result
-	 * transient there and, unlike a removal, store no background settings.
+	 * factor; on a subsite it must send the subsite's URL and, unlike a
+	 * removal, store no background settings (nothing of the result is stored).
 	 */
 	public function test_upscale_by_the_subsite_administrator_sends_the_factor_and_the_subsite_url_and_keeps_its_state_there() {
 		update_option( ApiKeyManager::OPTION_NAME, self::MAIN_KEY );
@@ -206,11 +205,10 @@ class MultisiteAjaxTest extends EMR_AjaxTestCase {
 		$this->assertArrayNotHasKey( 'bg_remove', $sent[0]['request'] );
 		$url = urldecode( $sent[0]['request']['urllist'][0] );
 		$this->assertStringContainsString( '/sites/' . $this->blog . '/', $url, 'The subsite uploads URL is sent.' );
-		$this->assertIsString( get_transient( 'emr_' . $response->key ), 'The result is kept in a subsite transient.' );
+		$this->assertObjectNotHasProperty( 'key', $response );
 		$this->assertFalse( get_option( 'enable_media_replace' ), 'An upscale stores no background settings on the subsite.' );
 
 		$this->assertFalse( $this->mainOption( 'enable_media_replace' ), 'Nothing is saved on the main site.' );
-		$this->assertFalse( $this->mainOption( '_transient_emr_' . $response->key ), 'The transient is not on the main site.' );
 
 		update_option( ApiKeyManager::OPTION_NAME, self::SUB_KEY );
 		$this->resetSingleton( 'EnableMediaReplace\ApiKeyManager' );
