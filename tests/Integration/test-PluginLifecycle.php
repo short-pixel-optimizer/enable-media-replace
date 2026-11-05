@@ -229,8 +229,8 @@ class PluginLifecycleTest extends EMR_IntegrationTestCase {
 		update_option( 'emr_url_cache', array( 'x' => 'y' ) );
 		$this->assertSame( array( 'emr_news', 'emr_url_cache', 'enable_media_replace' ), $this->existingOptions( array( 'enable_media_replace', 'emr_news', 'emr_url_cache' ) ), 'Sentinel: seeded.' );
 		// The promo banner dismissals option (PromoBanner::uninstall()).
-		update_option( 'EnableMediaReplace-promo-banner', array( 'black-friday-2026' => 1764000000 ) );
-		$this->assertIsArray( get_option( 'EnableMediaReplace-promo-banner' ), 'Sentinel: seeded.' );
+		update_option( 'emr-promo-banner', array( 'black-friday-2026' => 1764000000 ) );
+		$this->assertIsArray( get_option( 'emr-promo-banner' ), 'Sentinel: seeded.' );
 		$file          = $this->basename();
 		$uninstallable = (array) get_option( 'uninstall_plugins' );
 
@@ -238,7 +238,7 @@ class PluginLifecycleTest extends EMR_IntegrationTestCase {
 		do_action( "uninstall_{$file}" );
 
 		$this->assertSame( array(), $this->existingOptions( array( 'enable_media_replace', 'emr_news', 'emr_url_cache' ) ) );
-		$this->assertFalse( get_option( 'EnableMediaReplace-promo-banner' ), 'The dismissals option is gone.' );
+		$this->assertFalse( get_option( 'emr-promo-banner' ), 'The dismissals option is gone.' );
 	}
 
 	// ---------------------------------------------------------------------

@@ -249,10 +249,13 @@ docs/                      - the documentation and test plan, the bulk design no
   background and upscale screens; the four views print it right after their
   header bar (`'hook' => false`: not on admin_notices, which WordPress's script
   would move there only after load); `manage_options` only; dismissed per site
-  (one close hides it for everyone) in the option `EnableMediaReplace-promo-banner`
-  (one per plugin, named from the module's namespace like the notices option, an
-  array campaign id to time, pruned to the current campaign on each dismissal,
-  deleted by `PromoBanner::uninstall()` from `InstallHelper::unInstallPlugin()`). Hooks: `emr/promo_banner/show`, `emr/promo_banner/in_window`,
+  (one close hides it for everyone) in the option `emr-promo-banner`
+  (one per plugin, named from the banner's `prefix`, `PROMO_PREFIX`, which also
+  names the AJAX action and the asset handle; an array campaign id to time,
+  pruned to the current campaign on each dismissal, deleted by
+  `PromoBanner::uninstall(PROMO_PREFIX)` from `InstallHelper::unInstallPlugin()`).
+  A banner without `id`, `start` and `end` never shows: the module has no
+  campaign by default. Hooks: `emr/promo_banner/show`, `emr/promo_banner/in_window`,
   `emr/promo_banner/capability`, `emr/promo_banner/url`,
   `emr/settings/no_banner` (and the SHORTPIXEL_NO_BANNER constant). The E2E
   support option `emr_e2e_promo_window` opens the window for the browser tests.

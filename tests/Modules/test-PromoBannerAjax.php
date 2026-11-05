@@ -19,7 +19,12 @@ class PromoBannerAjaxTest extends WP_Ajax_UnitTestCase {
 	public function set_up() {
 		parent::set_up();
 		$this->savedPost = $_POST;
-		$this->banner    = new PromoBanner( array( 'prefix' => 'emrtest' ) );
+		$this->banner    = new PromoBanner( array(
+			'prefix' => 'emrtest',
+			'id'     => 'black-friday-2026',
+			'start'  => strtotime( '2026-11-23 00:00:00 UTC' ),
+			'end'    => strtotime( '2026-12-01 07:59:59 UTC' ),
+		) );
 		$this->banner->register();
 	}
 
@@ -49,8 +54,8 @@ class PromoBannerAjaxTest extends WP_Ajax_UnitTestCase {
 
 		$this->assertTrue( $answer['success'] );
 		$this->assertTrue( $this->banner->isDismissed() );
-		$stored = get_option( 'EnableMediaReplace-promo-banner' );
-		$this->assertIsArray( $stored );
+		$stored = get_option( 'emrtest-promo-banner' );
+		$this->assertIsArray( $stored, 'Stored under the prefix, not the namespace.' );
 		$this->assertSame( array( 'black-friday-2026' ), array_keys( $stored ) );
 		$this->assertIsInt( $stored['black-friday-2026'] );
 		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
@@ -59,12 +64,12 @@ class PromoBannerAjaxTest extends WP_Ajax_UnitTestCase {
 
 	public function test_a_dismissal_keeps_only_the_current_campaign() {
 		$this->_setRole( 'administrator' );
-		update_option( 'EnableMediaReplace-promo-banner', array( 'black-friday-2025' => 1764000000 ) );
+		update_option( 'emrtest-promo-banner', array( 'black-friday-2025' => 1764000000 ) );
 		$_POST['nonce'] = wp_create_nonce( 'emrtest_promo_banner_dismiss' );
 
 		$this->call();
 
-		$this->assertSame( array( 'black-friday-2026' ), array_keys( get_option( 'EnableMediaReplace-promo-banner' ) ), 'The 2025 entry is pruned.' );
+		$this->assertSame( array( 'black-friday-2026' ), array_keys( get_option( 'emrtest-promo-banner' ) ), 'The 2025 entry is pruned.' );
 	}
 
 	public function test_a_bad_nonce_stores_nothing() {

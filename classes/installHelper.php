@@ -79,7 +79,7 @@ class InstallHelper
 			delete_transient( BulkAjaxController::SECRET_TRANSIENT );
 			ApiKeyManager::getInstance()->forgetAiCredits();
 			wp_clear_scheduled_hook( CronController::EVENT );
-			PromoBanner::uninstall();
+			PromoBanner::uninstall(EnableMediaReplacePlugin::PROMO_PREFIX);
 		}
 
 		/**

@@ -307,6 +307,8 @@ class EnableMediaReplacePlugin
     const PROMO_START   = '2026-11-23 00:00:00';
     const PROMO_END     = '2026-12-01 07:59:59';
     const PROMO_ENDS_ON = '2026-11-30';
+    /** The banner's prefix: names its option (`emr-promo-banner`), AJAX action and asset handle. */
+    const PROMO_PREFIX  = 'emr';
 
     /** @var \EnableMediaReplace\PromoBanner\PromoBanner|null The banner, built once by promoBanner(). */
     protected $promoBanner;
@@ -317,8 +319,8 @@ class EnableMediaReplacePlugin
      * Shown on the Bulk Enhance page (screen `media_page_emr-bulk`) and on the
      * replace, remove background and upscale screens (isPromoBannerScreen()),
      * from PROMO_START to PROMO_END (UTC), to users with `manage_options`;
-     * dismissible for the whole site (option `EnableMediaReplace-promo-banner`,
-     * deleted by InstallHelper::unInstallPlugin()). Printed by views/bulk/view-bulk.php,
+     * dismissible for the whole site (option `emr-promo-banner`, named from
+     * PROMO_PREFIX, deleted by InstallHelper::unInstallPlugin()). Printed by views/bulk/view-bulk.php,
      * views/screen.php, views/prepare-remove-background.php and
      * views/prepare-upscale.php right after their header bar. Hooks (from the module):
      * `emr/promo_banner/show`, `emr/promo_banner/capability`,
@@ -336,7 +338,7 @@ class EnableMediaReplacePlugin
                 'end'        => strtotime(self::PROMO_END . ' UTC'),
                 'ends_on'    => self::PROMO_ENDS_ON,
                 'url'        => 'https://shortpixel.com/pricing?utm_source=plugin&utm_medium=emr&utm_campaign=black_friday_2026',
-                'prefix'     => 'emr',
+                'prefix'     => self::PROMO_PREFIX,
                 'assets_url' => plugins_url('build/shortpixel/promo-banner/assets/', EMR_ROOT_FILE),
                 'version'    => EMR_VERSION,
                 'screens'    => array('media_page_' . self::BULK_PAGE_SLUG),

@@ -5,7 +5,8 @@
  * (EnableMediaReplacePlugin::promoBanner(), isPromoBannerScreen()).
  *
  * The campaign window is tested against fixed moments; the other conditions
- * use EMR_TestPromoBanner, which pins "now" inside the window. Snapshots and
+ * use EMR_TestPromoBanner, configured with the 2026 campaign (the module has
+ * no campaign by default) and "now" pinned inside its window. Snapshots and
  * restores the current user, the current screen, $_GET, the dismissals option,
  * the enqueued assets and every filter it adds.
  *
@@ -70,10 +71,18 @@ class PromoBannerTest extends WP_UnitTestCase {
 		return strtotime( $time . ' UTC' );
 	}
 
-	/** A banner shown on the `upload` screen, with "now" inside the default window. */
+	/**
+	 * A banner with the 2026 campaign (23 November 00:00 UTC to the last second
+	 * of 30 November US Pacific, 07:59:59 UTC on 1 December), shown on the
+	 * `upload` screen, with "now" inside that window.
+	 */
 	private function banner( array $args = array() ) {
 		$banner      = new EMR_TestPromoBanner( array_merge( array(
 			'prefix'     => 'emrtest',
+			'id'         => 'black-friday-2026',
+			'start'      => $this->utc( '2026-11-23 00:00:00' ),
+			'end'        => $this->utc( '2026-12-01 07:59:59' ),
+			'ends_on'    => '2026-11-30',
 			'assets_url' => 'https://example.org/assets/',
 			'screens'    => array( 'upload' ),
 			'url'        => 'https://shortpixel.com/pricing?a=1&b=2',
@@ -84,24 +93,26 @@ class PromoBannerTest extends WP_UnitTestCase {
 	}
 
 	/* ------------------------------------------------------------------
-	 * Time window: Unix timestamps, so UTC. The default campaign runs from
-	 * 23 November 2026 00:00 UTC to the last second of 30 November on the
-	 * US West Coast (UTC-8 after the DST change), 07:59:59 UTC on 1 December.
+	 * No campaign by default; the window is Unix timestamps, so UTC.
 	 * ------------------------------------------------------------------ */
 
-	public function test_the_default_window_starts_at_midnight_utc_on_november_23() {
-		$banner = new PromoBanner();
+	public function test_an_unconfigured_banner_never_shows() {
+		set_current_screen( 'upload' );
+		$banner = new PromoBanner( array( 'prefix' => 'emrtest', 'screens' => array( 'upload' ) ) );
 
-		$this->assertFalse( $banner->isInWindow( $this->utc( '2026-11-22 23:59:59' ) ) );
-		$this->assertTrue( $banner->isInWindow( $this->utc( '2026-11-23 00:00:00' ) ) );
-	}
+		$this->assertFalse( $banner->isInWindow(), 'The default window, 0 to 0, is over.' );
+		$this->assertFalse( $banner->isInWindow( $this->utc( '2026-11-25 12:00:00' ) ) );
+		$this->assertFalse( $banner->shouldShow() );
 
-	public function test_the_default_window_ends_after_the_last_second_of_november_30_us_pacific() {
-		$banner = new PromoBanner();
+		$this->add_test_filter( 'emr/promo_banner/in_window', '__return_true' );
+		$this->assertFalse( $banner->shouldShow(), 'No id: nothing to show or dismiss, whatever the window.' );
 
-		$this->assertTrue( $banner->isInWindow( $this->utc( '2026-12-01 07:59:59' ) ), '23:59:59 PST on the 30th, inclusive.' );
-		$this->assertFalse( $banner->isInWindow( $this->utc( '2026-12-01 08:00:00' ) ), '00:00 PST on 1 December.' );
-		$this->assertSame( $this->utc( '2026-12-01 07:59:59' ), strtotime( '2026-11-30 23:59:59 America/Los_Angeles' ), 'The constant is that moment on the West Coast.' );
+		$dated = new EMR_TestPromoBanner( array( 'prefix' => 'emrtest', 'screens' => array( 'upload' ), 'start' => $this->utc( '2026-11-23 00:00:00' ), 'end' => $this->utc( '2026-12-01 07:59:59' ) ) );
+		$dated->now = $this->utc( '2026-11-25 12:00:00' );
+		$this->assertTrue( $dated->isInWindow(), 'Precondition: inside the window.' );
+		$this->assertFalse( $dated->shouldShow(), 'A window without an id is not a campaign.' );
+
+		$this->assertTrue( $this->banner()->shouldShow(), 'Sentinel: with an id and a window it shows.' );
 	}
 
 	public function test_the_window_is_the_configured_timestamps_whatever_the_site_timezone() {
@@ -163,41 +174,49 @@ class PromoBannerTest extends WP_UnitTestCase {
 		$this->assertTrue( $conditional->shouldShow(), 'The condition callable alone is enough.' );
 	}
 
-	public function test_the_option_is_this_plugins_own_named_from_the_namespace_like_the_notices_option() {
-		$this->assertSame( 'EnableMediaReplace-promo-banner', PromoBanner::getOptionName() );
-		$prop = new ReflectionProperty( \EnableMediaReplace\Notices\NoticeController::class, 'notice_option' );
-		$prop->setAccessible( true );
-		$this->assertSame( 'EnableMediaReplace-notices', $prop->getValue( \EnableMediaReplace\Notices\NoticeController::getInstance() ), 'Same derivation as the notices module.' );
+	public function test_the_prefix_names_the_option_the_ajax_action_and_the_asset_handle() {
+		$banner = $this->banner();
+		$this->assertSame( 'emrtest-promo-banner', $banner->getOptionName() );
+		$this->assertSame( 'emrtest_promo_banner_dismiss', $banner->getAjaxAction() );
+		$this->assertSame( 'emr-promo-banner', PromoBanner::optionNameFor( 'emr' ), 'Without an instance, for uninstall.' );
+		$this->assertSame( 'emr-promo-banner', $banner->getOptionName( 'EMR' ), 'Sanitized like the AJAX action.' );
+	}
+
+	public function test_without_a_prefix_the_names_come_from_the_namespace_so_plugins_do_not_collide() {
+		$banner = new PromoBanner();
+		$this->assertSame( 'enablemediareplace-promo-banner', $banner->getOptionName() );
+		$this->assertSame( 'enablemediareplace_promo_banner_dismiss', $banner->getAjaxAction() );
+		$this->assertSame( 'enablemediareplace-promo-banner', ( new PromoBanner( array( 'prefix' => '' ) ) )->getOptionName(), 'An empty prefix too.' );
 	}
 
 	public function test_a_dismissal_of_this_campaign_hides_it_for_every_user_and_one_of_another_campaign_does_not() {
 		$banner = $this->banner();
 
-		update_option( PromoBanner::getOptionName(), array( 'black-friday-2025' => 1764000000 ) );
+		update_option( $banner->getOptionName(), array( 'black-friday-2025' => 1764000000 ) );
 		$this->assertFalse( $banner->isDismissed(), 'Last year\'s dismissal does not count.' );
 		$this->assertTrue( $banner->shouldShow() );
 
-		update_option( PromoBanner::getOptionName(), array( 'black-friday-2026' => 1764000000 ) );
+		update_option( $banner->getOptionName(), array( 'black-friday-2026' => 1764000000 ) );
 		$this->assertTrue( $banner->isDismissed() );
 		$this->assertFalse( $banner->shouldShow() );
 		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
 		$this->assertFalse( $banner->shouldShow(), 'Another administrator of the site does not see it either.' );
 
-		update_option( PromoBanner::getOptionName(), 1764000000 );
+		update_option( $banner->getOptionName(), 1764000000 );
 		$this->assertFalse( $banner->isDismissed(), 'Not an array: ignored.' );
 	}
 
-	public function test_uninstall_deletes_the_dismissals_option_and_nothing_else() {
-		update_option( PromoBanner::getOptionName(), array( 'black-friday-2026' => 1764000000 ) );
-		update_option( 'ShortPixel-promo-banner', array( 'black-friday-2026' => 1764000002 ) );
+	public function test_uninstall_deletes_the_prefixs_dismissals_option_and_nothing_else() {
+		update_option( 'emrtest-promo-banner', array( 'black-friday-2026' => 1764000000 ) );
+		update_option( 'shortpixel-promo-banner', array( 'black-friday-2026' => 1764000002 ) );
 		$this->assertTrue( $this->banner()->isDismissed(), 'Sentinel: seeded.' );
 
-		PromoBanner::uninstall();
+		PromoBanner::uninstall( 'emrtest' );
 
 		$this->assertFalse( $this->banner()->isDismissed() );
-		$this->assertFalse( get_option( PromoBanner::getOptionName() ) );
-		$this->assertSame( array( 'black-friday-2026' => 1764000002 ), get_option( 'ShortPixel-promo-banner' ), 'Another plugin\'s option is untouched.' );
-		delete_option( 'ShortPixel-promo-banner' );
+		$this->assertFalse( get_option( 'emrtest-promo-banner' ) );
+		$this->assertSame( array( 'black-friday-2026' => 1764000002 ), get_option( 'shortpixel-promo-banner' ), 'Another plugin\'s option is untouched.' );
+		delete_option( 'shortpixel-promo-banner' );
 	}
 
 	public function test_the_no_banner_filter_switches_it_off() {
@@ -332,7 +351,11 @@ class PromoBannerTest extends WP_UnitTestCase {
 		$this->assertFalse( has_action( 'admin_notices', array( $banner, 'render' ) ) );
 		$this->assertStringContainsString( 'utm_medium=emr', $args['url'] );
 		$this->assertStringEndsWith( '/build/shortpixel/promo-banner/assets/', $args['assets_url'] );
+		$this->assertSame( 'black-friday-2026', $args['id'] );
+		$this->assertSame( 'emr', $args['prefix'] );
 		$this->assertSame( 'emr_promo_banner_dismiss', $banner->getAjaxAction() );
+		$this->assertSame( 'emr-promo-banner', $banner->getOptionName() );
+		$this->assertSame( 'emr-promo-banner', PromoBanner::optionNameFor( \EnableMediaReplace\EnableMediaReplacePlugin::PROMO_PREFIX ), 'What InstallHelper::unInstallPlugin() deletes.' );
 		$this->assertSame( $banner, emr()->promoBanner(), 'Built once.' );
 	}
 

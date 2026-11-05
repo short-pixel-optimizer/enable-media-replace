@@ -17,7 +17,10 @@ if (! defined('ABSPATH')) {
  * Reusable across ShortPixel plugins: the build tool copies this module into
  * each plugin and rewrites the namespace, the `shortpixel/` hook prefix and
  * the text domain, so every plugin gets its own copy. Each plugin creates one
- * instance with its own configuration and calls register():
+ * instance with its own configuration and calls register(). A banner shows
+ * nothing until it is configured: `id`, `start` and `end` have no usable
+ * defaults, so a copy that forgets them stays silent instead of showing a
+ * stale campaign.
  *
  *     $banner = new PromoBanner(array(
  *         'id'         => 'black-friday-2026',
@@ -25,13 +28,14 @@ if (! defined('ABSPATH')) {
  *         'end'        => strtotime('2026-12-01 07:59:59 UTC'), // 23:59:59 US Pacific on the 30th
  *         'ends_on'    => '2026-11-30',                         // the day the banner prints
  *         'url'        => 'https://shortpixel.com/...&utm_medium=emr',
- *         'prefix'     => 'emr',
+ *         'prefix'     => 'emr',                                // the plugin's identity: option, AJAX action, asset handle
  *         'assets_url' => plugins_url('build/shortpixel/promo-banner/assets/', PLUGIN_FILE),
  *         'condition'  => function () { return is the plugin's own page; },
  *     ));
  *     $banner->register();
  *
- * Shown when all of these hold (shouldShow()): the current time is inside
+ * Shown when all of these hold (shouldShow()): the campaign has an `id`;
+ * the current time is inside
  * [start, end], two Unix timestamps (UTC by definition, both inclusive; the
  * site's timezone setting does not matter, and a campaign that ends at
  * midnight in some place is expressed as that moment in UTC); the user has
@@ -66,18 +70,19 @@ if (! defined('ABSPATH')) {
  * (nonce action of the same name). A dismissal is per site, not per user: once
  * one user closes the campaign, nobody on that site sees it again. It is
  * stored in one option per plugin, an array of campaign id to dismissal time,
- * named like the notices module's option from the first segment of this
- * class's namespace (`ShortPixel-promo-banner` in this source,
- * `EnableMediaReplace-promo-banner` in EMR's build), so each plugin's copy owns
- * its option for every campaign it ever runs. A dismissal writes only the
- * current campaign, so past ones are pruned at that moment, and uninstall()
- * deletes the option; the plugin calls it from its own uninstall routine, as
- * it calls NoticeController::resetNotices(). Dismissing in one ShortPixel
+ * named `<prefix>-promo-banner` (`emr-promo-banner` in Enable Media Replace),
+ * so each plugin's copy owns its option for every campaign it ever runs. The
+ * same `prefix` names the AJAX action and the asset handle: it is the one
+ * identity of a plugin's banner. A dismissal writes only the
+ * current campaign, so past ones are pruned at that moment, and
+ * uninstall($prefix) deletes the option; the plugin calls it from its own
+ * uninstall routine with its prefix, as it calls
+ * NoticeController::resetNotices(). Dismissing in one ShortPixel
  * plugin does not hide the campaign in another.
  */
 class PromoBanner
 {
-	/** Suffix of the dismissals option; the prefix is the plugin's namespace (getOptionName()). */
+	/** Suffix of the dismissals option, after the plugin's prefix (getOptionName()). */
 	const OPTION_SUFFIX = '-promo-banner';
 
 	/** @var array The configuration, see the class docblock and $defaults in the constructor. */
@@ -85,13 +90,19 @@ class PromoBanner
 
 	/**
 	 * @param array $args {
-	 *     @type string        $id         Campaign id: the dismissal key. Default 'black-friday-2026'.
-	 *     @type int           $start      First moment shown, a Unix timestamp (UTC).
-	 *     @type int           $end        Last moment shown (inclusive), a Unix timestamp (UTC).
+	 *     @type string        $id         Campaign id: the dismissal key. Required; without it the
+	 *                                     banner never shows.
+	 *     @type int           $start      First moment shown, a Unix timestamp (UTC). Required.
+	 *     @type int           $end        Last moment shown (inclusive), a Unix timestamp (UTC). Required:
+	 *                                     the default window, 0 to 0, is already over.
 	 *     @type string        $ends_on    The day of the "Offer ends" label, 'Y-m-d'. Default: the UTC
 	 *                                     date of $end; set it when $end falls on the next UTC day.
 	 *     @type string        $url        The "Claim Deal" link.
-	 *     @type string        $prefix     Plugin prefix of the AJAX action and nonce, e.g. 'emr'.
+	 *     @type string        $prefix     The plugin's prefix, e.g. 'emr': names the dismissals option,
+	 *                                     the AJAX action and nonce, and the asset handle. Default: the
+	 *                                     first segment of this class's namespace, as the notices module
+	 *                                     names its option, so a plugin that omits it still gets its own
+	 *                                     names (`shortpixel` here, `enablemediareplace` in EMR's build).
 	 *     @type string        $assets_url URL of this module's assets/ directory, with a trailing slash.
 	 *     @type string        $version    Asset version for cache busting.
 	 *     @type string[]      $screens    Screen ids (get_current_screen()->id) to show on.
@@ -106,12 +117,12 @@ class PromoBanner
 	public function __construct(array $args = array())
 	{
 		$defaults   = array(
-			'id'         => 'black-friday-2026',
-			'start'      => gmmktime(0, 0, 0, 11, 23, 2026),
-			'end'        => gmmktime(7, 59, 59, 12, 1, 2026), // 23:59:59 US Pacific (UTC-8) on November 30.
-			'ends_on'    => '2026-11-30',
+			'id'         => '', // No campaign: the banner never shows until the plugin sets one.
+			'start'      => 0,
+			'end'        => 0,
+			'ends_on'    => '',
 			'url'        => 'https://shortpixel.com/pricing',
-			'prefix'     => 'shortpixel',
+			'prefix'     => '',
 			'assets_url' => '',
 			'version'    => '1.0',
 			'screens'    => array(),
@@ -121,6 +132,11 @@ class PromoBanner
 		);
 		$this->args = array_merge($defaults, $args);
 		$this->args['id'] = sanitize_key($this->args['id']);
+		if ('' === (string) $this->args['prefix']) {
+			$ns = __NAMESPACE__;
+			$this->args['prefix'] = substr($ns, 0, strpos($ns, '\\')); // try to get first part of namespace
+		}
+		$this->args['prefix'] = sanitize_key($this->args['prefix']);
 	}
 
 	/**
@@ -140,33 +156,43 @@ class PromoBanner
 	/** @return string The AJAX action (and nonce action) of the close button. */
 	public function getAjaxAction()
 	{
-		return sanitize_key($this->args['prefix']) . '_promo_banner_dismiss';
+		return $this->args['prefix'] . '_promo_banner_dismiss';
 	}
 
 	/**
-	 * The option holding this plugin's dismissals, every campaign: the first
-	 * segment of the namespace and OPTION_SUFFIX, derived as the notices
-	 * module derives its option name.
+	 * The option holding a plugin's dismissals, every campaign: its prefix
+	 * and OPTION_SUFFIX.
 	 *
+	 * @param string|null $prefix The plugin's prefix; null for this instance's.
 	 * @return string
 	 */
-	public static function getOptionName()
+	public function getOptionName($prefix = null)
 	{
-		$ns = __NAMESPACE__;
-		$ns = substr($ns, 0, strpos($ns, '\\')); // try to get first part of namespace
-		return $ns . self::OPTION_SUFFIX;
+		return self::optionNameFor(null === $prefix ? $this->args['prefix'] : $prefix);
 	}
 
 	/**
-	 * Deletes the dismissals option. For the plugin's uninstall routine, next
-	 * to NoticeController::resetNotices(); works on the option name directly
-	 * and does not need an instance.
+	 * The option name of a prefix, without an instance.
 	 *
+	 * @param string $prefix The plugin's prefix, e.g. 'emr'.
+	 * @return string
+	 */
+	public static function optionNameFor($prefix)
+	{
+		return sanitize_key($prefix) . self::OPTION_SUFFIX;
+	}
+
+	/**
+	 * Deletes the plugin's dismissals option. For the plugin's uninstall
+	 * routine, next to NoticeController::resetNotices(); needs only the
+	 * prefix the plugin configures its banner with, not an instance.
+	 *
+	 * @param string $prefix The plugin's prefix, e.g. 'emr'.
 	 * @return void
 	 */
-	public static function uninstall()
+	public static function uninstall($prefix)
 	{
-		delete_option(self::getOptionName());
+		delete_option(self::optionNameFor($prefix));
 	}
 
 	/**
@@ -191,7 +217,7 @@ class PromoBanner
 	 */
 	public function isDismissed()
 	{
-		$dismissed = get_option(self::getOptionName(), false);
+		$dismissed = get_option($this->getOptionName(), false);
 		return (is_array($dismissed) && ! empty($dismissed[$this->args['id']]));
 	}
 
@@ -218,7 +244,8 @@ class PromoBanner
 	 */
 	public function shouldShow()
 	{
-		$show = (bool) apply_filters('emr/promo_banner/in_window', $this->isInWindow(), $this->args['id'])
+		$show = '' !== $this->args['id'] // No campaign configured, nothing to show (and nothing to dismiss).
+			&& (bool) apply_filters('emr/promo_banner/in_window', $this->isInWindow(), $this->args['id'])
 			&& current_user_can($this->getCapability())
 			&& false === $this->isDismissed()
 			&& $this->isOnScreen()
@@ -238,7 +265,7 @@ class PromoBanner
 		if (! $this->shouldShow() || '' === $this->args['assets_url']) {
 			return;
 		}
-		$handle = sanitize_key($this->args['prefix']) . '_promo_banner';
+		$handle = $this->args['prefix'] . '_promo_banner';
 		wp_enqueue_style($handle, $this->args['assets_url'] . 'promo-banner.css', array(), $this->args['version']);
 		wp_enqueue_script($handle, $this->args['assets_url'] . 'promo-banner.js', array(), $this->args['version'], true);
 	}
@@ -338,7 +365,7 @@ class PromoBanner
 			return;
 		}
 		// Only the current campaign: a dismissal prunes the ones before it.
-		update_option(self::getOptionName(), array($this->args['id'] => time()), false);
+		update_option($this->getOptionName(), array($this->args['id'] => time()), false);
 		wp_send_json_success();
 	}
 }
