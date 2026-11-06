@@ -361,17 +361,22 @@
     this.showReplaceOptions = function(e)
     {
         let locationOption = document.querySelector('section.options .location_option');
-        locationOption.classList.add('hidden'); 
+        if (null !== locationOption)
+        {
+          locationOption.classList.add('hidden'); 
+        }
 
         let replaceType = document.querySelector('input[name="replace_type"]:checked');
 
-        var replace_option = replaceType.value;
-        if (replace_option == 'replace_and_search')
+        if (null !== replaceType)
         {
-           locationOption.classList.remove('hidden');
-           locationOption.style.display = '';
+          var replace_option = replaceType.value;
+          if (replace_option == 'replace_and_search')
+          {
+            locationOption.classList.remove('hidden');
+            locationOption.style.display = '';
+          }
         }
-
     }
     this.dragOverArea = function(e)
     {

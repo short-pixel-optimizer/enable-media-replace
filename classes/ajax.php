@@ -138,7 +138,3 @@ class Ajax {
 		return wp_verify_nonce( $nonce, $action );
 	}
 }
-
-
-// Registers the endpoints at require time; adminInit() creates a second instance (see the class @todo).
-new Ajax();
