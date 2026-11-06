@@ -57,8 +57,17 @@
  *   - apiStatusMessage (string): api-status `Status->Message`.
  *   - unlimited (string|null): api-status `Unlimited` ('true' / 'false');
  *     null leaves the property out.
+ *   - planType (string|null): api-status `PlanType`; 'Unlimited AI' is the
+ *     Unlimited AI plan, for which the real API answers null for
+ *     `CaptionsCallsQuota` and `CaptionsCallsRemaining` (the mock does the
+ *     same). Null leaves the property out.
+ *   - captionsQuota (int|null) / captionsMade (int): api-status
+ *     `CaptionsCallsQuota` / `CaptionsCallsMade` / `CaptionsCallsRemaining`
+ *     (the AI credits); null leaves the three out.
  *   - notices (array|string): notices.php body; an array is JSON-encoded,
  *     a string is sent verbatim.
+ *   - resultBytes (string|null): raw bytes the /f/ download URLs serve; when
+ *     null, the bytes of resultFixture.
  *   - resultFixture (string): file in tests/fixtures/ whose bytes the /f/
  *     download URLs serve.
  *
@@ -85,7 +94,11 @@ class MockEmrApi {
 		'apiStatusCode'    => 2,
 		'apiStatusMessage' => '',
 		'unlimited'        => 'true',
+		'planType'         => 'Monthly',
+		'captionsQuota'    => 1000,
+		'captionsMade'     => 0,
 		'notices'          => array(),
+		'resultBytes'      => null,
 		'resultFixture'    => 'test-image.jpg',
 	);
 
@@ -136,11 +149,23 @@ class MockEmrApi {
 	/** @var string|null See the class docblock. */
 	public $unlimited = 'true';
 
+	/** @var string|null api-status `PlanType` ('Unlimited AI' = the Unlimited AI plan); null leaves it out. */
+	public $planType = 'Monthly';
+
+	/** @var int|null api-status `CaptionsCallsQuota` (AI credits per month); null leaves the AI credit fields out. */
+	public $captionsQuota = 1000;
+
+	/** @var int api-status `CaptionsCallsMade`; `CaptionsCallsRemaining` is quota minus made. */
+	public $captionsMade = 0;
+
 	/** @var array|string See the class docblock. */
 	public $notices = array();
 
 	/** @var string See the class docblock. */
 	public $resultFixture = 'test-image.jpg';
+
+	/** @var string|null Raw result bytes; null serves $resultFixture. */
+	public $resultBytes = null;
 
 	public static function getInstance(): self {
 		if ( null === self::$instance ) {
@@ -383,6 +408,19 @@ class MockEmrApi {
 		if ( null !== $this->unlimited ) {
 			$body['Unlimited'] = $this->unlimited;
 		}
+		if ( null !== $this->planType ) {
+			$body['PlanType'] = $this->planType;
+		}
+		if ( 'Unlimited AI' === $this->planType ) {
+			// The real API reports no AI quota on the Unlimited AI plan.
+			$body['CaptionsCallsQuota']     = null;
+			$body['CaptionsCallsMade']      = $this->captionsMade;
+			$body['CaptionsCallsRemaining'] = null;
+		} elseif ( null !== $this->captionsQuota ) {
+			$body['CaptionsCallsQuota']     = $this->captionsQuota;
+			$body['CaptionsCallsMade']      = $this->captionsMade;
+			$body['CaptionsCallsRemaining'] = max( 0, $this->captionsQuota - $this->captionsMade );
+		}
 		return $body;
 	}
 
@@ -466,6 +504,9 @@ class MockEmrApi {
 	 * @return string
 	 */
 	private function resultBytes() {
+		if ( is_string( $this->resultBytes ) ) {
+			return $this->resultBytes;
+		}
 		$path = dirname( __DIR__, 2 ) . '/fixtures/' . $this->resultFixture;
 		if ( file_exists( $path ) ) {
 			return (string) file_get_contents( $path ); // phpcs:ignore WordPress.WP.AlternativeFunctions

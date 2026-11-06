@@ -41,15 +41,21 @@ class PluginRuntimeTest extends EMR_MainTestCase {
 	/** The admin hooks plugin_actions() registers, with their priority. */
 	private function admin_hooks() {
 		$plugin = emr();
+		$filter = \EnableMediaReplace\Controller\MediaLibraryFilterController::getInstance();
 		return array(
 			array( 'admin_menu', array( $plugin, 'menu' ), 10 ),
 			array( 'submenu_file', array( $plugin, 'hide_sub_menu' ), 10 ),
 			array( 'current_screen', array( $plugin, 'setScreen' ), 10 ),
 			array( 'admin_enqueue_scripts', array( $plugin, 'admin_scripts' ), 10 ),
+			array( 'wp_enqueue_media', array( $plugin, 'enqueueMediaModal' ), 10 ),
 			array( 'media_row_actions', array( $plugin, 'add_media_action' ), 10 ),
 			array( 'attachment_submitbox_misc_actions', array( $plugin, 'admin_date_replaced_media_on_edit_media_screen' ), 91 ),
 			array( 'add_meta_boxes_attachment', array( $plugin, 'add_meta_boxes' ), 10 ),
 			array( 'attachment_fields_to_edit', array( $plugin, 'attachment_editor' ), 10 ),
+			// The Media Library filter (MediaLibraryFilterController::register()).
+			array( 'restrict_manage_posts', array( $filter, 'addFilterDropdown' ), 10 ),
+			array( 'pre_get_posts', array( $filter, 'filterListener' ), 10 ),
+			array( 'wp_enqueue_media', array( $filter, 'enqueueGridFilter' ), 10 ),
 		);
 	}
 
@@ -129,6 +135,7 @@ class PluginRuntimeTest extends EMR_MainTestCase {
 
 	public function test_runtime_for_an_author_registers_the_admin_ui() {
 		$this->login_as( 'author' );
+		set_current_screen( 'upload' ); // is_admin(): the Media Library filter is registered in the admin only.
 		$externals = $this->callback_count( 'emr_display_replace_type_options' );
 
 		emr()->runtime();
@@ -142,6 +149,7 @@ class PluginRuntimeTest extends EMR_MainTestCase {
 
 	public function test_runtime_for_an_administrator_registers_the_admin_ui_and_the_notices_controller() {
 		$this->login_as( 'administrator' );
+		set_current_screen( 'upload' );
 
 		emr()->runtime();
 
@@ -150,6 +158,20 @@ class PluginRuntimeTest extends EMR_MainTestCase {
 		}
 		$this->assertIsObject( $this->notice_static( 'instance' ), 'plugin_actions() loads the notices controller.' );
 		$this->assertSame( trailingslashit( dirname( EMR_ROOT_FILE ) ), $this->plugin_prop( 'plugin_path' ) );
+	}
+
+	/** As SPIO wraps its filter_listener in is_admin(): a front-end request of an allowed user registers no Media Library filter. */
+	public function test_runtime_on_the_front_end_registers_the_admin_ui_but_not_the_media_library_filter() {
+		$this->login_as( 'administrator' );
+		$this->assertFalse( is_admin(), 'Precondition: no admin screen.' );
+		$filter = \EnableMediaReplace\Controller\MediaLibraryFilterController::getInstance();
+
+		emr()->runtime();
+
+		$this->assertSame( 10, has_action( 'admin_menu', array( emr(), 'menu' ) ) );
+		$this->assertFalse( has_action( 'restrict_manage_posts', array( $filter, 'addFilterDropdown' ) ) );
+		$this->assertFalse( has_filter( 'pre_get_posts', array( $filter, 'filterListener' ) ) );
+		$this->assertFalse( has_action( 'wp_enqueue_media', array( $filter, 'enqueueGridFilter' ) ) );
 	}
 
 	public function test_runtime_with_emr_replaced_adds_the_cache_busting_filters() {

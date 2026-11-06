@@ -90,6 +90,15 @@ if ( ! defined( 'EMR_CAPABILITY' ) ) {
 $plugin_path = plugin_dir_path( EMR_ROOT_FILE );
 
 require_once( $plugin_path . 'build/shortpixel/autoload.php' );
+
+// PSR-4 autoloader for the plugin's own classes (classes/plugin.json maps
+// the EnableMediaReplace namespace to classes/). Only files whose path
+// matches their class name are reachable this way: the new Bulk code. The
+// older files below keep their explicit require_once because their file
+// names do not match their class names.
+$emr_loader = new EnableMediaReplace\Build\PackageLoader();
+$emr_loader->setComposerFile( $plugin_path . 'classes/plugin.json' );
+$emr_loader->load( untrailingslashit( $plugin_path ) );
 require_once( $plugin_path . 'classes/compat.php' );
 //require_once( $plugin_path . 'classes/replacer.php' );
 require_once( $plugin_path . 'classes/uihelper.php' );
@@ -102,7 +111,7 @@ require_once( $plugin_path . 'classes/ajax.php' );
 require_once( $plugin_path . 'classes/emr-plugin.php' );
 require_once( $plugin_path . 'classes/installHelper.php' );
 
-// @todo Needs replacing with PSR-4
+// Legacy files: names do not match PSR-4, see the PackageLoader call above.
 require_once( $plugin_path . 'classes/Controller/ReplaceController.php');
 require_once( $plugin_path . 'classes/Controller/RemoteNoticeController.php');
 

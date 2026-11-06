@@ -58,6 +58,13 @@
  *   apiStatusCode    int|string   api-status Status->Code (2 = valid key,
  *                                 -401 = wrong key).
  *   apiStatusMessage string       api-status Status->Message.
+ *   planType         string|null  api-status PlanType; 'Unlimited AI' is the
+ *                                 Unlimited AI plan, for which the quota and
+ *                                 remaining AI fields are null like the real
+ *                                 API's. Null leaves the property out.
+ *   captionsQuota    int|null     api-status CaptionsCallsQuota (AI credits per month);
+ *                                 null leaves the three AI credit fields out.
+ *   captionsMade     int          api-status CaptionsCallsMade (Remaining = quota - made).
  *   unlimited        string|null  api-status Unlimited ('true' / 'false');
  *                                 null leaves the property out. 'false' with
  *                                 a stored key is the "plan expired" state:
@@ -113,6 +120,9 @@ class EMR_E2E_MockApi {
 		'apiStatusCode'    => 2,
 		'apiStatusMessage' => '',
 		'unlimited'        => 'true',
+		'planType'         => 'Monthly',
+		'captionsQuota'    => 1000,
+		'captionsMade'     => 0,
 		'notices'          => array(),
 		'resultFixture'    => 'test-image.jpg',
 		'downloadsFail'    => false,
@@ -164,6 +174,7 @@ class EMR_E2E_MockApi {
 		}
 		$merged = array_merge( self::knobs(), $knobs );
 		update_option( self::OPTION_KNOBS, $merged, false );
+		delete_transient( 'emr_ai_credits' ); // ApiKeyManager::CREDITS_TRANSIENT: changed answers take effect at once.
 		return $merged;
 	}
 
@@ -385,6 +396,19 @@ class EMR_E2E_MockApi {
 		);
 		if ( null !== $this->knobs['unlimited'] ) {
 			$body['Unlimited'] = $this->knobs['unlimited'];
+		}
+		if ( null !== $this->knobs['planType'] ) {
+			$body['PlanType'] = $this->knobs['planType'];
+		}
+		if ( 'Unlimited AI' === $this->knobs['planType'] ) {
+			// The real API reports no AI quota on the Unlimited AI plan.
+			$body['CaptionsCallsQuota']     = null;
+			$body['CaptionsCallsMade']      = (int) $this->knobs['captionsMade'];
+			$body['CaptionsCallsRemaining'] = null;
+		} elseif ( null !== $this->knobs['captionsQuota'] ) {
+			$body['CaptionsCallsQuota']     = (int) $this->knobs['captionsQuota'];
+			$body['CaptionsCallsMade']      = (int) $this->knobs['captionsMade'];
+			$body['CaptionsCallsRemaining'] = max( 0, (int) $this->knobs['captionsQuota'] - (int) $this->knobs['captionsMade'] );
 		}
 		return $body;
 	}

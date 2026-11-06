@@ -11,6 +11,7 @@ namespace EnableMediaReplace;
 use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
 use EnableMediaReplace\Api as Api;
 use EnableMediaReplace\ApiKeyManager as ApiKeyManager;
+use EnableMediaReplace\Controller\Bulk\BulkAjaxController;
 
 /**
  * Registers and handles the EMR admin AJAX actions.
@@ -21,14 +22,18 @@ use EnableMediaReplace\ApiKeyManager as ApiKeyManager;
  * | wp_ajax_emr_save_api_key       | save_api_key()      | `manage_options`, nonce `emr_save_api_key`               |
  * | wp_ajax_emr_delete_api_key     | delete_api_key()    | `manage_options`, nonce `emr_save_api_key`               |
  *
+ * The bulk screen's actions (`wp_ajax_emr_bulk_process`, `wp_ajax_emr_bulk_request`,
+ * `wp_ajax_emr_bulk_settings`) are registered here too, on the shared
+ * BulkAjaxController (getInstance()), the way SPIO's plugin file hooks its AjaxController.
+ *
  * Only `wp_ajax_` (logged-in) actions are registered. Lifecycle: not a singleton; the
  * constructor registers the hooks. It is instantiated at the bottom of this file when
  * the plugin requires it, and again in EnableMediaReplacePlugin::adminInit().
  *
  * @todo The double instantiation registers every endpoint twice (two callbacks on
- *       different objects). The first handler ends the request with wp_send_json*() or
- *       die(), so the second does not run, but the duplicate is unintended. Suggested fix:
- *       remove one of the two `new Ajax()` calls.
+ *       different objects), the bulk endpoints included. The first handler ends the
+ *       request with wp_send_json*() or die(), so the second does not run, but the
+ *       duplicate is unintended. Suggested fix: remove one of the two `new Ajax()` calls.
  */
 class Ajax {
 	/**
@@ -47,6 +52,12 @@ class Ajax {
 		foreach ( $endpoints as $action ) {
 			add_action( "wp_ajax_emr_{$action}", array( $this, $action ) );
 		}
+
+		// The bulk screen's actions, on the shared controller (as SPIO registers its AjaxController from the plugin file).
+		$bulk = BulkAjaxController::getInstance();
+		add_action( 'wp_ajax_emr_bulk_process', array( $bulk, 'ajaxProcessQueue' ) );
+		add_action( 'wp_ajax_emr_bulk_request', array( $bulk, 'ajaxRequest' ) );
+		add_action( 'wp_ajax_emr_bulk_settings', array( $bulk, 'settingsRequest' ) );
 	}
 
 	/**
@@ -121,7 +132,7 @@ class Ajax {
 		}
 
 		ApiKeyManager::getInstance()->deleteKey();
-		wp_send_json_success( array( 'message' => __( 'API Key removed.', 'enable-media-replace' ) ) );
+		wp_send_json_success( array( 'message' => __( 'API key removed.', 'enable-media-replace' ) ) );
 	}
 
 	/**

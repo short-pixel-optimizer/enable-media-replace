@@ -1,0 +1,1 @@
+{"name":"EnableMediaReplace\/Plugin","description":"Enable Media Replace class autoloader","type":"function","autoload":{"psr-4":{"EnableMediaReplace":"classes"}}}

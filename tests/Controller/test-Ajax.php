@@ -261,15 +261,12 @@ class AjaxTest extends WP_Ajax_UnitTestCase {
 				'background'    => array( 'type' => 'transparent' ),
 			)
 		);
-		if ( isset( $response['key'] ) ) {
-			$this->transients[] = 'emr_' . $response['key'];
-		}
 
 		$this->assertTrue( $response['success'] );
 		$this->assertArrayNotHasKey( 'data', $response, 'No success/data wrapper.' );
 		$this->assertStringStartsWith( MockEmrApi::DOWNLOAD_BASE, $response['image'] );
 		$this->assertSame( wp_get_original_image_url( $id ), $response['url'] );
-		$this->assertIsString( $response['key'] );
+		$this->assertArrayNotHasKey( 'key', $response, 'Nothing is stored for the apply step: it requests again (SPIO\'s model).' );
 		$this->assertCount( 1, $this->mock->requestsTo( 'free-reducer.php' ) );
 	}
 
@@ -340,7 +337,7 @@ class AjaxTest extends WP_Ajax_UnitTestCase {
 		);
 
 		$this->assertTrue( $response['success'] );
-		$this->assertSame( 'API Key saved and verified successfully. You now have unlimited background removal.', $response['data']['message'] );
+		$this->assertSame( 'API key saved and verified. Bulk background removal and image upscale is unlocked.', $response['data']['message'] );
 		$this->assertSame( self::API_KEY, get_option( self::KEY_OPTION ) );
 		$requests = $this->mock->requestsTo( 'api-status.php' );
 		$this->assertCount( 1, $requests );
@@ -369,7 +366,7 @@ class AjaxTest extends WP_Ajax_UnitTestCase {
 			)
 		);
 
-		$this->assertSame( array( 'success' => false, 'data' => array( 'message' => 'The API Key must be exactly 20 characters.' ) ), $response );
+		$this->assertSame( array( 'success' => false, 'data' => array( 'message' => 'The API key must be exactly 20 characters.' ) ), $response );
 		$this->assertSame( array(), $this->mock->getRequests() );
 	}
 
@@ -425,7 +422,7 @@ class AjaxTest extends WP_Ajax_UnitTestCase {
 
 		$response = $this->json( 'emr_delete_api_key', array( 'nonce' => wp_create_nonce( 'emr_save_api_key' ) ) );
 
-		$this->assertSame( array( 'success' => true, 'data' => array( 'message' => 'API Key removed.' ) ), $response );
+		$this->assertSame( array( 'success' => true, 'data' => array( 'message' => 'API key removed.' ) ), $response );
 		$this->assertFalse( get_option( self::KEY_OPTION ) );
 		$this->assertSame( '', ApiKeyManager::getInstance()->getApiKey() );
 		$this->assertSame( array(), $this->mock->getRequests() );

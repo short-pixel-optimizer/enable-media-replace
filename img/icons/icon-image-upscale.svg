@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <!-- tile background -->
+  <rect width="256" height="256" rx="10" fill="#eeeeee"/>
+
+  <!-- big upscaled image (teal): same picture, larger -->
+  <rect x="84" y="84" width="128" height="128" fill="#106c7e"/>
+  <path d="M84 212 L84 194 L123 155 L169 194 L198 173 L212 187 L212 212 Z" fill="#ffffff"/>
+
+  <!-- diagonal grow arrow from the small image's corner out to the big image's corner -->
+  <path d="M126 126 L190 190" fill="none" stroke="#ed2c26" stroke-width="4" stroke-linecap="round"/>
+  <path d="M201 201 L181 195 L195 181 Z" fill="#ed2c26"/>
+
+  <!-- AI sparkle, in the free top-right area of the big image -->
+  <path d="M184 96 C186 108 190 112 202 114 C190 116 186 120 184 132 C182 120 178 116 166 114 C178 112 182 108 184 96 Z" fill="#ffffff"/>
+  <path d="M164 134 C165 139 167 141 172 142 C167 143 165 145 164 150 C163 145 161 143 156 142 C161 141 163 139 164 134 Z" fill="#ffffff"/>
+
+  <!-- small original image (red), on top -->
+  <rect x="44" y="44" width="72" height="72" fill="#ed2c26"/>
+  <path d="M44 116 L44 106 L66 84 L92 106 L108 94 L116 102 L116 116 Z" fill="#ffffff"/>
+</svg>

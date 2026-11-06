@@ -9,10 +9,10 @@
  * nonce action, so this file covers what differs: the separate singleton,
  * the upscale screen (factor radios, their disabling by image width, the
  * account box wording, no background options) and the nonce loadPost()
- * accepts. The shared load() / loadPost() checks and the download are
- * covered in test-RemoveBackgroundViewController.php; one end-to-end
- * loadPost() here proves the inherited apply step works through this
- * controller.
+ * accepts and the `upscale` factor its apply step re-sends. The shared
+ * load() / loadPost() checks and the second request are covered in
+ * test-RemoveBackgroundViewController.php; one end-to-end loadPost() here
+ * proves the inherited apply step works through this controller.
  *
  * The controller is reached through EMR_TestUpscaleViewController (see
  * ViewControllerTestDoubles.php): viewError() and viewSuccess() run for
@@ -110,6 +110,7 @@ class UpscaleViewControllerTest extends WP_UnitTestCase {
 
 		$this->blocked = array();
 		$this->mock    = MockEmrApi::register();
+		delete_transient( ApiKeyManager::CREDITS_TRANSIENT ); // AI credits of the account row, cached per key.
 		add_filter( 'pre_http_request', array( $this, 'fail_fast' ), 9999, 3 );
 
 		$this->admin_id = self::factory()->user->create( array( 'role' => 'administrator' ) );
@@ -119,6 +120,7 @@ class UpscaleViewControllerTest extends WP_UnitTestCase {
 
 	public function tear_down() {
 		remove_filter( 'pre_http_request', array( $this, 'fail_fast' ), 9999 );
+		delete_transient( ApiKeyManager::CREDITS_TRANSIENT );
 		MockEmrApi::unregister();
 		foreach ( $this->hooks as $hook ) {
 			remove_filter( $hook[0], $hook[1], $hook[2] );
@@ -276,21 +278,13 @@ class UpscaleViewControllerTest extends WP_UnitTestCase {
 		return array( $controller, $output );
 	}
 
-	/** A valid loadPost() form for the current user. */
-	private function valid_post( $id, $key = 'emrupkey' ) {
+	/** A valid loadPost() form for the current user: the nonce, the ID and the checked factor. */
+	private function valid_post( $id, $factor = '2' ) {
 		$_POST = array(
 			'emr_nonce' => wp_create_nonce( 'media_upscale_image' ),
-			'key'       => $key,
 			'ID'        => (string) $id,
+			'upscale'   => (string) $factor,
 		);
-	}
-
-	/** Stores a download URL under the transient key, as Api::request() does. */
-	private function stash_result( $key, $bytes = null ) {
-		$url = $this->mock->stashImage( $bytes );
-		set_transient( 'emr_' . $key, $url, 60 );
-		$this->transients[] = 'emr_' . $key;
-		return $url;
 	}
 
 	/** JPEG bytes of a 120x90 image, visibly "upscaled" from the 50x50 fixture. */
@@ -356,8 +350,8 @@ class UpscaleViewControllerTest extends WP_UnitTestCase {
 		$this->assertSame( $id, $view->attachment->ID );
 		$this->assertSame( get_attached_file( $id ), $view->sourceFile->getFullPath() );
 		$this->assertStringContainsString( '<div class="wrap emr_upload_form emr-upscale-form" id="remove-background-form">', $output );
-		$this->assertStringContainsString( 'Upscale Image</div>', $output );
-		$this->assertStringContainsString( 'Upscale Options</div>', $output );
+		$this->assertStringContainsString( 'Upscale image</div>', $output );
+		$this->assertStringContainsString( 'Upscale options</div>', $output );
 	}
 
 	public function test_load_without_upload_files_shows_the_upload_permission_error() {
@@ -382,7 +376,7 @@ class UpscaleViewControllerTest extends WP_UnitTestCase {
 		$this->assertSame( ViewController::ERROR_IMAGE_PERMISSION, $exit->getCode() );
 	}
 
-	public function test_screen_has_the_form_nonce_id_and_key() {
+	public function test_screen_has_the_form_nonce_and_id_but_no_result_key() {
 		$id = $this->upload();
 
 		list( , $output ) = $this->load( $id );
@@ -396,7 +390,7 @@ class UpscaleViewControllerTest extends WP_UnitTestCase {
 		$this->assertSame( 1, wp_verify_nonce( $nonce[1], 'media_upscale_image' ) );
 		$this->assertFalse( wp_verify_nonce( $nonce[1], 'media_remove_background' ), 'The upscale form has its own nonce action.' );
 		$this->assertStringContainsString( '<input type="hidden" name="ID" value="' . $id . '" />', $output );
-		$this->assertStringContainsString( "<input type='hidden' name='key' value='' />", $output );
+		$this->assertStringNotContainsString( "name='key'", $output, 'The apply step re-sends the checked factor; nothing of the preview is stored.' );
 	}
 
 	public function test_screen_offers_every_factor_for_a_small_image_with_the_smallest_checked() {
@@ -407,14 +401,14 @@ class UpscaleViewControllerTest extends WP_UnitTestCase {
 		foreach ( array( 2, 3, 4 ) as $factor ) {
 			$radio = $this->radio( $output, $factor );
 			$this->assertStringContainsString( 'type="radio" name="upscale" value="' . $factor . '"', $radio );
-			$this->assertStringNotContainsString( 'disabled', $radio, $factor . 'x is enabled for a 50 px image.' );
-			$this->assertStringContainsString( $factor . 'x', $output );
+			$this->assertStringNotContainsString( 'disabled', $radio, $factor . '× is enabled for a 50 px image.' );
+			$this->assertStringContainsString( $factor . '×', $output, 'The same factor sign as the tiles and the bulk.' );
 		}
 		$this->assertStringContainsString( "checked='checked'", $this->radio( $output, 2 ) );
 		$this->assertStringNotContainsString( 'checked', $this->radio( $output, 3 ) );
 		$this->assertStringNotContainsString( 'checked', $this->radio( $output, 4 ) );
 		$this->assertStringContainsString( 'Enlarges the image with the selected factor using AI upscaling.', $output );
-		$this->assertStringNotContainsString( 'This image is too big to be upscaled.', $output );
+		$this->assertStringNotContainsString( 'This image is too large to be upscaled.', $output );
 	}
 
 	public function test_screen_disables_4x_above_1024_pixels_and_checks_the_first_enabled_factor() {
@@ -451,7 +445,7 @@ class UpscaleViewControllerTest extends WP_UnitTestCase {
 			$this->assertStringContainsString( "disabled='disabled'", $radio, $factor . 'x' );
 			$this->assertStringNotContainsString( 'checked', $radio, $factor . 'x' );
 		}
-		$this->assertStringContainsString( 'This image is too big to be upscaled.', $output );
+		$this->assertStringContainsString( 'This image is too large to be upscaled.', $output );
 		$this->assertStringNotContainsString( 'Enlarges the image with the selected factor', $output );
 		$this->assertMatchesRegularExpression( '/id="remove_background_button"\s+disabled=\'disabled\'\s*>Preview<\/button>/', $output );
 	}
@@ -476,7 +470,7 @@ class UpscaleViewControllerTest extends WP_UnitTestCase {
 		$this->assertSame( 2, substr_count( $output, "<div class='image_placeholder" ), 'Current and preview boxes.' );
 		$this->assertStringContainsString( "<span class='upload-title'>Current</span>", $output );
 		$this->assertStringContainsString( "<span class='upload-title'>Preview</span>", $output );
-		$this->assertStringContainsString( '<h3>Upscaling image...</h3>', $output );
+		$this->assertStringContainsString( '<h3>Upscaling image…</h3>', $output );
 		$this->assertStringNotContainsString( 'Removing background', $output );
 		$this->assertSame( 1, substr_count( $output, 'id="overlay"' ) );
 	}
@@ -489,28 +483,31 @@ class UpscaleViewControllerTest extends WP_UnitTestCase {
 		$this->assertStringContainsString( 'id="remove_background_button"', $output, 'The id the shared script binds to.' );
 		$this->assertStringContainsString( '<button type="submit" class="button button-primary" id="replace_image_button" disabled>Replace</button>', $output );
 		$this->assertStringContainsString( '<a class="button" href="javascript:history.back()">Cancel</a>', $output );
-		$this->assertStringContainsString( 'Replace this image with another one instead!', $output );
+		$this->assertMatchesRegularExpression( '#<a class="emr-operation emr-operation-replace" href="[^"]+">\s*<img class="emr-operation-icon" src="[^"]*/img/icons/icon-media-replace\.svg"#', $output );
+		$this->assertStringContainsString( '<span class="emr-operation-title">Replace media</span>', $output );
+		$this->assertStringNotContainsString( 'emr-operation-upscale', $output, 'No button to the screen itself.' );
 		$this->assertSame( 1, preg_match( '/href="([^"]*action=media_replace[^"]*)"/', $output, $link ) );
 		$this->assertSame( 1, preg_match( '/_wpnonce=([0-9a-f]+)/', html_entity_decode( $link[1] ), $nonce ) );
 		$this->assertSame( 1, wp_verify_nonce( $nonce[1], 'media_replace' ) );
 	}
 
-	public function test_screen_account_box_uses_the_upscale_wording_without_a_key() {
+	public function test_screen_account_row_is_collapsed_on_the_free_plan_without_a_key() {
 		$id = $this->upload();
 		$this->assertFalse( ApiKeyManager::getInstance()->hasApiKey(), 'Precondition.' );
 
 		list( , $output ) = $this->load( $id );
 
-		$this->assertStringContainsString( 'data-confirm-remove="Remove the saved ShortPixel API Key? Image upscale will fall back to the Free plan."', $output );
-		$this->assertStringContainsString( 'Image Upscale is limited on the Free plan. Add your ShortPixel Unlimited or Unlimited AI plan API Key to remove that limit.', $output );
-		$this->assertStringNotContainsString( 'Background Removal', $output );
-		$this->assertStringNotContainsString( '100 images', $output );
+		$this->assertMatchesRegularExpression( '/<details class="emr-sp-account emr-collapsible emr-sp-account-upscale" data-confirm-remove="[^"]+">/', $output, 'Collapsed: no open attribute.' );
+		$this->assertStringContainsString( 'data-confirm-remove="Remove the API key? Background removal and image upscale go back to the Free plan (10 images)."', $output );
+		$this->assertStringContainsString( 'Free plan (10 images)', $output );
+		$this->assertStringContainsString( 'utm_campaign=emr_upscale', $output );
+		$this->assertStringNotContainsString( '100 image', $output );
 		$this->assertStringContainsString( 'id="emr-new-api-key"', $output );
 		$this->assertStringContainsString( 'Activate', $output );
 		$this->assertTrue( wp_script_is( 'emr_shortpixel_account', 'enqueued' ) );
 	}
 
-	public function test_screen_account_box_uses_the_upscale_wording_with_a_key() {
+	public function test_screen_account_row_shows_the_connected_unlimited_key() {
 		$key = 'ABCDEFGHIJ0123456789';
 		update_option( ApiKeyManager::OPTION_NAME, $key, false );
 		$this->set_static( ApiKeyManager::class, 'instance', null );
@@ -520,10 +517,32 @@ class UpscaleViewControllerTest extends WP_UnitTestCase {
 
 		list( , $output ) = $this->load( $id );
 
-		$this->assertStringContainsString( 'Your ShortPixel API Key is connected. Image Upscale is unlimited as long as your Unlimited or Unlimited AI plan is active.', $output );
-		$this->assertStringContainsString( '<span class="emr-sp-key-value">' . esc_html( $manager->getMaskedKey() ) . '</span>', $output );
+		$this->assertStringContainsString( '<span class="emr-sp-account-credits">1,000 AI credits left</span>', $output );
+		$this->assertStringContainsString( 'Background removal and image upscale use one AI credit per image. The Unlimited AI plan has no limit.', $output );
+		$this->assertStringNotContainsString( 'have no limit while your plan is active', $output );
+		$this->assertStringContainsString( '<code class="emr-sp-key-value">' . esc_html( $manager->getMaskedKey() ) . '</code>', $output );
 		$this->assertStringNotContainsString( $key, $output );
-		$this->assertStringNotContainsString( 'Background Removal', $output );
+		$this->assertMatchesRegularExpression( '/<span class="emr-sp-account-status emr-sp-account-connected">.*Connected<\/span>/', $output );
+	}
+
+	public function test_screen_has_the_header_bar_the_preview_hint_and_no_cdn_line() {
+		$id = $this->upload();
+
+		list( , $output ) = $this->load( $id );
+
+		$this->assertStringContainsString( '<h1>Enable Media Replace - Upscale image</h1>', $output );
+		$this->assertStringContainsString( "<span class='emr-preview-hint'>Click Preview to see the result</span>", $output );
+		$this->assertStringNotContainsString( 'If a CDN is used', $output );
+		$this->assertMatchesRegularExpression( "/<img [^>]*class='image' data-zoom-src='[^']+'/", $output, 'The full-size file for the magnifier.' );
+	}
+
+	public function test_screen_offers_the_remove_background_button() {
+		$id = $this->upload();
+		$this->assertTrue( emr()->uiHelper()->isBackgroundRemovable( get_post( $id ) ), 'Precondition: a JPEG with the background feature on.' );
+
+		list( , $output ) = $this->load( $id );
+
+		$this->assertMatchesRegularExpression( '#<a class="emr-operation emr-operation-background" href="[^"]*action=emr_prepare_remove[^"]*_wpnonce=[0-9a-f]+[^"]*">\s*<img class="emr-operation-icon" src="[^"]*/img/icons/icon-background-removal\.svg"#', $output );
 	}
 
 	public function test_screen_hides_the_account_box_without_manage_options() {
@@ -559,7 +578,7 @@ class UpscaleViewControllerTest extends WP_UnitTestCase {
 
 	public function test_load_post_refuses_the_remove_background_nonce() {
 		$id    = $this->upload();
-		$_POST = array( 'emr_nonce' => wp_create_nonce( 'media_remove_background' ), 'key' => 'k', 'ID' => (string) $id );
+		$_POST = array( 'emr_nonce' => wp_create_nonce( 'media_remove_background' ), 'ID' => (string) $id, 'upscale' => '2' );
 		$controller = new EMR_TestUpscaleViewController();
 
 		$exit = $this->expect_exit( array( $controller, 'loadPost' ) );
@@ -569,21 +588,23 @@ class UpscaleViewControllerTest extends WP_UnitTestCase {
 	}
 
 	public function test_load_post_without_nonce_shows_the_nonce_error() {
-		$_POST = array( 'key' => 'k', 'ID' => '5' );
+		$_POST = array( 'ID' => '5', 'upscale' => '2' );
 
 		$exit = $this->expect_exit( array( new EMR_TestUpscaleViewController(), 'loadPost' ) );
 
 		$this->assertSame( ViewController::ERROR_NONCE, $exit->getCode() );
 	}
 
-	public function test_load_post_with_the_upscale_nonce_but_no_key_shows_the_key_error() {
+	public function test_load_post_with_a_factor_outside_the_set_shows_download_failed_without_a_request() {
 		$id = $this->upload();
-		$this->valid_post( $id, '' );
+		$this->valid_post( $id, '5' );
 		$controller = new EMR_TestUpscaleViewController();
 
 		$exit = $this->expect_exit( array( $controller, 'loadPost' ) );
 
-		$this->assertSame( ViewController::ERROR_KEY, $exit->getCode() );
+		$this->assertSame( ViewController::ERROR_DOWNLOAD_FAILED, $exit->getCode() );
+		$this->assertSame( 'Invalid upscale factor', $controller->getView()->errorDescription );
+		$this->assertSame( array(), $this->mock->getRequests() );
 	}
 
 	public function test_load_post_for_an_author_restricted_owner_shows_the_image_permission_error() {
@@ -599,25 +620,28 @@ class UpscaleViewControllerTest extends WP_UnitTestCase {
 		$this->assertObjectNotHasProperty( 'post_id', $controller->getView() );
 	}
 
-	public function test_load_post_with_an_unknown_key_shows_download_failed() {
+	public function test_load_post_with_a_refused_api_answer_shows_download_failed_with_the_reason() {
 		$id = $this->upload();
-		$this->valid_post( $id, 'emr-no-such-key' );
+		$this->valid_post( $id );
+		$this->mock->setKnob( 'forceStatusCode', '-201' );
+		$this->mock->setKnob( 'errorMessage', 'Invalid image format' );
 		$controller = new EMR_TestUpscaleViewController();
 
 		$exit = $this->expect_exit( array( $controller, 'loadPost' ) );
 
 		$this->assertSame( ViewController::ERROR_DOWNLOAD_FAILED, $exit->getCode() );
-		$this->assertSame( array(), $this->mock->getRequests() );
+		$this->assertSame( 'Invalid image format', $controller->getView()->errorDescription );
+		$this->assertSame( array(), $this->mock->requestsTo( '/f/' ) );
 	}
 
-	public function test_load_post_downloads_the_result_and_replaces_the_file_in_place() {
+	public function test_load_post_requests_the_checked_factor_again_downloads_the_result_and_replaces_the_file_in_place() {
 		$id       = $this->upload();
 		$file     = get_attached_file( $id );
 		$original = md5_file( $file );
 		$this->assertSame( 50, wp_get_attachment_metadata( $id )['width'], 'Precondition.' );
 		$bytes = $this->upscaled_jpeg_bytes();
-		$this->stash_result( 'emrupgood', $bytes );
-		$this->valid_post( $id, 'emrupgood' );
+		$this->mock->setKnob( 'resultBytes', $bytes );
+		$this->valid_post( $id, '3' );
 		$controller = new EMR_TestUpscaleViewController();
 		$before     = $this->track_temp_files();
 
@@ -627,6 +651,10 @@ class UpscaleViewControllerTest extends WP_UnitTestCase {
 		$this->assertSame( 'success', $exit->template );
 		$this->assertTrue( $controller->successCalled );
 		$this->assertSame( 0, $controller->errorCalls );
+		$reducer = $this->mock->requestsTo( 'reducer.php' );
+		$this->assertCount( 1, $reducer );
+		$this->assertSame( 3, $reducer[0]['request']['upscale'], 'The form\'s factor, not a stored result.' );
+		$this->assertArrayNotHasKey( 'bg_remove', $reducer[0]['request'] );
 		$this->assertCount( 1, $this->mock->requestsTo( '/f/' ) );
 		clean_post_cache( $id );
 		$this->assertSame( $file, get_attached_file( $id ), 'Same file name and location.' );

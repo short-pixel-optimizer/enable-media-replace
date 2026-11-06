@@ -43,13 +43,14 @@ class UIHelper
   protected $preview_height = 0;
 
 	/**
-	 * @var int Maximum preview width in pixels.
+	 * @var int Maximum preview width in pixels: WordPress's "large" size, so the
+	 *          large preview panes of the single screens get a sharp image.
 	 */
-	protected $preview_max_width = 600;
+	protected $preview_max_width = 1024;
   /**
    * @var int Maximum preview height in pixels.
    */
-  protected $preview_max_height = 600;
+  protected $preview_max_height = 1024;
 
   /**
    * @var int Width of the full-size image of the source attachment. Set by
@@ -73,6 +74,47 @@ class UIHelper
 	 * @var string
 	 */
 	const NOTICE_NEW_FEATURE = 'EMR001';
+
+	/**
+	 * A number for display: number_format_i18n() without a trailing ".00",
+	 * and a plain space for a locale's non-breaking thousands separator
+	 * (SPIO's UiHelper::formatNumber()). A non-numeric value is returned as is.
+	 *
+	 * @param mixed $number
+	 * @param int   $precision Maximum decimals. Default 2.
+	 * @return mixed The formatted string, or $number when it is not numeric.
+	 */
+	public static function formatNumber($number, $precision = 2)
+	{
+		global $wp_locale;
+		if (! is_numeric($number)) {
+			return $number;
+		}
+		$decimalpoint = (isset($wp_locale) && isset($wp_locale->number_format['decimal_point'])) ? $wp_locale->number_format['decimal_point'] : '.';
+		$formatted    = number_format_i18n((float) $number, $precision);
+		$pos          = strpos($formatted, $decimalpoint);
+		if (false !== $pos && '00' === substr($formatted, $pos + 1)) {
+			$formatted = substr($formatted, 0, $pos);
+		}
+		return str_replace('&nbsp;', ' ', $formatted);
+	}
+
+	/**
+	 * A Unix timestamp as "date @ time" in the site's formats and timezone
+	 * (SPIO's UiHelper::formatTS()): the bulk history, the log titles and
+	 * the per-item log lines.
+	 *
+	 * @param int $ts
+	 * @return string
+	 */
+	public static function formatTS($ts)
+	{
+		$ts = (int) $ts;
+		if (function_exists('wp_date')) {
+			return wp_date(get_option('date_format'), $ts) . ' @ ' . wp_date(get_option('time_format'), $ts);
+		}
+		return date_i18n(get_option('date_format'), $ts) . ' @ ' . date_i18n(get_option('time_format'), $ts);
+	}
 
 	/**
 	 * Returns the singleton, creating it on first call.
@@ -384,9 +426,9 @@ class UIHelper
 	 * placeholder otherwise (icon 'dashicons-no' for a real attachment, no
 	 * icon for $attach_id < 0).
 	 *
-	 * Sizing: when the image exceeds 600 x 600 ($preview_max_width /
+	 * Sizing: when the image exceeds 1024 x 1024 ($preview_max_width /
 	 * $preview_max_height), both dimensions are divided by the larger of
-	 * width / 600 and height / 600 and floored, which keeps the aspect ratio.
+	 * width / 1024 and height / 1024 and floored, which keeps the aspect ratio.
 	 * The scaled size is written back to $preview_width / $preview_height
 	 * (side effect) and passed to the placeholder; the <img> width and height
 	 * attributes are that size raised to at least 150 each.
@@ -467,8 +509,10 @@ class UIHelper
       $image_width = ($width >= 150) ? $width: 150; 
       $image_height = ($height >= 150) ? $height : 150;
 
-			$image = sprintf("<img src='%s' width='%d' height='%d' class='image' style='max-width:100%%; max-height: 100%%;' />", 
-        esc_url($url), $image_width, $image_height );
+			// data-zoom-src: the full-size file, for the hover magnifier (js/emr-magnifier.js).
+			$full = wp_get_attachment_image_url($attach_id, 'full');
+			$image = sprintf("<img src='%s' width='%d' height='%d' class='image' data-zoom-src='%s' style='max-width:100%%; max-height: 100%%;' />",
+        esc_url($url), $image_width, $image_height, esc_url($full ? $full : $url) );
 
 			$defaults = array(
 				'width' => $width,
@@ -607,8 +651,8 @@ class UIHelper
    *     @type bool        $is_upload    Right-side upload interface; default false.
    *     @type string|bool $mime_type    Written to data-filetype; default false (omitted).
    *     @type int|bool    $file_size    Bytes, shown through size_format(); default false (empty).
-   *     @type bool        $remove_bg_ui Adds the "Removing background..." overlay; default false.
-   *     @type bool        $upscale_ui   Adds the "Upscaling image..." overlay instead, with the same
+   *     @type bool        $remove_bg_ui Adds the "Removing background…" overlay; default false.
+   *     @type bool        $upscale_ui   Adds the "Upscaling image…" overlay instead, with the same
    *                                     "Preview" title; wins over `remove_bg_ui`; default false.
    * }
    * @return string HTML.
@@ -631,6 +675,7 @@ class UIHelper
         'file_size' => false,
 				'remove_bg_ui' => false, // In process icons et al when removing background, for preview pane.
 				'upscale_ui' => false, // Same as remove_bg_ui, but for upscaling.
+				'hint' => '', // Text shown in an empty pane ("Click Preview to see the result"); js/remove_bg.js removes it.
 
     );
 
@@ -687,7 +732,7 @@ class UIHelper
 			$output .= "<span class='upload-title'>" . __('New', 'enable-media-replace') . "</span>";
 			$output .= '<input type="file" name="userfile" id="upload-file" />';
 				$output .= '<div class="drag-and-drop-title">
-                              <span>' . __('Click here to upload or drop file in area', 'enable-media-replace') . '</span>
+                              <span>' . __('Click here to upload, or drop a file in this area', 'enable-media-replace') . '</span>
                    </div>';
 		}
 		else
@@ -702,6 +747,10 @@ class UIHelper
     {
       $output .= "<span class='textlayer'>" . $args['layer'] . "</span>";
     }
+		if ('' !== $args['hint'])
+		{
+			$output .= "<span class='emr-preview-hint'>" . esc_html($args['hint']) . "</span>";
+		}
 		$output .= $background_remove_ui;
     $output .= "<div class='image_size'>" . $this->convertFileSize($filesize). "</div>";
     $output .= "</div>";
@@ -812,7 +861,167 @@ class UIHelper
 	}
 
 	/**
-	 * Returns the "Removing background..." overlay with its CSS spinner.
+	 * Tells whether the upscale operation applies to an attachment at all,
+	 * whatever its size: a JPEG or PNG image, with the `upscale` feature on
+	 * (which also excludes author-restricted users). isUpscalable() adds the
+	 * width limit; where both differ, the entry points show a greyed-out
+	 * Upscale button (the image is too large).
+	 *
+	 * @param \WP_Post|int $post Attachment post or ID.
+	 * @return bool
+	 */
+	public function supportsUpscale($post)
+	{
+		$post = get_post($post);
+		if (! $post || false === wp_attachment_is_image($post) || false === emr()->useFeature('upscale')) {
+			return false;
+		}
+		$mime = (string) get_post_mime_type($post);
+		foreach (array('jpg', 'png', 'jpeg') as $extension) {
+			if (false !== strpos($mime, $extension)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * The largest upscale factor an attachment's width allows, 0 when none.
+	 *
+	 * A factor fits when the width is below its limit in getUpscaleFactors(),
+	 * the same comparison as the factor choice of views/prepare-upscale.php.
+	 * An attachment without a known width gets the largest factor.
+	 *
+	 * @param \WP_Post|int $post Attachment post or ID.
+	 * @return int 0, 2, 3 or 4.
+	 */
+	public function getMaxUpscaleFactor($post)
+	{
+		$post  = get_post($post);
+		$meta  = $post ? wp_get_attachment_metadata($post->ID) : false;
+		$width = (is_array($meta) && isset($meta['width'])) ? (int) $meta['width'] : 0;
+		$max   = 0;
+		foreach ($this->getUpscaleFactors() as $factor => $limit) {
+			if (0 === $width || $width < $limit) {
+				$max = max($max, (int) $factor);
+			}
+		}
+		return $max;
+	}
+
+	/**
+	 * The arguments of getOperationButton() for one operation on an
+	 * attachment: the same title, text, icon and nonced link wherever EMR
+	 * shows the operation (the single screens, the media modal fields and the
+	 * Edit Media "Replace Media" box). The callers decide whether to show it
+	 * (isBackgroundRemovable(), supportsUpscale(), the author restriction).
+	 *
+	 * Upscale links only while getMaxUpscaleFactor() is above 0; otherwise its
+	 * `url` is null (a greyed-out tile) and the text says the image is already
+	 * large enough.
+	 *
+	 * @param string        $operation replace, background or upscale.
+	 * @param \WP_Post|int  $post      Attachment post or ID.
+	 * @return array Arguments for getOperationButton().
+	 */
+	public function getOperationButtonArgs($operation, $post)
+	{
+		$post = get_post($post);
+		$id   = $post ? (int) $post->ID : 0;
+		$base = add_query_arg(array(
+			'page'          => 'enable-media-replace/enable-media-replace.php',
+			'attachment_id' => $id,
+		), admin_url('upload.php'));
+
+		switch ($operation) {
+			case 'background':
+				return array(
+					'id'    => 'background',
+					'url'   => wp_nonce_url(add_query_arg('action', 'emr_prepare_remove', $base), 'emr_prepare_remove'),
+					'icon'  => 'icon-background-removal.svg',
+					'title' => __('Remove background', 'enable-media-replace'),
+					'text'  => __('Make this image transparent or a solid color, with AI', 'enable-media-replace'),
+				);
+			case 'upscale':
+				$max = $this->getMaxUpscaleFactor($post);
+				return array(
+					'id'      => 'upscale',
+					'url'     => ($max > 0) ? wp_nonce_url(add_query_arg('action', 'emr_prepare_upscale', $base), 'emr_prepare_upscale') : null,
+					'icon'    => 'icon-image-upscale.svg',
+					'title'   => __('Upscale image', 'enable-media-replace'),
+					/* translators: %d: the largest upscale factor for this image. */
+					'text'    => ($max > 0) ? sprintf(__('Enlarge this image up to %d× with AI', 'enable-media-replace'), $max) : __('This image is already large enough', 'enable-media-replace'),
+					'new'     => true,
+					'tooltip' => __('This image is too large to be upscaled.', 'enable-media-replace'),
+				);
+			default:
+				return array(
+					'id'    => 'replace',
+					'url'   => wp_nonce_url(add_query_arg('action', 'media_replace', $base), 'media_replace'),
+					'icon'  => 'icon-media-replace.svg',
+					'title' => __('Replace media', 'enable-media-replace'),
+					'text'  => __('Upload another file in place of this one', 'enable-media-replace'),
+				);
+		}
+	}
+
+	/**
+	 * HTML of one operation button: the SVG tile of the single screens
+	 * (views/operation-buttons.php) and the media modal fields
+	 * (EnableMediaReplacePlugin::attachment_editor()). Styles:
+	 * scss/_operation-buttons.scss.
+	 *
+	 * @param array $args {
+	 *     @type string      $id       replace, background or upscale (class suffix).
+	 *     @type string|null $url      Link target; null renders a greyed-out, inactive tile.
+	 *     @type string      $icon     File name under img/icons/.
+	 *     @type string      $title    Bold first line.
+	 *     @type string      $text     Second line.
+	 *     @type bool        $new      Adds SPIO's NEW! badge (img/icons/new.svg).
+	 *     @type string      $tooltip  Hover text of an inactive tile.
+	 * }
+	 * @return string Escaped HTML.
+	 */
+	public function getOperationButton($args)
+	{
+		$args = wp_parse_args($args, array('id' => '', 'url' => null, 'icon' => '', 'title' => '', 'text' => '', 'new' => false, 'tooltip' => ''));
+
+		$inner = '<img class="emr-operation-icon" src="' . esc_url(plugins_url('img/icons/' . $args['icon'], EMR_ROOT_FILE)) . '" width="48" height="48" alt="">'
+			. '<span class="emr-operation-label">'
+			. '<span class="emr-operation-title">' . esc_html($args['title']) . '</span>'
+			. '<span class="emr-operation-text">' . esc_html($args['text']) . '</span>'
+			. '</span>';
+		if ($args['new']) {
+			$inner .= '<img class="emr-operation-new" src="' . esc_url(plugins_url('img/icons/new.svg', EMR_ROOT_FILE)) . '" width="58" height="27" alt="' . esc_attr__('New', 'enable-media-replace') . '">';
+		}
+
+		$class = 'emr-operation emr-operation-' . sanitize_html_class($args['id']);
+		if (is_null($args['url'])) {
+			$title = ('' !== $args['tooltip']) ? ' title="' . esc_attr($args['tooltip']) . '"' : '';
+			return '<span class="' . esc_attr($class . ' is-disabled') . '" aria-disabled="true"' . $title . '>' . $inner . '</span>';
+		}
+		return '<a class="' . esc_attr($class) . '" href="' . esc_url($args['url']) . '">' . $inner . '</a>';
+	}
+
+	/**
+	 * The "Buy Unlimited AI credits" button of ShortPixel Image Optimizer's bulk
+	 * summary, reused everywhere EMR suggests Unlimited AI: the same label, the
+	 * ShortPixel icon (img/icons/shortpixel.svg) and the `button button-primary
+	 * unlimited` classes (styles: scss/_shortpixel-account.scss). Links to
+	 * ApiKeyManager::UPGRADE_AI_URL in a new tab.
+	 *
+	 * @return string Escaped HTML.
+	 */
+	public function getUpgradeAiButton()
+	{
+		return '<a class="button button-primary unlimited emr-ai-upgrade" href="' . esc_url(ApiKeyManager::UPGRADE_AI_URL) . '" target="_blank" rel="noopener">'
+			. '<img class="icon" src="' . esc_url(plugins_url('img/icons/shortpixel.svg', EMR_ROOT_FILE)) . '" width="30" height="30" alt="">'
+			. '<span>' . esc_html__('Buy Unlimited AI credits', 'enable-media-replace') . '</span>'
+			. '</a>';
+	}
+
+	/**
+	 * Returns the "Removing background…" overlay with its CSS spinner.
 	 *
 	 * @return string HTML.
 	 */
@@ -821,14 +1030,14 @@ class UIHelper
 		$output = '<div class="overlay" id="overlay">
 										<div class="lds-spinner"><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div></div>';
 
-		$output .=	'<h3>'  .  esc_html__('Removing background...', 'enable-media-replace') . '</h3>';
+		$output .=	'<h3>'  .  esc_html__('Removing background…', 'enable-media-replace') . '</h3>';
 		$output .= '</div>';
 
 		return $output;
 	}
 
 	/**
-	 * Returns the "Upscaling image..." overlay with its CSS spinner.
+	 * Returns the "Upscaling image…" overlay with its CSS spinner.
 	 *
 	 * @return string HTML.
 	 */
@@ -837,7 +1046,7 @@ class UIHelper
 		$output = '<div class="overlay" id="overlay">
 										<div class="lds-spinner"><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div></div>';
 
-		$output .=	'<h3>'  .  esc_html__('Upscaling image...', 'enable-media-replace') . '</h3>';
+		$output .=	'<h3>'  .  esc_html__('Upscaling image…', 'enable-media-replace') . '</h3>';
 		$output .= '</div>';
 
 		return $output;
@@ -919,11 +1128,14 @@ class UIHelper
 	 *
 	 * @todo The notice announces remove-background as a new beta feature on
 	 *       every EMR screen until dismissed; the feature is no longer new.
-	 *       Remove the notice (and its call in route()).
+	 *       Replace it with a notice announcing Bulk Enhance (Media > Bulk
+	 *       Enhance: bulk background removal for WooCommerce products and bulk
+	 *       upscale), the feature that is new. Use a new notice ID, so sites
+	 *       that dismissed EMR001 see it, and link it to the bulk page.
 	 */
 	public function featureNotice()
 	{
-			$message = sprintf(__('%s New Beta Feature! %s %s Enable Media Replace now gives you the ability to remove the background of any image. Try it out in the Media Library: hover over an image and click on Remove Background. Or just click on Remove background from the image editing window! %s  ', 'enable-media-replace' ), '<h3>', '</h3>',
+			$message = sprintf(__('%s New beta feature! %s %s Enable Media Replace can now remove the background of an image and upscale it with AI. Try it in the Media Library: hover over an image and click Remove background or Upscale image, or use the buttons on the image editing screen. %s', 'enable-media-replace' ), '<h3>', '</h3>',
 				'<p>', '</p>');
 
 		  $notice = Notices::addNormal($message, true);

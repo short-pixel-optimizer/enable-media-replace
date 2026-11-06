@@ -418,6 +418,11 @@ class ReplaceController
 
 		// Uspdate the file attached. This is required for wp_get_attachment_url to work.
 		// Using RawFullPath because FullPath does normalize path, which update_attached_file doesn't so in case of windows / strange Apspaths it fails.
+		// @todo In MODE_REPLACE the path does not change, so update_attached_file() answers
+		//       false for "same value" and every same-name replace (every bulk item) logs an
+		//       error that is none; the log of a bulk run fills with them. Suggested fix: read
+		//       the current `_wp_attached_file` first and log only when the paths differ and the
+		//       update still failed, or log the same-value case at debug level.
 		$updated = update_attached_file($this->post_id, $this->targetFile->getRawFullPath());
 		if (! $updated) {
 			Log::addError('Update Attached File reports as not updated or same value');

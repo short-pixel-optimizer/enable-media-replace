@@ -204,6 +204,7 @@ downloaded from wordpress.org (latest stable, zips cached in the
 | `beaver-builder-lite-version` | Beaver Builder Lite |
 | `shortpixel-image-optimiser` | ShortPixel Image Optimizer (coexistence and upsell) |
 | `envira-gallery-lite` | Envira Gallery Lite (upsell) |
+| `advanced-custom-fields` | Advanced Custom Fields (image, URL, text, WYSIWYG and group fields in postmeta) |
 
 The commercial ones have no public download: drop their zips into
 `tests/partner-plugins/` (gitignored) and `--compat` extracts and activates
@@ -486,11 +487,11 @@ empty filter prints `No tests executed!` and exits 0. Always read the count.
 
 The CI configuration lives in `.github/workflows/`:
 
-`phpunit.yml` ("EMR PHPUnit Tests") runs on every push to `updates` or
-`tests` and on pull requests into `updates` or `master`; any branch can be
-run by hand (Actions -> "Run workflow"). Pull requests whose source branch is
-`updates` or `tests` in this repository are skipped, because the push already
-tested that commit. Stale runs of the same pull request are cancelled; every
+`phpunit.yml` ("EMR PHPUnit Tests") runs on every push to `updates`,
+`tests` or `bulk` and on pull requests into `updates` or `master`; any branch
+can be run by hand (Actions -> "Run workflow"). Pull requests whose source
+branch is `updates`, `tests` or `bulk` in this repository are skipped, because
+the push already tested that commit. Stale runs of the same pull request are cancelled; every
 pushed commit keeps its own run. Four jobs, all on `ubuntu-latest` with MySQL 8.0 as a service
 container on port 3306 and PHP from `shivammathur/setup-php@v2`:
 
@@ -506,7 +507,9 @@ Every PHPUnit step carries a zero-test guard: the output is captured with
 `No tests executed!`, or when it has no `OK (` / `Tests:` summary line (an
 `exit()` mid-run). A green job always ran real tests.
 
-`smoke.yml` and `e2e.yml` run on manual dispatch only, never on push or PR.
+`smoke.yml` runs on manual dispatch only, never on push or PR; `e2e.yml`
+runs Chromium on the same pushes and pull requests as `phpunit.yml` (see
+"Browser end-to-end tests").
 
 The Docker-based local setup (`.docker/Dockerfile.tests` +
 `docker-compose.tests.yml` + `bin/test.sh`) is designed to match this
@@ -579,8 +582,15 @@ volumes `emr-e2e_*` and port):
   `post/<id>`, `attachment/<id>`, `key`, `feature` (forces
   `emr/feature/background` / `emr/feature/upscale` /
   `emr/feature/remote_notice`), `user`, `mock`,
-  `mock/reset`, `mock/requests`. It also turns off the core, plugin and
-  theme update checks, pings and the dashboard news widget.
+  `mock/reset`, `mock/requests`, `bulk/status` (the bulk queue's startup
+  data, raw numbers) and `queue/backdate` (ages every row of the
+  `shortpixel_queue` table past ShortQ's `process_timeout`). With the
+  `emr_e2e_classic_editor` option set (`emr.setClassicEditor(true)`) it
+  turns the block editor off for every post, the way the Classic Editor
+  plugin does, so `editors.spec.ts` can drive TinyMCE's image toolbar
+  without installing a plugin from wordpress.org; the seed removes the
+  option. It also turns off the core, plugin and theme update checks,
+  pings and the dashboard news widget.
 
 **Seed and reset.** Every test starts from the same state: the `emr`
 fixture calls `reset` before each test. Reset deletes every attachment
@@ -589,7 +599,10 @@ fixture calls `reset` before each test. Reset deletes every attachment
 `EnableMediaReplace-notices` notices option), the `emr_remote_notice` and
 remove-background result transients, the feature overrides, the mock state,
 the stub plugins the upsell installer installed (recognised by a marker in
-their header), and the year/month and `emr-e2e-*` folders under uploads.
+their header), the bulk state (the queue rows and ShortQ's `shortqwp_emr`
+status option, the `emr_bulk_logs` option, the plan-check and
+processor-key transients, the `emr_bulk_cron` event) and the year/month,
+`emr-e2e-*` and `EMR_Backups` folders under uploads.
 Then it seeds: `emr-seed.jpg` (800x600, so WordPress makes the thumbnail,
 medium and medium_large sizes) and a published post that links the full
 image and embeds its medium size. `emr.seed` holds their ids and URLs.
@@ -600,8 +613,10 @@ console-error tripwire, hermetic routing, the `emr` support client),
 `helpers/` (`wp-admin.ts` login and admin URLs, `media-list.ts` the media
 list row actions and the edit-attachment meta box, `emr.ts` the support
 client, EMR URLs and the screen objects, `journeys.ts` the shared journey
-steps), `specs/` (`auth.setup.ts` logs in
-once; `smoke.spec.ts` proves the harness).
+steps, `bulk-page.ts` the Media > Bulk Enhance page object), `specs/`
+(`auth.setup.ts` logs in once; `smoke.spec.ts` proves the harness;
+`editors.spec.ts` the Replace entry point in the block and classic editor
+media modal; `bulk.spec.ts` the bulk page).
 
 **Writing E2E specs**
 
@@ -631,6 +646,18 @@ once; `smoke.spec.ts` proves the harness).
 - The plan-expired state is a stored key plus `unlimited: 'false'`: set the
   key with `emr.setApiKey(...)` (a save through the screen refuses a
   non-Unlimited key), then the knob.
+- The bulk page (`BulkPage` in `helpers/bulk-page.ts`) is driven by its
+  window events (`emr.PrepareBulk`, `emr.bulk.started`,
+  `emr.processor.responseHandled`, `emr.processor.paused`), never by
+  timers. `driveToFinish()` backdates the queue rows between ticks
+  (`emr.backdateQueue()`) so an item the mock answered "pending" is
+  re-picked at once instead of after ShortQ's 10 s `process_timeout`;
+  `stop()` and `finish()` wait for `emr.bulkStatus()` to report the queue
+  clear before asserting the dashboard, because the reload the screen
+  triggers can be served while finishBulk is still running. The E2E
+  install has no WooCommerce, so the specs use the upscale operation; the
+  mock's result (`resultFixture`, 50x50 by default) makes an applied result
+  visible as the attachment's new width.
 - Never `waitForURL` for a page that reloads the SAME URL (the API-key box
   reloads after a save or removal): it resolves immediately. Wait for a DOM
   state of the new document, or use `withSelfReload(page, action)`.
@@ -682,10 +709,15 @@ the pulled image, because a core change moves the admin CSS. Refresh
 intended changes with `bin/test-e2e.sh --project visual --update-snapshots`.
 
 **CI**: `.github/workflows/e2e.yml` runs the identical Docker stack on
-`ubuntu-latest`, on manual dispatch only, one job per engine (`visual` rides
-in the Chromium job, `fail-fast: false`). Each job fails on a non-zero exit
-and on a log without an `N passed` line or with `0 passed`. Artifacts are
-uploaded per engine.
+`ubuntu-latest` on every push to `updates` and `bulk` and on every pull
+request into `updates` or `master`, with the same skip as `phpunit.yml` for
+a pull request whose source branch is `updates` or `bulk` (that commit was
+tested by its push). CI runs the Chromium job only (`visual` rides in it);
+Firefox and WebKit stay local for now and can be added to a manual run from
+the Actions tab with the `all_engines` input (WebKit then reports without
+gating, `continue-on-error`). Each job fails on a non-zero exit and on a log
+without an `N passed` line or with `0 passed`. Artifacts are uploaded per
+engine.
 
 ## Writing new tests
 
@@ -886,3 +918,32 @@ Something in the code under test called `exit()` mid-test, see Known traps.
 Common culprits in EMR: `ViewController::viewError()`, the success redirect
 in the upload view controller, `wp_die()` and `wp_send_json*()` in
 `classes/ajax.php`.
+
+## Tests that touch the ShortQ queue table
+
+The bundled ShortQ module creates the shared `{prefix}shortpixel_queue` table
+on first use with `CREATE TABLE` plus an `ALTER TABLE ... ADD CONSTRAINT`.
+Inside a test, WP_UnitTestCase rewrites `CREATE TABLE` into a TEMPORARY
+table (invisible to `SHOW TABLES`, gone with the connection) and the
+`ALTER TABLE` is DDL, so it commits the test transaction: every option or
+row written before it in that test survives the rollback and leaks into the
+next tests (`emr_shortpixel_api_key` was the visible one). On a developer
+machine the table usually already exists, so nothing shows; on CI's fresh
+database the whole run goes red. Every test class that constructs a
+`BulkQueue`, a `ShortQ` queue or calls `InstallHelper::unInstallPlugin()`
+therefore installs the table once in `set_up_before_class()`, outside the
+transaction:
+
+```php
+public static function set_up_before_class() {
+	parent::set_up_before_class();
+	( new \EnableMediaReplace\ShortQ\ShortQ( \EnableMediaReplace\InstallHelper::QUEUE_SLUG ) )->getQueue( \EnableMediaReplace\InstallHelper::QUEUE_NAME )->install();
+}
+```
+
+To reproduce CI locally, drop the table first:
+
+```bash
+docker compose -f docker-compose.tests.yml exec -T mysql mysql -uroot -ppassword wordpress_test \
+  -e "DROP TABLE IF EXISTS wptests_shortpixel_queue; DELETE FROM wptests_options WHERE option_name LIKE 'shortqwp_%';"
+```

@@ -9,9 +9,10 @@
  * EMR_CAPABILITY can only be tested in its default shape (false) here:
  * the constant is defined before any test runs.
  *
- * The root file also assigns $plugin_path at file scope. WordPress includes
- * active plugins from the global scope of wp-settings.php, so in production
- * that variable leaks into the global namespace; the test bootstrap requires
+ * The root file also assigns $plugin_path and $emr_loader at file scope.
+ * WordPress includes active plugins from the global scope of
+ * wp-settings.php, so in production those variables leak into the global
+ * namespace; the test bootstrap requires
  * the file from inside a function, where it stays local, so the leak cannot
  * be observed here.
  *
@@ -42,8 +43,10 @@ class RootFileTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * The 19 classes the root file requires explicitly (classes/ has no
-	 * autoloader), checked without triggering any autoloader.
+	 * The 19 legacy classes the root file requires explicitly (their file
+	 * names do not match PSR-4), checked without triggering any autoloader.
+	 * Classes under classes/ whose path matches their name are autoloaded
+	 * instead, see test_root_file_registers_a_psr4_loader_for_classes().
 	 */
 	public function test_every_required_class_is_loaded() {
 		$classes = array(
@@ -82,6 +85,29 @@ class RootFileTest extends WP_UnitTestCase {
 	public function test_bundled_module_autoloader_resolves_the_logger_and_notices() {
 		$this->assertTrue( class_exists( 'EnableMediaReplace\ShortPixelLogger\ShortPixelLogger' ) );
 		$this->assertTrue( class_exists( 'EnableMediaReplace\Notices\NoticeController' ) );
+		$this->assertTrue( class_exists( 'EnableMediaReplace\ShortQ\ShortQ' ) );
+	}
+
+	/**
+	 * The root file creates a second PackageLoader with classes/plugin.json,
+	 * so an spl autoloader for the EnableMediaReplace prefix rooted at the
+	 * plugin directory exists next to the module loaders (which are rooted
+	 * at build/shortpixel).
+	 */
+	public function test_root_file_registers_a_psr4_loader_for_classes() {
+		$root  = dirname( __DIR__ );
+		$found = 0;
+		foreach ( spl_autoload_functions() as $function ) {
+			if ( ! $function instanceof Closure ) {
+				continue;
+			}
+			$vars = ( new ReflectionFunction( $function ) )->getStaticVariables();
+			if ( isset( $vars['namespace'], $vars['dir'], $vars['classpaths'] ) && 'EnableMediaReplace' === $vars['namespace'] && $root === $vars['dir'] ) {
+				$found++;
+				$this->assertSame( array( 'classes' ), $vars['classpaths'] );
+			}
+		}
+		$this->assertSame( 1, $found, 'Exactly one classes/ autoloader is registered.' );
 	}
 
 	public function test_emr_returns_the_instance_held_by_the_class() {

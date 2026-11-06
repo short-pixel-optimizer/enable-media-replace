@@ -29,7 +29,9 @@
         "shortpixel/notices":"@dev",
         "shortpixel/build" : "@dev",
         "shortpixel/filesystem" : "@dev",
-        "shortpixel/replacer2" : ">=1.0"
+        "shortpixel/replacer2" : ">=1.0",
+        "shortpixel/shortq" : "@dev",
+        "shortpixel/promo-banner" : "@dev"
     },
     "scripts": {
         "post-update-cmd" : "\\ShortPixel\\Build\\Build::BuildIt",

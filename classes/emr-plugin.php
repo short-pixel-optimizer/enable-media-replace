@@ -13,6 +13,9 @@ use EnableMediaReplace\FileSystem\Controller\FileSystemController as FileSystem;
 use EnableMediaReplace\Controller\RemoteNoticeController as RemoteNoticeController;
 use EnableMediaReplace\Ajax;
 use EnableMediaReplace\Helper\EnvHelper;
+use EnableMediaReplace\Controller\Bulk\BulkAjaxController;
+use EnableMediaReplace\Controller\Bulk\QueueController;
+use EnableMediaReplace\ViewController\BulkViewController;
 
 // Does what a plugin does.
 /**
@@ -40,6 +43,9 @@ use EnableMediaReplace\Helper\EnvHelper;
  */
 class EnableMediaReplacePlugin
 {
+    /** Slug of the bulk page under Media (`upload.php?page=emr-bulk`). */
+    const BULK_PAGE_SLUG = 'emr-bulk';
+
 
     /**
      * @var string|null Plugin directory with trailing slash. Set in
@@ -109,6 +115,9 @@ class EnableMediaReplacePlugin
     {
         $this->nopriv_plugin_actions();
 
+        // The bulk cron must be known on every request (WP-Cron runs without a user).
+        \EnableMediaReplace\Controller\Bulk\CronController::getInstance();
+
         if (EMR_CAPABILITY !== false) {
             if (is_array(EMR_CAPABILITY)) {
                 $this->general_cap = EMR_CAPABILITY[0];
@@ -146,12 +155,13 @@ class EnableMediaReplacePlugin
      * @hook filter emr/feature/remote_notice Enables the remote notices. Default true.
      *
      * @todo Each call creates a new Ajax instance, which registers every
-     *       `wp_ajax_emr_*` endpoint again; classes/ajax.php already
-     *       instantiates Ajax at require time, so on admin requests each
-     *       handler is hooked twice. When useFeature() runs this method
-     *       (flags still empty), the side effect also happens there.
-     *       Instantiate Ajax once and keep the feature-flag setup separate
-     *       from it.
+     *       `wp_ajax_emr_*` endpoint again (the bulk ones included);
+     *       classes/ajax.php already instantiates Ajax at require time, so
+     *       on admin requests each handler is hooked twice. When
+     *       useFeature() runs this method (flags still empty), the side
+     *       effect also happens there. The first callback ends the request,
+     *       so the duplicate never runs. Instantiate Ajax once and keep the
+     *       feature-flag setup separate from it.
      */
     public function adminInit()
     {
@@ -288,6 +298,77 @@ class EnableMediaReplacePlugin
 
 
     /**
+     * Campaign of the promotional banner: id, first and last moment in UTC
+     * (both inclusive) and the day the "Offer ends" label prints. The end is
+     * 23:59:59 US Pacific (UTC-8 in late November) on November 30, so the
+     * offer closes at the end of that day on the US West Coast.
+     */
+    const PROMO_ID      = 'black-friday-2026';
+    const PROMO_START   = '2026-11-23 00:00:00';
+    const PROMO_END     = '2026-12-01 07:59:59';
+    const PROMO_ENDS_ON = '2026-11-30';
+    /** The banner's prefix: names its option (`emr-promo-banner`), AJAX action and asset handle. */
+    const PROMO_PREFIX  = 'emr';
+
+    /** @var \EnableMediaReplace\PromoBanner\PromoBanner|null The banner, built once by promoBanner(). */
+    protected $promoBanner;
+
+    /**
+     * The Black Friday banner (bundled module build/shortpixel/promo-banner).
+     *
+     * Shown on the Bulk Enhance page (screen `media_page_emr-bulk`) and on the
+     * replace, remove background and upscale screens (isPromoBannerScreen()),
+     * from PROMO_START to PROMO_END (UTC), to users with `manage_options`;
+     * dismissible for the whole site (option `emr-promo-banner`, named from
+     * PROMO_PREFIX, deleted by InstallHelper::unInstallPlugin()). Printed by views/bulk/view-bulk.php,
+     * views/screen.php, views/prepare-remove-background.php and
+     * views/prepare-upscale.php right after their header bar. Hooks (from the module):
+     * `emr/promo_banner/show`, `emr/promo_banner/capability`,
+     * `emr/promo_banner/url`, `emr/settings/no_banner`; the constant
+     * SHORTPIXEL_NO_BANNER switches it off too.
+     *
+     * @return \EnableMediaReplace\PromoBanner\PromoBanner
+     */
+    public function promoBanner()
+    {
+        if (null === $this->promoBanner) {
+            $this->promoBanner = new \EnableMediaReplace\PromoBanner\PromoBanner(array(
+                'id'         => self::PROMO_ID,
+                'start'      => strtotime(self::PROMO_START . ' UTC'),
+                'end'        => strtotime(self::PROMO_END . ' UTC'),
+                'ends_on'    => self::PROMO_ENDS_ON,
+                'url'        => 'https://shortpixel.com/pricing?utm_source=plugin&utm_medium=emr&utm_campaign=black_friday_2026',
+                'prefix'     => self::PROMO_PREFIX,
+                'assets_url' => plugins_url('build/shortpixel/promo-banner/assets/', EMR_ROOT_FILE),
+                'version'    => EMR_VERSION,
+                'screens'    => array('media_page_' . self::BULK_PAGE_SLUG),
+                'condition'  => array($this, 'isPromoBannerScreen'),
+                // Printed by the four views right after their header bar (render()), not on
+                // admin_notices: WordPress's script would move it there only after load (a flash).
+                'hook'       => false,
+            ));
+        }
+        return $this->promoBanner;
+    }
+
+    /**
+     * Is this the replace, remove background or upscale screen? (The banner's
+     * condition; the POST handlers and the success screen of the same page are left out.)
+     *
+     * @return bool
+     */
+    public function isPromoBannerScreen()
+    {
+        // The hidden EMR page, identified like route() does.
+        global $plugin_page;
+        if ('enable-media-replace/enable-media-replace.php' !== $plugin_page) {
+            return false;
+        }
+        $action = isset($_GET['action']) ? sanitize_key(wp_unslash($_GET['action'])) : '';
+        return in_array($action, array('media_replace', 'emr_prepare_remove', 'emr_prepare_upscale'), true);
+    }
+
+    /**
      * Registers the admin UI hooks for users who passed the access check.
      *
      * Called from runtime(). Also loads the notices controller (which hooks
@@ -304,12 +385,16 @@ class EnableMediaReplacePlugin
      * @hook filter submenu_file                       hide_sub_menu() (registered with add_action)
      * @hook action current_screen                     setScreen()
      * @hook action admin_enqueue_scripts              admin_scripts()
+     * @hook action wp_enqueue_media                   enqueueMediaModal()
      * @hook filter media_row_actions                  add_media_action()
      * @hook action attachment_submitbox_misc_actions  admin_date_replaced_media_on_edit_media_screen(), priority 91
      * @hook action add_meta_boxes_attachment          add_meta_boxes()
      * @hook filter attachment_fields_to_edit          attachment_editor()
      * @hook filter wp_get_attachment_image_src        attempt_uncache_image(), only with emr_replaced=1
      * @hook filter postbox_classes_attachment_emr-showthumbs-box Adds 'closed', only with emr_replaced=1
+     * Also registers the promo banner (promoBanner()) and the Media Library
+     * filter (MediaLibraryFilterController::register(): restrict_manage_posts,
+     * pre_get_posts, wp_enqueue_media).
      *
      * @todo The `emr_replaced` check is written `intval($_GET['emr_replaced'] == 1)`:
      *       the parenthesis closes after the loose comparison, so intval()
@@ -324,12 +409,21 @@ class EnableMediaReplacePlugin
         // loads the dismiss hook.
         $notices = Notices::getInstance();
 
+        // The Black Friday banner on EMR's own screens (bundled promo-banner module).
+        $this->promoBanner()->register();
+
+        // The Bulk Enhance filter of the Media Library (list dropdown, grid dropdown, query); admin only, as SPIO hooks its filter.
+        if (is_admin()) {
+            \EnableMediaReplace\Controller\MediaLibraryFilterController::getInstance()->register();
+        }
+
         // init plugin
         add_action('admin_menu', array($this, 'menu'));
         add_action('submenu_file', array($this, 'hide_sub_menu'));
 
         add_action('current_screen', array($this, 'setScreen')); // annoying workaround for notices in edit-attachment screen
         add_action('admin_enqueue_scripts', array($this, 'admin_scripts'));
+        add_action('wp_enqueue_media', array($this, 'enqueueMediaModal')); // the tiles of attachment_editor()
 
 
         // content filters
@@ -381,6 +475,9 @@ class EnableMediaReplacePlugin
         $title = (isset($_REQUEST['action']) && ($_REQUEST['action'] === 'emr_prepare_remove')) ? esc_html__("Remove background", "enable-media-replace") : $title;
         $title = (isset($_REQUEST['action']) && ($_REQUEST['action'] === 'emr_prepare_upscale')) ? esc_html__("Upscale image", "enable-media-replace") : $title;
         add_submenu_page('upload.php', $title, $title, 'upload_files', 'enable-media-replace/enable-media-replace.php', array($this, 'route'));
+
+        // The visible bulk page (Media > Bulk Enhance). Administrators only; hide_sub_menu() leaves it alone.
+        add_submenu_page('upload.php', esc_html__('Bulk Enhance', 'enable-media-replace'), esc_html__('Bulk Enhance', 'enable-media-replace'), BulkAjaxController::CAPABILITY, self::BULK_PAGE_SLUG, array(BulkViewController::getInstance(), 'load'));
     }
 
     /**
@@ -489,6 +586,7 @@ class EnableMediaReplacePlugin
             case 'enable-media-replace/enable-media-replace.php':
                 $action = isset($_GET['action']) ? sanitize_text_field($_GET['action']) : '';
                 wp_enqueue_style('emr_style');
+                wp_enqueue_style('emr_single');
                 wp_enqueue_script('jquery-ui-datepicker');
                 wp_enqueue_style('jquery-ui-datepicker');
                 wp_enqueue_script('emr_admin');
@@ -498,6 +596,7 @@ class EnableMediaReplacePlugin
                 if ($action == 'media_replace') {
                     if (array_key_exists("attachment_id", $_GET) && intval($_GET["attachment_id"]) > 0) {
                         wp_enqueue_script('emr_upsell');
+                        wp_enqueue_script('emr_magnifier');
 
                         $controller = \EnableMediaReplace\ViewController\ReplaceViewController::getInstance();
                         $controller->load();
@@ -514,6 +613,7 @@ class EnableMediaReplacePlugin
                     //We're adding a timestamp to the image URL for cache busting
 
                     wp_enqueue_script('emr_remove_bg');
+                    wp_enqueue_script('emr_magnifier');
 
                     wp_enqueue_style('emr_style');
                     wp_enqueue_style('emr-remove-background');
@@ -534,6 +634,7 @@ class EnableMediaReplacePlugin
                     //	require_once($this->plugin_path . 'views/do-replace-background.php');
                 } elseif ('emr_prepare_upscale' === $action && $this->useFeature('upscale')) {
                     wp_enqueue_script('emr_remove_bg'); // Same preview flow, sends the upscale factor.
+                    wp_enqueue_script('emr_magnifier');
                     wp_enqueue_style('emr-remove-background');
                     wp_enqueue_script('emr_upsell');
 
@@ -585,7 +686,8 @@ class EnableMediaReplacePlugin
      * they need.
      *
      * Styles registered: emr_style (css/admin.css, or css/rtl/admin.css for
-     * RTL), emr_edit-attachment and emr-remove-background.
+     * RTL), emr_edit-attachment, emr-remove-background and emr_single
+     * (css/single.css, the single screens; depends on the two others).
      *
      * Scripts registered and their localised objects:
      * - emr_admin (js/emr_admin.js) -> `emr_options`: dateFormat (from
@@ -604,6 +706,8 @@ class EnableMediaReplacePlugin
      *   Enqueued by views/shortpixel-account.php for users with
      *   `manage_options`.
      * - emr_success (js/emr_success.js) -> `emr_success_options`: timeout.
+     * - emr_magnifier (js/emr-magnifier.js, no dependencies, nothing
+     *   localised): the hover magnifier of the preview panes.
      *
      * @return void
      *
@@ -622,6 +726,10 @@ class EnableMediaReplacePlugin
 
         wp_register_style('emr-remove-background', plugins_url('css/remove_background.css', EMR_ROOT_FILE));
 
+        // The single screens: header bar, operation buttons, account row, magnifier (after the two above).
+        wp_register_style('emr_single', plugins_url('css/single.css', EMR_ROOT_FILE), array('emr_style', 'emr-remove-background'), EMR_VERSION);
+        wp_register_script('emr_magnifier', plugins_url('js/emr-magnifier.js', EMR_ROOT_FILE), array(), EMR_VERSION, true);
+
 
         $mimes = array_values(get_allowed_mime_types());
 
@@ -636,7 +744,7 @@ class EnableMediaReplacePlugin
 
         wp_localize_script('emr_upsell', 'emr_upsell', array(
             'ajax' => admin_url('admin-ajax.php'),
-            'installing' => __('Installing ...', 'enable-media-replace'),
+            'installing' => __('Installing…', 'enable-media-replace'),
 
         ));
 
@@ -676,6 +784,97 @@ class EnableMediaReplacePlugin
         wp_localize_script('emr_success', 'emr_success_options', array(
             'timeout' => apply_filters('emr/success/timeout', 5),
         ));
+
+        // Bulk page: processor, worker and screen (no jQuery), and its stylesheet.
+        $emr_bulk_ver = EMR_VERSION;
+        wp_register_style('emr_bulk', plugins_url('css/bulk.css', EMR_ROOT_FILE), array(), $emr_bulk_ver);
+        wp_register_script('emr_bulk_processor', plugins_url('js/bulk/emr-processor.js', EMR_ROOT_FILE), array(), $emr_bulk_ver, true);
+        wp_register_script('emr_bulk_screen', plugins_url('js/bulk/emr-bulk-screen.js', EMR_ROOT_FILE), array('emr_bulk_processor'), $emr_bulk_ver, true);
+        wp_localize_script('emr_bulk_processor', 'emrBulk', $this->bulkScriptData());
+    }
+
+    /**
+     * The data the bulk screen scripts read (`emrBulk`): URLs, nonces, the
+     * processor key, the queue stats on load, timings, settings and strings.
+     *
+     * @hook filter emr/bulk/interval       Poll interval in ms while items are processed. Default 3000.
+     * @hook filter emr/bulk/defer_interval Poll interval in ms while the queue is idle. Default 60000.
+     *
+     * @return array
+     */
+    public function bulkScriptData()
+    {
+        $ajax     = BulkAjaxController::getInstance();
+        $queue    = new QueueController(array('is_bulk' => true));
+        $isBulk   = (isset($_GET['page']) && self::BULK_PAGE_SLUG === sanitize_key(wp_unslash($_GET['page'])));
+        $settings = \EnableMediaReplace\Controller\Bulk\BulkController::getSettings();
+
+        return array(
+            'ajaxUrl'        => admin_url('admin-ajax.php'),
+            'workerURL'      => plugins_url('js/bulk/emr-worker.js', EMR_ROOT_FILE),
+            'bulkSecret'     => $ajax->getProcessorKey(),
+            'isBulkPage'     => $isBulk,
+            'nonce_process'  => wp_create_nonce('emr_bulk_process'),
+            'nonce_request'  => wp_create_nonce('emr_bulk_request'),
+            'nonce_settings' => wp_create_nonce('emr_bulk_settings'),
+            'startData'      => $isBulk ? $queue->getStartupData() : false,
+            'interval'       => (int) apply_filters('emr/bulk/interval', 3000),
+            'deferInterval'  => (int) apply_filters('emr/bulk/defer_interval', 60000),
+            'debug'          => (defined('WP_DEBUG') && WP_DEBUG) ? 'true' : 'false',
+            'reloadURL'      => admin_url('upload.php?page=' . self::BULK_PAGE_SLUG),
+            'settings'       => $settings,
+            'strings'        => array(
+                'fatalError'      => __('The bulk ran into an error', 'enable-media-replace'),
+                'fatalError500'   => __('The server answered with a fatal error (500). Check the server error log.', 'enable-media-replace'),
+                'fatalErrorStop'  => __('The bulk stopped after repeated errors', 'enable-media-replace'),
+                'fatalErrorStopText' => __('Reload the page to continue. If this keeps happening, contact support.', 'enable-media-replace'),
+                'endBulk'         => __('This stops the bulk and takes you back to the start. Items already processed stay processed. Continue?', 'enable-media-replace'),
+                'processorActive' => __('The bulk is being processed in another window.', 'enable-media-replace'),
+                'noQuota'         => __('You have no AI credits left this month. The bulk is paused.', 'enable-media-replace'),
+                'noKey'           => __('The bulk needs an API key on an Unlimited plan.', 'enable-media-replace'),
+                'restoreLabel'    => __('Restore originals', 'enable-media-replace'),
+                // A request that failed or did not answer JSON (js/bulk/emr-worker.js ErrorMessage(), by kind).
+                'requestError'    => array(
+                    'database'    => array(
+                        'title' => __('The bulk lost its connection to the database', 'enable-media-replace'),
+                        'text'  => __('The site\'s database server could not be reached for a moment, so WordPress answered with an error page instead of a bulk result. This is a server problem and usually temporary. If it keeps happening, check the MySQL error log or ask your host.', 'enable-media-replace'),
+                    ),
+                    'invalid'     => array(
+                        'title' => __('The server answered with an error page instead of a bulk result', 'enable-media-replace'),
+                        'text'  => __('Something on the site printed output into the bulk\'s answer, for example a PHP notice or another plugin. The PHP error log or wp-content/debug.log has the details.', 'enable-media-replace'),
+                    ),
+                    'server'      => array(
+                        'title' => __('The server ran into a fatal error (HTTP 500)', 'enable-media-replace'),
+                        'text'  => __('The PHP error log or wp-content/debug.log has the cause.', 'enable-media-replace'),
+                    ),
+                    'unavailable' => array(
+                        /* translators: %s: HTTP status code. */
+                        'title' => __('The server is unavailable or overloaded (HTTP %s)', 'enable-media-replace'),
+                        'text'  => __('This usually passes on its own.', 'enable-media-replace'),
+                    ),
+                    'network'     => array(
+                        'title' => __('The server could not be reached', 'enable-media-replace'),
+                        'text'  => __('Check your internet connection.', 'enable-media-replace'),
+                    ),
+                    'http'        => array(
+                        /* translators: %s: HTTP status code. */
+                        'title' => __('The server answered with HTTP %s', 'enable-media-replace'),
+                        'text'  => '',
+                    ),
+                ),
+                /* translators: %s: the start of the server's answer, as plain text. */
+                'serverAnswer'    => __('Server answer: %s', 'enable-media-replace'),
+                /* translators: %1$s: seconds until the next attempt, %2$s: this attempt, %3$s: the maximum. */
+                'retrying'        => __('The bulk tries again in about %1$s seconds (attempt %2$s of %3$s). If it keeps failing it stops; reload the page to continue then.', 'enable-media-replace'),
+                'reloadPage'      => __('Reload the page', 'enable-media-replace'),
+                /* translators: summary detail of a background removal to a transparent background. */
+                'detailTransparent' => __('Transparent', 'enable-media-replace'),
+                /* translators: %1$s: hex color, %2$s: opacity in percent. */
+                'detailSolid'     => __('Solid background %1$s, %2$s%% opacity', 'enable-media-replace'),
+                /* translators: %s: width in pixels. */
+                'detailUpscale'   => __('Images narrower than %s px', 'enable-media-replace'),
+            ),
+        );
     }
 
     /** Utility function for the Jquery UI Datepicker
@@ -845,54 +1044,46 @@ class EnableMediaReplacePlugin
             return;
         }
 
-        add_meta_box('emr-replace-box', __('Replace Media', 'enable-media-replace'), array($this, 'replace_meta_box'), 'attachment', 'side', 'low');
+        add_meta_box('emr-replace-box', __('Replace media', 'enable-media-replace'), array($this, 'replace_meta_box'), 'attachment', 'side', 'low');
+        $this->enqueueMediaModal(); // The tiles of replace_meta_box(); added before the admin header prints the styles.
 
         if (isset($_GET['emr_replaced']) && intval($_GET['emr_replaced'] == 1)) {
-            add_meta_box('emr-showthumbs-box', __('Replaced Thumbnails Preview', 'enable-media-replace'), array($this, 'show_thumbs_box'), 'attachment', 'side', 'low');
+            add_meta_box('emr-showthumbs-box', __('Replaced thumbnails preview', 'enable-media-replace'), array($this, 'show_thumbs_box'), 'attachment', 'side', 'low');
         }
     }
 
     /**
      * Prints the "Replace Media" meta box.
      *
-     * An "Upload a new file" button to the replace screen (nonce
-     * 'media_replace'), a "Remove background" button (nonce
-     * 'emr_prepare_remove') when UIHelper::isBackgroundRemovable() is true,
-     * and an "Upscale image" button (nonce 'emr_prepare_upscale') when
-     * UIHelper::isUpscalable() is true.
+     * The SVG tiles of the single screens, stacked (UIHelper::getOperationButtonArgs()
+     * and getOperationButton(), styled by css/media-modal.css, which
+     * add_meta_boxes() enqueues): Replace media (nonce 'media_replace'),
+     * Remove background (nonce 'emr_prepare_remove') when
+     * UIHelper::isBackgroundRemovable() is true, and Upscale image (nonce
+     * 'emr_prepare_upscale') when UIHelper::supportsUpscale() is true, greyed
+     * out without a link when UIHelper::getMaxUpscaleFactor() is 0.
      *
      * @param \WP_Post $post Attachment being edited.
      * @return void
      */
     public function replace_meta_box($post)
     {
+        $uiHelper = $this->uiHelper();
+        $buttons  = array($uiHelper->getOperationButtonArgs('replace', $post));
 
-        //Replace media button
-        $replace_url = $this->getMediaReplaceURL($post->ID);
-
-        $replace_action = "media_replace";
-        $replace_editurl = wp_nonce_url($replace_url, $replace_action);
-
-        $replace_link = "href=\"$replace_editurl\"";
-
-        echo "<p><a class='button-secondary' $replace_link>" . esc_html__("Upload a new file", "enable-media-replace") . "</a></p><p>" . esc_html__("To replace the current file, click the link and upload a replacement file.", "enable-media-replace") . "</p>";
-        //Remove background button
-        $removeBg_url = $this->getRemoveBgURL($post->ID);
-
-        $removeBg_action = "emr_prepare_remove";
-        $removeBg_editurl = wp_nonce_url($removeBg_url, $removeBg_action);
-
-        $removeBg_link = "href=\"$removeBg_editurl\"";
-
-        if ($this->uiHelper()->isBackgroundRemovable($post)) {
-            echo "<p><a class='button-secondary' $removeBg_link>" . esc_html__("Remove background", "enable-media-replace") . "</a></p><p>" . esc_html__("To remove the background, click the link and select the options.", "enable-media-replace") . "</p>";
+        if ($uiHelper->isBackgroundRemovable($post)) {
+            $buttons[] = $uiHelper->getOperationButtonArgs('background', $post);
+        }
+        // Upscale: a greyed-out tile when the image is too large.
+        if ($uiHelper->supportsUpscale($post)) {
+            $buttons[] = $uiHelper->getOperationButtonArgs('upscale', $post);
         }
 
-        //Upscale button
-        if ($this->uiHelper()->isUpscalable($post)) {
-            $upscale_link = "href=\"" . wp_nonce_url($this->getUpscaleURL($post->ID), 'emr_prepare_upscale') . "\"";
-            echo "<p><a class='button-secondary' $upscale_link>" . esc_html__("Upscale image", "enable-media-replace") . "</a></p><p>" . esc_html__("To enlarge a small image, click the link and select the options.", "enable-media-replace") . "</p>";
+        echo "<div class='emr-operations-box'>";
+        foreach ($buttons as $button) {
+            echo $uiHelper->getOperationButton($button); // Escaped by getOperationButton().
         }
+        echo "</div>";
     }
 
     /**
@@ -954,18 +1145,38 @@ class EnableMediaReplacePlugin
     }
 
     /**
+     * Loads css/media-modal.css, the SVG tiles of attachment_editor() and
+     * replace_meta_box(): wherever WordPress loads the media modal (Media
+     * Library grid, post editors), and from add_meta_boxes() on Edit Media.
+     *
+     * Registers and enqueues in one call: on the block editor
+     * wp_enqueue_media() runs before admin_enqueue_scripts, so admin_scripts()
+     * has not registered anything yet.
+     *
+     * @return void
+     *
+     * @hook action wp_enqueue_media
+     */
+    public function enqueueMediaModal()
+    {
+        wp_enqueue_style('emr_media_modal', plugins_url('css/media-modal.css', EMR_ROOT_FILE), array(), EMR_VERSION);
+    }
+
+    /**
      * Adds the EMR buttons to the attachment fields (media modal and
      * attachment details).
      *
      * Skipped when checkImagePermission() fails, and on the 'attachment'
-     * edit screen, which has the meta box instead. Adds the
-     * `enable-media-replace` field (replace button, nonce 'media_replace')
-     * and, when the background is removable and the user is not author
-     * restricted, the `emr-remove-background` field (nonce
-     * 'emr_prepare_remove'). The author check repeats the one already
-     * inside isBackgroundRemovable(). When UIHelper::isUpscalable() is true
-     * it also adds the `emr-upscale` field (nonce 'emr_prepare_upscale');
-     * that check carries the author restriction through useFeature().
+     * edit screen, which has the meta box instead. Each field holds one SVG
+     * tile from UIHelper::getOperationButton() (css/media-modal.css, loaded
+     * by enqueueMediaModal()). Adds the `enable-media-replace` field (nonce
+     * 'media_replace') and, when the background is removable and the user is
+     * not author restricted, the `emr-remove-background` field (nonce
+     * 'emr_prepare_remove'). The author check repeats the one already inside
+     * isBackgroundRemovable(). When UIHelper::supportsUpscale() is true it
+     * also adds the `emr-upscale` field (nonce 'emr_prepare_upscale'), a
+     * greyed-out tile when UIHelper::getMaxUpscaleFactor() is 0; that check
+     * carries the author restriction through useFeature().
      *
      * @param array    $form_fields Attachment form fields.
      * @param \WP_Post $post        Attachment.
@@ -988,38 +1199,29 @@ class EnableMediaReplacePlugin
             }
         }
 
-        $url = $this->getMediaReplaceURL($post->ID);
-        $action = "media_replace";
-        $editurl = wp_nonce_url($url, $action);
+        $uiHelper = $this->uiHelper();
 
-        $link = "href=\"$editurl\"";
+        // The same SVG tiles and wording as the single screens (UIHelper::getOperationButtonArgs()), styled by css/media-modal.css.
         $form_fields["enable-media-replace"] = array(
             "label" => esc_html__("Replace media", "enable-media-replace"),
             "input" => "html",
-            "html" => "<a class='button-secondary' $link>" . esc_html__("Upload a new file", "enable-media-replace") . "</a>",
-            "helps" => esc_html__("To replace the current file, click the link and upload a replacement file.", "enable-media-replace")
+            "html" => $uiHelper->getOperationButton($uiHelper->getOperationButtonArgs('replace', $post)),
         );
 
-        $uiHelper = $this->uiHelper(); 
-
         if ($uiHelper->isBackgroundRemovable($post) && false === $uiHelper->is_author_restricted() ) {
-            $link = $this->getRemoveBgURL($post->ID);
-            $link = "href='" . wp_nonce_url($link, 'emr_prepare_remove') . "'";
             $form_fields["emr-remove-background"] = array(
                 "label" => esc_html__("Remove background", "enable-media-replace"),
                 "input" => "html",
-                "html" => "<a class='button-secondary' $link>" . esc_html__("Remove background", "enable-media-replace") . "</a>",
-                "helps" => esc_html__("To remove the background, click the link.", "enable-media-replace")
+                "html" => $uiHelper->getOperationButton($uiHelper->getOperationButtonArgs('background', $post)),
             );
         }
 
-        if ($uiHelper->isUpscalable($post)) {
-            $link = "href='" . wp_nonce_url($this->getUpscaleURL($post->ID), 'emr_prepare_upscale') . "'";
+        // Upscale: a greyed-out tile when the image is too large.
+        if ($uiHelper->supportsUpscale($post)) {
             $form_fields["emr-upscale"] = array(
                 "label" => esc_html__("Upscale image", "enable-media-replace"),
                 "input" => "html",
-                "html" => "<a class='button-secondary' $link>" . esc_html__("Upscale image", "enable-media-replace") . "</a>",
-                "helps" => esc_html__("To enlarge a small image, click the link.", "enable-media-replace")
+                "html" => $uiHelper->getOperationButton($uiHelper->getOperationButtonArgs('upscale', $post)),
             );
         }
         return $form_fields;
@@ -1043,10 +1245,6 @@ class EnableMediaReplacePlugin
      * @return array Row actions with EMR's appended.
      *
      * @hook filter media_row_actions (listened to)
-     *
-     * @todo The "Remove  background" label and aria-label contain a double
-     *       space, which makes them separate translation strings from the
-     *       "Remove background" used elsewhere. Use a single space.
      */
     public function add_media_action($actions, $post)
     {
@@ -1070,7 +1268,7 @@ class EnableMediaReplacePlugin
         $uiHelper = $this->uiHelper(); 
 
         if ($uiHelper->isBackgroundRemovable($post) && false === $uiHelper->is_author_restricted()) {
-            $newaction['remove_background'] = '<a ' . $background_remove_link . ' aria-label="' . esc_attr__("Remove  background", "enable-media-replace") . '" rel="permalink">' . esc_html__("Remove  background", "enable-media-replace") . '</a>';
+            $newaction['remove_background'] = '<a ' . $background_remove_link . ' aria-label="' . esc_attr__("Remove background", "enable-media-replace") . '" rel="permalink">' . esc_html__("Remove background", "enable-media-replace") . '</a>';
         }
 
         if ($uiHelper->isUpscalable($post)) {
@@ -1132,7 +1330,7 @@ class EnableMediaReplacePlugin
             $display_name = get_the_author_meta('display_name', $author_id);
         ?>
             <div class="misc-pub-section replace_author">
-                <span><?php echo esc_html__('Replaced By', 'enable-media-replace'); ?>: <b><?php echo esc_html($display_name); ?></b></span>
+                <span><?php echo esc_html__('Replaced by', 'enable-media-replace'); ?>: <b><?php echo esc_html($display_name); ?></b></span>
             </div>
 <?php
         }

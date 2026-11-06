@@ -33,11 +33,10 @@ use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
  * | 6    | ERROR_SECURITY           | file type/extension not allowed                      |
  * | 7    | ERROR_UPLOAD_FAILED      | no uploaded file                                     |
  * | 8    | ERROR_NONCE              | nonce missing or invalid                             |
- * | 9    | ERROR_KEY                | remove-background download key missing               |
  * | 20-25| ERROR_TARGET_EXISTS ... ERROR_DIRECTORY_NOTEXIST | same values as ReplaceController's constants |
  * | 31   | ERROR_DOWNLOAD_FAILED    | remove-background result could not be downloaded     |
  *
- * Any other code (including null) shows "An unknown error has occured".
+ * Any other code (including null) shows "An unknown error has occurred.".
  */
 abstract class ViewController
 {
@@ -67,7 +66,6 @@ abstract class ViewController
 	 /** @var int Nonce missing or invalid. */
 	 const ERROR_NONCE = 8;
 	 /** @var int Download key missing when replacing backgrounds. */
-	 const ERROR_KEY = 9; // Missing key when replacing backgrounds.
 
 	 // These synced with ReplaceController
 	 /** @var int See ReplaceController::ERROR_TARGET_EXISTS. */
@@ -129,9 +127,12 @@ abstract class ViewController
 		 *
 		 * @param string|null $template Template name without directory and `.php`.
 		 * @param bool        $unique   Whether to skip templates that are already loaded.
+		 * @param array       $args     Values for this template only, read as
+		 *                              `$view->template_args` (SPIO's loadView(): the
+		 *                              step bar's current step, for instance).
 		 * @return false|void False when the template name is null or empty; nothing otherwise.
 		 */
-		protected function loadView($template = null, $unique = true)
+		public function loadView($template = null, $unique = true, $args = array())
 		{
 				if (is_null($template) )
 				{
@@ -143,6 +144,7 @@ abstract class ViewController
 				}
 
 				$view = $this->view;
+				$view->template_args = $args; // local pass for this template, as in SPIO.
 				$controller = $this;
 				$template_path = emr()->plugin_path('views/' . $template  . '.php');
 
@@ -197,14 +199,14 @@ abstract class ViewController
 					 $message = __('Updating the WordPress attachment failed', 'enable-media-replace');
 					break;
 					case self::ERROR_SECURITY:
-					 $message = __('The file upload has been rejected for security reason. WordPress might not allow uploading this extension or filetype', 'enable-media-replace');
+					 $message = __('The file upload was rejected for security reasons. WordPress might not allow uploading this extension or file type.', 'enable-media-replace');
 					break;
 					case self::ERROR_UPLOAD_FAILED:
-					 $message = __('The upload from your browser seem to have failed', 'enable-media-replace');
+					 $message = __('The upload from your browser seems to have failed.', 'enable-media-replace');
 					break;
 					case self::ERROR_TARGET_EXISTS:
 					 $message = __('The target file already exists in this directory. Please try another name / directory', 'enable-media-replace');
-					 $description = __('This error is shown because you try to move the image to another folder, which already has this file', 'enable-media-replace');
+					 $description = __('This error is shown because you are moving the image to another folder that already has this file.', 'enable-media-replace');
 					break;
 					case self::ERROR_DESTINATION_FAIL:
 					 $message = __('Something went wrong while writing the file or directory', 'enable-media-replace');
@@ -230,17 +232,21 @@ abstract class ViewController
 					break;
 
 					case self::ERROR_NONCE:
-					 $message = __('Fail to validate form nonce. Please try again', 'enable-media-replace');
-					 $description = __('This can happen when the window is open for a long time and/or there has been a timeout.  You can go back to previous screen and try again. If this happens each time when replacing, contact us', 'enable-media-replace');
+					 $message = __('The form could not be validated (nonce). Please try again.', 'enable-media-replace');
+					 $description = __('This can happen when the window is open for a long time and/or there has been a timeout. You can go back to the previous screen and try again. If this happens every time you replace a file, contact us.', 'enable-media-replace');
 					break;
 
 					// Remove Background
 					case self::ERROR_DOWNLOAD_FAILED:
-						$message = __('Replacement Image could not be downloaded or does not exist', 'enable-media-replace');
+						$message = __('The replacement image could not be downloaded or does not exist.', 'enable-media-replace');
+						if (isset($errorData['message']) && is_string($errorData['message']) && '' !== $errorData['message'])
+						{
+							$description = $errorData['message']; // the API's or the download's reason
+						}
 					break;
 
 					default:
-					 $message = __('An unknown error has occured', 'enable-media-replace');
+					 $message = __('An unknown error has occurred.', 'enable-media-replace');
 					break;
 			 }
 

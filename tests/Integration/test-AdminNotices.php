@@ -364,7 +364,7 @@ class AdminNoticesTest extends EMR_AjaxTestCase {
 
 		$this->assertSame( array(), $this->renderedIds( $first ), 'Not on the page that queued it.' );
 		$this->assertSame( array( UIHelper::NOTICE_NEW_FEATURE ), $this->renderedIds( $next ) );
-		$this->assertStringContainsString( '<h3> New Beta Feature! </h3>', $next );
+		$this->assertStringContainsString( '<h3> New beta feature! </h3>', $next );
 		$this->assertMatchesRegularExpression( '/class="[^"]*notice-info[^"]*is-dismissible[^"]*is-persistent/', $next );
 	}
 

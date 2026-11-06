@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <!-- tile background -->
+  <rect width="256" height="256" rx="10" fill="#eeeeee"/>
+
+  <!-- back image (red) -->
+  <rect x="44" y="44" width="104" height="104" fill="#ed2c26"/>
+  <path d="M44 148 L44 137 L66 120 L84 133 L108 148 Z" fill="#ffffff"/>
+
+  <!-- teal arrow, top right, pointing up -->
+  <path d="M182 64 C195 70 199 82 197 100" fill="none" stroke="#106c7e" stroke-width="6" stroke-linecap="round"/>
+  <path d="M168 50 L190 53 L172 72 Z" fill="#106c7e"/>
+
+  <!-- front image (teal) -->
+  <rect x="108" y="108" width="104" height="104" fill="#106c7e"/>
+  <path d="M108 212 L108 193 L129 182 L145 192 L177 163 L212 187 L212 212 Z" fill="#ffffff"/>
+
+  <!-- red arrow, bottom left, pointing down -->
+  <path d="M58 158 C55 170 57 181 66 190" fill="none" stroke="#ed2c26" stroke-width="6" stroke-linecap="round"/>
+  <path d="M78 204 L56 202 L73 184 Z" fill="#ed2c26"/>
+</svg>

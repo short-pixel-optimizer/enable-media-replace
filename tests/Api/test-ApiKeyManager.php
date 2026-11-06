@@ -56,6 +56,7 @@ class ApiKeyManagerTest extends WP_UnitTestCase {
 
 		$this->mock = MockEmrApi::register();
 		$this->mock->reset();
+		delete_transient( ApiKeyManager::CREDITS_TRANSIENT );
 		$this->blocked = array();
 		add_filter( 'pre_http_request', array( $this, 'fail_fast' ), 9999, 3 );
 	}
@@ -67,6 +68,7 @@ class ApiKeyManagerTest extends WP_UnitTestCase {
 		}
 		$this->added_filters = array();
 		MockEmrApi::unregister();
+		delete_transient( ApiKeyManager::CREDITS_TRANSIENT );
 
 		if ( null === $this->saved_option ) {
 			delete_option( self::OPTION );
@@ -207,7 +209,7 @@ class ApiKeyManagerTest extends WP_UnitTestCase {
 	public function test_save_empty_key_returns_a_message_without_request() {
 		$result = $this->fresh()->saveAndVerify( '   ' );
 
-		$this->assertSame( array( 'success' => false, 'message' => 'Please enter an API Key.' ), $result );
+		$this->assertSame( array( 'success' => false, 'message' => 'Please enter an API key.' ), $result );
 		$this->assertSame( array(), $this->mock->getRequests() );
 		$this->assertFalse( get_option( self::OPTION ) );
 	}
@@ -218,7 +220,7 @@ class ApiKeyManagerTest extends WP_UnitTestCase {
 		foreach ( array( substr( self::VALID_KEY, 0, 19 ), self::VALID_KEY . 'x' ) as $key ) {
 			$result = $manager->saveAndVerify( $key );
 			$this->assertFalse( $result['success'] );
-			$this->assertSame( 'The API Key must be exactly 20 characters.', $result['message'] );
+			$this->assertSame( 'The API key must be exactly 20 characters.', $result['message'] );
 		}
 		$this->assertSame( array(), $this->mock->getRequests() );
 		$this->assertFalse( get_option( self::OPTION ) );
@@ -243,7 +245,7 @@ class ApiKeyManagerTest extends WP_UnitTestCase {
 		$this->assertSame(
 			array(
 				'success' => true,
-				'message' => 'API Key saved and verified successfully. You now have unlimited background removal.',
+				'message' => 'API key saved and verified. Bulk background removal and image upscale is unlocked.',
 			),
 			$result
 		);
@@ -278,7 +280,7 @@ class ApiKeyManagerTest extends WP_UnitTestCase {
 
 		$result = $manager->saveAndVerify( self::VALID_KEY );
 
-		$this->assertSame( array( 'success' => false, 'message' => 'The API Key is not correct. Please try again.' ), $result );
+		$this->assertSame( array( 'success' => false, 'message' => 'The API key is not correct. Please try again.' ), $result );
 		$this->assertSame( 'previousKEYpreviousK', get_option( self::OPTION ) );
 		$this->assertSame( 'previousKEYpreviousK', $manager->getApiKey() );
 	}
@@ -296,8 +298,10 @@ class ApiKeyManagerTest extends WP_UnitTestCase {
 		$result = $manager->saveAndVerify( self::VALID_KEY );
 
 		$this->assertFalse( $result['success'] );
-		$this->assertStringContainsString( '<a href="https://shortpixel.com/pricing" target="_blank" rel="noopener">upgrade</a>', $result['message'] );
-		$this->assertStringContainsString( 'Unlimited or Unlimited AI plan', $result['message'] );
+		$this->assertStringContainsString( '<a href="https://shortpixel.com/pricing?utm_source=plugin&#038;utm_medium=emr&#038;utm_campaign=emr_upgrade_unlimited" target="_blank" rel="noopener">upgrade</a>', $result['message'] );
+		$this->assertStringContainsString( 'This API key is not on an Unlimited plan.', $result['message'] );
+		$this->assertStringContainsString( 'to unlock background removal and image upscale with it.', $result['message'] );
+		$this->assertStringNotContainsString( 'unlimited background', $result['message'], 'Only Unlimited AI is unlimited.' );
 		$this->assertFalse( get_option( self::OPTION ) );
 		$this->assertSame( '', $manager->getApiKey() );
 	}
@@ -340,7 +344,7 @@ class ApiKeyManagerTest extends WP_UnitTestCase {
 		$this->assertSame(
 			array(
 				'success' => false,
-				'message' => 'API Key could not be validated. Please check your internet connection and try again.',
+				'message' => 'The API key could not be validated. Please check your internet connection and try again.',
 			),
 			$result
 		);
@@ -362,7 +366,7 @@ class ApiKeyManagerTest extends WP_UnitTestCase {
 		$result = $this->fresh()->saveAndVerify( self::VALID_KEY );
 
 		$this->assertFalse( $result['success'] );
-		$this->assertStringStartsWith( 'API Key could not be validated.', $result['message'] );
+		$this->assertStringStartsWith( 'The API key could not be validated.', $result['message'] );
 		$this->assertCount( 1, $this->mock->requestsTo( 'api-status.php' ) );
 		$this->assertFalse( get_option( self::OPTION ) );
 	}
@@ -382,7 +386,7 @@ class ApiKeyManagerTest extends WP_UnitTestCase {
 		$result = $this->fresh()->saveAndVerify( self::VALID_KEY );
 
 		$this->assertFalse( $result['success'] );
-		$this->assertStringStartsWith( 'API Key could not be validated.', $result['message'] );
+		$this->assertStringStartsWith( 'The API key could not be validated.', $result['message'] );
 	}
 
 	/*
@@ -461,5 +465,110 @@ class ApiKeyManagerTest extends WP_UnitTestCase {
 
 		$this->mock->setKnob( 'unlimited', 1 );
 		$this->assertFalse( $manager->verifyUnlimitedPlan() );
+	}
+
+	/* ------------------------------------------------------------------
+	 * AI credits (getAiCredits(), the api-status PlanType / CaptionsCalls* fields)
+	 * ------------------------------------------------------------------ */
+
+	public function test_ai_credits_are_read_from_the_captions_fields() {
+		$this->store_key( self::VALID_KEY );
+		$this->mock->setKnob( 'captionsMade', 266 );
+
+		$credits = $this->fresh()->getAiCredits();
+
+		$this->assertSame( array( 'unlimited' => false, 'quota' => 1000, 'used' => 266, 'remaining' => 734 ), $credits );
+		$this->assertCount( 1, $this->mock->requestsTo( 'api-status.php' ) );
+	}
+
+	/**
+	 * Unlimited AI is PlanType 'Unlimited AI' (SPIO's derivation); the
+	 * answer has no AIUnlimited field. On that plan the API answers null
+	 * for CaptionsCallsQuota and CaptionsCallsRemaining, which must not
+	 * read as "0 credits left".
+	 */
+	public function test_ai_credits_are_unlimited_on_the_unlimited_ai_plan_type_even_with_null_counts() {
+		$this->store_key( self::VALID_KEY );
+		$this->mock->setKnob( 'planType', 'Unlimited AI' );
+		$this->mock->setKnob( 'captionsMade', 1234 );
+
+		$credits = $this->fresh()->getAiCredits();
+
+		$raw = json_decode( wp_json_encode( $this->mock->apiStatusBody() ), true );
+		$this->assertNull( $raw['CaptionsCallsQuota'], 'Precondition: the mock answers like the real API.' );
+		$this->assertNull( $raw['CaptionsCallsRemaining'], 'Precondition: the mock answers like the real API.' );
+		$this->assertSame( array( 'unlimited' => true, 'quota' => 0, 'used' => 1234, 'remaining' => 0 ), $credits );
+	}
+
+	public function test_ai_credits_are_not_unlimited_on_other_plan_types_or_an_ai_unlimited_field() {
+		$this->store_key( self::VALID_KEY );
+		foreach ( array( 'Monthly', 'Unlimited', 'unlimited ai', '', null ) as $plan ) {
+			delete_transient( ApiKeyManager::CREDITS_TRANSIENT );
+			$this->mock->setKnob( 'planType', $plan );
+			$credits = $this->fresh()->getAiCredits();
+			$this->assertFalse( $credits['unlimited'], var_export( $plan, true ) );
+			$this->assertSame( 1000, $credits['remaining'], var_export( $plan, true ) );
+		}
+
+		// A stray AIUnlimited field (which the API does not send) decides nothing.
+		delete_transient( ApiKeyManager::CREDITS_TRANSIENT );
+		$this->mock->setKnob( 'planType', 'Monthly' );
+		$body = $this->mock->apiStatusBody();
+		$body['AIUnlimited'] = true;
+		$this->add_test_filter(
+			'pre_http_request',
+			function ( $preempt, $args, $url ) use ( $body ) {
+				if ( false === strpos( $url, 'api-status.php' ) ) {
+					return $preempt;
+				}
+				return array(
+					'headers'  => array(),
+					'body'     => wp_json_encode( $body ),
+					'response' => array( 'code' => 200, 'message' => 'OK' ),
+					'cookies'  => array(),
+				);
+			},
+			11
+		);
+		$credits = $this->fresh()->getAiCredits();
+		$this->assertFalse( $credits['unlimited'] );
+		$this->assertSame( 1000, $credits['remaining'] );
+	}
+
+	public function test_ai_credits_are_cached_per_key_until_refreshed() {
+		$this->store_key( self::VALID_KEY );
+		$manager = $this->fresh();
+
+		$manager->getAiCredits();
+		$manager->getAiCredits();
+		$this->assertCount( 1, $this->mock->requestsTo( 'api-status.php' ), 'The second read comes from the transient.' );
+
+		$this->mock->setKnob( 'captionsMade', 10 );
+		$this->assertSame( 990, $manager->getAiCredits( true )['remaining'], 'refresh asks the API again.' );
+		$this->assertCount( 2, $this->mock->requestsTo( 'api-status.php' ) );
+
+		$this->store_key( 'zyxwVUTSRQPONMLKJIHg' );
+		$this->fresh()->getAiCredits();
+		$this->assertCount( 3, $this->mock->requestsTo( 'api-status.php' ), 'Another key does not reuse the cache.' );
+	}
+
+	public function test_saving_a_key_caches_its_credits_and_removing_it_clears_them() {
+		$this->mock->setKnob( 'captionsMade', 5 );
+		$manager = $this->fresh();
+		$this->assertTrue( $manager->saveAndVerify( self::VALID_KEY )['success'] );
+		$this->assertSame( 995, $manager->getAiCredits()['remaining'] );
+		$this->assertCount( 1, $this->mock->requestsTo( 'api-status.php' ), 'The save already cached the credits.' );
+
+		$manager->deleteKey();
+		$this->assertFalse( get_transient( ApiKeyManager::CREDITS_TRANSIENT ) );
+		$this->assertFalse( $manager->getAiCredits(), 'No key, no credits.' );
+	}
+
+	public function test_ai_credits_are_false_when_the_api_cannot_be_reached() {
+		$this->store_key( self::VALID_KEY );
+		$this->mock->setKnob( 'wpErrorMessage', 'down' );
+
+		$this->assertFalse( $this->fresh()->getAiCredits() );
+		$this->assertFalse( get_transient( ApiKeyManager::CREDITS_TRANSIENT ) );
 	}
 }

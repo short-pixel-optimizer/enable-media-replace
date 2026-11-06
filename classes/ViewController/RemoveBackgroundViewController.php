@@ -28,14 +28,17 @@ use EnableMediaReplace\Api as Api;
  * required explicitly, so this works; a case-sensitive autoloader would not find it.
  *
  * Lifecycle: singleton via getInstance(), called from EnableMediaReplacePlugin::route()
- * when the `background` feature is on. Registers no hooks. The background removal itself
- * runs over AJAX (Ajax::remove_background() -> Api::request()); this class only shows the
- * screen and, after the user confirms, downloads the result and replaces the file. The
- * imported `Unserialize` class is not used.
+ * when the `background` feature is on. Registers no hooks. The preview runs over AJAX
+ * (Ajax::remove_background() -> Api::request()) and is shown only; this class shows the
+ * screen and, after the user confirms, runs the same request again on the original
+ * (fetchResult()), downloads that result and replaces the file. Nothing is stored between
+ * the two steps, as in ShortPixel Image Optimizer's editor preview, whose apply step also
+ * sends the image a second time. The imported `Unserialize` class is not used.
  *
- * The screen template and the form nonce action are the properties `$view_name` and
- * `$nonce_action`, so that UpscaleViewController can reuse load() and loadPost() unchanged
- * with its own template and nonce; the two controllers differ in nothing else.
+ * The screen template, the form nonce action and the operation are the properties
+ * `$view_name`, `$nonce_action` and `$operation`, so that UpscaleViewController can reuse
+ * load() and loadPost() unchanged with its own template, nonce and form fields; the two
+ * controllers differ in nothing else.
  */
 class RemoveBackGroundViewController extends \EnableMediaReplace\ViewController
 {
@@ -60,6 +63,14 @@ class RemoveBackGroundViewController extends \EnableMediaReplace\ViewController
 	 * @var string
 	 */
 	protected $nonce_action = 'media_remove_background';
+
+	/**
+	 * The operation loadPost() runs again on the original: 'background' reads the
+	 * background_type / bg_color / bg_transparency fields, 'upscale' the upscale factor.
+	 *
+	 * @var string
+	 */
+	protected $operation = 'background';
 
 	/**
 	 * Creates the controller; see ViewController::__construct().
@@ -136,32 +147,25 @@ class RemoveBackGroundViewController extends \EnableMediaReplace\ViewController
 
 	// When the background has been posted - process.
 	/**
-	 * Replaces the attachment with the background-removed image and ends the request.
+	 * Replaces the attachment with the processed image and ends the request.
 	 *
 	 * Sequence:
 	 * 1. Nonce `emr_nonce` for the `$nonce_action` action (`media_remove_background` here)
 	 *    (ERROR_NONCE).
-	 * 2. `key` (the transient key returned by Api::request()) must be non-empty (ERROR_KEY).
-	 * 3. `ID` present (ERROR_FORM), checkImagePermission() (ERROR_IMAGE_PERMISSION), and the
+	 * 2. `ID` present (ERROR_FORM), checkImagePermission() (ERROR_IMAGE_PERMISSION), and the
 	 *    user must not be author restricted (ERROR_IMAGE_PERMISSION). The wp_die() calls
 	 *    after viewError() are unreachable.
-	 * 4. setView(), then replaceBackground() downloads the stored result to a temp file. A
-	 *    failed download or missing file shows ERROR_DOWNLOAD_FAILED.
-	 * 5. A new ReplaceController runs with MODE_REPLACE, TIME_UPDATEMODIFIED, now as the
+	 * 3. setView(), then fetchResult() runs Api::request() again with the form's options
+	 *    (apiData()) on the original and downloads the result to a temp file. A refused or
+	 *    failed request, a failed download or a missing file shows ERROR_DOWNLOAD_FAILED
+	 *    with the API's message as the description.
+	 * 4. A new ReplaceController runs with MODE_REPLACE, TIME_UPDATEMODIFIED, now as the
 	 *    date, the downloaded temp file as upload and the current source file name as the
 	 *    new name, so the file is overwritten in place. `replace_type` is passed as the
 	 *    integer MODE_REPLACE, which setupParams() also reads as replace mode because it is
 	 *    not 'replace_and_search'.
-	 * 6. viewError() with the controller's last error when setupParams() fails (without the
+	 * 5. viewError() with the controller's last error when setupParams() fails (without the
 	 *    error data); viewSuccess() when run() returns true.
-	 *
-	 * The download key is not bound to the attachment: any key from the current transient
-	 * store can be applied to any attachment that passes the permission checks.
-	 *
-	 * @todo On a failed download, `$this->view->errorMessage = $result->message` is
-	 *       overwritten by viewError(ERROR_DOWNLOAD_FAILED), so the API's message is never
-	 *       shown. Suggested fix: pass the message as error data, or set it as the
-	 *       description after the generic message.
 	 *
 	 * @uses ReplaceController::MODE_REPLACE
 	 * @uses ReplaceController::TIME_UPDATEMODIFIED
@@ -173,12 +177,6 @@ class RemoveBackGroundViewController extends \EnableMediaReplace\ViewController
 		 || ! wp_verify_nonce( $_POST['emr_nonce'], $this->nonce_action ))
 		 {
 			 $this->viewError(self::ERROR_NONCE);
-		 }
-
-		 $key = isset($_POST['key']) ? sanitize_text_field($_POST['key']) : null;
-		 if (is_null($key) || strlen($key) === 0)
-		 {
-			 $this->viewError(self::ERROR_KEY);
 		 }
 
 		 $post_id = isset($_POST['ID']) ? intval($_POST['ID']) : null; // sanitize, post_id.
@@ -205,12 +203,11 @@ class RemoveBackGroundViewController extends \EnableMediaReplace\ViewController
 
 
 		 $this->setView($post_id);
-		 $result = $this->replaceBackground($post_id, $key);
+		 $result = $this->fetchResult($post_id);
 
 		 if (false === $result->success)
 		 {
-			  $this->view->errorMessage = $result->message;
-				$this->viewError(self::ERROR_DOWNLOAD_FAILED);
+				$this->viewError(self::ERROR_DOWNLOAD_FAILED, array('message' => $result->message));
 		 }
 		 elseif (! file_exists($result->image))
 		 {
@@ -273,22 +270,47 @@ class RemoveBackGroundViewController extends \EnableMediaReplace\ViewController
 
 
 	/**
-	 * Downloads the processed image stored under the transient key.
+	 * The API request data of the apply step, built from the form the way the preview
+	 * script builds the AJAX data: the attachment and, for a background removal, the
+	 * `background` type / colour / transparency (type defaults to 'transparent'); for an
+	 * upscale, the checked `upscale` factor.
 	 *
-	 * Despite the name, this only downloads: it calls Api::handleDownload(). The replacement
-	 * itself happens in loadPost().
-	 *
-	 * @param int    $post_id Attachment ID (unused).
-	 * @param string $key     Transient key returned by Api::request().
-	 * @return \stdClass Result object: `success`, `image` (temp file path on success),
-	 *                   `message` (on failure).
+	 * @param int $post_id Attachment ID.
+	 * @return array
 	 */
-	protected function replaceBackground($post_id, $key)
+	protected function apiData($post_id)
 	{
-		$api = new Api();
-		$result = $api->handleDownload($key);
+		$data = array('attachment_id' => (int) $post_id);
+		if ('upscale' === $this->operation) {
+			$data['upscale'] = isset($_POST['upscale']) ? intval($_POST['upscale']) : 0;
+			return $data;
+		}
+		$data['background'] = array(
+			'type'         => isset($_POST['background_type']) ? sanitize_text_field(wp_unslash($_POST['background_type'])) : 'transparent',
+			'color'        => isset($_POST['bg_color']) ? sanitize_text_field(wp_unslash($_POST['bg_color'])) : '#ffffff',
+			'transparency' => isset($_POST['bg_transparency']) ? sanitize_text_field(wp_unslash($_POST['bg_transparency'])) : 100,
+		);
+		return $data;
+	}
 
-		return $result;
+	/**
+	 * Runs the operation again on the original and downloads the result: Api::request()
+	 * with apiData(), then Api::download() of the answered image. The replacement itself
+	 * happens in loadPost().
+	 *
+	 * @param int $post_id Attachment ID.
+	 * @return \stdClass Result object: `success`, `image` (temp file path on success),
+	 *                   `message` (on failure: the API's, or the download's).
+	 */
+	protected function fetchResult($post_id)
+	{
+		$api    = new Api();
+		$result = $api->request($this->apiData($post_id));
+		if (true !== $result->success) {
+			$result->image = null;
+			return $result;
+		}
+		return $api->download($result->image);
 	}
 
 

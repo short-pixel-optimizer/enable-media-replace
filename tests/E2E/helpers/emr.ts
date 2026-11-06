@@ -87,6 +87,12 @@ export type MockKnobs = Partial<{
 	apiStatusCode: number | string;
 	apiStatusMessage: string;
 	unlimited: 'true' | 'false' | null;
+	/** api-status PlanType; 'Unlimited AI' is the Unlimited AI plan (null AI quota, like the real API). Null leaves it out. */
+	planType: string | null;
+	/** api-status CaptionsCallsQuota (AI credits per month); null leaves the AI credit fields out. */
+	captionsQuota: number | null;
+	/** api-status CaptionsCallsMade. */
+	captionsMade: number;
 	notices: Array<{ id: string; message: string; type?: string }> | string;
 	resultFixture: string;
 	downloadsFail: boolean;
@@ -100,6 +106,29 @@ export type MockRequest = {
 	method: string;
 	/** Decoded JSON body, form fields, or query arguments; null otherwise. */
 	request: Record<string, unknown> | null;
+};
+
+/** One queue's counters as the bulk screen receives them (BulkQueue::getStats(), raw). */
+export type BulkQueueStats = {
+	is_preparing: boolean;
+	is_running: boolean;
+	is_finished: boolean;
+	in_queue: number | string;
+	in_process: number | string;
+	done: number | string;
+	fatal_errors: number | string;
+	errors: number | string;
+	total: number | string;
+	percentage_done: number | string;
+	operation?: string;
+	customOperation?: string | false;
+	[key: string]: unknown;
+};
+
+/** The bulk/status answer: EMR has one queue, `total` mirrors `media` (the SPIO JSON shape the scripts expect). */
+export type BulkStatus = {
+	media: { stats: BulkQueueStats };
+	total: { stats: BulkQueueStats };
 };
 
 /** A file for locator.setInputFiles(). */
@@ -237,6 +266,11 @@ export class EmrSupport {
 		return this.post('key', { key });
 	}
 
+	/** Turn the block editor off for every post (what the Classic Editor plugin does); the reset turns it back on. */
+	setClassicEditor(on: boolean): Promise<{ ok: boolean }> {
+		return on ? this.setOption('emr_e2e_classic_editor', 1) : this.deleteOption('emr_e2e_classic_editor');
+	}
+
 	/** Force the emr/feature/* filter outcome; null restores the default. */
 	setFeatures(features: { background?: boolean | null; upscale?: boolean | null; remote_notice?: boolean | null }): Promise<{ ok: boolean }> {
 		return this.post('feature', features);
@@ -263,6 +297,19 @@ export class EmrSupport {
 	/** The mock's request log, oldest first; `pathFragment` filters on the URL path. */
 	mockRequests(pathFragment?: string): Promise<MockRequest[]> {
 		return this.get('mock/requests', pathFragment ? { path: pathFragment } : {});
+	}
+
+	/**
+	 * Server-side bulk state: the same startup data the bulk screen is
+	 * localized with (QueueController::getStartupData), raw numbers.
+	 */
+	bulkStatus(): Promise<BulkStatus> {
+		return this.get('bulk/status');
+	}
+
+	/** Age every queue row past ShortQ's process_timeout (see BulkPage.driveToFinish). */
+	backdateQueue(): Promise<{ ok: boolean; rows: number }> {
+		return this.post('queue/backdate');
 	}
 }
 
@@ -341,6 +388,8 @@ export const emrUrls = {
 	removeBackground: (attachmentId: number): string => `${EMR_PAGE}&action=emr_prepare_remove&attachment_id=${attachmentId}`,
 	/** Upscale screen (views/prepare-upscale.php); needs the `upscale` feature. */
 	upscale: (attachmentId: number): string => `${EMR_PAGE}&action=emr_prepare_upscale&attachment_id=${attachmentId}`,
+	/** The visible Media > Bulk page (BulkViewController, manage_options). */
+	bulk: '/wp-admin/upload.php?page=emr-bulk',
 } as const;
 
 /** The query arguments of an EMR page URL (absolute or relative), for assertions on links and redirects. */
@@ -371,7 +420,7 @@ export class ReplaceScreen {
 	}
 
 	get heading(): Locator {
-		return this.page.getByRole('heading', { level: 1, name: 'Replace Media Upload' });
+		return this.page.getByRole('heading', { level: 1, name: 'Enable Media Replace - Replace media' });
 	}
 
 	get form(): Locator {
@@ -442,13 +491,14 @@ export class ReplaceScreen {
 		return this.page.locator('#remove_after_progress');
 	}
 
+	/** The "Remove background" operation button under the previews (views/operation-buttons.php). */
 	get removeBackgroundLink(): Locator {
-		return this.page.getByRole('link', { name: /remove the background of this image/i });
+		return this.page.locator('a.emr-operation-background');
 	}
 
-	/** "New! Click here to upscale/enlarge this image using AI!" (only when the image is upscalable). */
+	/** The "Upscale image" operation button, with the NEW! badge (only when the image is upscalable). */
 	get upscaleLink(): Locator {
-		return this.page.getByRole('link', { name: /upscale\/enlarge this image/i });
+		return this.page.locator('a.emr-operation-upscale');
 	}
 
 	/** The Upload submit; disabled until a file is chosen (js/emr_admin.js). */
@@ -472,7 +522,7 @@ export class SuccessScreen {
 	}
 
 	get heading(): Locator {
-		return this.root.getByRole('heading', { level: 1, name: 'Your image has been replaced!' });
+		return this.root.getByRole('heading', { level: 2, name: 'Your image has been replaced!' });
 	}
 
 	get counter(): Locator {
@@ -484,7 +534,7 @@ export class SuccessScreen {
 	}
 }
 
-/** views/error.php: "An error occured" plus the message and optional description. */
+/** views/error.php: "An error occurred" plus the message and optional description. */
 export class ErrorScreen {
 	constructor(readonly page: Page) {}
 
@@ -493,7 +543,7 @@ export class ErrorScreen {
 	}
 
 	get title(): Locator {
-		return this.root.getByRole('heading', { level: 1, name: 'An error occured' });
+		return this.root.getByRole('heading', { level: 1, name: 'An error occurred' });
 	}
 
 	get message(): Locator {
@@ -509,8 +559,9 @@ export class ErrorScreen {
  * The remove-background screen, views/prepare-remove-background.php and
  * js/remove_bg.js. Preview runs the `emr_remove_background` AJAX call; on
  * success the script prepends an <img> (the mock's LosslessURL, answered by
- * fixtures.ts from the mock stash) to the last `.image_placeholder`, fills
- * the hidden `key` and enables Replace.
+ * fixtures.ts from the mock stash) to the last `.image_placeholder` and
+ * enables Replace; the apply step sends the image to the API again with the
+ * form's options (nothing of the preview is stored).
  */
 export class RemoveBackgroundScreen {
 	constructor(readonly page: Page) {}
@@ -567,10 +618,6 @@ export class RemoveBackgroundScreen {
 		return this.page.locator('#bg_transparency');
 	}
 
-	get resultKey(): Locator {
-		return this.page.locator('input[name="key"]');
-	}
-
 	get previewButton(): Locator {
 		return this.page.locator('#remove_background_button');
 	}
@@ -583,14 +630,23 @@ export class RemoveBackgroundScreen {
 		return this.page.locator('#bad-background-link');
 	}
 
+	/** The "Replace media" operation button under the previews. */
 	get replaceInsteadLink(): Locator {
-		return this.page.getByRole('link', { name: /Replace this image with another one instead/i });
+		return this.page.locator('a.emr-operation-replace');
 	}
 
-	// --- ShortPixel account section (manage_options only) ---
+	// --- ShortPixel account row (manage_options only): a <details>, collapsed on these screens ---
 
 	get account(): Locator {
-		return this.page.locator('section.emr-sp-account');
+		return this.page.locator('details.emr-sp-account');
+	}
+
+	/** Expand the account row (collapsed on the single screens) before using its controls. */
+	async openAccount(): Promise<void> {
+		if ((await this.account.getAttribute('open')) === null) {
+			await this.account.locator('> summary').click();
+		}
+		await expect(this.account).toHaveAttribute('open', '');
 	}
 
 	get apiKeyInput(): Locator {
@@ -606,7 +662,7 @@ export class RemoveBackgroundScreen {
 		return this.page.locator('#emr-change-key-toggle');
 	}
 
-	/** Remove Key asks window.confirm() first: accept it with page.once('dialog'). */
+	/** Remove key asks window.confirm() first: accept it with page.once('dialog'). */
 	get removeKey(): Locator {
 		return this.page.locator('#emr-remove-key');
 	}
@@ -622,7 +678,7 @@ export class RemoveBackgroundScreen {
 
 	/** The remove-background screen's link to the upscale screen (only for an upscalable image). */
 	get upscaleLink(): Locator {
-		return this.page.getByRole('link', { name: /upscale\/enlarge this image/i });
+		return this.page.locator('a.emr-operation-upscale');
 	}
 }
 
@@ -643,7 +699,7 @@ export class UpscaleScreen extends RemoveBackgroundScreen {
 		return this.page.locator(`input[name="upscale"][value="${value}"]`);
 	}
 
-	/** The help text under the radios: the explanation, or "This image is too big to be upscaled." */
+	/** The help text under the radios: the explanation, or "This image is too large to be upscaled." */
 	get factorHelp(): Locator {
 		return this.page.locator('.replace_type .howto');
 	}

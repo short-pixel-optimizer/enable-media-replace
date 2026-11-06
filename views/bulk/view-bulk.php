@@ -1,0 +1,58 @@
+<?php
+/**
+ * The Media > Bulk Enhance page: header, banners and panel includes.
+ *
+ * Loaded by BulkViewController::load() through ViewController::loadView().
+ * Variables in scope: $controller (BulkViewController) and $view (stdClass):
+ * stats (startup data), settings, hasKey, aiCredits (ApiKeyManager::getAiCredits()), logs, logHeaders, currentOperation,
+ * customOperation, displayOperation (the operation, or 'restore' during a
+ * restore), errorLog, factors, factorList, maxFactor, maxThreshold,
+ * signupUrl, backupPath, operations (per operation: available, reason,
+ * count, restorable, label, restoreLabel), error, errorTitle, errorContent (HTML).
+ *
+ * The layout follows ShortPixel Image Optimizer's bulk page (white header
+ * bar, rounded panels, the step bar, the stats table, the preview boxes).
+ * The panels are `section.emr-bulk-panel` with a data-panel attribute;
+ * js/bulk/emr-bulk-screen.js shows one at a time. No inline scripts or
+ * styles: the stylesheet is css/bulk.css (from scss/bulk.scss), strings for
+ * the script are localized in EnableMediaReplacePlugin::bulkScriptData().
+ */
+namespace EnableMediaReplace;
+
+if (! defined('ABSPATH')) {
+	exit;
+}
+?>
+<div class="wrap emr-bulk-wrapper">
+	<header class="emr-page-header">
+		<h1><?php esc_html_e('Enable Media Replace - Bulk Enhance', 'enable-media-replace'); ?></h1>
+	</header>
+	<hr class="wp-header-end">
+	<?php \emr()->promoBanner()->render(); // The Black Friday banner, when its campaign runs. ?>
+	<div class="emr-bulk-notices"></div>
+
+	<div id="emr-bulk-paused" class="emr-bulk-banner emr-bulk-banner-paused" data-action="ResumeBulk" hidden>
+		<span class="dashicons dashicons-controls-pause"></span>
+		<?php esc_html_e('The bulk is paused in this browser. Click to resume.', 'enable-media-replace'); ?>
+	</div>
+	<div id="emr-bulk-blocked" class="emr-bulk-banner emr-bulk-banner-blocked" hidden>
+		<span class="dashicons dashicons-lock"></span>
+		<?php esc_html_e('The bulk is being processed in another window. This page checks again in a few minutes.', 'enable-media-replace'); ?>
+	</div>
+	<div id="emr-bulk-overquota" class="emr-bulk-banner emr-bulk-banner-error" hidden>
+		<strong><?php esc_html_e('The bulk is paused.', 'enable-media-replace'); ?></strong>
+		<span class="emr-bulk-overquota-message"></span>
+		<a href="<?php echo esc_url(admin_url('upload.php?page=' . EnableMediaReplacePlugin::BULK_PAGE_SLUG)); ?>"><?php esc_html_e('Reload the page after fixing the key or the plan', 'enable-media-replace'); ?></a>
+	</div>
+
+	<div class="emr-bulk-screen">
+	<?php
+	$controller->loadView('bulk/part-dashboard');
+	$controller->loadView('bulk/part-selection');
+	$controller->loadView('bulk/part-summary');
+	$controller->loadView('bulk/part-process');
+	$controller->loadView('bulk/part-finished');
+	$controller->loadView('bulk/part-restore');
+	?>
+	</div>
+</div>

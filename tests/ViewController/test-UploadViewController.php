@@ -236,7 +236,7 @@ class UploadViewControllerTest extends WP_UnitTestCase {
 		$this->assertSame( ViewController::ERROR_NONCE, $controller->lastError );
 		$this->assertFalse( $controller->successCalled );
 		$this->assertSame( $id, $controller->getView()->post_id, 'The view was set before the nonce check.' );
-		$this->assertSame( 'Fail to validate form nonce. Please try again', $controller->getView()->errorMessage );
+		$this->assertSame( 'The form could not be validated (nonce). Please try again.', $controller->getView()->errorMessage );
 	}
 
 	public function test_load_without_post_and_without_attachment_id_sets_a_null_post_id() {
@@ -367,7 +367,7 @@ class UploadViewControllerTest extends WP_UnitTestCase {
 		$this->assertSame( ViewController::ERROR_UPLOAD_FAILED, $exit->getCode() );
 		$this->assertSame( 1, $controller->uploadCalls );
 		$this->assertSame( 1, $controller->errorCalls );
-		$this->assertSame( 'The upload from your browser seem to have failed', $controller->getView()->errorMessage );
+		$this->assertSame( 'The upload from your browser seems to have failed.', $controller->getView()->errorMessage );
 		$this->assertNull( get_option( self::OPTION, null ), 'No settings saved on failure.' );
 	}
 

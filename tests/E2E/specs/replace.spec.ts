@@ -89,7 +89,7 @@ test.describe('Replace: replace mode', () => {
 		const error = new ErrorScreen(page);
 		await expect(error.title).toBeVisible();
 		await expect(error.message).toHaveText(
-			'The file upload has been rejected for security reason. WordPress might not allow uploading this extension or filetype',
+			'The file upload was rejected for security reasons. WordPress might not allow uploading this extension or file type.',
 		);
 
 		const after = await emr.attachment(id);

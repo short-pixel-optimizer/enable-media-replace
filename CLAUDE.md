@@ -35,8 +35,11 @@ module into `build/shortpixel/` and rewrites the namespace to
 hook prefixes (`shortpixel/replacer/*` becomes `emr/replacer/*`, see the
 `extra` block of `composer.json`). `build/shortpixel/` is generated output:
 never edit it by hand. The bundled modules are `filesystem`, `log`,
-`notices` and `replacer2`; the latter three are shared with ShortPixel Image
-Optimizer (SPIO), which bundles them under its own namespace.
+`notices`, `promo-banner`, `replacer2` and `shortq`; all but `filesystem` are shared with
+ShortPixel Image Optimizer (SPIO), which bundles them under its own
+namespace. `buildSP` copies whatever is checked out in `../modules`, so
+check `git diff build/` after a rebuild and keep only the module changes you
+meant to ship.
 
 There is no JavaScript build step. `js/` and `css/` are shipped as they are;
 `scss/` holds the stylesheet sources.
@@ -125,11 +128,18 @@ is in progress.
 ### Namespace & Autoloading
 
 Plugin classes use the `EnableMediaReplace\` namespace with sub-namespaces
-`Controller\`, `ViewController\`, `Externals\` and `Helper\`. They are
-required explicitly from the root file. The bundled modules are autoloaded by
+`Controller\`, `ViewController\`, `Externals\` and `Helper\`. Two loading
+schemes coexist. The legacy files, whose names do not match their class names
+(`uihelper.php`, `ajax.php`, `emr-plugin.php`, `cache.php`, ...), are
+required explicitly from the root file. Files whose path matches their class
+name (PSR-4, for example `classes/Controller/Bulk/BulkQueue.php`) are
+autoloaded: the root file creates a second `PackageLoader` with
+`classes/plugin.json`, which maps `EnableMediaReplace` to `classes/`, the
+same way SPIO's `class/plugin.json` works. New classes go into the PSR-4
+scheme and need no `require_once`. The bundled modules are autoloaded by
 `build/shortpixel/PackageLoader.php` under `EnableMediaReplace\Replacer\`,
-`EnableMediaReplace\FileSystem\`, `EnableMediaReplace\ShortPixelLogger\` and
-`EnableMediaReplace\Notices\`.
+`EnableMediaReplace\FileSystem\`, `EnableMediaReplace\ShortPixelLogger\`,
+`EnableMediaReplace\Notices\` and `EnableMediaReplace\ShortQ\`.
 
 ### Code Structure
 
@@ -139,30 +149,59 @@ classes/
   emr-plugin.php           - EnableMediaReplacePlugin: hooks, routing, permissions, UI entry points
   Controller/
     ReplaceController.php  - the replace flow (source/target, copy, metadata, replacer, dates, cache)
+    MediaLibraryFilterController.php - the Bulk Enhance filter of the Media Library (list and grid dropdown, query on the marker meta)
     RemoteNoticeController.php - remote notices from api.shortpixel.com
-  ViewController.php       - abstract base: view loading, error codes, viewError()/viewSuccess()
+    Bulk/                  - the bulk queue, ported from SPIO's queue layer (PSR-4, autoloaded)
+      BulkAjaxController.php - wp_ajax_emr_bulk_process / _request / _settings, the two-tab processor key
+      CronController.php   - WP-Cron ticks (event emr_bulk_cron) while the background_process setting is on
+      BulkQueue.php        - the ShortQ queue (slug emr, name bulk): prepare / dequeue lifecycle, stats
+      QueueController.php  - one tick: key and plan gates, run the queue, process the items
+      BulkController.php   - create / start / finish a bulk run, the bulk logs (option emr_bulk_logs)
+      ActionController.php - sends an item to the API, applies the result through ReplaceController, restores
+      BulkApi.php          - reducer / cleanup client for remove_background and scale_image
+      BackupController.php - originals under uploads/EMR_Backups/<yyyy>/<mm>/ before the swap
+      ResponseController.php - per-item messages for the bulk screen and the log
+      Selector/            - the prepare-phase sources: WooCommerceProductImages (background), UpscaleCandidates (upscale)
+  Model/Bulk/              - QueueItem (attachment + action + data + result), QueueItemData, QueueItemResult,
+                             BulkImage (attachment adapter: file, URL, width, upscale factor, the _emr_bulk_<operation> markers)
+  ViewController.php       - abstract base: view loading (loadView($template, $unique, $args), $args as
+                             $view->template_args like SPIO's), error codes, viewError()/viewSuccess()
   ViewController/
     ReplaceViewController.php          - the replace screen
     UploadViewController.php           - the replace POST handler
     RemoveBackgroundViewController.php - the remove-background screen and POST handler
     UpscaleViewController.php          - the upscale screen and POST handler (subclass: own template and nonce)
-  ajax.php                 - wp_ajax_emr_remove_background (also the upscale preview) / _save_api_key / _delete_api_key
+    BulkViewController.php             - the visible Media > Bulk Enhance page (slug emr-bulk, manage_options)
+  ajax.php                 - wp_ajax_emr_remove_background (also the upscale preview) / _save_api_key / _delete_api_key;
+                             registers the bulk actions on BulkAjaxController::getInstance()
   api.php                  - the remove-background and upscale API client
   ApiKeyManager.php        - the ShortPixel API key option and plan check
   cache.php                - emrCache: cache-plugin detection and flushing
   uihelper.php             - UIHelper: screen URLs, previews, placeholders, author restriction,
-                             isBackgroundRemovable() / isUpscalable() and the upscale factor table
-  Helper/envHelper.php     - EnvHelper: multisite/ajax/cron flags
+                             isBackgroundRemovable() / isUpscalable() and the upscale factor table,
+                             formatNumber() / formatTS() (SPIO's UiHelper formatters: bulk stats, history, logs)
+  Helper/envHelper.php     - EnvHelper: multisite/ajax/cron flags, IsOverMemoryLimit() / IsOverTimeLimit()
+                             (SPIO's EnvironmentModel budget checks; filters emr/process/max_memory, emr/process/max_execution)
   externals.php            - Externals: loads the integrations below
   external/                - Elementor, WPBakery, SiteOrigin, WP Offload Media, the upsell installer
   installHelper.php        - deactivation and uninstall
   compat.php               - polyfills for old WordPress versions
 views/                     - PHP templates (screen, prepare-remove-background, prepare-upscale,
-                             shortpixel-account (the API key box both screens include), success, error, upsell)
-js/, css/, scss/, img/     - assets, no build step
+                             shortpixel-account (the collapsible API key row of the bulk page and both
+                             single screens, $emr_account_context), operation-buttons (the SVG tiles to the
+                             other operations under the previews, UIHelper::getOperationButton(), which the
+                             media modal fields reuse), success, error, upsell,
+                             bulk/ (view-bulk + the dashboard, selection, summary, process, finished, restore panels,
+                             part-steps (the step bar)))
+js/, css/, scss/, img/     - assets, no build step; js/bulk/ holds the bulk processor, worker and screen
+                             (vanilla JS, no jQuery); js/emr-magnifier.js is the preview hover lens;
+                             scss/bulk.scss, scss/single.scss (the single screens) and scss/media-modal.scss
+                             (the modal tiles) share _emr-colors (SPIO's palette), _page-header,
+                             _shortpixel-account and _operation-buttons, and compile to css/*.css with `sass`; img/icons/ holds the operation
+                             SVGs and SPIO's new.svg badge
 build/shortpixel/          - bundled modules (generated, do not edit)
 tests/                     - PHPUnit suites, E2E stack, fixtures (see TESTING.md)
-docs/                      - the documentation and test plan
+docs/                      - the documentation and test plan, the bulk design note (BULK.md)
 ```
 
 ### Key Patterns
@@ -189,8 +228,13 @@ docs/                      - the documentation and test plan
   (`emr_remove_background`), `Api::request()` (an `upscale` factor of 2, 3
   or 4 in the posted data replaces `bg_remove` in the reducer body), the
   same script (`js/remove_bg.js`) and stylesheet, and the same
-  `loadPost()`; `UpscaleViewController` only swaps the template and the
-  nonce action (`media_upscale_image`). `UIHelper::getUpscaleFactors()` maps
+  `loadPost()`; `UpscaleViewController` only swaps the template, the
+  nonce action (`media_upscale_image`) and the `$operation`. As in SPIO's
+  editor preview, nothing is stored between the preview and the apply: the
+  preview answers the result URL for display, and `loadPost()` runs
+  `Api::request()` again with the form's options on the original
+  (`apiData()`, `fetchResult()`), then downloads that result
+  (`Api::download()`). The second API call is free of charge. `UIHelper::getUpscaleFactors()` maps
   each factor to the widest source it accepts; `isUpscalable()` hides the
   entry points above the largest one.
 - **Hooks for other plugins:** `wp_handle_replace` (before the swap),
@@ -199,6 +243,115 @@ docs/                      - the documentation and test plan
   `emr_returnurl`, `emr_unique_filename`, `enable_media_replace_title`.
 - **Remote API:** only `api.shortpixel.com` (reducer, cleanup, api-status,
   notices). Tests stub it at the `pre_http_request` boundary.
+- **Promo banner:** the bundled `promo-banner` module (a reusable, plugin-neutral
+  campaign banner; assets in `build/shortpixel/promo-banner/assets/`).
+  `EnableMediaReplacePlugin::promoBanner()` configures the Black Friday 2026
+  campaign (`PROMO_START` / `PROMO_END` in UTC, inclusive; the end is 23:59:59
+  US Pacific on November 30; `PROMO_ENDS_ON` is the label's day) for the
+  Bulk Enhance page and, through `isPromoBannerScreen()`, the replace, remove
+  background and upscale screens; the four views print it right after their
+  header bar (`'hook' => false`: not on admin_notices, which WordPress's script
+  would move there only after load); `manage_options` only; dismissed per site
+  (one close hides it for everyone) in the option `emr-promo-banner`
+  (one per plugin, named from the banner's `prefix`, `PROMO_PREFIX`, which also
+  names the AJAX action and the asset handle; an array campaign id to time,
+  pruned to the current campaign on each dismissal, deleted by
+  `PromoBanner::uninstall(PROMO_PREFIX)` from `InstallHelper::unInstallPlugin()`).
+  A banner without `id`, `start` and `end` never shows: the module has no
+  campaign by default. Hooks: `emr/promo_banner/show`, `emr/promo_banner/in_window`,
+  `emr/promo_banner/capability`, `emr/promo_banner/url`,
+  `emr/settings/no_banner` (and the SHORTPIXEL_NO_BANNER constant). The E2E
+  support option `emr_e2e_promo_window` opens the window for the browser tests.
+- **AI credits:** background removal and upscale use one AI credit per image.
+  `ApiKeyManager::getAiCredits()` reads the `PlanType` / `CaptionsCalls*`
+  fields of api-status (the same fields SPIO shows as AI credits; Unlimited AI
+  is `PlanType` 'Unlimited AI', and on that plan the quota and remaining
+  fields are null), cached in
+  the `emr_ai_credits` transient (10 min, `emr/ai_credits/ttl`; every
+  api-status call refreshes it). `views/ai-credits.php` shows them in the
+  account row and on the bulk summary: Unlimited AI has no limit, other
+  Unlimited plans get a monthly amount and the "Upgrade to Unlimited AI"
+  button (`ApiKeyManager::UPGRADE_AI_URL`). Wording: an Unlimited key
+  *unlocks* the features; only Unlimited AI is unlimited.
+- **Bulk queue:** `Controller/Bulk/` is a port of SPIO's queue layer on the
+  bundled ShortQ module and keeps SPIO's class and method names so fixes
+  port one-to-one. One queue (`InstallHelper::QUEUE_SLUG` / `QUEUE_NAME`)
+  runs one operation at a time: `background` or `upscale`, or the
+  `bulk-restore` custom operation. `BulkController::createNewBulk()` stores
+  the operation and its options in the queue's custom_data and flags
+  `preparing`; `QueueController::processQueue()` is one tick (prepare a page
+  of IDs, or dequeue and process `numitems`); `startBulk()` moves to
+  `running`; `finishBulk()` logs and resets. Results are applied in place
+  through `ReplaceController` with the single flow's parameters, after the
+  original was copied to `EMR_Backups`; the attachment then carries the
+  `_emr_bulk_<operation>` post meta (one key per operation, SPIO's one-flag-
+  per-fact style: operation data and backup path; `BulkImage::getMarkerKey()`,
+  `countMarked()`, `queryMarked()` are the only queries on it), which a later
+  run of the same operation skips and a restore consumes. The prepare phase
+  takes its IDs from the explicit `items` list of the bulk options when one
+  is given, else from the `emr/bulk/source_ids` filter, else from the
+  operation's `Selector` (`Selector::forOperation()`, replaceable through
+  `emr/bulk/selector`): `WooCommerceProductImages` reads `_thumbnail_id` and
+  `_product_image_gallery` of products and variations (not trashed), paged
+  by product, and is unavailable without the `product` post type
+  (`BulkController::canRun()`); `UpscaleCandidates` pages the JPEG/PNG
+  attachments and leaves the width threshold to `prepareItems()`. Other hooks:
+  `emr/bulk/background/post_types`, `emr/bulk/queue_options`,
+  `emr/bulk/custom_options`, `emr/bulk/backup_dir`, `emr/bulk/api/request`,
+  `emr/bulk/api/timeout`, `emr/bulk/plan_check_ttl`, `emr/bulk/prepare_items`,
+  `emr/bulk/item/done`, `emr/bulk/item/failed`, `emr/bulk/interval`,
+  `emr/bulk/defer_interval`, `emr/bulk/upscale/threshold` (the default
+  threshold), `emr/process/max_memory`, `emr/process/max_execution` (the
+  prepare loop and the cron loop stop at 90 % of the budget, through
+  `EnvHelper`). The design note is `docs/BULK.md`. The bulk needs an API key on an Unlimited plan
+  (checked once per hour, transient `emr_bulk_plan_ok`).
+- **Bulk screen:** `upload.php?page=emr-bulk` (`BulkViewController`,
+  `manage_options`). The browser drives the queue like SPIO's bulk page:
+  `js/bulk/emr-processor.js` posts ticks through the Web Worker
+  `js/bulk/emr-worker.js` to `wp_ajax_emr_bulk_process` and hands the
+  answers to `js/bulk/emr-bulk-screen.js`, which switches the panels and
+  writes the stats into `data-stats-media` / `data-stats-total` elements;
+  the before/after preview opens on `FILE_STATUS_SUCCESS` results only (a
+  restore answers `FILE_STATUS_RESTORED`, as in SPIO, and shows none). The
+  finished panel's "View in Media Library", and the dashboard's next to each
+  "Restore N originals", open the list filtered on the
+  operation (`upload.php?mode=list&emr_bulk=<op>`): `MediaLibraryFilterController`
+  (PSR-4) ports SPIO's status filter, a dropdown on `restrict_manage_posts`, the
+  same dropdown in the grid and media modal toolbar (`js/emr-media-filter.js`,
+  `wp_enqueue_media`, localized `emrMediaFilter`) and a `pre_get_posts` listener
+  that appends a `posts_where` clause on the operation's marker meta key; a
+  restore removes the markers, so restored images drop out. Browser error codes
+  live on `BulkAjaxController` (SPIO: `AjaxController`): SPIO's -1 to -8
+  (`QUEUE_FULL` -8 defers the processor) plus EMR's `PLAN_EXPIRED` -9; the
+  file statuses `FILE_STATUS_*` live on `BulkImage` (SPIO: `ImageModel`); a
+  tick answers status 1 and keeps item errors on the items.
+  Screen actions go to `wp_ajax_emr_bulk_request` (`screen_action`:
+  createBulk, startBulk, finishBulk, startRestoreAll, getStatus,
+  skipPreparing, recheckActive, loadLogFile), settings to
+  `wp_ajax_emr_bulk_settings` (`screen_action` saveBulkSettings). Every action
+  needs its own nonce and passes `checkActionAccess($action, $access)` with
+  SPIO's level (`is_author`, `is_editor`, `is_admin_user`), all of which map to
+  `manage_options` in `BulkAjaxController::ACCESS_LEVELS`. The screen's method,
+  action and event names are SPIO's (`BulkRestoreAll` / `startRestoreAll`,
+  `ShowLogModal` / `emr.showLogModal`, `panelLoad` and `panelUnload` on
+  `emr.bulk.onSwitchPanel`), and the bulk controller methods keep SPIO's
+  ignored queue-type parameters. The first processor claims the `emr_bulk_secret`
+  transient (2 min, renewed per tick; deleted on deactivation and uninstall
+  with the `emr_ai_credits` transient, as SPIO drops `bulk-secret` and
+  `quotaData`); other tabs get PROCESSOR_ACTIVE and
+  recheck after three minutes. Everything the scripts need is localized as
+  `emrBulk` (`EnableMediaReplacePlugin::bulkScriptData()`); nothing is
+  inline. Settings live in `enable_media_replace` under `bulk_*` keys
+  (`BulkController::getSettings()`).
+- **Bulk cron:** `CronController` (created on `init` for every request, so
+  WP-Cron knows the schedule) keeps a started bulk going without the page:
+  with the `background_process` setting on and the queue running with items
+  waiting, `startBulk()` schedules `emr_bulk_cron` on the `emr_bulk_interval`
+  schedule (60 s, filter `emr/bulk/cron_interval`); each run is
+  `processCronHook()`, a loop of ticks (10 runs, 50 s, 1 s between; filter
+  `emr/bulk/cron/options`) that ends on an empty queue or a refused tick;
+  `finishBulk()`, deactivation and uninstall clear the event. Cron never
+  drives the preparing phase and does not take the browser's processor key.
 
 ## Git workflow (no commits, no branches, no worktrees unless asked)
 

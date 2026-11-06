@@ -480,21 +480,17 @@ class AjaxEndpointsTest extends EMR_AjaxTestCase {
 	public function test_remove_background_as_administrator_answers_the_raw_result_and_persists_its_effects() {
 		$id    = $this->attachment();
 		$post  = $this->removeBackgroundPost( $id, array( 'type' => 'transparent' ) );
-		$nonce = $post['nonce'];
-
 		$response = $this->post( 'emr_remove_background', $post );
 
 		$this->assertIsObject( $response );
-		$this->assertSame( array( 'success', 'image', 'message', 'key', 'url', 'settings' ), array_keys( get_object_vars( $response ) ) );
+		$this->assertSame( array( 'success', 'image', 'message', 'url', 'settings' ), array_keys( get_object_vars( $response ) ) );
 		$this->assertTrue( $response->success );
 		$this->assertNull( $response->message );
 		$this->assertSame( array( '/v2/free-reducer.php' ), $this->mockPaths(), 'One free reducer call, nothing else.' );
 
-		$stored = get_transient( 'emr_' . $response->key );
-		$this->assertIsString( $stored );
-		$this->assertStringStartsWith( MockEmrApi::DOWNLOAD_BASE, $stored );
-		$this->assertSame( wp_hash( $nonce . $stored, 'logged_in' ), $response->key, 'Keyed on the posted nonce and the stored URL.' );
-		$this->assertMatchesRegularExpression( '/^' . preg_quote( $stored, '/' ) . '\?ts=\d+$/', $response->image );
+		// Nothing is stored for the apply step (SPIO's model: it requests again); the image URL is the mock's download URL plus a cache-buster.
+		$this->assertObjectNotHasProperty( 'key', $response );
+		$this->assertMatchesRegularExpression( '/^' . preg_quote( MockEmrApi::DOWNLOAD_BASE, '/' ) . '[^?]+\?ts=\d+$/', $response->image );
 		$this->assertSame( wp_get_original_image_url( $id ), $response->url );
 		$this->assertSame(
 			array(
@@ -556,7 +552,7 @@ class AjaxEndpointsTest extends EMR_AjaxTestCase {
 		$this->assertEquals(
 			(object) array(
 				'success' => true,
-				'data'    => (object) array( 'message' => 'API Key saved and verified successfully. You now have unlimited background removal.' ),
+				'data'    => (object) array( 'message' => 'API key saved and verified. Bulk background removal and image upscale is unlocked.' ),
 			),
 			$response
 		);
@@ -576,7 +572,7 @@ class AjaxEndpointsTest extends EMR_AjaxTestCase {
 		$response = $this->post( 'emr_save_api_key', $this->keyPost( array( 'api_key' => self::API_KEY ) ) );
 
 		$this->assertFalse( $response->success );
-		$this->assertStringContainsString( '<a href="https://shortpixel.com/pricing"', $response->data->message );
+		$this->assertStringContainsString( '<a href="https://shortpixel.com/pricing?utm_source=plugin&#038;utm_medium=emr&#038;utm_campaign=emr_upgrade_unlimited"', $response->data->message );
 		$this->assertCount( 1, $this->api->requestsTo( 'api-status.php' ) );
 		$this->assertFalse( get_option( ApiKeyManager::OPTION_NAME ) );
 	}
@@ -621,7 +617,7 @@ class AjaxEndpointsTest extends EMR_AjaxTestCase {
 		$this->assertEquals(
 			(object) array(
 				'success' => true,
-				'data'    => (object) array( 'message' => 'API Key removed.' ),
+				'data'    => (object) array( 'message' => 'API key removed.' ),
 			),
 			$response
 		);

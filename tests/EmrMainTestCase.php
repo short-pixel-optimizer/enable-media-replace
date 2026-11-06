@@ -136,6 +136,7 @@ abstract class EMR_MainTestCase extends WP_UnitTestCase {
 	}
 
 	public function tear_down() {
+		set_current_screen( 'front' ); // tests that needed is_admin() set an admin screen.
 		foreach ( $this->added_filters as $filter ) {
 			remove_filter( $filter[0], $filter[1], $filter[2] );
 		}
@@ -223,11 +224,17 @@ abstract class EMR_MainTestCase extends WP_UnitTestCase {
 		remove_action( 'submenu_file', array( $plugin, 'hide_sub_menu' ) );
 		remove_action( 'current_screen', array( $plugin, 'setScreen' ) );
 		remove_action( 'admin_enqueue_scripts', array( $plugin, 'admin_scripts' ) );
+		remove_action( 'wp_enqueue_media', array( $plugin, 'enqueueMediaModal' ) );
 		remove_filter( 'media_row_actions', array( $plugin, 'add_media_action' ), 10 );
 		remove_action( 'attachment_submitbox_misc_actions', array( $plugin, 'admin_date_replaced_media_on_edit_media_screen' ), 91 );
 		remove_action( 'add_meta_boxes_attachment', array( $plugin, 'add_meta_boxes' ), 10 );
 		remove_filter( 'attachment_fields_to_edit', array( $plugin, 'attachment_editor' ), 10 );
 		remove_filter( 'wp_get_attachment_image_src', array( $plugin, 'attempt_uncache_image' ), 10 );
+		$filter = \EnableMediaReplace\Controller\MediaLibraryFilterController::getInstance();
+		remove_action( 'restrict_manage_posts', array( $filter, 'addFilterDropdown' ) );
+		remove_filter( 'pre_get_posts', array( $filter, 'filterListener' ) );
+		remove_action( 'wp_enqueue_media', array( $filter, 'enqueueGridFilter' ) );
+		remove_filter( 'posts_where', array( $filter, 'filterAddWhere' ), 10 );
 		$notices = $this->notice_static( 'instance' );
 		if ( is_object( $notices ) ) {
 			remove_action( 'admin_notices', array( $notices, 'admin_notices' ) );

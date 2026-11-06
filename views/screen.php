@@ -49,11 +49,11 @@
  * Scripts: js/emr_admin.js (`emr_options`: drag and drop, type and size
  * checks, datepicker, "Now"/"Original" date links), jquery-ui-datepicker,
  * js/upsell.js for the included views/upsell.php.
- * Links: the upscale link (only when UIHelper::isUpscalable() is true and
- * the user is not author restricted) goes to `action=emr_prepare_upscale`
- * with a nonce for `emr_prepare_upscale`; the remove-background link goes to
- * `action=emr_prepare_remove` with a nonce for `emr_prepare_remove`; Cancel
- * calls history.back().
+ * Header: the white `.emr-page-header` bar. Under the previews,
+ * views/operation-buttons.php shows the Upscale image and Remove background
+ * buttons (each only when possible and the user is not author restricted),
+ * with the "remove the background after replacing" checkbox under them;
+ * Cancel calls history.back().
  *
  * @todo The "file type does not seem to be allowed" string is passed to __() without the `enable-media-replace` text domain; add the domain.
  * @todo The source file path in the explainer's `title` attribute and $view->custom_basedir are echoed without escaping; wrap them in esc_attr() / esc_html().
@@ -97,9 +97,13 @@ $uiHelper = emr()->uiHelper();
 
 <div class="wrap emr_upload_form">
 
-	<div class='emr_drop_area' id='emr-drop-area'><h3><?php _e('Drop File', 'enable-media-replace'); ?></h3></div>
+	<header class="emr-page-header">
+		<h1><?php esc_html_e('Enable Media Replace - Replace media', 'enable-media-replace'); ?></h1>
+	</header>
+	<hr class="wp-header-end">
+	<?php \emr()->promoBanner()->render(); // The Black Friday banner, when its campaign runs. ?>
 
-	<h1><?php echo esc_html__("Replace Media Upload", "enable-media-replace"); ?></h1>
+	<div class='emr_drop_area' id='emr-drop-area'><h3><?php _e('Drop file', 'enable-media-replace'); ?></h3></div>
 
 	<?php
 
@@ -115,7 +119,7 @@ $uiHelper = emr()->uiHelper();
 
 <div class='editor-wrapper'>
     <section class='image_chooser wrapper'>
-      <div class='section-header'> <?php _e('Select Replacement Media', 'enable-media-replace'); ?></div>
+      <div class='section-header'> <?php _e('Select replacement media', 'enable-media-replace'); ?></div>
 
 <!--
 		<div id="message" class=""><strong><?php printf( esc_html__('NOTE: You are about to replace the media file "%s". There is no undo. Think about it!', "enable-media-replace"), $sourceFile->getFileName() ); ?></strong></div>
@@ -124,12 +128,12 @@ $uiHelper = emr()->uiHelper();
 		<input type="hidden" name="ID" value="<?php echo $attachment_id ?>" />
 
 		<p class='explainer'>
-			<?php printf(esc_html__('			You are about to replace %s in your media library. This will be %spermanent%s. %s You can click on the new image panel and select a file from your computer. You can also drag and drop a file into this window', 'enable-media-replace'), '<b class="underline" title="' . $sourceFile->getFullPath() . '">' . $sourceFile->getFileName()  . '</b>', '<b>','</b>', '<br>' );
+			<?php printf(esc_html__('You are about to replace %s in your media library. This will be %spermanent%s. %s You can click on the new image panel and select a file from your computer. You can also drag and drop a file into this window.', 'enable-media-replace'), '<b class="underline" title="' . $sourceFile->getFullPath() . '">' . $sourceFile->getFileName()  . '</b>', '<b>','</b>', '<br>' );
 			?>
 		</p>
 
     <p><?php printf(__('Maximum file size: <strong>%s</strong>','enable-media-replace'), size_format(wp_max_upload_size() ) ) ?></p>
-    <div class='form-error filesize'><p><?php printf(__('%s f %s exceeds the maximum upload size for this site.', 'enable-media-replace'), '<span class="fn">', '</span>'); ?></p>
+    <div class='form-error filesize'><p><?php printf(__('%s exceeds the maximum upload size for this site.', 'enable-media-replace'), '<span class="fn"></span>'); ?></p>
     </div>
 
     <div class='form-warning filetype'><p><?php printf(__('The replacement file does not have the same file type. This can lead to unexpected issues ( %s )', 'enable-media-replace'), '<span class="source_type"></span> - <span class="target_type"></span>'); ?>
@@ -163,41 +167,20 @@ $uiHelper = emr()->uiHelper();
               ?>
       </div>
       <?php
-        $url = admin_url("upload.php");
-        $url = add_query_arg(array(
-        'page' => 'enable-media-replace/enable-media-replace.php',
-        'action' => 'emr_prepare_remove',
-        'attachment_id' => $attachment_id,
-        ), $url);
-
-        $upscale_url = add_query_arg('action', 'emr_prepare_upscale', $url);
+      // Buttons to the other operations; the "remove the background after replacing" choice under them.
+      $emr_operation_current = 'replace';
+      $emr_operation_after   = '';
+      if ($uiHelper->isBackgroundRemovable($view->attachment) && false === $view->is_author_restricted) {
+          $emr_operation_after = '<p class="emr-operations-option"><input type="checkbox" id="remove_after_progress" name="remove_after_progress" value="' . esc_attr($attachment_id) . '">'
+              . ' <label for="remove_after_progress">' . esc_html__('Remove the background after replacing this image', 'enable-media-replace') . '</label></p>';
+      }
+      include __DIR__ . '/operation-buttons.php';
       ?>
-
-			<p>&nbsp;</p>
-			<?php if ($uiHelper->isUpscalable($view->attachment) && false === $view->is_author_restricted): ?>
-								  <div>
-                    <a href="<?php echo wp_nonce_url( $upscale_url , 'emr_prepare_upscale' ); ?>">
-											<?php _e('New! Click here to upscale/enlarge this image using AI!', 'enable-media-replace'); ?></a>
-                    <br>
-                    <br>
-                  </div>
-			 <?php endif; ?>
-			<?php if ($uiHelper->isBackgroundRemovable($view->attachment) && false === $view->is_author_restricted): ?>
-								  <div>
-
-                    <a href="<?php echo wp_nonce_url( $url , 'emr_prepare_remove' ); ?>">
-											<?php _e('Click here to remove the background of this image!', 'enable-media-replace'); ?></a>
-                    <br>
-                    <br>
-                    <input type="checkbox" id="remove_after_progress" name="remove_after_progress" value="<?php echo $attachment_id;?>">
-                    <label for="remove_after_progress"><?php _e('Remove the background after replacing this image!' ,'enable-media-replace'); ?> </label>
-                  </div>
-			 <?php endif; ?>
 </section>
 
 <div class='option-flex-wrapper'>
   <section class='replace_type wrapper'>
-    <div class='section-header'> <?php _e('Replacement Options', 'enable-media-replace'); ?></div>
+    <div class='section-header'> <?php _e('Replacement options', 'enable-media-replace'); ?></div>
 
           <?php
       // these are also used in externals, for checks.
@@ -264,11 +247,11 @@ $uiHelper = emr()->uiHelper();
           <ul>
             <li><label><input type='radio' <?php checked('1', $settings['timestamp_replace']) ?> name='timestamp_replace' value='1' /><?php printf(__('Replace the date with the current date %s(%s)%s', 'enable-media-replace'), "<span class='small'>", $attachment_now_date, "</span>") ; ?></label></li>
             <li><label><input type='radio' <?php checked('2', $settings['timestamp_replace']) ?> name='timestamp_replace' value='2'  /><?php printf(__('Keep the date %s(%s)%s', 'enable-media-replace'), "<span class='small'>", $attachment_current_date, "</span>"); ?></label></li>
-            <li><label><input type='radio' <?php checked('3', $settings['timestamp_replace']) ?> name='timestamp_replace' value='3' /><?php _e('Set a Custom Date', 'enable-media-replace'); ?></label></li>
+            <li><label><input type='radio' <?php checked('3', $settings['timestamp_replace']) ?> name='timestamp_replace' value='3' /><?php _e('Set a custom date', 'enable-media-replace'); ?></label></li>
           </ul>
           <div class='custom_date'>
 
-            <span class='field-title dashicons dashicons-calendar'><?php _e('Custom Date', 'enable-media-replace'); ?></span>
+            <span class='field-title dashicons dashicons-calendar'><?php _e('Custom date', 'enable-media-replace'); ?></span>
            <input type='text' name="custom_date" value="<?php echo $date->format(get_option('date_format')); ?>" id='emr_datepicker'
             class='emr_datepicker' />
 
@@ -298,12 +281,12 @@ $uiHelper = emr()->uiHelper();
          <div class='location_option'>
 					 <?php
 					 if (true === $view->is_movable): ?>
-           <label><input type="checkbox" name="new_location" value="1" <?php checked($settings['new_location'], 1); ?>  /> <?php _e('Place the newly uploaded file in this folder: ', 'enable-media-replace'); ?></label>
+           <label><input type="checkbox" name="new_location" value="1" <?php checked($settings['new_location'], 1); ?>  /> <?php _e('Place the newly uploaded file in this folder:', 'enable-media-replace'); ?> </label>
 					 <br>
             <?php echo $view->custom_basedir ?> <input type="text" name="location_dir" value="<?php echo esc_attr($subdir) ?>" />
 						<?php
 						else:
-								echo __('File is offloaded and can\'t be moved to other directory', 'enable-media-replace');
+								echo __('The file is offloaded and can\'t be moved to another directory.', 'enable-media-replace');
 						endif;
 					 ?>
           </div>
@@ -314,7 +297,7 @@ $uiHelper = emr()->uiHelper();
     </section>
   </div>
   <section class='form_controls wrapper'>
-		<input id="submit" type="submit" class="button button-primary" disabled="disabled" value="<?php echo esc_attr__("Upload", "enable-media-replace"); ?>" />
+		<input id="submit" type="submit" class="button button-primary" disabled="disabled" value="<?php echo esc_attr__("Replace", "enable-media-replace"); ?>" />
         <a href="#" class="button" onclick="history.back();"><?php echo esc_html__("Cancel", "enable-media-replace"); ?></a>
   </section>
 </div>

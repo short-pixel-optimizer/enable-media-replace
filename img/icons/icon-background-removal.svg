@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <defs>
+    <!-- transparency checkerboard: the universal "background removed" cue -->
+    <pattern id="checker" width="20" height="20" patternUnits="userSpaceOnUse">
+      <rect width="20" height="20" fill="#ffffff"/>
+      <rect width="10" height="10" fill="#d9dadb"/>
+      <rect x="10" y="10" width="10" height="10" fill="#d9dadb"/>
+    </pattern>
+  </defs>
+
+  <!-- tile background -->
+  <rect width="256" height="256" rx="10" fill="#eeeeee"/>
+
+  <!-- back image: the original, subject on a red background -->
+  <rect x="44" y="44" width="104" height="104" fill="#ed2c26"/>
+  <path d="M44 148 L44 132 L72 108 L96 126 L112 112 L148 140 L148 148 Z" fill="#106c7e"/>
+
+  <!-- arrow: original -> result (clockwise, pointing down into the result) -->
+  <path d="M158 52 C186 56 210 70 220 96" fill="none" stroke="#106c7e" stroke-width="5" stroke-linecap="round"/>
+  <path d="M209 94 L232 96 L222 118 Z" fill="#106c7e"/>
+
+  <!-- front image: background gone (checkerboard), subject kept -->
+  <rect x="108" y="108" width="104" height="104" fill="url(#checker)"/>
+  <path d="M108 212 L108 196 L136 172 L160 190 L176 176 L212 204 L212 212 Z" fill="#106c7e"/>
+  <rect x="108" y="108" width="104" height="104" fill="none" stroke="#106c7e" stroke-width="4"/>
+
+  <!-- AI sparkles, bottom left -->
+  <path d="M64 170 C66 184 71 189 86 192 C71 195 66 200 64 214 C62 200 57 195 42 192 C57 189 62 184 64 170 Z" fill="#ed2c26"/>
+  <path d="M92 206 C93 212 95 214 101 215 C95 216 93 218 92 224 C91 218 89 216 83 215 C89 214 91 212 92 206 Z" fill="#ed2c26"/>
+  <path d="M88 162 C89 166 90 167 94 168 C90 169 89 170 88 174 C87 170 86 169 82 168 C86 167 87 166 88 162 Z" fill="#ed2c26"/>
+</svg>

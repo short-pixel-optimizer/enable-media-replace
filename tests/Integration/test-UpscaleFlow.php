@@ -7,11 +7,12 @@
  * 2. AJAX `emr_remove_background` (the Preview button, js/remove_bg.js,
  *    which also posts the checked `upscale` factor): Ajax::remove_background()
  *    -> Api::request() -> MockEmrApi's reducer with `upscale` instead of
- *    `bg_remove`; the result URL is stored in the `emr_<key>` transient.
+ *    `bg_remove`; the result is shown, nothing is stored.
  * 3. POST `do_upscale_replace` (the Replace button): loadPost() verifies
- *    the `media_upscale_image` nonce, reads the key back, downloads the
- *    result from the mock's `/f/` URL and replaces the attachment's file
- *    in place through ReplaceController.
+ *    the `media_upscale_image` nonce, sends the image to the reducer again
+ *    with the checked factor (as SPIO's editor preview does; the second
+ *    call is free), downloads the result from the mock's `/f/` URL and
+ *    replaces the attachment's file in place through ReplaceController.
  *
  * Step 3 runs on EMR_TestUpscaleViewController (see
  * tests/ViewController/ViewControllerTestDoubles.php): viewSuccess() and
@@ -141,21 +142,18 @@ class UpscaleFlowTest extends EMR_AjaxTestCase {
 			'upscale'       => (string) $factor,
 		);
 		$response = $this->doAjax( 'emr_remove_background' );
-		if ( is_object( $response ) && isset( $response->key ) ) {
-			$this->keys[] = $response->key;
-		}
 		return $response;
 	}
 
 	/**
-	 * The POST step. Returns the controller and the EMR_ViewExit it ended
-	 * with (null when it returned).
+	 * The POST step with the checked factor. Returns the controller and the
+	 * EMR_ViewExit it ended with (null when it returned).
 	 */
-	private function apply( $id, $key, $nonce_action = 'media_upscale_image' ) {
+	private function apply( $id, $factor = '2', $nonce_action = 'media_upscale_image' ) {
 		$_POST                      = array(
 			'emr_nonce' => wp_create_nonce( $nonce_action ),
-			'key'       => $key,
 			'ID'        => (string) $id,
+			'upscale'   => (string) $factor,
 		);
 		$_REQUEST                   = $_POST;
 		$controller                 = new EMR_TestUpscaleViewController();
@@ -240,13 +238,13 @@ class UpscaleFlowTest extends EMR_AjaxTestCase {
 
 		$this->assertStringContainsString( 'action=do_upscale_replace', $output );
 		$this->assertStringContainsString( '<input type="hidden" name="ID" value="' . $id . '" />', $output );
-		$this->assertStringContainsString( "<input type='hidden' name='key' value='' />", $output );
+		$this->assertStringNotContainsString( "name='key'", $output, 'Nothing of the preview is stored.' );
 		$this->assertSame( 1, preg_match( '/name="emr_nonce" value="([a-f0-9]+)"/', $output, $nonce ) );
 		$this->assertSame( 1, wp_verify_nonce( $nonce[1], 'media_upscale_image' ) );
 		$this->assertMatchesRegularExpression( '/<input id="upscale_2" type="radio" name="upscale" value="2"\s+checked=\'checked\'\s*>/', $output );
 		$this->assertMatchesRegularExpression( '/<input id="upscale_3" type="radio" name="upscale" value="3"\s*>/', $output );
 		$this->assertMatchesRegularExpression( '/<input id="upscale_4" type="radio" name="upscale" value="4"\s*>/', $output );
-		$this->assertStringContainsString( '<h3>Upscaling image...</h3>', $output );
+		$this->assertStringContainsString( '<h3>Upscaling image…</h3>', $output );
 		$this->assertStringNotContainsString( 'name="background_type"', $output );
 		$this->assertSame( array(), $this->api->getRequests(), 'Rendering the screen calls no API.' );
 	}
@@ -290,16 +288,14 @@ class UpscaleFlowTest extends EMR_AjaxTestCase {
 		);
 	}
 
-	public function test_preview_answers_key_image_url_settings_and_stores_the_result_url_under_the_key() {
+	public function test_preview_answers_image_url_and_settings_and_stores_nothing() {
 		list( $id ) = $this->image();
 
 		$result = $this->preview( $id, '2' );
 
 		$this->assertTrue( $result->success );
-		$this->assertIsString( $result->key );
-		$stored = get_transient( 'emr_' . $result->key );
-		$this->assertStringStartsWith( MockEmrApi::DOWNLOAD_BASE, $stored );
-		$this->assertMatchesRegularExpression( '/^' . preg_quote( $stored, '/' ) . '\?ts=\d+$/', $result->image );
+		$this->assertObjectNotHasProperty( 'key', $result );
+		$this->assertMatchesRegularExpression( '/^' . preg_quote( MockEmrApi::DOWNLOAD_BASE, '/' ) . '.*\?ts=\d+$/', $result->image );
 		$this->assertSame( wp_get_original_image_url( $id ), $result->url );
 		$this->assertSame( ' plugin_version:EMR4.2.0  lossy:0  upscale:2 ', $result->settings );
 	}
@@ -333,7 +329,7 @@ class UpscaleFlowTest extends EMR_AjaxTestCase {
 
 		$this->assertFalse( $result->success );
 		$this->assertTrue( $result->quota_exceeded );
-		$this->assertSame( 'Quota exceeded. Please purchase the Unlimited or Unlimited AI plan and add your API key to continue upscaling images.', $result->message );
+		$this->assertSame( 'The Free plan limit is reached. Add an API key from a ShortPixel Unlimited plan (shortpixel.com/pricing) to continue upscaling images.', $result->message );
 		$this->assertObjectNotHasProperty( 'key', $result );
 	}
 
@@ -362,15 +358,19 @@ class UpscaleFlowTest extends EMR_AjaxTestCase {
 	public function test_apply_replaces_the_file_in_place_with_the_downloaded_bytes() {
 		list( $id, $path ) = $this->image();
 		$before            = md5_file( $path );
-		$result            = $this->preview( $id );
+		$this->preview( $id, '3' );
 
-		list( $controller, $exit ) = $this->apply( $id, $result->key );
+		list( $controller, $exit ) = $this->apply( $id, '3' );
 
 		$this->assertInstanceOf( EMR_ViewExit::class, $exit );
 		$this->assertSame( 'success', $exit->template );
 		$this->assertTrue( $controller->successCalled );
 		$this->assertSame( 0, $controller->errorCalls );
-		$this->assertCount( 1, $this->api->requestsTo( '/f/' ), 'One download of the stored result.' );
+		$reducer = $this->api->requestsTo( 'free-reducer.php' );
+		$this->assertCount( 2, $reducer, 'The preview and the apply step each send the image.' );
+		$this->assertSame( 3, $reducer[1]['request']['upscale'], 'The apply step sends the checked factor.' );
+		$this->assertArrayNotHasKey( 'bg_remove', $reducer[1]['request'] );
+		$this->assertCount( 1, $this->api->requestsTo( '/f/' ), 'One download, of the apply step\'s result.' );
 		clean_post_cache( $id );
 		$this->assertSame( $path, get_attached_file( $id ), 'Same file name and location.' );
 		$this->assertNotSame( $before, md5_file( $path ) );
@@ -382,9 +382,9 @@ class UpscaleFlowTest extends EMR_AjaxTestCase {
 		list( $id ) = $this->image();
 		$oldSizes   = $this->sizePaths( $id );
 		$this->assertNotEmpty( $oldSizes, 'Sentinel: the 400x300 original has sizes.' );
-		$result = $this->preview( $id );
+		$this->preview( $id );
 
-		$this->apply( $id, $result->key );
+		$this->apply( $id );
 
 		$meta = wp_get_attachment_metadata( $id );
 		$this->assertSame( 50, $meta['width'] );
@@ -398,17 +398,19 @@ class UpscaleFlowTest extends EMR_AjaxTestCase {
 	public function test_apply_refuses_the_remove_background_nonce_and_leaves_the_attachment() {
 		list( $id, $path ) = $this->image();
 		$before            = md5_file( $path );
-		$result            = $this->preview( $id );
+		$this->preview( $id );
 
-		list( $controller, $exit ) = $this->apply( $id, $result->key, 'media_remove_background' );
+		list( $controller, $exit ) = $this->apply( $id, '2', 'media_remove_background' );
 
 		$this->assertSame( 'error', $exit->template );
 		$this->assertSame( ViewController::ERROR_NONCE, $controller->lastError );
+		$this->assertCount( 1, $this->api->requestsTo( 'free-reducer.php' ), 'Only the preview reached the API.' );
 		$this->assertSame( array(), $this->api->requestsTo( '/f/' ) );
 		$this->assertSame( $before, md5_file( $path ) );
 	}
 
-	public function test_a_key_previewed_through_the_remove_background_screen_applies_through_the_upscale_form() {
+	/** The upscale form always runs an upscale, whatever the preview on the other screen showed. */
+	public function test_the_upscale_form_sends_the_factor_even_after_a_remove_background_preview() {
 		list( $id, $path ) = $this->image();
 		$_POST    = array(
 			'nonce'         => wp_create_nonce( 'emr_remove_background' ),
@@ -416,12 +418,15 @@ class UpscaleFlowTest extends EMR_AjaxTestCase {
 			'background'    => array( 'type' => 'transparent' ),
 		);
 		$result = $this->doAjax( 'emr_remove_background' );
-		$this->keys[] = $result->key;
-		$this->assertSame( '1', $this->api->lastRequest()['request']['bg_remove'], 'Sentinel: a background removal was requested.' );
+		$this->assertTrue( $result->success );
+		$this->assertSame( '1', $this->api->lastRequest()['request']['bg_remove'], 'Sentinel: a background removal was previewed.' );
 
-		list( $controller, $exit ) = $this->apply( $id, $result->key );
+		list( $controller, $exit ) = $this->apply( $id, '4' );
 
-		$this->assertSame( 'success', $exit->template, 'The key is not bound to the operation that produced it.' );
+		$this->assertSame( 'success', $exit->template );
+		$apply = $this->api->requestsTo( 'free-reducer.php' )[1]['request'];
+		$this->assertSame( 4, $apply['upscale'] );
+		$this->assertArrayNotHasKey( 'bg_remove', $apply );
 		$this->assertSame( $this->fixtureMd5(), md5_file( $path ) );
 		$this->assertSame( 0, $controller->errorCalls );
 	}
@@ -434,15 +439,13 @@ class UpscaleFlowTest extends EMR_AjaxTestCase {
 		list( , $id, $path ) = $this->authorWithImage();
 		$before              = md5_file( $path );
 		$post                = get_post( $id );
-		set_transient( 'emr_upauthorkey', $this->api->stashImage(), 60 );
-		$this->keys[] = 'upauthorkey';
 
 		$actions = emr()->add_media_action( array(), $post );
 		ob_start();
 		emr()->replace_meta_box( $post );
 		$box    = ob_get_clean();
 		$fields = emr()->attachment_editor( array(), $post );
-		list( $controller, $exit ) = $this->apply( $id, 'upauthorkey' );
+		list( $controller, $exit ) = $this->apply( $id );
 
 		$this->assertFalse( emr()->useFeature( 'upscale' ) );
 		$this->assertFalse( emr()->uiHelper()->isUpscalable( $post ) );
@@ -451,7 +454,7 @@ class UpscaleFlowTest extends EMR_AjaxTestCase {
 		$this->assertSame( array( 'enable-media-replace' ), array_keys( $fields ) );
 		$this->assertSame( 'error', $exit->template );
 		$this->assertSame( ViewController::ERROR_IMAGE_PERMISSION, $controller->lastError );
-		$this->assertSame( array(), $this->api->requestsTo( '/f/' ) );
+		$this->assertSame( array(), $this->api->requestsTo( 'reducer.php' ), 'Refused before any request.' );
 		$this->assertSame( $before, md5_file( $path ) );
 	}
 
@@ -488,7 +491,7 @@ class UpscaleFlowTest extends EMR_AjaxTestCase {
 	 * useFeature('upscale'), so with `emr/feature/upscale` false the UI
 	 * hides every upscale entry point while the endpoint still sends an
 	 * upscale request to the reducer (spending the free quota or the
-	 * site's Unlimited key) and hands back a usable result key. The
+	 * site's Unlimited key) and hands back a usable result. The
 	 * endpoint should refuse an `upscale` request when the feature is off.
 	 *
 	 * How to recognise the fix: `success` is false, no reducer request is
@@ -505,6 +508,6 @@ class UpscaleFlowTest extends EMR_AjaxTestCase {
 		$this->assertTrue( $result->success, 'Pinned: the request is served.' );
 		$this->assertCount( 1, $this->api->requestsTo( 'free-reducer.php' ) );
 		$this->assertSame( 2, $this->api->lastRequest()['request']['upscale'] );
-		$this->assertIsString( get_transient( 'emr_' . $result->key ) );
+		$this->assertStringStartsWith( MockEmrApi::DOWNLOAD_BASE, $result->image );
 	}
 }
