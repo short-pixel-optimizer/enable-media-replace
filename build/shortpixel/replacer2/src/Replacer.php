@@ -1155,7 +1155,8 @@ class Replacer
 	 * value that loosely equals the input, so they return false; `0`,
 	 * `false` and `[]` decode to falsy values and also return false. A
 	 * quoted JSON string literal such as `"abc"` (with the quotes) returns
-	 * true.
+	 * false: it is a text wrapped in quotes, and encoding it back would
+	 * rewrite its non-ASCII characters and drop surrounding whitespace.
 	 *
 	 * @param mixed $content Value to check.
 	 * @return bool True when the content is treated as JSON.
@@ -1166,7 +1167,7 @@ class Replacer
 			return false; // can never be.
 
 		$json = json_decode($content);
-		return $json && $json != $content;
+		return (is_array($json) || is_object($json)) && $json != $content;
 	}
 
 	/**
