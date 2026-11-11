@@ -453,6 +453,42 @@ class ReplacerTest extends WP_UnitTestCase {
 		$this->assertSame( '{"u":"' . self::NEW_URL . '"}', json_decode( $result )->inner, 'inner is still a JSON string.' );
 	}
 
+	/**
+	 * A text wrapped in double quotes (a quotation in a page builder
+	 * heading) is not a JSON document. Inside JSON it comes back as it was:
+	 * quotes, non-ASCII characters and trailing whitespace included.
+	 */
+	public function test_quoted_text_inside_json_is_unchanged() {
+		$title = "\"Caf\u{00e9} \u{2013} gr\u{00f6}\u{00df}er\"\n";
+		$json  = wp_json_encode(
+			array(
+				'title' => $title,
+				'src'   => self::OLD_URL,
+			)
+		);
+
+		$result = json_decode( $this->replaceFresh( $json ) );
+
+		$this->assertSame( self::NEW_URL, $result->src, 'Sentinel: the URL was replaced.' );
+		$this->assertSame( $title, $result->title, 'The quoted text is unchanged.' );
+	}
+
+	/** A quoted text that carries the URL changes in the URL only. */
+	public function test_quoted_text_with_the_url_inside_json_only_changes_the_url() {
+		$json = wp_json_encode( array( 'title' => "\"Caf\u{00e9}: " . self::OLD_URL . "\"\n" ) );
+
+		$result = json_decode( $this->replaceFresh( $json ) );
+
+		$this->assertSame( "\"Caf\u{00e9}: " . self::NEW_URL . "\"\n", $result->title );
+	}
+
+	/** At the top level a quoted text is replaced like any other string. */
+	public function test_quoted_text_is_replaced_as_a_plain_string() {
+		$result = $this->replaceFresh( "\"Caf\u{00e9}: " . self::OLD_URL . "\"\n" );
+
+		$this->assertSame( "\"Caf\u{00e9}: " . self::NEW_URL . "\"\n", $result );
+	}
+
 	public function test_replace_no_serialize_returns_arrays_and_objects_as_they_are() {
 		$replacer = new Replacer();
 		$this->callPrivate( $replacer, 'setReplaceSettings', array( array( 'replace_no_serialize' => true ) ) );
@@ -664,7 +700,7 @@ class ReplacerTest extends WP_UnitTestCase {
 		$cases    = array(
 			array( '{"a":1}', true ),
 			array( '[1,2]', true ),
-			array( '"abc"', true ),
+			array( '"abc"', false ),
 			array( '123', false ),
 			array( '0', false ),
 			array( '[]', false ),
