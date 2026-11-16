@@ -555,7 +555,7 @@ class DirectoryModel
       {
          return false; 
       }
-		  if (! $parent->exists())
+		  elseif (! $parent->exists())
 			{
 				 return $parent->getPermissionRecursive();
 			}
