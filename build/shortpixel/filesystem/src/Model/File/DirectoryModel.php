@@ -551,6 +551,10 @@ class DirectoryModel
 	public function getPermissionRecursive()
 	{
 		 $parent = $this->getParent();
+      if (false === $parent)
+      {
+         return false; 
+      }
 		  if (! $parent->exists())
 			{
 				 return $parent->getPermissionRecursive();

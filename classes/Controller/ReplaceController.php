@@ -374,6 +374,19 @@ class ReplaceController
 		do_action('wp_handle_replace', array('post_id' => $this->post_id));
 
 		// Set Source / and Source Metadata
+		
+		/* (wip) $Replacer = new Replacer2('emr');
+		$source_url = $this->getSourceUrl();
+
+		$attachment_meta = wp_get_attachment_metadata($this->post_id);
+
+		$Replacer->Setup()->forSearch()->URL()->addData($source_url); 
+		$Replacer->Setup()->forSearch()->MetaData()->addData($attachment_meta);
+
+		//$Replacer->setSourceMeta(wp_get_attachment_metadata($this->post_id));
+		*/
+
+				// Set Source / and Source Metadata
 		$Replacer = new Replacer();
 		$source_url = $this->getSourceUrl();
 		$Replacer->setSource($source_url);
@@ -915,14 +928,17 @@ class ReplaceController
 	{
 		$uploadDir = wp_upload_dir();
 		$new_rel_location = $this->new_location;
-		$newPath = trailingslashit($uploadDir['basedir']) . $new_rel_location;
+		$baseDir = realpath($uploadDir['basedir']);
 
+		$newPath = trailingslashit($baseDir) . $new_rel_location;
+		
 		//$realPath = realpath($newPath);
 		/** normalizePath() is used because realpath() returns false for non-existing paths.
 		 *  The trailing slash keeps the multisite check from matching /2 against /20.
 		 */
 		$realPath = trailingslashit($this->normalizePath($newPath));
-		$basedir = trailingslashit(realpath($uploadDir['basedir'])); // both need to go to realpath, otherwise some servers will have issues with it.
+		$basedir = trailingslashit( $this->normalizePath($baseDir)); 
+		
 
 		// Detect traversal by making sure the canonical path starts with uploads' basedir.
 		if (strpos($realPath, $basedir) !== 0) {
