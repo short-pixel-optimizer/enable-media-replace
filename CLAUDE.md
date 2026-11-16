@@ -270,6 +270,15 @@ docs/                      - the documentation and test plan, the bulk design no
   `emr/promo_banner/capability`, `emr/promo_banner/url`,
   `emr/settings/no_banner` (and the SHORTPIXEL_NO_BANNER constant). The E2E
   support option `emr_e2e_promo_window` opens the window for the browser tests.
+- **Bulk Enhance announcement:** `UIHelper::featureNotice()`, called by
+  `route()` on EMR's own screens, queues the persistent notice
+  `NOTICE_BULK_ENHANCE` (EMR002) for users with `manage_options` only, removes
+  the former beta notice EMR001 from the store, and the notices module prints
+  it on the Media Library, the edit-attachment screen and EMR's screens
+  (`setScreen()`, `isNoticeScreen()`). Its content (heading, the two operation
+  lines with the img/icons SVGs, the "Open Bulk Enhance" button) is built and
+  escaped in PHP; `scss/notices.scss` compiles to `css/notices.css`, enqueued
+  on those screens by `admin_scripts()`.
 - **AI credits:** background removal and upscale use one AI credit per image.
   `ApiKeyManager::getAiCredits()` reads the `PlanType` / `CaptionsCalls*`
   fields of api-status (the same fields SPIO shows as AI credits; Unlimited AI

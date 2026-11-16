@@ -193,11 +193,11 @@ class PluginLifecycleTest extends EMR_IntegrationTestCase {
 
 	public function test_a_feature_notice_dismissed_before_deactivation_shows_again_after_reactivation() {
 		emr()->uiHelper()->featureNotice();
-		$notice = NoticeController::getInstance()->getNoticeByID( UIHelper::NOTICE_NEW_FEATURE );
+		$notice = NoticeController::getInstance()->getNoticeByID( UIHelper::NOTICE_BULK_ENHANCE );
 		$notice->dismiss();
 		NoticeController::getInstance()->update();
 		$this->freshNoticeRequest();
-		$this->assertTrue( NoticeController::getInstance()->getNoticeByID( UIHelper::NOTICE_NEW_FEATURE )->isDismissed(), 'Sentinel: stored as dismissed.' );
+		$this->assertTrue( NoticeController::getInstance()->getNoticeByID( UIHelper::NOTICE_BULK_ENHANCE )->isDismissed(), 'Sentinel: stored as dismissed.' );
 
 		do_action( 'deactivate_' . $this->basename() );
 		$this->freshNoticeRequest();
@@ -209,7 +209,7 @@ class PluginLifecycleTest extends EMR_IntegrationTestCase {
 			},
 			NoticeController::getInstance()->getNoticesForDisplay()
 		);
-		$this->assertSame( array( UIHelper::NOTICE_NEW_FEATURE ), $shown );
+		$this->assertSame( array( UIHelper::NOTICE_BULK_ENHANCE ), $shown );
 	}
 
 	// ---------------------------------------------------------------------

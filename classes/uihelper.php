@@ -73,7 +73,11 @@ class UIHelper
 	 *
 	 * @var string
 	 */
+	/** The former "New beta feature" notice; featureNotice() removes it from the store. */
 	const NOTICE_NEW_FEATURE = 'EMR001';
+
+	/** The Bulk Enhance announcement (a new id, so sites that dismissed EMR001 see it once). */
+	const NOTICE_BULK_ENHANCE = 'EMR002';
 
 	/**
 	 * A number for display: number_format_i18n() without a trailing ".00",
@@ -1115,31 +1119,47 @@ class UIHelper
   }
 
 	/**
-	 * Queues the persistent "New Beta Feature" remove-background notice.
+	 * Queues the persistent Bulk Enhance announcement, for administrators only.
 	 *
 	 * Called by EnableMediaReplacePlugin::route() on every EMR screen load.
-	 * Adds a dismissible normal notice and makes it persistent under the ID
-	 * NOTICE_NEW_FEATURE ('EMR001') with a suppress period of two years, so
-	 * after dismissal it stays hidden for two years; while the ID already
-	 * exists the new copy is dropped. The notice store is the
-	 * `EnableMediaReplace-notices` option, which deactivation clears.
+	 * Only users with `manage_options` can open the Bulk Enhance page, so
+	 * nobody else is told about it. Removes the former "New beta feature"
+	 * notice (NOTICE_NEW_FEATURE) from the store when it is still there, so
+	 * the two never show together, then adds a dismissible normal notice and
+	 * makes it persistent under NOTICE_BULK_ENHANCE with a suppress period of
+	 * two years; while the id already exists the new copy is dropped. The
+	 * notice store is the `EnableMediaReplace-notices` option, which
+	 * deactivation clears. The notices module prints the message HTML as is;
+	 * everything in it is EMR's own text, escaped here, and the operation
+	 * icons of img/icons/ (styles: css/notices.css, enqueued by
+	 * EnableMediaReplacePlugin::admin_scripts() on the notice screens).
 	 *
 	 * @return void
-	 *
-	 * @todo The notice announces remove-background as a new beta feature on
-	 *       every EMR screen until dismissed; the feature is no longer new.
-	 *       Replace it with a notice announcing Bulk Enhance (Media > Bulk
-	 *       Enhance: bulk background removal for WooCommerce products and bulk
-	 *       upscale), the feature that is new. Use a new notice ID, so sites
-	 *       that dismissed EMR001 see it, and link it to the bulk page.
 	 */
 	public function featureNotice()
 	{
-			$message = sprintf(__('%s New beta feature! %s %s Enable Media Replace can now remove the background of an image and upscale it with AI. Try it in the Media Library: hover over an image and click Remove background or Upscale image, or use the buttons on the image editing screen. %s', 'enable-media-replace' ), '<h3>', '</h3>',
-				'<p>', '</p>');
+		if (! current_user_can('manage_options')) {
+			return;
+		}
+		$notices = Notices::getInstance();
+		if (false !== $notices->getNoticeByID(self::NOTICE_NEW_FEATURE)) {
+			Notices::removeNoticeByID(self::NOTICE_NEW_FEATURE);
+		}
 
-		  $notice = Notices::addNormal($message, true);
-			Notices::makePersistent($notice, self::NOTICE_NEW_FEATURE, 2 * YEAR_IN_SECONDS);
+		$icon = function ($file) {
+			return '<img class="emr-notice-op-icon" src="' . esc_url(plugins_url('img/icons/' . $file, EMR_ROOT_FILE)) . '" width="28" height="28" alt="">';
+		};
+		$message  = '<h3>' . esc_html__('New: Bulk Enhance', 'enable-media-replace') . '</h3>';
+		$message .= '<p>' . esc_html__('Enable Media Replace can now process many images at once, from Media > Bulk Enhance:', 'enable-media-replace') . '</p>';
+		$message .= '<p class="emr-notice-ops">'
+			. '<span class="emr-notice-op">' . $icon('icon-background-removal.svg') . esc_html__('Remove the background of all your WooCommerce product images', 'enable-media-replace') . '</span>'
+			. '<span class="emr-notice-op">' . $icon('icon-image-upscale.svg') . esc_html__('Upscale the small images of your Media Library', 'enable-media-replace') . '</span>'
+			. '</p>';
+		$message .= '<p class="emr-notice-action"><span>' . esc_html__('The originals are backed up first, so you can restore them anytime. Bulk Enhance needs a ShortPixel API key on an Unlimited plan.', 'enable-media-replace')
+			. '</span> <a class="button button-primary emr-notice-open" href="' . esc_url(admin_url('upload.php?page=' . \EnableMediaReplace\EnableMediaReplacePlugin::BULK_PAGE_SLUG)) . '">' . esc_html__('Open Bulk Enhance', 'enable-media-replace') . '</a></p>';
+
+		$notice = Notices::addNormal($message, true);
+		Notices::makePersistent($notice, self::NOTICE_BULK_ENHANCE, 2 * YEAR_IN_SECONDS);
 	}
 
 } // class

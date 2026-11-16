@@ -349,7 +349,7 @@ class PluginAdminScreensTest extends EMR_MainTestCase {
 
 		$this->assertFalse( wp_script_is( 'emr_admin', 'enqueued' ) );
 		$this->assertFalse( wp_style_is( 'emr_style', 'enqueued' ) );
-		$this->assertFalse( NoticeController::getInstance()->getNoticeByID( 'EMR001' ) );
+		$this->assertFalse( NoticeController::getInstance()->getNoticeByID( 'EMR002' ) );
 	}
 
 	public function test_route_media_replace_without_attachment_id_only_enqueues_the_shared_assets() {
@@ -405,14 +405,35 @@ class PluginAdminScreensTest extends EMR_MainTestCase {
 		$this->assertFalse( wp_script_is( 'emr_remove_bg', 'enqueued' ) );
 	}
 
-	public function test_route_queues_the_feature_notice() {
+	public function test_route_queues_the_bulk_enhance_notice_for_an_administrator_and_drops_the_former_one() {
 		$this->login_as( 'administrator' );
+		$old = NoticeController::addNormal( 'The former beta notice', true );
+		NoticeController::makePersistent( $old, 'EMR001', 2 * YEAR_IN_SECONDS );
+		$this->assertIsObject( NoticeController::getInstance()->getNoticeByID( 'EMR001' ), 'Precondition: a site that still has EMR001.' );
 		$this->prepare_route( 'media_replace', array( 'attachment_id' => '0' ) );
-		$this->assertFalse( NoticeController::getInstance()->getNoticeByID( 'EMR001' ) );
+		$this->assertFalse( NoticeController::getInstance()->getNoticeByID( 'EMR002' ) );
 
 		emr()->route();
 
-		$this->assertIsObject( NoticeController::getInstance()->getNoticeByID( 'EMR001' ) );
+		$notice = NoticeController::getInstance()->getNoticeByID( 'EMR002' );
+		$this->assertIsObject( $notice );
+		$this->assertFalse( NoticeController::getInstance()->getNoticeByID( 'EMR001' ), 'The former notice is removed, so the two never show together.' );
+		$html = $notice->getForDisplay();
+		$this->assertStringContainsString( '<h3>New: Bulk Enhance</h3>', $html );
+		$this->assertStringContainsString( 'img/icons/icon-background-removal.svg', $html );
+		$this->assertStringContainsString( 'img/icons/icon-image-upscale.svg', $html );
+		$this->assertStringContainsString( 'href="' . admin_url( 'upload.php?page=emr-bulk' ) . '">Open Bulk Enhance</a>', $html );
+		$this->assertStringNotContainsString( 'beta', $html );
+	}
+
+	public function test_route_queues_no_feature_notice_for_a_user_without_manage_options() {
+		$this->login_as( 'author' );
+		$this->prepare_route( 'media_replace', array( 'attachment_id' => '0' ) );
+
+		emr()->route();
+
+		$this->assertFalse( NoticeController::getInstance()->getNoticeByID( 'EMR002' ), 'An author cannot open Bulk Enhance, so is not told about it.' );
+		$this->assertFalse( NoticeController::getInstance()->getNoticeByID( 'EMR001' ) );
 	}
 
 	public function test_route_sanitizes_the_action() {

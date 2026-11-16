@@ -526,10 +526,7 @@ class EnableMediaReplacePlugin
      */
     public function setScreen()
     {
-        $screen = get_current_screen();
-
-        $notice_pages = array('attachment',  'media_page_enable-media-replace/enable-media-replace', 'upload');
-        if (in_array($screen->id, $notice_pages) &&    true === emr()->useFeature('remote_notice')) {
+        if ($this->isNoticeScreen() && true === emr()->useFeature('remote_notice')) {
             RemoteNoticeController::getInstance(); // check for remote stuff
             $notices = Notices::getInstance();
             $notices->loadIcons(array(
@@ -541,6 +538,18 @@ class EnableMediaReplacePlugin
 
             add_action('admin_notices', array($notices, 'admin_notices')); // previous page / init time
         }
+    }
+
+    /**
+     * Whether the current screen is one EMR prints its notices on: the
+     * Media Library, the edit-attachment screen and EMR's own page.
+     *
+     * @return bool
+     */
+    public function isNoticeScreen()
+    {
+        $screen = function_exists('get_current_screen') ? get_current_screen() : null;
+        return (is_object($screen) && in_array($screen->id, array('attachment', 'media_page_enable-media-replace/enable-media-replace', 'upload'), true));
     }
 
     /** Load EMR views based on request
@@ -724,6 +733,12 @@ class EnableMediaReplacePlugin
         }
 
         wp_register_style('emr_edit-attachment', plugins_url('css/edit_attachment.css', EMR_ROOT_FILE));
+
+        // The Bulk Enhance announcement's content styles (UIHelper::featureNotice()), on the screens the notices print on.
+        wp_register_style('emr_notices', plugins_url('css/notices.css', EMR_ROOT_FILE), array(), EMR_VERSION);
+        if ($this->isNoticeScreen()) {
+            wp_enqueue_style('emr_notices');
+        }
 
         wp_register_style('emr-remove-background', plugins_url('css/remove_background.css', EMR_ROOT_FILE));
 
