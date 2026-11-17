@@ -60,6 +60,9 @@ class BulkAjaxControllerTest extends WP_Ajax_UnitTestCase {
 		$this->savedUser = get_current_user_id();
 		$_POST           = array();
 		remove_all_actions( 'admin_init' );
+		// The ajax handlers are registered by adminInit(), which went with the
+		// dropped admin_init chain.
+		emr()->adminInit();
 		$this->mock = MockEmrApi::register();
 		$this->mock->reset();
 		add_filter( 'pre_http_request', array( $this, 'failFast' ), 9999, 3 );
@@ -117,14 +120,10 @@ class BulkAjaxControllerTest extends WP_Ajax_UnitTestCase {
 		), $extra ) );
 	}
 
-	/**
-	 * The callback count is not asserted here: Ajax is instantiated twice
-	 * (require time and adminInit()), so the bulk endpoints share the known
-	 * duplicate registration; see the pins in tests/Controller/test-Ajax.php.
-	 */
 	public function test_the_three_actions_are_hooked_for_logged_in_users_only() {
 		foreach ( array( 'emr_bulk_process', 'emr_bulk_request', 'emr_bulk_settings' ) as $action ) {
 			$this->assertNotFalse( has_action( 'wp_ajax_' . $action ), $action );
+			$this->assertCount( 1, $GLOBALS['wp_filter'][ 'wp_ajax_' . $action ]->callbacks[10], $action . ' is hooked once.' );
 			$this->assertFalse( has_action( 'wp_ajax_nopriv_' . $action ) );
 		}
 	}

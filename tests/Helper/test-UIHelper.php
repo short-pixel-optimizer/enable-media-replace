@@ -1213,21 +1213,24 @@ class UIHelperTest extends WP_UnitTestCase {
 		$this->assertFalse( UIHelper::getInstance()->getRelPathNow() );
 	}
 
-	public function test_feature_notice_adds_a_persistent_notice_with_id_emr001() {
+	public function test_feature_notice_adds_the_persistent_bulk_enhance_notice_for_an_administrator() {
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
+
 		UIHelper::getInstance()->featureNotice();
 
-		$notice = NoticeController::getInstance()->getNoticeByID( UIHelper::NOTICE_NEW_FEATURE );
+		$notice = NoticeController::getInstance()->getNoticeByID( UIHelper::NOTICE_BULK_ENHANCE );
 
-		$this->assertSame( 'EMR001', UIHelper::NOTICE_NEW_FEATURE );
+		$this->assertSame( 'EMR002', UIHelper::NOTICE_BULK_ENHANCE );
 		$this->assertIsObject( $notice );
 		$this->assertTrue( $notice->isPersistent() );
 		$this->assertSame( 2 * YEAR_IN_SECONDS, $notice->_debug_getvar( 'suppress_period' ) );
 		$stored = get_option( 'EnableMediaReplace-notices' );
 		$this->assertCount( 1, $stored );
-		$this->assertSame( 'EMR001', $stored[0]->getID() );
+		$this->assertSame( 'EMR002', $stored[0]->getID() );
 	}
 
 	public function test_feature_notice_is_idempotent() {
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
 		$helper = UIHelper::getInstance();
 
 		$helper->featureNotice();
@@ -1238,13 +1241,27 @@ class UIHelperTest extends WP_UnitTestCase {
 		$this->assertCount( 1, get_option( 'EnableMediaReplace-notices' ) );
 	}
 
-	public function test_feature_notice_still_announces_a_new_beta_feature() {
+	public function test_feature_notice_announces_bulk_enhance_and_links_to_its_page() {
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
+
 		UIHelper::getInstance()->featureNotice();
 
-		$notice = NoticeController::getInstance()->getNoticeByID( 'EMR001' );
+		$notice = NoticeController::getInstance()->getNoticeByID( UIHelper::NOTICE_BULK_ENHANCE );
 
-		$this->assertStringContainsString( 'New beta feature!', $notice->message );
-		$this->assertStringContainsString( 'remove the background of an image and upscale it', $notice->message );
+		$this->assertIsObject( $notice );
+		$this->assertStringContainsString( 'New: Bulk Enhance', $notice->message );
+		$this->assertStringContainsString( 'Open Bulk Enhance', $notice->message );
+		$this->assertStringContainsString( 'upload.php?page=emr-bulk', $notice->message );
+		$this->assertStringNotContainsString( 'New beta feature', $notice->message );
+	}
+
+	public function test_feature_notice_adds_nothing_for_a_user_without_manage_options() {
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'editor' ) ) );
+
+		UIHelper::getInstance()->featureNotice();
+
+		$this->assertFalse( NoticeController::getInstance()->getNoticeByID( UIHelper::NOTICE_BULK_ENHANCE ) );
+		$this->assertSame( 0, NoticeController::getInstance()->countNotices() );
 	}
 
 	/* ------------------------------------------------------------------
