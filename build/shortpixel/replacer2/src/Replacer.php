@@ -138,7 +138,7 @@ class Replacer
 	 */
 	private $default_replace_settings = array(
 		'component' => 'unset',
-		'json_flags' => JSON_UNESCAPED_SLASHES,
+		'json_flags' => JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE,
 		'replacer_do_save' => true,
 		'replace_no_serialize' => false,
 	);
@@ -346,8 +346,15 @@ class Replacer
 	 * 8. Drops target sizes that do not exist in the source.
 	 * 9. For source sizes missing in the target, fills in the target file
 	 *    whose width is closest (findNearestSize()), placed in the source
-	 *    size's directory. Sizes without a nearest match stay unpaired.
-	 * 10. Drops pairs whose search and replace values are identical.
+	 *    size's directory and appended at the end of the target array.
+	 *    Sizes without a nearest match stay unpaired.
+	 * 10. Drops pairs whose search and replace values are identical (strict
+	 *     comparison) and rebuilds the target array in the key order of the
+	 *     source array. str_replace() pairs the two arrays by position, not
+	 *     by key, so a size filled in at step 9 would otherwise be paired
+	 *     with the wrong search entry. When a source size has no replacement
+	 *     the rebuilt array differs in length from the target array; it is
+	 *     then discarded, an error is logged and step 11 aborts.
 	 * 11. When the arrays still differ in length, returns an array with one
 	 *     translated error message, because str_replace() would otherwise
 	 *     replace the unpaired entries with an empty string.
@@ -472,16 +479,32 @@ class Replacer
 		}
 
 		/* If source and target are the same, remove them from replace. This happens when replacing a file with same name, and +/- same dimensions generated.
-
 	    After previous loops, for every search there should be a replace size.
+
+		Ordered_replace - When the system adds urls via findNearestSize, the size is put (index-wise) at the end of array, this makes search / replaces sizes not lined-up and replaces not with the best URL
 	    */
+		$ordered_replace = []; 
 		foreach ($search_urls as $size => $url) {
 			$replace_url = isset($replace_urls[$size]) ? $replace_urls[$size] : false;
-			if ($url == $replace_url) // if source and target as the same, no need for replacing.
+			if ($url === $replace_url) // if source and target as the same, no need for replacing.
 			{
 				unset($search_urls[$size]);
 				unset($replace_urls[$size]);
 			}
+			else  // Only add when the search is not removed. 
+			{
+				$ordered_replace[$size] = $replace_url; 	
+			}
+			
+		}
+
+		if (count($ordered_replace) > 0 && count($ordered_replace) === count($replace_urls)) 
+		{
+			 $replace_urls = $ordered_replace; 
+		}
+		elseif (count($ordered_replace) > 0) // Log if something went wrong here. 
+		{
+			 Log::addError('Ordered replace got zero or different amount of urls!', [$ordered_replace, $replace_urls]);
 		}
 
 		// If the two sides are disbalanced, the str_replace part will cause everything that has an empty replace counterpart to replace it with empty. Unwanted.
@@ -598,8 +621,9 @@ class Replacer
 	 * entry has:
 	 * - `id`: primary key column (required).
 	 * - `value`: column holding the content (required).
-	 * - `main_id`: column of the owning object id (optional). Selected with
-	 *   the row; without it the query selects `NULL as main_id`.
+	 * - `main_id`: column of the owning object id (optional), `option_name`
+	 *   for `options`. Selected with the row; without it the query selects
+	 *   `NULL as main_id`.
 	 * - `cache_group`: object cache group of the owning object (optional).
 	 *
 	 * For `postmeta` the rows are limited by a subquery to posts with status
@@ -611,8 +635,9 @@ class Replacer
 	 * through replaceContent() (not deep, no strict check) and the
 	 * `save_meta_value` filter. When the `replacer_do_save` setting is true
 	 * the value is written with a direct UPDATE on the `id` column, and the
-	 * cache is cleared: for `options` only the `alloptions` and `notoptions`
-	 * keys of the `options` group, for other tables the `main_id` value in
+	 * cache is cleared: for `options` the `alloptions` and `notoptions` keys
+	 * and the option's own name (the key of a non-autoloaded option) in the
+	 * `options` group, for other tables the row's `main_id` value in
 	 * `cache_group` when a cache group is set. When `replacer_do_save` is
 	 * false, saving is left to the `save_meta_value` callback.
 	 *
@@ -634,15 +659,13 @@ class Replacer
 	 * @return int Number of matched rows, counted whether or not they changed
 	 *             or were skipped.
 	 *
-	 * @todo Inside the row loop `$main_id = $row[$main_id];` overwrites the
-	 *       column name with the row's value, so from the second row of a
-	 *       table the cache key is read from `$row[<previous id value>]`
-	 *       (undefined index) and the wrong cache entry is cleared. Suggested
-	 *       fix: store the row value in a separate variable.
-	 * @todo For `options` only `alloptions` and `notoptions` are cleared, so a
-	 *       non-autoloaded option keeps its stale value in the object cache.
-	 *       Suggested fix: also select `option_name` and delete that key in
-	 *       the `options` group.
+	 * @todo The cache key is read as `$row[$main_field]`. For a table without
+	 *       `main_id` (one added through `replacement_tables`, or `options`
+	 *       with its `main_id` removed there) $main_field is the expression
+	 *       `NULL as main_id`, not a key of the row, so clearing the cache
+	 *       raises an undefined-index notice and deletes a null key.
+	 *       Suggested fix: read `$row['main_id']` when the table has no
+	 *       `main_id`, and skip the delete when it is null.
 	 * @todo The skip log message prints `$id_field` (the column name) instead
 	 *       of `$id` (the row id). Suggested fix: log `$id`.
 	 * @todo The postmeta subquery quotes the statuses with double quotes,
@@ -690,6 +713,7 @@ class Replacer
 			],
 			'options' => [
 				'id' => 'option_id',
+				'main_id' => 'option_name',
 				'value' => 'option_value',		
 			]
 
@@ -756,6 +780,8 @@ class Replacer
 							{
 								wp_cache_delete( 'alloptions', 'options' );         // Clear all options array
 								wp_cache_delete( 'notoptions', 'options' );         // Reset non-existent list
+								$main_id = $row[$main_field]; 
+								wp_cache_delete($main_id, 'options'); // Delete the option_name directly from cache as well.
 							} 
 							else 
 							{
@@ -783,8 +809,9 @@ class Replacer
 	 * - `component` (string, default `unset`): name of the run, passed to the
 	 *   `load_meta_value` and `save_meta_value` filters so integrations can
 	 *   act only on their own run. replace() uses `emr` for the main run.
-	 * - `json_flags` (int, default JSON_UNESCAPED_SLASHES): flags for
-	 *   json_encode() when replaceContent() re-encodes JSON.
+	 * - `json_flags` (int, default JSON_UNESCAPED_SLASHES |
+	 *   JSON_UNESCAPED_UNICODE): flags for json_encode() when
+	 *   replaceContent() re-encodes JSON.
 	 * - `replacer_do_save` (bool, default true): whether handleMetaData()
 	 *   writes the replaced meta value itself.
 	 * - `replace_no_serialize` (bool, default false): when true,
@@ -803,16 +830,23 @@ class Replacer
 	 * Replaces Content across several levels of possible data
 	 *
 	 * Recursion contract:
-	 * - Serialized string: unserialized with `allowed_classes => false`
+	 * - Serialized string: unserialized with `allowed_classes => ['stdClass']`
 	 *   through the Unserialize polyfill. The polyfill's own branch is only
 	 *   for PHP below 7; the consuming plugins require PHP 7.4, so the native
-	 *   unserialize() runs. With no class allowed, every object (stdClass
-	 *   included) becomes __PHP_Incomplete_Class. When the top-level result
-	 *   is an incomplete object the original serialized string is returned
-	 *   unchanged.
+	 *   unserialize() runs. stdClass has no magic methods, so it is
+	 *   instantiated and walked like any object; every other class becomes
+	 *   __PHP_Incomplete_Class and none of its methods can run. When the
+	 *   top-level result is an incomplete object the original serialized
+	 *   string is returned unchanged. An incomplete object nested in an
+	 *   array or stdClass is kept as it is, and serialize() writes it back
+	 *   under its original class name with its original properties.
 	 * - JSON string (see isJSON()): decoded with json_decode() into objects
-	 *   and arrays and processed as such. Only at the top level
-	 *   ($in_deep false) is it encoded back, with the `json_flags` setting.
+	 *   and arrays, processed as such and encoded back at the same level
+	 *   (top level or nested), with the `json_flags` setting. The string is
+	 *   only re-encoded when the processed value differs from a second
+	 *   decode of the input (compared by value, with `!=`); otherwise the
+	 *   original string is returned byte for byte, so JSON without a match
+	 *   keeps its escaping.
 	 * - String: passed through the `shortpixel/replacer/content` filter, then
 	 *   str_replace($search, $replace).
 	 * - WP_Error: returned untouched.
@@ -823,7 +857,8 @@ class Replacer
 	 *   incomplete object is returned as it is (or, at the top level of a
 	 *   serialized value, the original serialized string is returned).
 	 * - Other scalars and null: returned untouched.
-	 * - At the top level, arrays and objects that were not JSON are passed
+	 * - At the top level, arrays and objects that were not JSON (including a
+	 *   walked serialized value) are passed
 	 *   through maybe_serialize(), unless the `replace_no_serialize` setting
 	 *   is true.
 	 *
@@ -842,19 +877,25 @@ class Replacer
 	 *                            top level.
 	 * @param bool  $strict_check Passed down the recursion but not otherwise
 	 *                            read; every unserialize uses
-	 *                            `allowed_classes => false` regardless.
+	 *                            `allowed_classes => ['stdClass']`
+	 *                            regardless.
 	 * @return mixed The replaced content, in the input's form at the top
 	 *               level (string for serialized, JSON or string input).
 	 *
-	 * @todo A JSON string nested inside serialized data or inside a decoded
-	 *       structure is decoded but not re-encoded because $in_deep is true,
-	 *       so it comes back as stdClass or array instead of a JSON string.
-	 *       Suggested fix: re-encode whenever this call decoded JSON,
-	 *       independent of $in_deep. The same applies to a serialized string
-	 *       nested inside other data, which comes back unserialized.
+	 * @todo A serialized string nested inside other data (a value serialized
+	 *       twice) is unserialized but not serialized back because $in_deep
+	 *       is true, so it comes back as an array or a stdClass object
+	 *       instead of a string and the stored value changes type. Suggested
+	 *       fix: re-serialize whenever this call unserialized, independent of
+	 *       $in_deep, as is already done for JSON.
 	 */
 	public function replaceContent($content, $search, $replace, $in_deep = false, $strict_check = true)
 	{
+
+		// 1) used to return content back if incomplete classes are found, prevent destroying the original information
+		// 2) used to return same content if json. 
+		// 3) Ideally would return this if no changes made, but there is also the check in replace. 
+	 	$raw_content = $content; 
 
 		// Since ReplaceContent can now be called directly, this might not be set, set defaults if so
 		if (is_null($this->replace_settings)) {
@@ -862,16 +903,15 @@ class Replacer
 		}
 
 		if (true === is_serialized($content)) {
-			$serialized_content = $content; // use to return content back if incomplete classes are found, prevent destroying the original information
 
 			// Only allow stdClass which can't have magic methods. 
-			$args = array('allowed_classes' => false);
-			//$args = array('allowed_classes' => array('stdClass'));
+			//$args = array('allowed_classes' => false);
+			$args = array('allowed_classes' => array('stdClass'));
 
 			$content = Unserialize::unserialize($content, $args);
 			// bail directly on incomplete classes. In < PHP 7.2 is_object is false on incomplete objects!
 			if (true === $this->checkIncomplete($content)) {
-				return $serialized_content;
+				return $raw_content;
 			}
 		}
 
@@ -879,6 +919,7 @@ class Replacer
 
 		if ($isJson) {
 			$content = json_decode($content);
+			$decoded_previous_content = json_decode($raw_content);
 		}
 
 		if (is_string($content))  // let's check the normal one first.
@@ -905,12 +946,7 @@ class Replacer
 			// bail directly on incomplete classes.
 			if (true === $this->checkIncomplete($content)) {
 				// if it was serialized, return the original as not to corrupt data.
-				if (isset($serialized_content)) {
-					return $serialized_content;
-				} else { // else just return the content.
-					return $content;
-				}
-
+				return $raw_content;
 			}
 			foreach ($content as $key => $value) {
 				$content->{$key} = $this->replaceContent($value, $search, $replace, true, $strict_check);
@@ -923,8 +959,17 @@ class Replacer
 	      // wp-slash -> WP does stripslashes_deep which destroys JSON
 				$json_flags = $this->replace_settings['json_flags'];
 		  //	Log::addDebug('Value was found to be JSON, encoding with flag: ' . $json_flags);
-				$content = json_encode($content, $json_flags);
-	     // Log::addDebug('Content returning (array ours) ', array($content));
+
+		  		// Might work badly, but might help to limit to amount of re-encodes since there is always a risk of data loss
+		  		if ($content != $decoded_previous_content)
+				{
+					$content = json_encode($content, $json_flags);
+				}
+				else 
+				{
+					$content = $raw_content;
+				}
+				
 	    }
 		 elseif (
 			$this->replace_settings['replace_no_serialize'] === false &&
@@ -1153,7 +1198,8 @@ class Replacer
 	/**
 	 * Checks whether a value is an incomplete (unloadable class) object.
 	 *
-	 * With `allowed_classes => false` every unserialized object is one.
+	 * With `allowed_classes => ['stdClass']` every unserialized object of
+	 * another class is one.
 	 *
 	 * @param mixed $var Value to check.
 	 * @return bool True for a __PHP_Incomplete_Class instance.

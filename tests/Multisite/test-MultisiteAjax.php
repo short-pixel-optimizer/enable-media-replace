@@ -80,6 +80,10 @@ class MultisiteAjaxTest extends EMR_AjaxTestCase {
 		switch_to_blog( $other );
 		$this->users['stranger'] = self::factory()->user->create( array( 'role' => 'administrator' ) );
 		restore_current_blog();
+
+		// admin_init is dropped by the base class; run EMR's part of it,
+		// which registers the emr_* endpoints.
+		emr()->adminInit();
 	}
 
 	public function tear_down() {

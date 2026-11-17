@@ -200,18 +200,15 @@ class ExternalsTest extends WP_UnitTestCase {
 
 	/**
 	 * Externals::check() has an empty body: the Beaver Builder check that
-	 * should disable "replace and search" (and add a notice) is commented
-	 * out and garbled. With Beaver Builder present (its `FLBuilder` class
-	 * declared here), replaceSearchType stays null and the option stays
-	 * enabled. The check should be restored or removed.
-	 *
-	 * How to recognise the fix: replaceSearchType becomes false, the filter
-	 * returns false and the assertions on null / true fail.
+	 * would disable "replace and search" (and add a notice) is commented
+	 * out. The replacer rewrites Beaver Builder layouts, so with Beaver
+	 * Builder present (its `FLBuilder` class declared here)
+	 * replaceSearchType stays null and the option stays enabled.
 	 *
 	 * @runInSeparateProcess
 	 * @preserveGlobalState disabled
 	 */
-	public function test_check_ignores_beaver_builder_pinned_for_deferred_fix() {
+	public function test_check_disables_nothing_with_beaver_builder_present() {
 		if ( ! class_exists( 'FLBuilder', false ) ) {
 			eval( 'class FLBuilder {}' ); // phpcs:ignore Squiz.PHP.Eval.Discouraged
 		}
@@ -219,7 +216,7 @@ class ExternalsTest extends WP_UnitTestCase {
 		$externals = new Externals();
 
 		$this->assertTrue( class_exists( 'FLBuilder', false ), 'Sentinel: Beaver Builder is detected.' );
-		$this->assertNull( $this->prop( $externals, 'replaceSearchType' ), 'Pinned: nothing is disabled.' );
+		$this->assertNull( $this->prop( $externals, 'replaceSearchType' ), 'Nothing is disabled.' );
 		$this->assertSame( array(), $this->prop( $externals, 'messages' ) );
 		$this->assertTrue( apply_filters( 'emr_enable_replace_and_search', true ) );
 	}

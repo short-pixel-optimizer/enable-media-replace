@@ -13,13 +13,12 @@
  * @package EnableMediaReplace\ShortPixelLogger
  */
 namespace EnableMediaReplace\ShortPixelLogger;
-wp_enqueue_script( 'jquery-ui-draggable' );
-
-namespace ShortPixel;
 
 if ( ! defined( 'ABSPATH' ) ) {
  exit; // Exit if accessed directly.
 }
+
+wp_enqueue_script( 'jquery-ui-draggable' );
 ?>
 
 <style>

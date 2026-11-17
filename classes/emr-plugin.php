@@ -155,12 +155,10 @@ class EnableMediaReplacePlugin
      * @hook filter emr/feature/remote_notice Enables the remote notices. Default true.
      *
      * @todo Each call creates a new Ajax instance, which registers every
-     *       `wp_ajax_emr_*` endpoint again (the bulk ones included);
-     *       classes/ajax.php already instantiates Ajax at require time, so
-     *       on admin requests each handler is hooked twice. When
-     *       useFeature() runs this method (flags still empty), the side
-     *       effect also happens there. The first callback ends the request,
-     *       so the duplicate never runs. Instantiate Ajax once and keep the
+     *       `wp_ajax_emr_*` endpoint again (the bulk ones included). `admin_init` fires once per
+     *       request, so each handler is hooked once there; a second call
+     *       (useFeature() runs this method while the flags are empty) hooks
+     *       them again. Suggested fix: instantiate Ajax once and keep the
      *       feature-flag setup separate from it.
      */
     public function adminInit()

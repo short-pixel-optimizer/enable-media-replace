@@ -138,24 +138,14 @@ class ReplaceFlowTest extends EMR_IntegrationTestCase {
 
 	/**
 	 * Replacer::replace() builds the search and replace arrays keyed by size
-	 * name, but str_replace() pairs them by POSITION. The search array
-	 * follows the source metadata order (`medium`, `thumbnail`); a size
-	 * the target lacks is filled in by findNearestSize() and APPENDED to
-	 * the replace array, so the replace order becomes `thumbnail`, `medium`
-	 * and every pair after the gap is shifted. Here a 400x300 image
-	 * replaced by a 200x100 one (no medium size) sends the medium reference
-	 * to the new thumbnail and the thumbnail reference to the main file;
-	 * the same happens in search-replace mode whenever the new image lacks
-	 * a size. The correct behaviour is to align the replace array to the
-	 * keys of the search array before the str_replace() (for example
-	 * build it by iterating the search keys). Lives in Replacer::replace(),
-	 * steps 9-11.
-	 *
-	 * How to recognise the fix: the post holds the new 150x100 thumbnail
-	 * first and the main file second, the replace keys follow the search
-	 * keys, and the pinned assertions below fail.
+	 * name, and str_replace() pairs them by POSITION. A size the target lacks
+	 * is filled in by findNearestSize(); the replace array is then rebuilt in
+	 * the key order of the search array, so every reference goes to its own
+	 * size. Here a 400x300 image is replaced by a 200x100 one (no medium
+	 * size): the medium reference goes to the closest width, the 200px main
+	 * file, and the thumbnail reference to the new thumbnail.
 	 */
-	public function test_a_size_filled_in_by_nearest_size_shifts_the_rewrite_pairs_pinned_for_deferred_fix() {
+	public function test_a_size_filled_in_by_nearest_size_keeps_the_rewrite_pairs_aligned() {
 		list( $id, , $url, $thumb, $medium ) = $this->standardImage();
 		$post = $this->makePost( '<img src="' . $thumb . '" /><img src="' . $medium . '" />' );
 		$this->addHook( 'emr/replacer/replace_urls', $this->record( 'replace_urls' ), 10, 3 );
@@ -167,14 +157,14 @@ class ReplaceFlowTest extends EMR_IntegrationTestCase {
 		$new_thumb = $this->sizeUrl( $id, 'thumbnail' );
 		$this->assertStringEndsWith( '-150x100.jpg', $new_thumb );
 		list( $search, $replace ) = $this->events[0][1];
-		$this->assertSame( wp_make_link_relative( $url ), $replace['medium'], 'Sentinel: by key, medium maps to the closest width, the 200px main file.' );
-		$this->assertSame( wp_make_link_relative( $new_thumb ), $replace['thumbnail'], 'Sentinel: by key, thumbnail maps to the new thumbnail.' );
-		$this->assertSame( array( 'medium', 'thumbnail' ), array_keys( $search ), 'Pinned: the search order follows the source sizes.' );
-		$this->assertSame( array( 'thumbnail', 'medium' ), array_keys( $replace ), 'Pinned: the filled-in size is appended.' );
+		$this->assertSame( wp_make_link_relative( $url ), $replace['medium'], 'Medium maps to the closest width, the 200px main file.' );
+		$this->assertSame( wp_make_link_relative( $new_thumb ), $replace['thumbnail'], 'Thumbnail maps to the new thumbnail.' );
+		$this->assertSame( array( 'medium', 'thumbnail' ), array_keys( $search ), 'The search order follows the source sizes.' );
+		$this->assertSame( array_keys( $search ), array_keys( $replace ), 'The replace order follows the search order.' );
 		$this->assertSame(
-			'<img src="' . $url . '" /><img src="' . $new_thumb . '" />',
+			'<img src="' . $new_thumb . '" /><img src="' . $url . '" />',
 			$this->rawContent( $post ),
-			'Pinned: the thumbnail reference goes to the main file and the medium reference to the new thumbnail.'
+			'The thumbnail reference goes to the new thumbnail and the medium reference to the main file.'
 		);
 	}
 
@@ -483,24 +473,29 @@ class ReplaceFlowTest extends EMR_IntegrationTestCase {
 	}
 
 	/**
-	 * The object-blob pattern: a serialized object (even stdClass) is never
-	 * instantiated nor walked; the row is written back byte-identical.
+	 * A stdClass stored as postmeta is walked and written back as a
+	 * serialized stdClass: its URL is replaced, its other properties kept.
 	 */
-	public function test_search_replace_leaves_a_serialized_object_postmeta_byte_identical() {
+	public function test_search_replace_rewrites_a_serialized_stdclass_postmeta() {
 		list( $id, , $url ) = $this->standardImage();
 		$carrier            = $this->makePost( 'carrier' );
 		$object             = new stdClass();
 		$object->url        = $url;
 		$object->tag        = 'sentinel';
 		add_post_meta( $carrier, '_emr_flow_object', $object );
-		$raw_before = $this->rawPostMeta( $carrier, '_emr_flow_object' );
-		$this->assertStringStartsWith( 'O:8:"stdClass"', $raw_before, 'Sentinel: stored as a serialized object.' );
+		$this->assertStringStartsWith( 'O:8:"stdClass"', $this->rawPostMeta( $carrier, '_emr_flow_object' ), 'Sentinel: stored as a serialized object.' );
 		$this->addHook( 'emr/replacer/load_meta_value', $this->record( 'load_meta' ), 10, 3 );
 
 		$this->searchReplaceMode( $id, $this->tmpJpeg( 400, 300 ), 'emr-pm-object-' . $this->token() . '.jpg' );
 
 		$this->assertSame( array( 'load_meta' ), $this->eventNames(), 'Sentinel: the replacer reached the row.' );
-		$this->assertSame( $raw_before, $this->rawPostMeta( $carrier, '_emr_flow_object' ), 'Byte-identical.' );
+		$raw = $this->rawPostMeta( $carrier, '_emr_flow_object' );
+		$this->assertStringStartsWith( 'O:8:"stdClass":2:', $raw, 'Still a serialized stdClass.' );
+		$this->assertStringNotContainsString( $url, $raw, 'The old URL is gone from the row.' );
+		$stored = get_post_meta( $carrier, '_emr_flow_object', true );
+		$this->assertInstanceOf( stdClass::class, $stored );
+		$this->assertSame( wp_get_attachment_url( $id ), $stored->url );
+		$this->assertSame( 'sentinel', $stored->tag );
 	}
 
 	public function test_search_replace_renames_a_url_used_as_an_array_key() {
