@@ -91,7 +91,7 @@ class Externals
    * inside the `$this->messages[] = ...` assignment), so it cannot be
    * uncommented as is.
    *
-   * @todo check() has an empty body containing a garbled, commented-out Beaver Builder block; either restore it as valid code (set $replaceSearchType to false and append the notice to $messages) or remove the method and its call in the constructor.
+   * @todo check() has an empty body containing a garbled, commented-out Beaver Builder block. The replacer rewrites Beaver Builder layouts (stdClass nodes), so nothing has to be disabled for it. Suggested fix: remove the block, or the method and its call in the constructor.
    *
    * @return void
    */

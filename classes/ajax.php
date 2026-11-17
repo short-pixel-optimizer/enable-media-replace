@@ -2,7 +2,7 @@
 /**
  * AJAX endpoints for remove-background and the API key.
  *
- * The file has no ABSPATH guard and instantiates the class when it is required.
+ * The file has no ABSPATH guard.
  *
  * @package EnableMediaReplace
  */
@@ -22,13 +22,9 @@ use EnableMediaReplace\ApiKeyManager as ApiKeyManager;
  * | wp_ajax_emr_delete_api_key     | delete_api_key()    | `manage_options`, nonce `emr_save_api_key`               |
  *
  * Only `wp_ajax_` (logged-in) actions are registered. Lifecycle: not a singleton; the
- * constructor registers the hooks. It is instantiated at the bottom of this file when
- * the plugin requires it, and again in EnableMediaReplacePlugin::adminInit().
- *
- * @todo The double instantiation registers every endpoint twice (two callbacks on
- *       different objects). The first handler ends the request with wp_send_json*() or
- *       die(), so the second does not run, but the duplicate is unintended. Suggested fix:
- *       remove one of the two `new Ajax()` calls.
+ * constructor registers the hooks. EnableMediaReplacePlugin::adminInit() instantiates
+ * it, so the endpoints exist from `admin_init` on (admin-ajax.php fires that hook
+ * before it dispatches the action).
  */
 class Ajax {
 	/**

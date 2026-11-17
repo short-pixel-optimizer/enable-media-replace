@@ -293,6 +293,23 @@ class DirectoryModelTest extends WP_UnitTestCase {
 		$this->assertSame( fileperms( $this->sandbox ), $perms );
 	}
 
+	/**
+	 * The root has no parent to read a mode from, so
+	 * getPermissionRecursive() returns false there; check() then falls back
+	 * to the default mode for new directories. One level down, the root is
+	 * the nearest ancestor and its mode is returned.
+	 */
+	public function test_getPermissionRecursive_returns_false_at_the_root() {
+		$root = new DirectoryModel( '/' );
+		$this->assertFalse( $root->getParent(), 'Sentinel: the root has no parent.' );
+
+		$this->assertFalse( $root->getPermissionRecursive() );
+
+		$below = new DirectoryModel( '/emr-missing-' . uniqid() );
+		$this->assertFalse( $below->exists(), 'Sentinel: the directory below the root is missing.' );
+		$this->assertSame( fileperms( '/' ), $below->getPermissionRecursive(), 'The root is the nearest existing ancestor.' );
+	}
+
 	/*
 	 * Parent and subfolder relationships.
 	 */

@@ -28,9 +28,6 @@
  *   shortcode, the admin UI and the AJAX endpoints are registered;
  * - registers the deactivation and uninstall callbacks on InstallHelper.
  *
- * Requiring classes/ajax.php also instantiates EnableMediaReplace\Ajax at
- * require time (see that file).
- *
  * @author      ShortPixel  <https://shortpixel.com>
  * @copyright   ShortPixel 2018-2020
  * @package     WordPress

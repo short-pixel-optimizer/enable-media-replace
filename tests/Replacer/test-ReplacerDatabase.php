@@ -391,20 +391,31 @@ class ReplacerDatabaseTest extends WP_UnitTestCase {
 		$this->assertSame( $source_id, $stored['settings']['image']['id'] );
 	}
 
-	public function test_serialized_object_postmeta_blob_is_left_untouched() {
-		list( $replacer, , , $source_url ) = $this->pair();
+	/**
+	 * A stdClass stored as postmeta is rewritten in place: still a serialized
+	 * stdClass in the database, its URL replaced, its other properties kept,
+	 * and the post's meta cache cleared so get_post_meta() follows.
+	 */
+	public function test_serialized_stdclass_postmeta_is_rewritten_and_stays_a_stdclass() {
+		list( $replacer, , , $source_url, $target_url ) = $this->pair();
 		$carrier     = self::factory()->post->create( array( 'post_status' => 'publish' ) );
 		$object      = new stdClass();
 		$object->url = $source_url;
 		$object->tag = 'sentinel';
 		add_post_meta( $carrier, '_emr_test_object', $object );
-		$raw_before = $this->rawPostMeta( $carrier, '_emr_test_object' );
-		$this->assertStringStartsWith( 'O:8:"stdClass"', $raw_before, 'Sentinel: stored as a serialized object.' );
+		$this->assertStringStartsWith( 'O:8:"stdClass"', $this->rawPostMeta( $carrier, '_emr_test_object' ), 'Sentinel: stored as a serialized object.' );
+		$this->assertSame( $source_url, get_post_meta( $carrier, '_emr_test_object', true )->url, 'Sentinel: cache primed.' );
 
 		$result = $replacer->replace();
 
 		$this->assertSame( 1, $result, 'The row matched' );
-		$this->assertSame( $raw_before, $this->rawPostMeta( $carrier, '_emr_test_object' ), 'Byte-identical: no rewrite inside an object payload' );
+		$raw = $this->rawPostMeta( $carrier, '_emr_test_object' );
+		$this->assertStringStartsWith( 'O:8:"stdClass"', $raw, 'Still a serialized stdClass' );
+		$this->assertStringNotContainsString( $source_url, $raw, 'The old URL is gone from the row' );
+		$stored = get_post_meta( $carrier, '_emr_test_object', true );
+		$this->assertInstanceOf( stdClass::class, $stored );
+		$this->assertSame( $target_url, $stored->url, 'The cached read follows the new URL' );
+		$this->assertSame( 'sentinel', $stored->tag );
 	}
 
 	/**
@@ -451,24 +462,22 @@ class ReplacerDatabaseTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * For options handleMetaData() only clears the `alloptions` and
-	 * `notoptions` cache keys, while a non-autoloaded option is cached under
-	 * its own name, so a cached read keeps returning the old URL although
-	 * the database holds the new one. The correct behaviour is to also
-	 * delete the option's own key in the `options` group.
-	 *
-	 * How to recognise the fix: get_option() returns the new URL and the
-	 * pinned assertSame() below fails.
+	 * A non-autoloaded option is cached under its own name in the `options`
+	 * group, outside `alloptions`. handleMetaData() selects `option_name`
+	 * with the row and deletes that key too, so a cached read follows the
+	 * rewrite.
 	 */
-	public function test_non_autoloaded_option_keeps_the_old_url_in_the_cache_pinned_for_deferred_fix() {
+	public function test_non_autoloaded_option_is_rewritten_and_its_cached_read_follows() {
 		list( $replacer, , , $source_url, $target_url ) = $this->pair();
 		update_option( 'emr_test_lazy_widget', 'image:' . $source_url, false );
 		$this->assertSame( 'image:' . $source_url, get_option( 'emr_test_lazy_widget' ), 'Sentinel: cache primed.' );
+		$this->assertSame( 'image:' . $source_url, wp_cache_get( 'emr_test_lazy_widget', 'options' ), 'Sentinel: cached under its own name.' );
 
 		$replacer->replace();
 
-		$this->assertSame( 'image:' . $target_url, $this->rawOption( 'emr_test_lazy_widget' ), 'Sentinel: the database was rewritten.' );
-		$this->assertSame( 'image:' . $source_url, get_option( 'emr_test_lazy_widget' ), 'Pinned: the cached read still returns the old URL.' );
+		$this->assertSame( 'image:' . $target_url, $this->rawOption( 'emr_test_lazy_widget' ), 'The database was rewritten.' );
+		$this->assertFalse( wp_cache_get( 'emr_test_lazy_widget', 'options' ), 'The option\'s own cache key was deleted.' );
+		$this->assertSame( 'image:' . $target_url, get_option( 'emr_test_lazy_widget' ), 'The cached read returns the new URL.' );
 	}
 
 	public function test_term_user_and_comment_meta_are_rewritten_and_their_caches_cleared() {

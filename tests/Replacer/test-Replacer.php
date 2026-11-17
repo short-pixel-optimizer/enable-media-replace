@@ -6,9 +6,10 @@
  * replaceContent() is the recursive search/replace over every data shape
  * found in the database: plain strings, serialized data, JSON, arrays (with
  * URLs as keys), objects and WP_Error. Serialized data is unserialized with
- * `allowed_classes => false`, so no object is ever instantiated from stored
- * data: a serialized object at the top level comes back as the original
- * string, untouched.
+ * `allowed_classes => ['stdClass']`: a stdClass is walked and serialized
+ * back, an object of any other class is never instantiated, and a
+ * serialized object of another class at the top level comes back as the
+ * original string, untouched.
  *
  * The private helpers (fileIsRestricted(), change_key(), getRelativeURLS(),
  * getFilesFromMetadata(), isJSON(), checkIncomplete(), setReplaceSettings())
@@ -216,17 +217,45 @@ class ReplacerTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Serialized objects are bailed on wholesale: allowed_classes=false turns
-	 * them into __PHP_Incomplete_Class and the original serialized string
-	 * comes back byte-identical, in the non-strict (metadata) path too.
+	 * stdClass is the one allowed class: a serialized stdClass is
+	 * unserialized, its properties are replaced and it is serialized back as
+	 * a stdClass, in the strict and the non-strict (metadata) path alike.
 	 */
-	public function test_serialized_object_is_returned_unchanged_in_both_check_modes() {
+	public function test_serialized_stdclass_is_replaced_and_serialized_back_in_both_check_modes() {
 		$payload      = new stdClass();
 		$payload->url = self::OLD_URL;
+		$payload->tag = 'untouched';
 		$serialized   = serialize( $payload );
 
-		$this->assertSame( $serialized, $this->replaceContent( $serialized, true ), 'strict path: serialized objects are returned untouched' );
-		$this->assertSame( $serialized, $this->replaceContent( $serialized, false ), 'metadata path: serialized objects are returned untouched too' );
+		foreach ( array( 'strict' => true, 'metadata' => false ) as $label => $strict ) {
+			$result = $this->replaceContent( $serialized, $strict );
+
+			$this->assertIsString( $result, $label . ': serialized back to a string' );
+			$this->assertStringStartsWith( 'O:8:"stdClass":2:', $result, $label . ': still a serialized stdClass' );
+			$unserialized = unserialize( $result );
+			$this->assertSame( self::NEW_URL, $unserialized->url, $label . ': the URL is replaced' );
+			$this->assertSame( 'untouched', $unserialized->tag, $label . ': other properties are kept' );
+		}
+	}
+
+	/**
+	 * A stdClass holding an object of another class: the stdClass is walked,
+	 * the foreign object stays __PHP_Incomplete_Class (never instantiated)
+	 * and serialize() writes it back byte-identical under its own class
+	 * name, URL included.
+	 */
+	public function test_stdclass_wrapping_an_object_of_another_class_keeps_that_object_intact() {
+		$this->assertTrue( class_exists( 'EMR_Test_Wakeup_Canary_' ), 'Sentinel: the canary class exists, so a real unserialize would instantiate it.' );
+		$class   = 'EMR_Test_Wakeup_Canary_';
+		$canary  = 'O:' . strlen( $class ) . ':"' . $class . '":1:{s:3:"url";s:' . strlen( self::OLD_URL ) . ':"' . self::OLD_URL . '";}';
+		$wrapper = 'O:8:"stdClass":2:{s:3:"url";s:' . strlen( self::OLD_URL ) . ':"' . self::OLD_URL . '";s:5:"inner";' . $canary . '}';
+
+		$result = $this->replaceContent( $wrapper, false );
+
+		$expected = 'O:8:"stdClass":2:{s:3:"url";s:' . strlen( self::NEW_URL ) . ':"' . self::NEW_URL . '";s:5:"inner";' . $canary . '}';
+		$this->assertSame( $expected, $result, 'The stdClass URL is replaced, the canary payload is kept byte-identical' );
+		gc_collect_cycles();
+		$this->assertSame( array(), EMR_Test_Wakeup_Canary_::$calls, 'Neither __wakeup nor __destruct of the canary ran' );
 	}
 
 	/**
@@ -246,7 +275,18 @@ class ReplacerTest extends WP_UnitTestCase {
 		$this->assertSame( array(), EMR_Test_Wakeup_Canary_::$calls, 'Neither __wakeup nor __destruct of the canary ran' );
 	}
 
-	public function test_array_wrapping_a_serialized_object_keeps_the_object_blob_intact() {
+	/**
+	 * A serialized stdClass STRING nested in serialized data (the value was
+	 * serialized twice) is unserialized at the inner level, but below the top
+	 * level nothing is serialized back, so the stored array now holds a
+	 * stdClass object where it held a string: the value changes type. The
+	 * correct behaviour is to serialize the inner value back to a string
+	 * (with the new URL), as is done for nested JSON.
+	 *
+	 * How to recognise the fix: `object` is a string again and the
+	 * assertInstanceOf() below fails.
+	 */
+	public function test_serialized_stdclass_string_nested_in_serialized_data_comes_back_as_an_object_pinned_for_deferred_fix() {
 		$payload      = new stdClass();
 		$payload->url = self::OLD_URL;
 
@@ -256,12 +296,14 @@ class ReplacerTest extends WP_UnitTestCase {
 				'object' => serialize( $payload ),
 			)
 		);
+		$this->assertIsString( unserialize( $content )['object'], 'Sentinel: the nested value is a string in the input.' );
 
 		$result       = $this->replaceContent( $content, false );
 		$unserialized = unserialize( $result );
 
-		$this->assertSame( self::NEW_URL, $unserialized['plain'], 'Sibling scalar values are still replaced' );
-		$this->assertSame( serialize( $payload ), $unserialized['object'], 'The nested serialized-object blob survives untouched (its URL is not replaced)' );
+		$this->assertSame( self::NEW_URL, $unserialized['plain'], 'Sibling scalar values are replaced' );
+		$this->assertInstanceOf( stdClass::class, $unserialized['object'], 'Pinned: the nested string came back as a stdClass object' );
+		$this->assertSame( self::NEW_URL, $unserialized['object']->url, 'Pinned: with its URL replaced' );
 	}
 
 	/**
@@ -516,7 +558,7 @@ class ReplacerTest extends WP_UnitTestCase {
 
 		$settings = $this->readPrivate( $replacer, 'replace_settings' );
 		$this->assertSame( 'unset', $settings['component'] );
-		$this->assertSame( JSON_UNESCAPED_SLASHES, $settings['json_flags'] );
+		$this->assertSame( JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE, $settings['json_flags'] );
 		$this->assertTrue( $settings['replacer_do_save'] );
 		$this->assertFalse( $settings['replace_no_serialize'] );
 	}
@@ -535,11 +577,11 @@ class ReplacerTest extends WP_UnitTestCase {
 
 		$this->assertSame( 'mine', $partial['component'] );
 		$this->assertFalse( $partial['replacer_do_save'] );
-		$this->assertSame( JSON_UNESCAPED_SLASHES, $partial['json_flags'], 'Missing keys take their default' );
+		$this->assertSame( JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE, $partial['json_flags'], 'Missing keys take their default' );
 		$this->assertSame(
 			array(
 				'component'            => 'unset',
-				'json_flags'           => JSON_UNESCAPED_SLASHES,
+				'json_flags'           => JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE,
 				'replacer_do_save'     => true,
 				'replace_no_serialize' => false,
 			),

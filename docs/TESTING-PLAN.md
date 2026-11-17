@@ -202,8 +202,8 @@ Detection and effect are documented in Phase 6; the inventory is:
 | `wp_ajax_emr_plugin_install` | `emr_plugin_install()` | `check_admin_referer('emr-plugin-install')`, `install_plugins` |
 | `wp_ajax_emr_plugin_activate` | `emr_activate()` | `check_admin_referer('emr-plugin-activate')`, `activate_plugins` |
 
-`Ajax` is instantiated twice: once at the bottom of `ajax.php` at require time
-and once in `adminInit()`, so each endpoint is registered twice.
+`Ajax` is instantiated in `adminInit()`, so the three `emr_*` endpoints exist
+from `admin_init` on; every further `adminInit()` call registers them again.
 
 ### 1.9 Remote endpoints
 

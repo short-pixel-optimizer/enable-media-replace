@@ -12,9 +12,10 @@
  * (by reflection) only; the full request belongs to the integration suite.
  *
  * _handleAjax() fires admin_init first, where WordPress core schedules its
- * update checks (HTTP to wordpress.org) and EMR's adminInit() would add a
- * second Ajax instance; the admin_init chain is dropped for these tests
- * (the hooks are restored by WP_UnitTestCase). The ShortPixel endpoints are
+ * update checks (HTTP to wordpress.org); the admin_init chain is dropped
+ * for these tests (the hooks are restored by WP_UnitTestCase). EMR's
+ * adminInit(), which registers the endpoints, goes with it, so set_up()
+ * creates the Ajax instance itself. The ShortPixel endpoints are
  * answered by MockEmrApi; a fail-fast `pre_http_request` filter at priority
  * 9999 refuses and records anything else, and tear_down() asserts nothing
  * was refused.
@@ -61,6 +62,14 @@ class AjaxTest extends WP_Ajax_UnitTestCase {
 	 */
 	private $blocked = array();
 
+	/**
+	 * Callbacks on `wp_ajax_emr_remove_background` before set_up() creates
+	 * the Ajax instance.
+	 *
+	 * @var int
+	 */
+	private $registered_before;
+
 	public function set_up() {
 		parent::set_up();
 		$this->saved_post     = $_POST;
@@ -69,6 +78,8 @@ class AjaxTest extends WP_Ajax_UnitTestCase {
 		delete_option( self::KEY_OPTION );
 		$this->reset_key_manager();
 		remove_all_actions( 'admin_init' );
+		$this->registered_before = $this->callback_count( 'wp_ajax_emr_remove_background' );
+		new Ajax();
 
 		$this->mock = MockEmrApi::register();
 		$this->mock->reset();
@@ -177,29 +188,20 @@ class AjaxTest extends WP_Ajax_UnitTestCase {
 	}
 
 	/**
-	 * classes/ajax.php creates an Ajax instance when it is required, and
-	 * EnableMediaReplacePlugin::adminInit() creates another one on every
-	 * admin_init, so each endpoint has two callbacks (on two objects). The
-	 * first ends the request, so the second never runs, but the duplicate
-	 * is unintended. One of the two `new Ajax()` calls should go.
-	 *
-	 * How to recognise the fix: adminInit() no longer adds a callback (or
-	 * the require-time instance is gone), and the count assertions fail.
+	 * Requiring classes/ajax.php registers nothing: the endpoints come from
+	 * the Ajax instance EnableMediaReplacePlugin::adminInit() creates, one
+	 * callback per endpoint for each call (see the @todo on adminInit()).
 	 */
-	public function test_endpoints_are_registered_twice_pinned_for_deferred_fix() {
+	public function test_endpoints_are_registered_by_admin_init_only() {
+		$this->assertSame( 0, $this->registered_before, 'Nothing is registered before admin_init.' );
 		$before = $this->callback_count( 'wp_ajax_emr_remove_background' );
-		$this->assertGreaterThanOrEqual( 1, $before, 'Sentinel: the require-time instance is registered.' );
+		$this->assertSame( 1, $before, 'Sentinel: the instance of set_up().' );
 
 		emr()->adminInit();
-		$after_one = $this->callback_count( 'wp_ajax_emr_remove_background' );
-		emr()->adminInit();
-		$after_two = $this->callback_count( 'wp_ajax_emr_remove_background' );
 
-		$this->assertGreaterThanOrEqual( 2, $after_one, 'Pinned: two callbacks after one adminInit().' );
-		$this->assertSame( $before + 1, $after_one );
-		$this->assertSame( $before + 2, $after_two, 'Every adminInit() adds another.' );
-		$this->assertSame( $before + 2, $this->callback_count( 'wp_ajax_emr_save_api_key' ) );
-		$this->assertSame( $before + 2, $this->callback_count( 'wp_ajax_emr_delete_api_key' ) );
+		$this->assertSame( $before + 1, $this->callback_count( 'wp_ajax_emr_remove_background' ) );
+		$this->assertSame( $before + 1, $this->callback_count( 'wp_ajax_emr_save_api_key' ) );
+		$this->assertSame( $before + 1, $this->callback_count( 'wp_ajax_emr_delete_api_key' ) );
 	}
 
 	/*

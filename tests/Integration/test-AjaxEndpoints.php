@@ -13,12 +13,11 @@
  *
  * Request lifecycle: in a real admin-ajax request `admin_init` fires before
  * the dispatch, and EnableMediaReplacePlugin::adminInit() runs there (it
- * fills the feature flags and instantiates Ajax again). EMR_AjaxTestCase
+ * fills the feature flags and instantiates Ajax). EMR_AjaxTestCase
  * drops the whole admin_init chain (core's update checks would call
  * wordpress.org), so set_up() calls emr()->adminInit() itself, once, to
  * reproduce EMR's part of that hook. The endpoints are then registered as
- * on a real request (twice for the three emr_* actions, see the @todo on
- * Ajax; the first callback ends the request).
+ * on a real request (once for each of the three emr_* actions).
  *
  * Envelopes: remove_background answers with wp_send_json() of the raw
  * Api result object (no success/data wrapper); the key endpoints with

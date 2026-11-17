@@ -11,9 +11,9 @@
  * runs the partner plugins' admin_init chains) can perform HTTP calls or
  * print notices into the ajax output buffer and corrupt the JSON, so the
  * admin_init chain is dropped, and any HTTP request MockEmrApi does not
- * handle is blocked outright. EMR's ajax handlers are registered at require
- * time (classes/ajax.php instantiates Ajax), so dropping admin_init does
- * not unregister them.
+ * handle is blocked outright. EMR's ajax handlers are registered by
+ * EnableMediaReplacePlugin::adminInit(), which goes with the dropped chain,
+ * so a test class calls emr()->adminInit() in its set_up().
  *
  * @package Enable_Media_Replace
  */
