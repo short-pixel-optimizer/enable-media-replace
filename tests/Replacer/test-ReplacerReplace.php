@@ -556,7 +556,20 @@ class ReplacerReplaceTest extends WP_UnitTestCase {
 		$this->assertSame( 'content marker-xyz', $this->rawContent( $post_id ), 'post_content is written regardless of replacer_do_save' );
 	}
 
-	public function test_replace_no_serialize_run_hands_the_array_to_save_meta_value() {
+	/**
+	 * A run with `replace_no_serialize` reads the raw meta value, a
+	 * serialized array. replaceContent() serializes back every value it
+	 * unserialized itself, whatever the setting says, so the
+	 * `save_meta_value` callback receives a serialized string instead of
+	 * the array the setting promises (Replacer::replaceContent(), the
+	 * `$was_unserialized` branch). The setting only has an effect on values
+	 * that arrive already unserialized, through `load_meta_value`.
+	 *
+	 * How to recognise the fix: the callback receives
+	 * `array( 'src' => 'marker-xyz' )` and the assertSame() on the
+	 * serialized string below fails.
+	 */
+	public function test_replace_no_serialize_run_hands_a_serialized_string_to_save_meta_value_pinned_for_deferred_fix() {
 		$post_id = $this->makePost( '' );
 		add_post_meta( $post_id, '_emr_test_noserialize', array( 'src' => 'marker-abc' ) );
 		$saved = array();
@@ -584,9 +597,59 @@ class ReplacerReplaceTest extends WP_UnitTestCase {
 			}
 		);
 
-		$this->makeReplacer()->replace();
+		$result = $this->makeReplacer()->replace();
 
+		$this->assertSame( 1, $result, 'Sentinel: the run reached the meta row.' );
+		$this->assertCount( 1, $saved, 'Sentinel: save_meta_value ran once.' );
+		$this->assertIsString( $saved[0], 'Pinned: the callback gets a string, not the array' );
+		$this->assertSame( serialize( array( 'src' => 'marker-xyz' ) ), $saved[0], 'Pinned: the replaced value, serialized back' );
+		$this->assertSame( serialize( array( 'src' => 'marker-abc' ) ), $this->rawMeta( $post_id, '_emr_test_noserialize' ), 'The meta row was not written' );
+	}
+
+	/**
+	 * The same run with a `load_meta_value` callback that hands over the
+	 * unserialized value, as the Breakdance module does with its tree:
+	 * replaceContent() did not unserialize it, so `replace_no_serialize`
+	 * applies and `save_meta_value` receives the replaced array.
+	 */
+	public function test_replace_no_serialize_run_keeps_an_array_loaded_by_load_meta_value() {
+		$post_id = $this->makePost( '' );
+		add_post_meta( $post_id, '_emr_test_noserialize', array( 'src' => 'marker-abc' ) );
+		$saved = array();
+		$this->addHook(
+			'emr/replacer/load_meta_value',
+			function ( $content ) {
+				return maybe_unserialize( $content );
+			}
+		);
+		$this->addHook(
+			'emr/replacer/save_meta_value',
+			function ( $content ) use ( &$saved ) {
+				$saved[] = $content;
+				return $content;
+			}
+		);
+		$this->addHook(
+			'emr/replacer/custom_replace_query',
+			function ( $runs ) {
+				$runs['raw'] = array(
+					'base_url'     => 'marker-abc',
+					'search_urls'  => array( 'marker-abc' ),
+					'replace_urls' => array( 'marker-xyz' ),
+					'args'         => array(
+						'component'            => 'raw',
+						'replacer_do_save'     => false,
+						'replace_no_serialize' => true,
+					),
+				);
+				return $runs;
+			}
+		);
+
+		$result = $this->makeReplacer()->replace();
+
+		$this->assertSame( 1, $result, 'Sentinel: the run reached the meta row.' );
 		$this->assertSame( array( array( 'src' => 'marker-xyz' ) ), $saved );
-		$this->assertSame( serialize( array( 'src' => 'marker-abc' ) ), $this->rawMeta( $post_id, '_emr_test_noserialize' ) );
+		$this->assertSame( serialize( array( 'src' => 'marker-abc' ) ), $this->rawMeta( $post_id, '_emr_test_noserialize' ), 'The meta row was not written' );
 	}
 }

@@ -26,7 +26,7 @@ use EnableMediaReplace\ShortQ\Item as Item;
  *
  * The interface describes the minimum; WPQ adds setOption(), getOption(),
  * withRemoveDuplicates(), removeItems(), updateItemValue(), setStatus(),
- * setStatusCount(), cleanQueue() and install(), which consumers also use.
+ * cleanQueue() and install(), which consumers also use.
  *
  * @todo itemSum() defaults to `SHORTQ::QSTATUS_ALL` without importing the
  *       ShortQ class, so the name resolves to the non-existent

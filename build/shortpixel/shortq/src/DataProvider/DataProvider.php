@@ -6,7 +6,7 @@
  */
 namespace EnableMediaReplace\ShortQ\DataProvider;
 use EnableMediaReplace\ShortQ\Item as Item;
-
+use EnableMediaReplace\ShortQ\ShortQ;
 
 /**
  * Contract of a storage backend for queue items.
@@ -14,16 +14,7 @@ use EnableMediaReplace\ShortQ\Item as Item;
  * A DataProvider persists Items for one plugin slug and queue name, hands
  * them back on request and changes their status. It creates its own
  * storage (install()) and removes it when asked (uninstall()). The only
- * implementation is MysqlDataProvider, which WPQ also calls beyond this
- * interface: removeRecords() is required by resetQueue(),
- * withRemoveDuplicates(), cleanQueue() and uninstall().
- *
- * @todo The defaults of itemCount() and itemSum() refer to `ShortQ::...`
- *       without importing the class, so the name resolves to the
- *       non-existent \EnableMediaReplace\ShortQ\DataProvider\ShortQ. Defaults in
- *       an interface are never evaluated, so nothing breaks, but the
- *       declared defaults are unusable. Suggested fix: import
- *       \EnableMediaReplace\ShortQ\ShortQ.
+ * implementation is MysqlDataProvider.
  */
 /* DataProvider handles where the data is stored, and retrieval upon queue request
 *
@@ -112,6 +103,23 @@ interface DataProvider
    */
   // Sum of a arbitrary number of items set by user.
   function itemSum($status = ShortQ::QSTATUS_ALL);
+
+  /**
+   * Deletes stored items by selector. WPQ calls it from
+   * withRemoveDuplicates(), removeItems(), resetQueue(), cleanQueue() and
+   * unInstall().
+   *
+   * @param array $args {
+   *     One selector; see MysqlDataProvider::removeRecords().
+   *
+   *     @type int   $status  Delete the items of this status.
+   *     @type bool  $all     True to delete every item of the queue.
+   *     @type int   $item_id Delete one item.
+   *     @type int[] $items   Delete these item IDs.
+   * }
+   * @return int|false Rows deleted, or false without a selector.
+   */
+  function removeRecords($args);
 
   /**
    * Creates the storage.

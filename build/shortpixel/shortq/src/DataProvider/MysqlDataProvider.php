@@ -33,9 +33,13 @@ use EnableMediaReplace\ShortQ\ShortQ as ShortQ;
  *
  * Fires and listens to no hooks.
  *
- * @todo dequeue() accepts an array of statuses and joins them with commas,
- *       but queryItems() binds the status with `%d`, so only the first
- *       status is used. Suggested fix: build a `status IN (...)` clause.
+ * @todo dequeue() accepts an array of statuses and passes it to
+ *       queryItems(), which binds the status with a single `%d`.
+ *       wpdb::prepare() rejects the array with a "doing it wrong" notice
+ *       and binds an empty value, i.e. 0, so a status array selects the
+ *       WAITING rows whatever it lists, and dequeue() moves those to the
+ *       new status. No caller in the module passes an array. Suggested
+ *       fix: build a `status IN (...)` clause in queryItems().
  * @todo updateRecords() reads the $operators map into a variable but
  *       always emits `=`, so alterQueue()'s third argument has no effect.
  *       Suggested fix: use $operator in the clause.
@@ -178,8 +182,9 @@ class MysqlDataProvider implements DataProvider
     * @param array $args {
     *     @type int        $numitems  Rows to take, -1 for all. Default 1.
     *     @type int|array  $status    Status to select. Default WAITING.
-    *                                 Arrays are not applied correctly, see
-    *                                 the class @todo.
+    *                                 An array selects the WAITING rows
+    *                                 whatever it lists, see the class
+    *                                 @todo.
     *     @type int        $newstatus Status to set. Default DONE.
     *     @type string     $orderby   Column to order by. Default list_order.
     *     @type string     $order     'ASC' or 'DESC'. Default 'ASC'.
@@ -212,8 +217,9 @@ class MysqlDataProvider implements DataProvider
 
       $args = wp_parse_args($args, $defaults);
 
-      if (is_array($args['status']))
+      /*if (is_array($args['status']))
         $args['status'] = implode(',', $args['status']);
+      */
 
       $items = $this->queryItems(array(
         'numitems' => $args['numitems'],
@@ -277,6 +283,9 @@ class MysqlDataProvider implements DataProvider
     *
     * @param array $args {
     *     @type int              $status   Status, or QSTATUS_ALL for any.
+    *                                      Bound with one `%d`: an array
+    *                                      is not supported, see the class
+    *                                      @todo.
     *     @type string           $orderby  Column. Default list_order.
     *     @type string           $order    'ASC' or 'DESC'.
     *     @type int              $numitems Limit; <= 0 for no limit.
@@ -295,7 +304,7 @@ class MysqlDataProvider implements DataProvider
    private function queryItems($args = array())
    {
      $defaults = array(
-       'status' => ShortQ::QSTATUS_ALL,
+       'status' => ShortQ::QSTATUS_ALL, 
        'orderby' => 'list_order',
        'order' => 'ASC',
        'numitems' => -1,

@@ -439,21 +439,11 @@ class BulkQueueTest extends WP_UnitTestCase {
 
 	/**
 	 * ShortQ's WPQ keeps a static per-request cache of the Item objects
-	 * getItem() returned ($itemCache). itemDone(), itemFailed() and
-	 * updateItemValue() clear the entry they touch, but resetQueue() and
-	 * removeItems() delete rows without clearing the cache, so in the same
-	 * request getItem() still returns an Item for a row that no longer
-	 * exists, and BulkQueue::isItemInQueue() reports it as queued. A bulk
-	 * created right after another one finished in the same request would
-	 * skip those attachments as "already queued". The AJAX flow runs
-	 * finishBulk() and createBulk() in separate requests, so the UI is not
-	 * affected; CLI, cron and tests are.
-	 *
-	 * How to recognise the fix: WPQ::resetQueue() (and removeRecords
-	 * callers) clear $itemCache, isItemInQueue() returns false after the
-	 * reset below, and the assertTrue fails.
+	 * getItem() returned. resetQueue() drops the cached items together with
+	 * the rows, so a bulk created in the same request (CLI, cron) does not
+	 * skip the attachments of the previous one as "already queued".
 	 */
-	public function test_isItemInQueue_after_resetQueue_still_reports_the_dropped_item_pinned_for_deferred_fix() {
+	public function test_isItemInQueue_is_false_after_resetQueue_in_the_same_request() {
 		$id    = $this->makeImageAttachment( 100, 100 );
 		$q     = new BulkQueue();
 		$qItem = new QueueItem( array( 'imageModel' => BulkImage::getById( $id ) ) );
@@ -465,7 +455,7 @@ class BulkQueueTest extends WP_UnitTestCase {
 		$q->resetQueue();
 
 		$this->assertCount( 0, $this->queueRows( $id ), 'The row is gone.' );
-		$this->assertTrue( ( new BulkQueue() )->isItemInQueue( $id ), 'Stale: WPQ::$itemCache still holds the Item.' );
+		$this->assertFalse( ( new BulkQueue() )->isItemInQueue( $id ) );
 	}
 
 	public function test_getQStatus_maps_counts() {

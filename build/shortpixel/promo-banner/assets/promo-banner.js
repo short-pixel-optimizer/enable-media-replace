@@ -5,7 +5,7 @@
  *
  * Hides the banner at once and stores the dismissal through admin-ajax
  * (action and nonce from the banner's data-action / data-nonce attributes),
- * so it stays hidden for this user until the campaign ends.
+ * so it stays hidden for every user of the site until the campaign ends.
  */
 document.addEventListener('click', function (event) {
 	var button = event.target.closest ? event.target.closest('.shortpixel-bf__close') : null;

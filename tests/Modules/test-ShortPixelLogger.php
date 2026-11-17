@@ -16,9 +16,10 @@
  * constructed logger (the manual $_REQUEST mode) replace the static
  * instance and tear_down() restores it.
  *
- * Not covered here: the multisite branch of the constructor
- * (msCheckUserLevel() on wp_loaded) needs a multisite install, and
- * SHORTPIXEL_LOG_OVERWRITE is a constant.
+ * Not covered here: the multisite branch of the constructor (it defers
+ * to msCheckUserLevel() on wp_loaded, which is called directly instead)
+ * and the multisite rule that only network administrators get the log
+ * link need a multisite install; SHORTPIXEL_LOG_OVERWRITE is a constant.
  *
  * @package Enable_Media_Replace
  */
@@ -509,19 +510,10 @@ class ShortPixelLoggerTest extends WP_UnitTestCase {
 
 	/**
 	 * With no log path set, the first message picks
-	 * `<uploads basedir>/EnableMediaReplace.log`. addLog() assigns the
-	 * return value of setLogPath() to logPath, and setLogPath() returns
-	 * nothing, so the path is lost right after the file is opened: lines
-	 * are written, but getLogPath() returns false and initView() would
-	 * build an empty log link. The path should be set without the
-	 * assignment.
-	 *
-	 * Where: ShortPixelLogger::addLog(), `$this->logPath = $this->setLogPath(...)`.
-	 *
-	 * How to recognise the fix: getLogPath() returns the
-	 * EnableMediaReplace.log path.
+	 * `<uploads basedir>/EnableMediaReplace.log`, and the logger keeps that
+	 * path, so getLogPath() and the debug box link point at the file.
 	 */
-	public function test_automatic_log_path_is_lost_after_first_write_pinned_for_deferred_fix() {
+	public function test_automatic_log_path_is_kept_after_the_first_write() {
 		$sandbox = $this->sandbox;
 		$cb      = function ( $dirs ) use ( $sandbox ) {
 			$dirs['basedir'] = $sandbox;
@@ -539,8 +531,32 @@ class ShortPixelLoggerTest extends WP_UnitTestCase {
 		$auto = $this->sandbox . '/EnableMediaReplace.log';
 		$this->assertFileExists( $auto );
 		$this->assertStringContainsString( 'automatic path', file_get_contents( $auto ) );
-		$this->assertNull( $this->get_prop( $logger, 'logPath' ) );
-		$this->assertFalse( ShortPixelLogger::getLogPath() );
+		$this->assertSame( $auto, ShortPixelLogger::getLogPath() );
+	}
+
+	/**
+	 * An inactive logger only remembers the path: nothing is created on
+	 * disk, so a consumer can set the path on every request. When logging
+	 * is switched on later in the request (multisite manual mode, on
+	 * `wp_loaded`), the first write opens that file.
+	 */
+	public function test_setLogPath_on_an_inactive_logger_creates_no_file_until_the_first_write() {
+		$logger = ShortPixelLogger::getInstance();
+		$path   = $this->sandbox . '/late.log';
+		$this->set_prop( $logger, 'is_active', false );
+
+		$logger->setLogPath( $path );
+
+		$this->assertFileDoesNotExist( $path );
+		$this->assertSame( $path, $this->get_prop( $logger, 'logPath' ) );
+		$this->assertNull( $this->get_prop( $logger, 'logFile' ) );
+
+		$this->set_prop( $logger, 'is_active', true );
+		ShortPixelLogger::addError( 'switched on later' );
+		$this->handles[] = $this->get_prop( $logger, 'logFile' );
+
+		$this->assertFileExists( $path );
+		$this->assertStringContainsString( 'switched on later', file_get_contents( $path ) );
 	}
 
 	/*
@@ -624,8 +640,128 @@ class ShortPixelLoggerTest extends WP_UnitTestCase {
 
 		$this->assertStringContainsString( "<div class='sp_debug_box'>", $html );
 		$this->assertStringContainsString( 'EnableMediaReplace Debug Box', $html );
-		$this->assertStringContainsString( "href='view-source:" . trailingslashit( $upload['baseurl'] ) . "emr-debug-box.log'", $html );
+		$this->assertStringContainsString( "href='" . trailingslashit( $upload['baseurl'] ) . "emr-debug-box.log'", $html );
+		$this->assertStringNotContainsString( 'view-source:', $html, 'A plain link: browsers do not follow view-source: links' );
 		$this->assertTrue( wp_script_is( 'jquery-ui-draggable', 'enqueued' ) );
 		wp_dequeue_script( 'jquery-ui-draggable' );
+	}
+
+	/**
+	 * Consumers may set the log path on `init`, after initView() has run
+	 * (the logger registers initView() when it is constructed, before the
+	 * consumer's own `init` callback). The link is built in loadView(), so
+	 * it still points at the file.
+	 */
+	public function test_debug_box_links_to_a_log_path_set_after_initView() {
+		$this->make_admin();
+		$_REQUEST['SHORTPIXEL_DEBUG'] = 'true';
+		$logger = $this->fresh_logger();
+		$this->assertFalse( $this->get_prop( $logger, 'logPath' ), 'Sentinel: no log path at initView().' );
+
+		$logger->initView();
+		$upload = wp_upload_dir( null, false, false );
+		$this->set_prop( $logger, 'logPath', trailingslashit( $upload['basedir'] ) . 'emr-late.log' );
+
+		ob_start();
+		$logger->loadView();
+		$html = ob_get_clean();
+		wp_dequeue_script( 'jquery-ui-draggable' );
+
+		$this->assertStringContainsString( "href='" . trailingslashit( $upload['baseurl'] ) . "emr-late.log'", $html );
+	}
+
+	/**
+	 * Without a log path there is nothing to link to: the box is printed
+	 * without the link instead of with an empty href.
+	 */
+	public function test_debug_box_prints_no_link_without_a_log_path() {
+		$this->make_admin();
+		$_REQUEST['SHORTPIXEL_DEBUG'] = 'true';
+		$logger = $this->fresh_logger();
+		$this->assertFalse( $this->get_prop( $logger, 'logPath' ), 'Sentinel: no log path.' );
+
+		$logger->initView();
+		ob_start();
+		$logger->loadView();
+		$html = ob_get_clean();
+		wp_dequeue_script( 'jquery-ui-draggable' );
+
+		$this->assertStringContainsString( "<div class='sp_debug_box'>", $html, 'Sentinel: the box is printed.' );
+		$this->assertStringNotContainsString( 'Logfile', $html );
+		$this->assertStringNotContainsString( 'href=', $html );
+	}
+
+	/**
+	 * The link is escaped on output: a quote in the file name cannot close
+	 * the attribute.
+	 */
+	public function test_debug_box_escapes_the_log_link() {
+		$this->make_admin();
+		$_REQUEST['SHORTPIXEL_DEBUG'] = 'true';
+		$logger = $this->fresh_logger();
+		$upload = wp_upload_dir( null, false, false );
+		$this->set_prop( $logger, 'logPath', trailingslashit( $upload['basedir'] ) . "x' onmouseover='alert(1).log" );
+
+		$logger->initView();
+		ob_start();
+		$logger->loadView();
+		$html = ob_get_clean();
+		wp_dequeue_script( 'jquery-ui-draggable' );
+
+		$this->assertStringContainsString( 'Logfile', $html, 'Sentinel: the link is printed.' );
+		$this->assertStringNotContainsString( "' onmouseover='", $html );
+	}
+
+	/**
+	 * A log kept in the content directory but outside the uploads directory
+	 * of the current site is linked through the content URL. A multisite
+	 * subsite is in this position when the consumer keeps one log for the
+	 * network in the main uploads directory.
+	 */
+	public function test_debug_box_links_a_log_outside_uploads_through_the_content_url() {
+		$this->make_admin();
+		$_REQUEST['SHORTPIXEL_DEBUG'] = 'true';
+		$logger = $this->fresh_logger();
+		$upload = wp_upload_dir( null, false, false );
+		$path   = trailingslashit( WP_CONTENT_DIR ) . 'emr-shared/network.log';
+		$this->assertStringStartsNotWith( trailingslashit( $upload['basedir'] ), $path, 'Sentinel: not inside uploads.' );
+		$this->set_prop( $logger, 'logPath', $path );
+
+		$logger->initView();
+		ob_start();
+		$logger->loadView();
+		$html = ob_get_clean();
+		wp_dequeue_script( 'jquery-ui-draggable' );
+
+		$this->assertStringContainsString( "href='" . content_url( 'emr-shared/network.log' ) . "'", $html );
+	}
+
+	/**
+	 * msCheckUserLevel() is the deferred manual-mode check of multisite
+	 * (`wp_loaded`). The constructor scheduled nothing else in that case,
+	 * so it also prepares the debug box. Called directly here; the
+	 * multisite branch of the constructor itself needs a multisite install.
+	 */
+	public function test_msCheckUserLevel_enables_manual_logging_and_schedules_the_debug_box() {
+		$logger = $this->fresh_logger();
+		$this->assertFalse( $this->get_prop( $logger, 'is_manual_request' ), 'Sentinel: not manual yet.' );
+		$this->make_admin();
+		$_REQUEST['SHORTPIXEL_DEBUG'] = 'true';
+
+		$logger->msCheckUserLevel();
+
+		$this->assertTrue( $this->get_prop( $logger, 'is_manual_request' ) );
+		$this->assertSame( 10, has_action( 'admin_footer', array( $logger, 'loadView' ) ) );
+	}
+
+	public function test_msCheckUserLevel_ignores_a_non_admin() {
+		$logger = $this->fresh_logger();
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'subscriber' ) ) );
+		$_REQUEST['SHORTPIXEL_DEBUG'] = 'true';
+
+		$logger->msCheckUserLevel();
+
+		$this->assertFalse( $this->get_prop( $logger, 'is_manual_request' ) );
+		$this->assertFalse( has_action( 'admin_footer', array( $logger, 'loadView' ) ) );
 	}
 }

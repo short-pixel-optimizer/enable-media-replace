@@ -131,20 +131,12 @@ class ShortQTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * WPQ::setStatusCount() resyncs the counters from the table when
-	 * `timeout_recount` seconds passed since the last recount (always true
-	 * on a fresh Status, whose `last_count_time` is 0) and then adds $change
-	 * on top. dequeue() has already set the rows to INPROCESS by then, so the
-	 * fresh count already contains them and the in_process counter comes out
-	 * doubled: two dequeued items read as 4. The row status in the table is
-	 * right; only the cached counter (what a UI shows) is wrong until the
-	 * next recount.
-	 *
-	 * How to recognise the fix: getStatus('in_process') equals the number
-	 * of INPROCESS rows (2) right after the first dequeue(), and the
-	 * assertSame( 4, ... ) below fails.
+	 * The first dequeue() of a fresh queue recounts the table (a fresh
+	 * Status has `last_count_time` 0). The rows are already INPROCESS by
+	 * then, so the recount is the whole answer and the change is not added
+	 * on top of it: the cached counter equals the number of INPROCESS rows.
 	 */
-	public function test_first_dequeue_doubles_the_in_process_counter_pinned_for_deferred_fix() {
+	public function test_first_dequeue_counts_the_in_process_items_once() {
 		$q = $this->queue();
 		$q->setOptions( array( 'mode' => 'wait', 'numitems' => 2 ) );
 		$q->enqueue( array( array( 'id' => 21, 'value' => 'a' ), array( 'id' => 22, 'value' => 'b' ), array( 'id' => 23, 'value' => 'c' ) ) );
@@ -153,8 +145,8 @@ class ShortQTest extends WP_UnitTestCase {
 		$items = $q->dequeue();
 
 		$this->assertCount( 2, $items );
-		$this->assertSame( 2, $this->rows_with_status( ShortQ::QSTATUS_INPROCESS ), 'The table is right.' );
-		$this->assertSame( 4, $q->getStatus( 'in_process' ), 'The cached counter is doubled.' );
+		$this->assertSame( 2, $this->rows_with_status( ShortQ::QSTATUS_INPROCESS ) );
+		$this->assertSame( 2, $q->getStatus( 'in_process' ) );
 	}
 
 	private function rows_with_status( $status ) {

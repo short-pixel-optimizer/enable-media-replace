@@ -277,16 +277,10 @@ class ReplacerTest extends WP_UnitTestCase {
 
 	/**
 	 * A serialized stdClass STRING nested in serialized data (the value was
-	 * serialized twice) is unserialized at the inner level, but below the top
-	 * level nothing is serialized back, so the stored array now holds a
-	 * stdClass object where it held a string: the value changes type. The
-	 * correct behaviour is to serialize the inner value back to a string
-	 * (with the new URL), as is done for nested JSON.
-	 *
-	 * How to recognise the fix: `object` is a string again and the
-	 * assertInstanceOf() below fails.
+	 * serialized twice) is unserialized at the inner level, walked, and
+	 * serialized back there, so the array keeps a string at that key.
 	 */
-	public function test_serialized_stdclass_string_nested_in_serialized_data_comes_back_as_an_object_pinned_for_deferred_fix() {
+	public function test_serialized_stdclass_string_nested_in_serialized_data_stays_a_string() {
 		$payload      = new stdClass();
 		$payload->url = self::OLD_URL;
 
@@ -302,8 +296,162 @@ class ReplacerTest extends WP_UnitTestCase {
 		$unserialized = unserialize( $result );
 
 		$this->assertSame( self::NEW_URL, $unserialized['plain'], 'Sibling scalar values are replaced' );
-		$this->assertInstanceOf( stdClass::class, $unserialized['object'], 'Pinned: the nested string came back as a stdClass object' );
-		$this->assertSame( self::NEW_URL, $unserialized['object']->url, 'Pinned: with its URL replaced' );
+		$this->assertIsString( $unserialized['object'], 'The nested value is still a string' );
+		$inner = unserialize( $unserialized['object'] );
+		$this->assertInstanceOf( stdClass::class, $inner, 'The nested string still unserializes' );
+		$this->assertSame( self::NEW_URL, $inner->url, 'With its URL replaced' );
+	}
+
+	/**
+	 * A serialized object STRING stored with a second serialization layer
+	 * (how WordPress stores a meta value or option that is a string looking
+	 * serialized) keeps that outer layer. The inner object is of a class
+	 * that is not allowed, so it comes back byte for byte: the URL in it is
+	 * not replaced and the value is never turned into a raw serialized
+	 * object that a later read would instantiate.
+	 */
+	public function test_double_serialized_object_of_a_disallowed_class_keeps_both_layers() {
+		$class  = 'EMR_Test_Wakeup_Canary_';
+		$inner  = 'O:' . strlen( $class ) . ':"' . $class . '":1:{s:3:"url";s:' . strlen( self::OLD_URL ) . ':"' . self::OLD_URL . '";}';
+		$stored = serialize( $inner );
+		$this->assertStringStartsWith( 's:', $stored, 'Sentinel: stored with the outer layer.' );
+
+		$result = $this->replaceContent( $stored, false );
+
+		$this->assertSame( $stored, $result, 'Both layers are returned unchanged' );
+		$this->assertSame( $inner, maybe_unserialize( $result ), 'A WordPress read returns the inner string, not an object' );
+		gc_collect_cycles();
+		$this->assertSame( array(), EMR_Test_Wakeup_Canary_::$calls, 'Neither __wakeup nor __destruct of the canary ran' );
+	}
+
+	/**
+	 * A serialized stdClass STRING stored with a second serialization layer
+	 * is processed at both layers: the URL is replaced inside the inner
+	 * value and both string lengths are written for the new URL, so the
+	 * value still unserializes twice when the replacement is longer.
+	 */
+	public function test_double_serialized_stdclass_is_replaced_with_valid_lengths_at_both_layers() {
+		$long_url = 'http://example.org/wp-content/uploads/a-much-longer-new-image-name.jpg';
+		$this->assertNotSame( strlen( self::OLD_URL ), strlen( $long_url ), 'Sentinel: the URLs differ in length.' );
+		$payload       = new stdClass();
+		$payload->url  = self::OLD_URL;
+		$expected      = new stdClass();
+		$expected->url = $long_url;
+
+		$result = ( new Replacer() )->replaceContent( serialize( serialize( $payload ) ), array( self::OLD_URL ), array( $long_url ), false, false );
+
+		$this->assertSame( serialize( serialize( $expected ) ), $result );
+		$this->assertIsString( maybe_unserialize( $result ), 'A WordPress read returns the inner string' );
+		$this->assertEquals( $expected, unserialize( maybe_unserialize( $result ) ), 'The inner string unserializes to the replaced object' );
+	}
+
+	/**
+	 * A value that looks serialized but does not unserialize (here a
+	 * string length that does not match) is returned unchanged instead of
+	 * being written back as a serialized false.
+	 */
+	public function test_value_that_looks_serialized_but_does_not_unserialize_is_returned_unchanged() {
+		$broken = 's:3:"' . self::OLD_URL . '";';
+		$this->assertTrue( is_serialized( $broken ), 'Sentinel: WordPress takes it for serialized.' );
+
+		$errors = array();
+		set_error_handler(
+			function ( $errno, $errstr ) use ( &$errors ) {
+				if ( E_WARNING === $errno || E_NOTICE === $errno ) {
+					$errors[] = $errstr;
+					return true;
+				}
+				return false;
+			}
+		);
+		try {
+			$result = $this->replaceContent( $broken, false );
+		} finally {
+			restore_error_handler();
+		}
+
+		$this->assertNotEmpty( $errors, 'Sentinel: unserialize() reported the broken value.' );
+		$this->assertSame( $broken, $result, 'The broken value is returned byte for byte' );
+	}
+
+	/**
+	 * A serialized false is a valid value and comes back as itself.
+	 */
+	public function test_serialized_false_is_returned_as_serialized_false() {
+		$this->assertSame( 'b:0;', $this->replaceContent( 'b:0;', false ) );
+	}
+
+	/**
+	 * Every serialized scalar and a serialized null come back in their
+	 * serialized form, not as the bare PHP value; a serialized string has
+	 * its URL replaced and its length rewritten.
+	 */
+	public function test_serialized_scalars_and_null_come_back_serialized() {
+		$this->assertSame( 'N;', $this->replaceContent( 'N;', false ) );
+		$this->assertSame( 'b:1;', $this->replaceContent( 'b:1;', false ) );
+		$this->assertSame( 'i:5;', $this->replaceContent( 'i:5;', false ) );
+		$this->assertSame( serialize( 0.5 ), $this->replaceContent( serialize( 0.5 ), false ) );
+
+		$long_url = 'http://example.org/wp-content/uploads/a-much-longer-new-image-name.jpg';
+		$result   = ( new Replacer() )->replaceContent( serialize( 'see ' . self::OLD_URL ), array( self::OLD_URL ), array( $long_url ) );
+		$this->assertSame( serialize( 'see ' . $long_url ), $result );
+	}
+
+	/**
+	 * A serialized ARRAY string nested in serialized data (serialized
+	 * twice) stays a string at its key, with the URL replaced and a length
+	 * that still unserializes.
+	 */
+	public function test_serialized_array_string_nested_in_serialized_data_stays_a_string() {
+		$content = serialize(
+			array(
+				'plain'  => self::OLD_URL,
+				'nested' => serialize( array( 'src' => self::OLD_URL, 'n' => 3 ) ),
+			)
+		);
+
+		$unserialized = unserialize( $this->replaceContent( $content, false ) );
+
+		$this->assertSame( self::NEW_URL, $unserialized['plain'], 'Sentinel: the sibling value is replaced.' );
+		$this->assertIsString( $unserialized['nested'] );
+		$this->assertSame( array( 'src' => self::NEW_URL, 'n' => 3 ), unserialize( $unserialized['nested'] ) );
+	}
+
+	/**
+	 * A serialized JSON string (`s:N:"{...}";`) is unserialized, decoded,
+	 * walked and encoded back as JSON, but the JSON branch then skips the
+	 * serialize() of the values this call unserialized, so the value loses
+	 * its serialization layer (Replacer::replaceContent(), the `$isJson`
+	 * branch before the `$was_unserialized` one). It happens at the top
+	 * level and nested, and also for a value in which nothing is replaced,
+	 * because the "unchanged" comparison decodes the serialized original,
+	 * which gives null. A consumer that unserializes the nested value
+	 * itself then gets false.
+	 *
+	 * How to recognise the fix: both results below are serialized strings
+	 * again (`s:` prefix) that unserialize to the JSON text.
+	 */
+	public function test_serialized_json_string_loses_its_serialization_layer_pinned_for_deferred_fix() {
+		$json_with_url = '{"cover":"' . self::OLD_URL . '"}';
+		$untouched     = '{"type":"loop","perPage":3}';
+		$this->assertTrue( is_serialized( serialize( $json_with_url ) ), 'Sentinel: the value is a serialized string.' );
+
+		$top = $this->replaceContent( serialize( $json_with_url ), false );
+
+		$this->assertSame( '{"cover":"' . self::NEW_URL . '"}', $top, 'Pinned: the bare JSON text comes back, without the serialization layer' );
+
+		$content = serialize(
+			array(
+				'image'   => self::OLD_URL,
+				'options' => serialize( $untouched ),
+			)
+		);
+
+		$nested = unserialize( $this->replaceContent( $content, false ) );
+
+		$this->assertSame( self::NEW_URL, $nested['image'], 'Sentinel: the sibling URL was replaced.' );
+		$this->assertSame( $untouched, $nested['options'], 'Pinned: the untouched nested value lost its layer too' );
+		$this->assertFalse( is_serialized( $nested['options'] ) );
 	}
 
 	/**

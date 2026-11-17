@@ -45,7 +45,10 @@ use \EnableMediaReplace\ShortQ\ShortQ as ShortQ;
  * (resetInternalCounts()) when a counter would go negative, every
  * `timeout_recount` seconds, when the cached count says the queue is empty
  * and in checkQueue(). hasItems() and itemCount() read the cached counter,
- * not the database.
+ * not the database. dequeue() and inProcessTimeout() move the rows before
+ * they adjust the counters, so they ask setStatusCount() not to apply the
+ * change once it has recounted; itemDone() and itemFailed() adjust the
+ * counters before the row update and want it applied.
  *
  * Options (setOptions() / setOption()):
  * - `numitems` (1): items returned per dequeue().
@@ -56,8 +59,15 @@ use \EnableMediaReplace\ShortQ\ShortQ as ShortQ;
  * - `timeout_recount` (180): seconds between forced recounts.
  * - `is_debug` (false): stored, not read by the module.
  *
- * Item cache: getItem() caches Items in a static array for the request;
- * every status or value change through this class clears the entry.
+ * Item cache: getItem() caches Items in a static array for the request,
+ * keyed by plugin slug, queue name and item_id, so two queues that hold
+ * the same item_id never see each other's Items. dequeue(), itemDone(),
+ * itemFailed(), updateItemValue(), inProcessTimeout(), removeItems() and
+ * the error retries of checkQueue() clear the entry of the item they
+ * change; resetQueue() and cleanQueue() empty the entry of their own queue
+ * (emptyItemCache()), and so does the constructor, so a new object for a
+ * queue starts without cached Items. The entries of the plugin's other
+ * queues are never touched.
  *
  * Hooks fired by this class:
  * - action `shortpixel/modules/wpq/item/timeout` (inProcessTimeout()),
@@ -68,19 +78,11 @@ use \EnableMediaReplace\ShortQ\ShortQ as ShortQ;
  * consuming plugin; the option name prefix `shortqwp_` and the storage
  * table are not rewritten, see ShortQ.
  *
- * @todo $itemCache is keyed by item_id only, while item IDs are unique per
- *       plugin slug and queue name. Two queues of the same plugin that hold
- *       the same item_id in one request (for example a bulk and a single
- *       queue for the same attachment) return each other's Item from
- *       getItem(). Suggested fix: key the cache by slug, queue name and
- *       item_id.
  * @todo The constructor returns early on an empty slug or queue name,
  *       leaving $options and $currentStatus unset; the first setOption()
  *       or dequeue() then fails. Suggested fix: throw an exception.
- * @todo inProcessTimeout() guards with `! $this->options->mode == 'wait'`,
- *       which negates the string first and is always false, so the method
- *       also runs in `direct` mode (where no items are INPROCESS and the
- *       query is wasted). Suggested fix: `'wait' !== $this->options->mode`.
+ * @todo inProcessTimeout() overstates the waiting counter when its
+ *       counter update falls on a recount, see its @todo.
  */
 class WPQ implements Queue
 {
@@ -153,9 +155,10 @@ class WPQ implements Queue
   protected $current_ask = 0;
 
   /**
-   * Request-wide cache of Items loaded by getItem(), keyed by item_id.
+   * Request-wide cache of Items loaded by getItem(), keyed by plugin slug,
+   * queue name and item_id.
    *
-   * @var array<int, Item>
+   * @var array<string, array<string, array<int, Item>>>
    */
   protected static $itemCache = []; // cache items to prevent multiple database calls
 
@@ -180,6 +183,8 @@ class WPQ implements Queue
     $this->qName = $qName;
     $this->pSlug = $slug;
     $this->DataProvider = $DataProvider;
+
+    $this->emptyItemCache(); 
 
     $this->loadStatus();
 
@@ -375,7 +380,8 @@ class WPQ implements Queue
 
   /**
    * Deletes stored items directly, bypassing the counters. Prefer
-   * dequeue() where possible. Only `item_id` is supported.
+   * dequeue() where possible. Only `item_id` is supported. The item's
+   * cache entry is dropped first.
    *
    * @param array $args `['item_id' => int]`.
    * @return void
@@ -384,6 +390,11 @@ class WPQ implements Queue
 	{
 			 if (isset($args['item_id']))
 			 {
+            // remove cache if any
+            if (false !== $this->getItemCache($args['item_id']))
+            {
+                $this->clearItemCache($this->getItemCache($args['item_id']));
+            }
 						$this->DataProvider->removeRecords(array('item_id' => $args['item_id'] ));
 			 }
 	}
@@ -398,9 +409,13 @@ class WPQ implements Queue
    * `direct` mode or INPROCESS in `wait` mode. When that yields nothing
    * although the counter said otherwise, the counters are recounted and
    * the query is repeated once, which prevents stalling on a stale count.
-   * Counters, `last_run` and `running` are updated and saved; when the
-   * waiting counter hits zero, checkQueue() runs to possibly finish the
-   * queue.
+   * The waiting counter is decremented directly. The done (`direct`) or
+   * in-process (`wait`) counter goes through setStatusCount() with
+   * `$update_on_recount` false, because the rows have already moved and a
+   * recount there includes them. The cache entries of the dequeued items
+   * are dropped. `last_run` and `running` are updated and everything is
+   * saved; when the waiting counter hits zero, checkQueue() runs to
+   * possibly finish the queue.
    *
    * @param array $args {
    *     Optional overrides.
@@ -440,11 +455,9 @@ class WPQ implements Queue
     if ($args['onlypriority'])
     {
        $args['priority'] = array('operator' => '<', 'value' => 10);
-      // unset($args['onlypriority']);
     }
 
     $items = $this->DataProvider->dequeue($args);
-
     $itemcount = count($items);
 
     // @todo Ask dprovder for dequeue
@@ -461,11 +474,16 @@ class WPQ implements Queue
      $this->setStatus('items', $items_left , false);
 
      if ($newstatus == ShortQ::QSTATUS_DONE)
-        $this->setStatusCount('done', $itemcount, false);
+        $this->setStatusCount('done', $itemcount, false, false);
      elseif($newstatus == ShortQ::QSTATUS_INPROCESS)
-        $this->setStatusCount('in_process', $itemcount, false);
+        $this->setStatusCount('in_process', $itemcount, false, false );
 
      $this->current_ask += $itemcount;
+
+     foreach($items as $item)
+     {
+       $this->clearItemCache($item);
+     }
 
      //$queue['average_ask'] = $this->calcAverageAsk($queue['average_ask']);
      //$this->updateQueue($queue);
@@ -492,19 +510,30 @@ class WPQ implements Queue
    * incremented and go back to WAITING; once `tries` exceeds
    * `retry_limit` the item is failed fatally instead, after firing
    * `shortpixel/modules/wpq/item/timeout`. The in-process and waiting
-   * counters are moved accordingly (the latter with a save).
+   * counters are moved accordingly (the latter with a save), with
+   * `$update_on_recount` false because the rows have already moved.
    *
-   * Intended for `wait` mode only but runs in every mode, see the class
-   * @todo.
+   * Runs in `wait` mode only; in any other mode it returns at once.
    *
-   * @return int|void Number of items returned to waiting; nothing when the
-   *                  (ineffective) mode guard returns early.
+   * @return int|void Number of items returned to waiting; nothing outside
+   *                  `wait` mode.
+   *
+   * @todo `$update_on_recount` only protects the call that recounts. When
+   *       the first setStatusCount() (in_process) recounts, the second
+   *       (items) no longer sees a recount timeout and adds the requeued
+   *       items on top of the fresh count, which already has them
+   *       waiting. `items` is then overstated by the number requeued until
+   *       the next recount (at the latest the dequeue() that finds no
+   *       waiting row). Suggested fix: call resetInternalCounts() once
+   *       after the row updates instead of the two setStatusCount() calls.
    */
   public function inProcessTimeout()
   {
      // Not waiting for anything.
-     if (! $this->options->mode == 'wait')
+     if ($this->options->mode !== 'wait')
+     {
       return;
+     }
 
     $args = array('status' => ShortQ::QSTATUS_INPROCESS, 'updated' => array('value' => time() - ($this->options->process_timeout/1000), 'operator' => '<='));
 
@@ -530,10 +559,10 @@ class WPQ implements Queue
 		{
 			if ($this->options->mode == 'wait')
 			{
-				$this->setStatusCount('in_process',- $updated, false);
+				$this->setStatusCount('in_process',- $updated, false, false);
 			}
 
-			$this->setStatusCount('items', $updated, true);
+			$this->setStatusCount('items', $updated, true, false);
 		}
 
     return $updated;
@@ -546,6 +575,13 @@ class WPQ implements Queue
    *
    * @param Item $item Item to finish.
    * @return void
+   *
+   * @todo In `direct` mode dequeue() has already taken the item out of the
+   *       waiting counter and counted it as done, so a call here
+   *       decrements `items` and increments `done` a second time, until
+   *       the next recount. itemFailed() skips the waiting counter in
+   *       `direct` mode for this reason. Suggested fix: leave both counters
+   *       alone in `direct` mode.
    */
   public function itemDone(Item $item)
   {
@@ -571,13 +607,20 @@ class WPQ implements Queue
    *
    * Non-fatal: status ERROR, `errors` counter incremented; checkQueue()
    * retries the item later while its `tries` stay below `retry_limit`.
-   * Fatal: status FATAL, `fatal_errors` incremented and the item removed
-   * from the waiting (direct) or in-process (wait) counter. In both cases
-   * `tries` is incremented and the status saved.
+   * Fatal: status FATAL, `fatal_errors` incremented and, in `wait` mode,
+   * the item removed from the in-process counter. In `direct` mode the
+   * waiting counter is left alone, because dequeue() already took the item
+   * out of it. In both cases `tries` is incremented and the status saved.
    *
    * @param Item $item  Item that failed.
    * @param bool $fatal True to give up on the item.
    * @return void
+   *
+   * @todo In `direct` mode dequeue() counted the item as done; a fatal
+   *       failure adds it to `fatal_errors` without taking it out of
+   *       `done`, so the item counts twice until the next recount.
+   *       Suggested fix: decrement `done` for a fatal failure in `direct`
+   *       mode.
    */
   public function itemFailed(Item $item, $fatal = false)
   {
@@ -588,7 +631,8 @@ class WPQ implements Queue
         $this->setStatusCount('fatal_errors', 1, false );
 				if ($this->options->mode == 'direct')
 				{
-					$this->setStatusCount('items', -1, false);
+          // Don't update, because deQueue already counted this.
+					//$this->setStatusCount('items', -1, false);
 				}
 				elseif ($this->options->mode == 'wait')
 				{
@@ -633,16 +677,17 @@ class WPQ implements Queue
    */
   public function getItem($item_id)
   {
-     if (isset(self::$itemCache[$item_id]))
+     $checkItem = $this->getItemCache($item_id); 
+     if (is_object($checkItem))
      {
-       return self::$itemCache[$item_id];
+       return $checkItem; 
      }
 
      $item =  $this->DataProvider->getItem($item_id);
 
      if (false !== $item)
      {
-        self::$itemCache[$item_id]  = $item; 
+        $this->setItemCache($item);
      }
      
      return $item;
@@ -651,31 +696,71 @@ class WPQ implements Queue
 
   /**
    * Removes an item from the request cache; called whenever its status or
-   * value changes. A numeric string ID is ignored (only int is accepted).
+   * value changes. Anything that is not an object is ignored.
    *
-   * @param Item|int $item Item or item_id.
+   * @param Item|mixed $item Item whose entry is dropped.
    * @return void
    */
   protected function clearItemCache($item)
   {
-     if (is_object($item))
+     if (false === is_object($item))
      {
-       $item_id = $item->item_id; 
-     }
-     elseif(is_int($item))
-     {
-       $item_id = $item; 
-     }
-     else
-     {
-      return;
-     }
+       return; 
 
-     if (isset(self::$itemCache[$item_id]))
+     }
+     $item_id = $item->item_id; 
+ 
+     if (isset(self::$itemCache[$this->pSlug][$this->qName][$item_id]))
      {
-        unset(self::$itemCache[$item_id]); 
+        unset(self::$itemCache[$this->pSlug][$this->qName][$item_id]); 
      }
   }
+
+  /**
+   * Empties the request cache entry of this queue, creating the entry of
+   * the plugin slug when it is missing. The entries of the plugin's other
+   * queues are kept.
+   *
+   * @return void
+   */
+  protected function emptyItemCache()
+  {
+    // Array init
+    if (false === isset(self::$itemCache[$this->pSlug]))
+    {
+      self::$itemCache[$this->pSlug] = []; 
+    }
+    self::$itemCache[$this->pSlug][$this->qName] = [];  
+  }
+
+  /**
+   * Reads an item of this queue from the request cache.
+   *
+   * @param int $item_id Consumer item ID.
+   * @return Item|false False when the item is not cached.
+   */
+  protected function getItemCache(int $item_id)
+  {
+      if (isset(self::$itemCache[$this->pSlug][$this->qName][$item_id]))
+      {
+         return self::$itemCache[$this->pSlug][$this->qName][$item_id];
+      }
+      
+      return false; 
+  }
+
+  /**
+   * Stores an item of this queue in the request cache.
+   *
+   * @param Item $item Item to cache, under its item_id.
+   * @return void
+   */
+  protected function setItemCache($item)
+  {
+         $item_id = $item->item_id; 
+         self::$itemCache[$this->pSlug][$this->qName][$item_id] = $item; 
+  }
+
 
   /**
    * Tells whether the cached waiting counter is positive. No database call.
@@ -748,23 +833,27 @@ class WPQ implements Queue
    * Statistics are lost, so collect them before calling; that is why this
    * is never done automatically.
    *
+   * The fresh Status has `last_count_time` 0, so the next counter change
+   * recounts. The item cache of this queue is emptied.
+   *
    * @return void
-      *
-   * @todo The static $itemCache is not cleared here (nor by removeItems()),
-   *       so getItem() keeps returning Items for rows this call deleted
-   *       until the request ends. Suggested fix: reset $itemCache in
-   *       resetQueue() and clear the removed ids in removeItems().
    */
   public function resetQueue()
   {
      $this->DataProvider->removeRecords(array('all' => true));
      $this->currentStatus = new Status();
+     $this->emptyItemCache(); 
      $this->saveStatus();
   }
 
   /**
    * Deletes the DONE and FATAL items of this queue and recounts. Keeps the
    * queue usable, unlike resetQueue().
+   *
+   * The whole item cache of this queue is emptied, not only the entries
+   * of the deleted rows: the provider does not report which rows it
+   * removed, and looking them up would cost more than reloading the
+   * remaining Items on their next getItem().
    *
    * @return void
    */
@@ -774,6 +863,7 @@ class WPQ implements Queue
      $this->DataProvider->removeRecords(array('status' => ShortQ::QSTATUS_DONE));
      $this->DataProvider->removeRecords(array('status' => ShortQ::QSTATUS_FATAL));
      $this->resetInternalCounts();
+     $this->emptyItemCache(); // clean the cache. Rows removed is not recorded and would not be good in interest of speed
   }
 
   /**
@@ -807,47 +897,57 @@ class WPQ implements Queue
   }
 
   /**
-   * Adds a (possibly negative) amount to a counter.
+   * Adds a (possibly negative) amount to a counter. Internal: consumers
+   * move the counters through the queue operations, or set a value with
+   * setStatus().
    *
-   * When the result would be negative, or `timeout_recount` seconds have
+   * Without a recount the change is always applied, so the counters follow
+   * every operation at once. When the result would be negative, or `timeout_recount` seconds have
    * passed since the last recount, the counters are first resynced from
-   * the provider and the change is applied to the fresh value. This keeps
-   * the cached counters from drifting when several requests work on the
-   * same queue.
+   * the provider. This keeps the cached counters from drifting when
+   * several requests work on the same queue. After such a recount the
+   * change is applied to the fresh value when `$update_on_recount` is true
+   * (callers that adjust the counter before they update the row) and
+   * skipped when it is false (callers that already moved the rows, so the
+   * recount includes the change).
    *
-   * @param string $name    Counter name; non-counters are refused.
-   * @param int    $change  Amount to add.
-   * @param bool   $savenow False to postpone the option write.
-   * @return bool False for a non-counter or unknown property.
-   *
-   * @todo When the recount runs, the provider's count already includes the
-   *       rows the caller just changed (dequeue() updates the rows before
-   *       calling this), and $change is then added on top, so the counter
-   *       is double counted until the next recount. On a fresh Status
-   *       `last_count_time` is 0, so this happens on the very first
-   *       dequeue(): two items dequeued give in_process = 4. Suggested fix:
-   *       after a recount return the fresh value without adding $change.
+   * @param string $name              Counter name; non-counters are
+   *                                  refused.
+   * @param int    $change            Amount to add.
+   * @param bool   $savenow           False to postpone the option write.
+   * @param bool   $update_on_recount False when the rows already reflect
+   *                                  the change, so a recount must not
+   *                                  apply it again.
+   * @return void A non-counter is left untouched.
    */
-  public function setStatusCount($name, $change, $savenow = true)
+  protected function setStatusCount($name, $change, $savenow = true, $update_on_recount = true): void
   {
       if (! $this->currentStatus->isCounter($name))
       {
-        return false;
+        return;
       }
 
       $count = $this->getStatus($name);
       // Check for regular timeout on refreshing the counts.
       $last_count = time() - $this->getStatus('last_count_time');
       $timeout = ($last_count > $this->options->timeout_recount) ? true : false;
+      $recounted = false; 
 
       if ($count + $change < 0 || true === $timeout)
       {
        // Weird problem that would trigger sometimes with background active.
        $this->resetInternalCounts();
        $count = $this->getStatus($name);
+       $recounted = true; 
+      }
+      
+      if (true === $recounted && false === $update_on_recount)
+      {
+          return;
       }
 
-      return $this->setStatus($name, $count + $change, $savenow);
+      $this->setStatus($name, $count + $change, $savenow);
+
   }
 
   /**
