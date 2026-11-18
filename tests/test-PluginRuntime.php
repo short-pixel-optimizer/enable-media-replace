@@ -265,7 +265,7 @@ class PluginRuntimeTest extends EMR_MainTestCase {
 
 	public function test_admin_init_registers_the_ajax_endpoints_again_on_every_call() {
 		$before = $this->callback_count( 'wp_ajax_emr_remove_background' );
-		$this->assertGreaterThanOrEqual( 1, $before, 'classes/ajax.php registers the endpoint at require time.' );
+		$this->assertSame( 0, $before, 'Nothing is registered before admin_init.' );
 
 		emr()->adminInit();
 		$this->assertSame( $before + 1, $this->callback_count( 'wp_ajax_emr_remove_background' ) );
