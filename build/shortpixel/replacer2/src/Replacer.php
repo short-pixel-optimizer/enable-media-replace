@@ -666,9 +666,6 @@ class Replacer
 	 *       `main_id`, and skip the delete when it is null.
 	 * @todo The skip log message prints `$id_field` (the column name) instead
 	 *       of `$id` (the row id). Suggested fix: log `$id`.
-	 * @todo The postmeta subquery quotes the statuses with double quotes,
-	 *       which MySQL reads as identifiers under the ANSI_QUOTES SQL mode.
-	 *       Suggested fix: use single quotes as doReplaceQuery() does.
 	 */
 	private function handleMetaData($url, $search_urls, $replace_urls)
 	{
