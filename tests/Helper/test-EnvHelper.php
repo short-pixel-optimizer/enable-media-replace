@@ -113,4 +113,60 @@ class EnvHelperTest extends WP_UnitTestCase {
 		$this->assertFalse( EnvHelper::getInstance()->is_ajaxcall, 'The singleton keeps the flags of its first computation.' );
 		$this->assertTrue( ( new EnvHelper() )->is_ajaxcall, 'A new instance computes the flags again.' );
 	}
+
+	/* ------------------------------------------------------------------
+	 * Budgets (SPIO's EnvironmentModel::IsOverTimeLimit / IsOverMemoryLimit).
+	 * ------------------------------------------------------------------ */
+
+	public function test_the_environment_captures_the_start_time_and_the_php_limits() {
+		$before = time();
+		$env    = EnvHelper::getInstance();
+
+		$this->assertGreaterThanOrEqual( $before, $env->executionStart );
+		$this->assertLessThanOrEqual( time(), $env->executionStart );
+		$this->assertSame( (int) ini_get( 'max_execution_time' ), $env->executionLimit );
+		$memory = (string) ini_get( 'memory_limit' );
+		$this->assertSame( ( (int) $memory < 0 ) ? -1 : (int) wp_convert_hr_to_bytes( $memory ), $env->memoryLimit );
+	}
+
+	public function test_is_over_time_limit_at_ninety_percent_of_the_budget_and_never_without_a_limit() {
+		$env = EnvHelper::getInstance();
+
+		$this->assertFalse( $env->IsOverTimeLimit( array( 'limit' => 0, 'start' => time() - 1000 ) ), 'No limit, never over.' );
+		$this->assertFalse( $env->IsOverTimeLimit( array( 'limit' => 100, 'start' => time() - 89 ) ), '89 of 100 seconds: under 90 %.' );
+		$this->assertTrue( $env->IsOverTimeLimit( array( 'limit' => 100, 'start' => time() - 90 ) ), '90 of 100 seconds: over.' );
+		$this->assertFalse( $env->IsOverTimeLimit( array( 'limit' => 100, 'start' => time() + 5 ) ), 'A start in the future counts as no time elapsed.' );
+
+		$env->executionLimit = 10;
+		$env->executionStart = time() - 9;
+		$this->assertTrue( $env->IsOverTimeLimit(), 'Defaults: the request start and max_execution_time.' );
+
+		add_filter( 'emr/process/max_execution', array( $this, 'full_budget' ) );
+		$this->assertFalse( $env->IsOverTimeLimit(), 'The filter raises the threshold to 100 %.' );
+		remove_filter( 'emr/process/max_execution', array( $this, 'full_budget' ) );
+	}
+
+	public function test_is_over_memory_limit_compares_the_usage_with_ninety_percent_of_the_limit() {
+		$env = EnvHelper::getInstance();
+
+		$env->memoryLimit = -1;
+		$this->assertFalse( $env->IsOverMemoryLimit( 1 ), 'Unlimited memory is never over.' );
+
+		$env->memoryLimit = 1024; // far below any real usage.
+		$this->assertTrue( $env->IsOverMemoryLimit( 2 ) );
+
+		$env->memoryLimit = memory_get_usage() * 10;
+		$this->assertFalse( $env->IsOverMemoryLimit( 3 ) );
+
+		$env->memoryLimit = (int) ( memory_get_usage() / 0.95 ); // usage is 95 % of the limit: over at 90, under at 100.
+		$this->assertTrue( $env->IsOverMemoryLimit( 4 ) );
+		add_filter( 'emr/process/max_memory', array( $this, 'full_budget' ) );
+		$this->assertFalse( $env->IsOverMemoryLimit( 5 ) );
+		remove_filter( 'emr/process/max_memory', array( $this, 'full_budget' ) );
+	}
+
+	/** The `emr/process/max_*` filters: the whole budget. */
+	public function full_budget() {
+		return 100;
+	}
 }

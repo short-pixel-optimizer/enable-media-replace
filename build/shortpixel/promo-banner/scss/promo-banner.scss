@@ -1,0 +1,256 @@
+// ShortPixel Black Friday banner (src/PromoBanner.php). Compiled to
+// assets/promo-banner.css with `sass --no-charset --no-source-map scss/promo-banner.scss assets/promo-banner.css`.
+//
+// At most 120px tall. Full content width by default; a plugin narrows it with
+// its own CSS where its boxes are narrower. The banner is a size container and
+// the layout follows its own width (not the window's), so it fits wherever it
+// is placed:
+// Three equal parts split by a subtle divider: the images, the perks, the call
+// to action, each centred in its third, so no gap grows on wide screens.
+//   >= 1000px  robot, the two splash images, the perks and the call to action
+//   <  1000px  without the robot
+//   <   760px  without the "Black Friday Sale" splash
+//   <   540px  (phones) "25% off forever!" and the call to action only
+//              (the "Offer ends" line wraps when its half is too narrow)
+// Printed by the plugin (`.shortpixel-bf`) or on admin_notices (`.notice.shortpixel-bf`,
+// moved by WordPress below `.wp-header-end`); the first block also cancels
+// WordPress's notice styling for the latter.
+
+$bf-teal: #1fbecc;
+$bf-teal-hover: #3fd3df;
+$bf-red: #ed332b;
+$bf-dark: #141414;
+
+.shortpixel-bf,
+.notice.shortpixel-bf {
+	container: shortpixel-bf / inline-size;
+	position: relative;
+	box-sizing: border-box;
+	width: 100%;
+	max-width: none;
+	margin: 16px 0 20px; // The bottom margin keeps it off the boxes below.
+	padding: 10px 16px;
+	background:
+		radial-gradient(circle at 10% 50%, rgba(31, 190, 204, .2), transparent 30%),
+		radial-gradient(circle at 88% 30%, rgba(237, 51, 43, .10), transparent 30%),
+		$bf-dark;
+	border: 0;
+	border-radius: 10px;
+	overflow: hidden;
+	color: #fff;
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+	box-shadow: 0 4px 16px rgba(0, 0, 0, .16);
+
+	*,
+	*::before,
+	*::after { box-sizing: border-box; }
+
+	&[hidden] { display: none; }
+
+	p { margin: 0; }
+}
+
+.shortpixel-bf__inner {
+	position: relative;
+	display: flex;
+	align-items: stretch;
+	min-height: 0;
+}
+
+// The three parts: equal width, content centred, a divider before parts 2 and 3.
+.shortpixel-bf__hero,
+.shortpixel-bf__perks,
+.shortpixel-bf__cta {
+	flex: 1 1 0;
+	min-width: 0;
+	padding: 0 16px;
+}
+
+.shortpixel-bf__perks,
+.shortpixel-bf__cta {
+	border-left: 1px solid rgba(255, 255, 255, .18);
+}
+
+// Confetti.
+.shortpixel-bf__confetti {
+	position: absolute;
+	inset: 0;
+	pointer-events: none;
+
+	i {
+		position: absolute;
+		display: block;
+		width: 10px;
+		height: 4px;
+		border-radius: 2px;
+
+		&:nth-child(1)  { left: 2%;    top: 14%; background: $bf-teal; transform: rotate(35deg); }
+		&:nth-child(2)  { left: 6%;    top: 80%; background: $bf-red;  transform: rotate(-50deg); }
+		&:nth-child(3)  { left: 11.5%; top: 8%;  background: $bf-red;  transform: rotate(70deg); width: 7px; }
+		&:nth-child(4)  { left: 33%;   top: 10%; background: $bf-teal; transform: rotate(-25deg); }
+		&:nth-child(5)  { left: 31%;   top: 84%; background: #fff;     transform: rotate(15deg); width: 6px; opacity: .6; }
+		&:nth-child(6)  { left: 54%;   top: 82%; background: $bf-red;  transform: rotate(40deg); }
+		&:nth-child(7)  { left: 75%;   top: 10%; background: $bf-red;  transform: rotate(-60deg); }
+		&:nth-child(8)  { left: 77%;   top: 84%; background: $bf-teal; transform: rotate(-30deg); }
+		&:nth-child(9)  { left: 97%;   top: 80%; background: $bf-teal; transform: rotate(65deg); }
+		&:nth-child(10) { left: 58%;   top: 8%;  background: #fff;     transform: rotate(-10deg); width: 6px; opacity: .5; }
+	}
+}
+
+// Part 1: robot and the two splash images (the tallest element, 96px, sets the height).
+.shortpixel-bf__robot {
+	position: relative;
+	flex: 0 1 auto;
+	min-width: 0;
+	width: 64px;
+	height: auto;
+	filter: drop-shadow(0 0 12px rgba(31, 190, 204, .35));
+}
+
+.shortpixel-bf__hero {
+	position: relative;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 12px;
+}
+
+.shortpixel-bf__forever { display: block; height: 58px; width: auto; min-width: 0; max-width: 100%; object-fit: contain; }
+.shortpixel-bf__bfsale { display: block; height: 96px; width: auto; min-width: 0; object-fit: contain; }
+
+// Part 2: the perks, a left-aligned block centred in its third (a one-column grid).
+.shortpixel-bf__perks {
+	position: relative;
+	display: grid;
+	justify-content: center;
+	align-content: center;
+	row-gap: 8px;
+	margin: 0;
+	list-style: none;
+
+	li {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		margin: 0;
+		font-size: 15px;
+		line-height: 1.25;
+		color: #f2f2f2;
+	}
+
+	strong { color: #fff; font-weight: 700; }
+
+	svg { flex: 0 0 18px; width: 18px; height: 18px; color: $bf-teal; }
+}
+
+// Part 3: the call to action, centred in its third.
+.shortpixel-bf__cta {
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+}
+
+// Outranks WordPress's underlined admin and `.notice a` links.
+.shortpixel-bf a.shortpixel-bf__btn,
+.shortpixel-bf__btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	padding: 10px 20px;
+	background: $bf-teal;
+	color: #0b1b1d !important;
+	font-size: 16px;
+	font-weight: 700;
+	line-height: 1.2;
+	letter-spacing: .2px;
+	white-space: nowrap;
+	text-decoration: none;
+	border-radius: 6px;
+	box-shadow: 0 4px 12px rgba(31, 190, 204, .35);
+	transition: background .15s ease, transform .15s ease;
+
+	&:hover,
+	&:focus { background: $bf-teal-hover; transform: translateY(-1px); color: #0b1b1d; }
+
+	&:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+
+	svg { width: 16px; height: 16px; }
+}
+
+.shortpixel-bf__ends {
+	font-size: 12px;
+	color: #cfcfcf;
+	white-space: nowrap;
+
+	strong { color: #fff; }
+}
+
+// Dismiss.
+.shortpixel-bf__close {
+	position: absolute;
+	top: 6px;
+	right: 6px;
+	width: 28px;
+	height: 28px;
+	padding: 0;
+	border: 0;
+	border-radius: 50%;
+	background: transparent;
+	color: #8a8a8a;
+	cursor: pointer;
+	font-size: 22px;
+	line-height: 28px;
+
+	&:hover,
+	&:focus { color: #fff; background: rgba(255, 255, 255, .08); }
+
+	&:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+}
+
+// Narrower banners.
+@container shortpixel-bf (max-width: 999px) {
+	.shortpixel-bf__robot { display: none; }
+	.shortpixel-bf__perks li { font-size: 14px; }
+}
+
+@container shortpixel-bf (max-width: 759px) {
+	.shortpixel-bf__bfsale { display: none; }
+	.shortpixel-bf__hero,
+	.shortpixel-bf__perks,
+	.shortpixel-bf__cta { padding: 0 12px; }
+	.shortpixel-bf__forever { height: 50px; }
+	.shortpixel-bf__perks li { font-size: 13px; }
+	.shortpixel-bf a.shortpixel-bf__btn,
+	.shortpixel-bf__btn { font-size: 15px; padding: 9px 16px; }
+}
+
+// Phones: the offer image and the call to action.
+@container shortpixel-bf (max-width: 539px) {
+	.shortpixel-bf__perks { display: none; }
+	.shortpixel-bf__forever { height: 46px; }
+	// Room for the close button on the right of the call to action.
+	.shortpixel-bf__hero,
+	.shortpixel-bf__cta { padding: 0 8px; }
+	.shortpixel-bf__cta { padding-right: 30px; }
+	.shortpixel-bf a.shortpixel-bf__btn,
+	.shortpixel-bf__btn { font-size: 13px; padding: 7px 12px; gap: 6px; }
+	.shortpixel-bf__btn svg { width: 14px; height: 14px; }
+	// "Offer ends" over the date, on two lines.
+	.shortpixel-bf__ends { font-size: 11px; line-height: 1.3; white-space: normal; text-align: center; }
+	.shortpixel-bf__ends strong { display: block; white-space: nowrap; }
+}
+
+// Container queries measure inside the padding: 299px is a phone of about 330px.
+@container shortpixel-bf (max-width: 299px) {
+	.shortpixel-bf__forever { height: 38px; }
+}
+
+// Browsers without container queries: the same steps by window width.
+@supports not (container-type: inline-size) {
+	@media (max-width: 1280px) { .shortpixel-bf__robot { display: none; } }
+	@media (max-width: 960px) { .shortpixel-bf__bfsale { display: none; } }
+	@media (max-width: 600px) { .shortpixel-bf__perks { display: none; } }
+}

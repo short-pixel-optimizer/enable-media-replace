@@ -419,19 +419,13 @@ class ReplacerDatabaseTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * An option whose value is a serialized-object STRING (update_option()
+	 * An option whose value is a serialized stdClass STRING (update_option()
 	 * with a string from serialize(), so stored with a second serialization
-	 * layer) is unwrapped by replaceContent() to the inner string, the URL is
-	 * replaced inside it without fixing its `s:<length>` prefix, and the
-	 * inner string is written back without the outer layer. get_option() can
-	 * no longer read the value. The correct behaviour is to leave the inner
-	 * object payload alone, or to keep the outer layer and a valid length.
-	 *
-	 * How to recognise the fix: get_option() returns the stored string again
-	 * (unchanged or with a correctly serialized URL) and the assertFalse()
-	 * below fails.
+	 * layer) keeps its outer layer, and the URL inside the inner object is
+	 * replaced with valid lengths at both layers: get_option() returns a
+	 * string that still unserializes to the object with the new URL.
 	 */
-	public function test_option_holding_a_serialized_object_string_is_corrupted_pinned_for_deferred_fix() {
+	public function test_option_holding_a_serialized_object_string_keeps_its_layer_and_valid_lengths() {
 		list( $replacer, , , $source_url, $target_url ) = $this->pair( 'emr-longer-target-' );
 		$this->assertNotSame( strlen( $source_url ), strlen( $target_url ), 'Sentinel: the URLs differ in length.' );
 		$object      = new stdClass();
@@ -445,9 +439,40 @@ class ReplacerDatabaseTest extends WP_UnitTestCase {
 
 		$raw = $this->rawOption( 'emr_test_object_blob' );
 		$this->assertStringContainsString( $target_url, $raw, 'Sentinel: the replacer reached the row.' );
-		$this->assertStringStartsWith( 'O:8:"stdClass"', $raw, 'Pinned: the outer serialization layer is gone.' );
+		$this->assertStringStartsWith( 's:', $raw, 'The outer serialization layer is kept.' );
 		wp_cache_delete( 'emr_test_object_blob', 'options' );
-		$this->assertFalse( get_option( 'emr_test_object_blob' ), 'Pinned: the value no longer unserializes.' );
+		$read = get_option( 'emr_test_object_blob' );
+		$this->assertIsString( $read, 'get_option() returns a string, as before the replace.' );
+		$inner = unserialize( $read );
+		$this->assertInstanceOf( stdClass::class, $inner, 'The inner string still unserializes.' );
+		$this->assertSame( $target_url, $inner->url, 'With the new URL.' );
+	}
+
+	/**
+	 * A user meta value that is a serialized object STRING of a class other
+	 * than stdClass (stored by WordPress with a second serialization layer,
+	 * e.g. typed into a profile field by a low-privileged user) keeps that
+	 * outer layer when the file it names is replaced. get_user_meta() still
+	 * returns the string; the row never becomes a raw serialized object that
+	 * WordPress core would instantiate on the next read. The inner object is
+	 * not walked, so it is left byte for byte.
+	 */
+	public function test_user_meta_holding_a_serialized_object_string_is_never_turned_into_an_object() {
+		list( $replacer, , , $source_url ) = $this->pair( 'emr-longer-target-' );
+		$user_id = self::factory()->user->create();
+		$class   = 'EMR_Test_Injection_Probe_';
+		$this->assertFalse( class_exists( $class, false ), 'Sentinel: the probe class does not exist.' );
+		$payload = 'O:' . strlen( $class ) . ':"' . $class . '":1:{s:3:"url";s:' . strlen( $source_url ) . ':"' . $source_url . '";}';
+		add_user_meta( $user_id, 'emr_test_probe', $payload );
+		$this->assertSame( $payload, get_user_meta( $user_id, 'emr_test_probe', true ), 'Sentinel: reads back as a string.' );
+
+		$result = $replacer->replace();
+
+		$this->assertSame( 1, $result, 'Sentinel: the replacer reached the row.' );
+		wp_cache_delete( $user_id, 'user_meta' );
+		$read = get_user_meta( $user_id, 'emr_test_probe', true );
+		$this->assertIsString( $read, 'get_user_meta() returns a string, not an object.' );
+		$this->assertSame( $payload, $read, 'The inner payload is left byte for byte.' );
 	}
 
 	public function test_autoloaded_option_is_rewritten_and_its_cached_read_follows() {

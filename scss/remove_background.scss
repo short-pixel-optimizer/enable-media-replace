@@ -18,7 +18,7 @@
 		{
 				width: 100% !important;
 				max-width: none !important;
-				height: 360px !important;
+				height: 520px !important; // Large enough to judge the edges; js/emr-magnifier.js zooms further.
 				min-height: 280px;
 				margin: 0 !important;
 				padding: 38px 14px 38px;
@@ -104,7 +104,7 @@
 					grid-template-columns: 1fr;
 				}
 				.image_placeholder {
-					height: 300px !important;
+					height: 360px !important;
 				}
 		}
 
@@ -113,14 +113,23 @@
 				text-transform: uppercase;
 		}
 
+		// "Report a bad result" and its hint, shown once a preview exists (js/remove_bg.js adds is-ready).
 		.bad-button
 		{
-			 text-align: right;
-			 margin-right: 25px;
-			 margin-top: 12px;
-			 a {
-			 	visibility: hidden;
-		 		}
+			display: flex;
+			flex-wrap: wrap;
+			align-items: center;
+			justify-content: flex-end;
+			gap: 10px;
+			margin-top: 12px;
+			visibility: hidden;
+
+			&.is-ready { visibility: visible; }
+
+			.bad-button-hint {
+				font-size: 12px;
+				color: #6c757d;
+			}
 		}
 
 		.overlay{
@@ -222,4 +231,3 @@
 
 }
 
-@import 'shortpixel-account';

@@ -518,7 +518,7 @@ class SpioContractTest extends EMR_IntegrationTestCase {
 
 		$this->assertSame( array( 'edit', 'media_replace', 'upscale_image' ), array_keys( $actions ), 'The upscale action has its own filter and stays.' );
 		$this->assertStringNotContainsString( 'emr_prepare_remove', implode( '', $actions ) );
-		$this->assertStringContainsString( 'Upload a new file', $box );
+		$this->assertStringContainsString( '<span class="emr-operation-title">Replace media</span>', $box );
 		$this->assertStringNotContainsString( 'Remove background', $box );
 		$this->assertStringContainsString( 'Upscale image', $box );
 	}

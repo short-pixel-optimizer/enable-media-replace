@@ -35,11 +35,20 @@
  *   POST key              { key } store the API key option, { key: null } delete it
  *   POST feature          { background?, upscale?, remote_notice? } force the
  *                         emr/feature/* filter outcome (true/false), null = default
+ *   (option emr_e2e_classic_editor, set through POST option: turns the
+ *   block editor off for every post, like the Classic Editor plugin)
+ *   (option emr_e2e_promo_window, set through POST option: puts "now"
+ *   inside the promo banner's campaign window)
  *   POST user             { role[, login] } a user with password "password"
  *   GET  mock             the mock knobs
  *   POST mock             merge knobs into the mock (see emr-e2e-mock-api.php)
  *   POST mock/reset       wipe mock knobs, counters, request log, stash
  *   GET  mock/requests    the mock's request log (?path= filters on the URL path)
+ *   GET  bulk/status      the bulk queue's startup data (QueueController::getStartupData(false)):
+ *                         { media: { stats }, total: { stats } }, raw numbers
+ *   POST queue/backdate   age every row of the shortpixel_queue table past
+ *                         ShortQ's process_timeout, so the next tick re-picks
+ *                         the items that were sent to the API
  *
  * Besides the routes, the file keeps the install hermetic: no core, plugin
  * or theme update checks, no pings, no dashboard news widget.
@@ -123,6 +132,31 @@ function emr_e2e_feature_value( $name, $default ) {
 	$features = (array) get_option( EMR_E2E_FEATURE_OPTION, array() );
 	return array_key_exists( $name, $features ) ? (bool) $features[ $name ] : $default;
 }
+/**
+ * Classic editor switch: with the `emr_e2e_classic_editor` option set the
+ * block editor is turned off for every post (what the Classic Editor
+ * plugin does by default), so a spec can drive TinyMCE's image toolbar and
+ * its media modal without installing a plugin from wordpress.org. The seed
+ * removes the option.
+ */
+function emr_e2e_use_block_editor( $use ) {
+	return get_option( 'emr_e2e_classic_editor' ) ? false : $use;
+}
+add_filter( 'use_block_editor_for_post', 'emr_e2e_use_block_editor', 999 );
+
+/**
+ * Promo banner preview: with the `emr_e2e_promo_window` option set, "now" is
+ * inside the Black Friday window (filter emr/promo_banner/in_window), so a
+ * spec can check the banner before 23 November. Every other condition (page,
+ * capability, dismissal) still applies. The seed removes the option and the
+ * dismissals.
+ */
+function emr_e2e_promo_window( $inWindow ) {
+	return get_option( 'emr_e2e_promo_window' ) ? true : $inWindow;
+}
+add_filter( 'emr/promo_banner/in_window', 'emr_e2e_promo_window', 999 );
+add_filter( 'use_block_editor_for_post_type', 'emr_e2e_use_block_editor', 999 );
+
 add_filter( 'emr/feature/background', 'emr_e2e_feature_background', 999 );
 add_filter( 'emr/feature/upscale', 'emr_e2e_feature_upscale', 999 );
 add_filter( 'emr/feature/remote_notice', 'emr_e2e_feature_remote_notice', 999 );
@@ -148,7 +182,11 @@ add_filter( 'emr/feature/remote_notice', 'emr_e2e_feature_remote_notice', 999 );
 function emr_e2e_apply_seed() {
 	delete_option( 'enable_media_replace' );
 	delete_option( 'emr_shortpixel_api_key' );
+	delete_transient( 'emr_ai_credits' ); // ApiKeyManager::CREDITS_TRANSIENT
 	delete_option( EMR_E2E_FEATURE_OPTION );
+	delete_option( 'emr_e2e_classic_editor' );
+	delete_option( 'emr_e2e_promo_window' );
+	delete_option( 'emr-promo-banner' ); // PromoBanner::optionNameFor( EnableMediaReplacePlugin::PROMO_PREFIX )
 
 	$previous = (array) get_option( EMR_E2E_SEED_OPTION, array() );
 	if ( ! empty( $previous['post_id'] ) ) {
@@ -380,6 +418,8 @@ function emr_e2e_register_routes() {
 	register_rest_route( $ns, '/mock', $def + array( 'methods' => 'POST', 'callback' => 'emr_e2e_route_mock' ) );
 	register_rest_route( $ns, '/mock/reset', $def + array( 'methods' => 'POST', 'callback' => 'emr_e2e_route_mock_reset' ) );
 	register_rest_route( $ns, '/mock/requests', $def + array( 'methods' => 'GET', 'callback' => 'emr_e2e_route_mock_requests' ) );
+	register_rest_route( $ns, '/bulk/status', $def + array( 'methods' => 'GET', 'callback' => 'emr_e2e_route_bulk_status' ) );
+	register_rest_route( $ns, '/queue/backdate', $def + array( 'methods' => 'POST', 'callback' => 'emr_e2e_route_queue_backdate' ) );
 }
 add_action( 'rest_api_init', 'emr_e2e_register_routes' );
 
@@ -412,9 +452,11 @@ function emr_e2e_route_reset( WP_REST_Request $request ) {
 	// remove-background result transients (emr_<hash>).
 	delete_option( 'enable_media_replace' );
 	delete_option( 'emr_shortpixel_api_key' );
+	delete_transient( 'emr_ai_credits' ); // ApiKeyManager::CREDITS_TRANSIENT
 	delete_option( 'EnableMediaReplace-notices' );
 	delete_option( EMR_E2E_FEATURE_OPTION );
 	delete_transient( 'emr_remote_notice' );
+	emr_e2e_reset_bulk();
 	$like = $wpdb->esc_like( '_transient_emr_' ) . '%';
 	$likeTimeout = $wpdb->esc_like( '_transient_timeout_emr_' ) . '%';
 	$wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s", $like, $likeTimeout ) );
@@ -450,7 +492,7 @@ function emr_e2e_route_reset( WP_REST_Request $request ) {
 	$base    = $uploads['basedir'];
 	foreach ( (array) glob( trailingslashit( $base ) . '*', GLOB_ONLYDIR ) as $dir ) {
 		$name = basename( $dir );
-		if ( preg_match( '/^\d{4}$/', $name ) || 0 === strpos( $name, 'emr-e2e-' ) ) {
+		if ( preg_match( '/^\d{4}$/', $name ) || 0 === strpos( $name, 'emr-e2e-' ) || 'EMR_Backups' === $name ) {
 			emr_e2e_rmdir_recursive( $dir, $base );
 		}
 	}
@@ -604,6 +646,7 @@ function emr_e2e_route_attachment( WP_REST_Request $request ) {
 
 /** { key: '<20 chars>' } stores the API key option as is; { key: null } deletes it. */
 function emr_e2e_route_key( WP_REST_Request $request ) {
+	delete_transient( 'emr_ai_credits' ); // ApiKeyManager::CREDITS_TRANSIENT: the credits belong to the key.
 	$params = (array) $request->get_json_params();
 	$key    = array_key_exists( 'key', $params ) ? $params['key'] : null;
 	if ( null === $key || '' === $key ) {
@@ -687,4 +730,42 @@ function emr_e2e_route_mock_requests( WP_REST_Request $request ) {
 		);
 	}
 	return rest_ensure_response( $requests );
+}
+
+/**
+ * Wipes the bulk state a test may leave behind: the queue rows and ShortQ's
+ * status option (a half-finished bulk would otherwise skip the dashboard on
+ * the next page load), the bulk logs, the plan-check and processor-key
+ * transients (the LIKE delete in reset() covers these two as well) and the
+ * cron event. The _emr_bulk_<operation> markers go with the attachments; the
+ * EMR_Backups folder goes with the upload directories.
+ */
+function emr_e2e_reset_bulk() {
+	if ( class_exists( '\EnableMediaReplace\Controller\Bulk\QueueController' ) ) {
+		\EnableMediaReplace\Controller\Bulk\QueueController::resetQueues();
+	}
+	delete_option( 'shortqwp_emr' ); // ShortQ's status option for InstallHelper::QUEUE_SLUG
+	delete_option( 'emr_bulk_logs' );
+	delete_transient( 'emr_bulk_plan_ok' );
+	delete_transient( 'emr_bulk_secret' );
+	wp_clear_scheduled_hook( 'emr_bulk_cron' );
+}
+
+/** The bulk queue's startup data, raw numbers, as plain arrays. */
+function emr_e2e_route_bulk_status( WP_REST_Request $request ) {
+	if ( ! class_exists( '\EnableMediaReplace\Controller\Bulk\QueueController' ) ) {
+		return new WP_Error( 'emr_e2e_no_bulk', 'The bulk classes are not loaded', array( 'status' => 500 ) );
+	}
+	$controller = new \EnableMediaReplace\Controller\Bulk\QueueController( array( 'is_bulk' => true ) );
+	$data       = $controller->getStartupData( false );
+	// json_encode/decode: plain arrays whatever object graph the controller returns.
+	return rest_ensure_response( json_decode( wp_json_encode( $data ), true ) );
+}
+
+/** Ages every queue row past ShortQ's process_timeout (10 s for the EMR queue). */
+function emr_e2e_route_queue_backdate( WP_REST_Request $request ) {
+	global $wpdb;
+	$table = $wpdb->prefix . 'shortpixel_queue';
+	$rows  = $wpdb->query( "UPDATE `$table` SET updated = '2000-01-01 00:00:00'" ); // phpcs:ignore WordPress.DB
+	return rest_ensure_response( array( 'ok' => true, 'rows' => (int) $rows ) );
 }

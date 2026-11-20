@@ -98,6 +98,10 @@ if ( '1' === getenv( 'EMR_PARTNER_PLUGINS' ) ) {
 		'beaver-builder-lite-version/fl-builder.php',
 		'shortpixel-image-optimiser/wp-shortpixel.php',
 		'envira-gallery-lite/envira-gallery-lite.php',
+		// ACF (free): image, URL, text, WYSIWYG and group fields hold
+		// attachment ids and URLs in postmeta; no EMR integration of its
+		// own, covered by the generic postmeta rewrite.
+		'advanced-custom-fields/acf.php',
 		// Commercial — extracted from tests/partner-plugins/ when
 		// present; silently skipped (like the rest) when not.
 		'sitepress-multilingual-cms/sitepress.php',

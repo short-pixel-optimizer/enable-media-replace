@@ -4,7 +4,7 @@
  *   - SPIO absent: the SPIO offer with INSTALL NOW;
  *   - after the install: ACTIVATE (in place, and on a fresh load while
  *     the plugin is installed but inactive);
- *   - after the activation: "Shortpixel activated!", and on the next load
+ *   - after the activation: "ShortPixel activated!", and on the next load
  *     no SPIO block at all;
  *   - a user without `install_plugins` sees no upsell;
  *   - pinned: a failed install is presented as a success.
@@ -65,7 +65,7 @@ test.describe('Upsell box', () => {
 
 		await upsell.activate('spio').click();
 		await expect(upsell.activated('spio')).toBeVisible();
-		await expect(upsell.activated('spio')).toHaveText('Shortpixel activated!');
+		await expect(upsell.activated('spio')).toHaveText('ShortPixel activated!');
 		await expect(upsell.activate('spio')).toBeHidden();
 		await expect.poll(() => activePlugins(emr), { message: 'SPIO (the stub) is active' }).toContain(SPIO);
 
@@ -99,7 +99,7 @@ test.describe('Upsell box', () => {
 	 * so INSTALL NOW turns into ACTIVATE although nothing was installed; and
 	 * emr_activate() answers the failed activation with
 	 * `{"error": "Plugin file does not exist."}`, so the box then reports
-	 * "Shortpixel activated!" for a plugin that does not exist. The correct
+	 * "ShortPixel activated!" for a plugin that does not exist. The correct
 	 * behaviour is to check the answer (`response.success` /
 	 * `response.error`) and keep INSTALL NOW with an error message.
 	 *

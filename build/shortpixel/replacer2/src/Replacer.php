@@ -810,7 +810,10 @@ class Replacer
 	 *   writes the replaced meta value itself.
 	 * - `replace_no_serialize` (bool, default false): when true,
 	 *   replaceContent() returns arrays and objects as they are instead of
-	 *   serializing them at the top level.
+	 *   serializing them at the top level. A value replaceContent()
+	 *   unserialized itself is serialized back regardless, see the @todo
+	 *   on replaceContent(); the setting only has an effect on values that
+	 *   arrive already unserialized (through `load_meta_value`).
 	 *
 	 * @param array $settings Settings to apply over the defaults.
 	 * @return void
@@ -834,6 +837,15 @@ class Replacer
 	 *   string is returned unchanged. An incomplete object nested in an
 	 *   array or stdClass is kept as it is, and serialize() writes it back
 	 *   under its original class name with its original properties.
+	 *   A string that looks serialized but does not unserialize (other than
+	 *   `b:0;`) is returned unchanged. Every value this call unserialized is
+	 *   serialized back with serialize(), whatever its type and at every
+	 *   level (unless it was JSON, see below), so a value WordPress stored
+	 *   with an extra serialization layer keeps that layer. When the
+	 *   unserialized value is itself a serialized string (a value serialized
+	 *   twice), that inner layer is processed recursively instead of with
+	 *   str_replace(), so its lengths stay valid; an inner object of a
+	 *   disallowed class comes back byte for byte.
 	 * - JSON string (see isJSON()): decoded with json_decode() into objects
 	 *   and arrays, processed as such and encoded back at the same level
 	 *   (top level or nested), with the `json_flags` setting. The string is
@@ -851,10 +863,9 @@ class Replacer
 	 *   incomplete object is returned as it is (or, at the top level of a
 	 *   serialized value, the original serialized string is returned).
 	 * - Other scalars and null: returned untouched.
-	 * - At the top level, arrays and objects that were not JSON (including a
-	 *   walked serialized value) are passed
-	 *   through maybe_serialize(), unless the `replace_no_serialize` setting
-	 *   is true.
+	 * - At the top level, arrays and objects that were neither JSON nor
+	 *   unserialized by this call are passed through maybe_serialize(),
+	 *   unless the `replace_no_serialize` setting is true.
 	 *
 	 * When no replace run has set the settings yet, the defaults are applied
 	 * first. Otherwise the settings of the latest run apply.
@@ -866,9 +877,11 @@ class Replacer
 	 * @param mixed $content      The content to replace in.
 	 * @param array $search       Values to search for.
 	 * @param array $replace      Replacements, index-matched to $search.
-	 * @param bool  $in_deep      True for nested levels; prevents
-	 *                            re-serialising and JSON re-encoding below the
-	 *                            top level.
+	 * @param bool  $in_deep      True for nested levels; prevents the
+	 *                            maybe_serialize() of arrays and objects
+	 *                            below the top level. A value unserialized or
+	 *                            JSON-decoded at a nested level is still
+	 *                            encoded back there.
 	 * @param bool  $strict_check Passed down the recursion but not otherwise
 	 *                            read; every unserialize uses
 	 *                            `allowed_classes => ['stdClass']`
@@ -876,12 +889,22 @@ class Replacer
 	 * @return mixed The replaced content, in the input's form at the top
 	 *               level (string for serialized, JSON or string input).
 	 *
-	 * @todo A serialized string nested inside other data (a value serialized
-	 *       twice) is unserialized but not serialized back because $in_deep
-	 *       is true, so it comes back as an array or a stdClass object
-	 *       instead of a string and the stored value changes type. Suggested
-	 *       fix: re-serialize whenever this call unserialized, independent of
-	 *       $in_deep, as is already done for JSON.
+	 * @todo With `replace_no_serialize` true, a serialized array or object
+	 *       passed at the top level is serialized back like every value
+	 *       this call unserialized. A run that sets the setting and reads
+	 *       the raw meta value therefore gets a serialized string in
+	 *       `save_meta_value` instead of the array. Suggested fix: at the
+	 *       top level, skip the serialize() when the setting is true and
+	 *       the value is an array or object.
+	 * @todo A serialized JSON string (`s:N:"{...}";`) is unserialized,
+	 *       decoded and encoded back as JSON, but not serialized back,
+	 *       because the JSON branch runs instead of the serialize() one.
+	 *       The value loses its serialization layer, at the top level and
+	 *       nested, also when nothing in it was replaced: the "unchanged"
+	 *       comparison decodes the serialized original, which gives null.
+	 *       Suggested fix: serialize the encoded JSON when
+	 *       $was_unserialized, and compare with the decoded unserialized
+	 *       string.
 	 */
 	public function replaceContent($content, $search, $replace, $in_deep = false, $strict_check = true)
 	{
@@ -896,6 +919,8 @@ class Replacer
 			$this->setReplaceSettings([]);
 		}
 
+		$was_unserialized = false; 
+
 		if (true === is_serialized($content)) {
 
 			// Only allow stdClass which can't have magic methods. 
@@ -903,6 +928,14 @@ class Replacer
 			$args = array('allowed_classes' => array('stdClass'));
 
 			$content = Unserialize::unserialize($content, $args);
+			$was_unserialized = true;
+
+			// Looks serialized but does not unserialize (e.g. a broken length): leave it as it is, serializing false back would destroy it.
+			if (false === $content && 'b:0;' !== trim($raw_content)) {
+				Log::addWarn('Replacer: value looks serialized but does not unserialize, left unchanged');
+				return $raw_content;
+			}
+
 			// bail directly on incomplete classes. In < PHP 7.2 is_object is false on incomplete objects!
 			if (true === $this->checkIncomplete($content)) {
 				return $raw_content;
@@ -916,7 +949,12 @@ class Replacer
 			$decoded_previous_content = json_decode($raw_content);
 		}
 
-		if (is_string($content))  // let's check the normal one first.
+		if (true === $was_unserialized && is_string($content) && true === is_serialized($content))
+		{
+			// A value serialized twice: walk the inner layer too, so its lengths stay valid. A disallowed class inside comes back unchanged.
+			$content = $this->replaceContent($content, $search, $replace, true, $strict_check);
+		}
+		elseif (is_string($content))  // regular string.
 		{
 			$content = apply_filters('emr/replacer/content', $content, $search, $replace);
 			$content = str_replace($search, $replace, $content);
@@ -965,6 +1003,10 @@ class Replacer
 				}
 				
 	    }
+		elseif (true === $was_unserialized)
+		{
+			 $content = serialize($content);
+		}
 		 elseif (
 			$this->replace_settings['replace_no_serialize'] === false &&
 			$in_deep === false && (is_array($content) || is_object($content))

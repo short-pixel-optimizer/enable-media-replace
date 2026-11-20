@@ -59,7 +59,7 @@ test.describe('Replace: error screens', () => {
 		await page.goto(formUrl);
 		const error = new ErrorScreen(page);
 		await expect(error.title).toBeVisible();
-		await expect(error.message).toHaveText('Fail to validate form nonce. Please try again');
+		await expect(error.message).toHaveText('The form could not be validated (nonce). Please try again.');
 		await expect(error.description).toContainText('This can happen when the window is open for a long time');
 
 		expectUnchanged(await emr.attachment(id), before);
@@ -104,7 +104,7 @@ test.describe('Replace: error screens', () => {
 		await expect(error.title).toBeVisible();
 		await expect(error.message).toHaveText('The target file already exists in this directory. Please try another name / directory');
 		await expect(error.description).toHaveText(
-			'This error is shown because you try to move the image to another folder, which already has this file',
+			'This error is shown because you are moving the image to another folder that already has this file.',
 		);
 
 		expectUnchanged(await emr.attachment(id), before);

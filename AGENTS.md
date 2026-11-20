@@ -73,8 +73,10 @@ One test stack at a time on a machine. Never start a run while another run
 
 ## Conventions
 
-- Plugin classes are namespaced `EnableMediaReplace\` and required
-  explicitly from `enable-media-replace.php`; bundled modules are autoloaded
+- Plugin classes are namespaced `EnableMediaReplace\`. Legacy files are
+  required explicitly from `enable-media-replace.php`; files whose path
+  matches their class name are autoloaded through `classes/plugin.json`
+  (PSR-4), and new classes use that scheme. Bundled modules are autoloaded
   from `build/shortpixel/`.
 - Test files are `tests/**/test-<Name>.php`; test classes are `<Name>Test`;
   test methods are `test_<description>`.

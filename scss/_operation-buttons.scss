@@ -1,0 +1,87 @@
+// One operation button: the SVG tile of the single screens
+// (views/operation-buttons.php) and of the media modal fields
+// (EnableMediaReplacePlugin::attachment_editor()), both rendered by
+// UIHelper::getOperationButton(). Shared by single.scss and media-modal.scss.
+@use "sass:color";
+@use 'emr-colors' as *;
+
+.emr-operation {
+	position: relative;
+	display: flex;
+	align-items: center;
+	gap: 14px;
+	min-width: 280px;
+	padding-block: 12px;
+	padding-inline: 12px 18px;
+	background: $blue_background;
+	border: 1px solid color.adjust($blue_background, $lightness: -6%);
+	border-radius: 12px;
+	color: #1d2327;
+	text-decoration: none;
+	transition: border-color .15s ease-in-out, box-shadow .15s ease-in-out;
+
+	&:hover,
+	&:focus {
+		border-color: $blue_default;
+		box-shadow: 0 2px 8px rgba(17, 108, 126, .15);
+		color: #1d2327;
+	}
+
+	&:focus-visible {
+		outline: 2px solid $blue_dark;
+		outline-offset: 2px;
+	}
+
+	.emr-operation-icon {
+		flex: 0 0 auto;
+		width: 48px;
+		height: 48px;
+		border-radius: 8px;
+	}
+
+	.emr-operation-label {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+	}
+
+	.emr-operation-title {
+		font-size: 14px;
+		font-weight: 700;
+		color: $blue_dark;
+	}
+
+	.emr-operation-text {
+		font-size: 12px;
+		color: $emr-text-muted;
+	}
+
+	// SPIO's "NEW!" starburst, on the corner of the upscale button.
+	.emr-operation-new {
+		position: absolute;
+		top: -14px;
+		inset-inline-end: -12px;
+		width: 58px;
+		height: auto;
+		pointer-events: none;
+	}
+}
+
+// An operation that does not apply (Upscale on an image that is already too large).
+.emr-operation.is-disabled {
+	cursor: not-allowed;
+	background: $color-brokenwhite;
+	border-color: $color-grey;
+	box-shadow: none;
+
+	.emr-operation-icon,
+	.emr-operation-new { filter: grayscale(1); opacity: .55; }
+	.emr-operation-title,
+	.emr-operation-text { color: #8c8f94; }
+
+	&:hover,
+	&:focus {
+		border-color: $color-grey;
+		box-shadow: none;
+	}
+}

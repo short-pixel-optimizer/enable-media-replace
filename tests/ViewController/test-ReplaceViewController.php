@@ -355,7 +355,7 @@ class ReplaceViewControllerTest extends WP_UnitTestCase {
 
 		$this->assertFalse( $controller->getView()->is_movable );
 		$this->assertSame( array( array( true, $id ) ), $seen );
-		$this->assertStringContainsString( "File is offloaded and can't be moved to other directory", $output );
+		$this->assertStringContainsString( "The file is offloaded and can't be moved to another directory.", $output );
 		$this->assertStringNotContainsString( 'name="new_location"', $output );
 		$this->assertStringNotContainsString( 'name="location_dir"', $output );
 	}
@@ -376,7 +376,7 @@ class ReplaceViewControllerTest extends WP_UnitTestCase {
 		preg_match( '/name="emr_nonce" value="([a-f0-9]+)"/', $output, $nonce );
 		$this->assertSame( 1, wp_verify_nonce( $nonce[1], 'media_replace_upload' ) );
 		$this->assertStringContainsString( '<input type="hidden" name="ID" value="' . $id . '" />', $output );
-		$this->assertStringContainsString( '<input id="submit" type="submit" class="button button-primary" disabled="disabled" value="Upload" />', $output );
+		$this->assertStringContainsString( '<input id="submit" type="submit" class="button button-primary" disabled="disabled" value="Replace" />', $output );
 	}
 
 	public function test_screen_has_both_replace_type_radios_with_the_setting_checked() {
@@ -489,7 +489,18 @@ class ReplaceViewControllerTest extends WP_UnitTestCase {
 		list( , $output ) = $this->load( $id );
 
 		$this->assertStringContainsString( '<input type="checkbox" id="remove_after_progress" name="remove_after_progress" value="' . $id . '">', $output );
-		$this->assertStringContainsString( 'action=emr_prepare_remove', $output );
+		$this->assertMatchesRegularExpression( '#<a class="emr-operation emr-operation-background" href="[^"]*action=emr_prepare_remove#', $output );
+	}
+
+	public function test_screen_has_the_header_bar_and_the_upscale_button() {
+		$id = $this->upload();
+
+		list( , $output ) = $this->load( $id );
+
+		$this->assertStringContainsString( '<h1>Enable Media Replace - Replace media</h1>', $output );
+		$this->assertStringNotContainsString( 'Replace Media Upload', $output );
+		$this->assertMatchesRegularExpression( '#<a class="emr-operation emr-operation-upscale" href="[^"]*action=emr_prepare_upscale#', $output );
+		$this->assertStringNotContainsString( 'emr-operation-replace', $output, 'No button to the screen itself.' );
 	}
 
 	public function test_screen_hides_remove_background_from_author_restricted_users() {
@@ -500,6 +511,7 @@ class ReplaceViewControllerTest extends WP_UnitTestCase {
 
 		$this->assertStringContainsString( 'name="replace_type" value="replace"', $output );
 		$this->assertStringNotContainsString( 'remove_after_progress', $output );
+		$this->assertStringNotContainsString( 'class="emr-operation ', $output, 'No operation buttons for an author-restricted user.' );
 	}
 
 	/*
