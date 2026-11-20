@@ -44,10 +44,9 @@ namespace EnableMediaReplace\ShortPixelLogger;
  * writing is skipped silently afterwards.
  *
  * Manual mode: when enabled through the request parameter, initView() (on
- * `init`) schedules loadView() on `admin_footer`, which builds the link to
- * the log file and includes the view-debug-box.php template: a draggable
- * box with that link in the admin. The link is built that late because
- * consumers may set the log path on `init` themselves, after initView().
+ * `init`) prepares a link to the log file and loadView() (on
+ * `admin_footer`) includes the view-debug-box.php template, which renders a
+ * draggable box with that link in the admin.
  *
  * Constants read: `SHORTPIXEL_DEBUG` (activation and level),
  * `SHORTPIXEL_DEBUG_TARGET` and `SHORTPIXEL_LOG_OVERWRITE` (together they
@@ -67,6 +66,12 @@ namespace EnableMediaReplace\ShortPixelLogger;
  * namespace. The default log file name derives from the first segment of
  * that namespace. The module uses no `shortpixel/*` hooks.
  *
+ * @todo In addLog() the default path is assigned as
+ *       `$this->logPath = $this->setLogPath(...)`; setLogPath() returns
+ *       nothing, so $logPath is reset to null right after the file handle is
+ *       opened. Writing keeps working through the cached handle, but
+ *       getLogPath() returns null and initView() cannot build the link.
+ *       Suggested fix: call setLogPath() without assigning its result.
  * @todo The `SHORTPIXEL_LOG_OVERWRITE` reset in the constructor writes to
  *       $logPath while it is still false (no path is set at construction),
  *       so the log is never reset and PHP warns about an empty filename.
@@ -191,8 +196,8 @@ class ShortPixelLogger
   private $namespace;
 
   /**
-   * View data for the debug box template. Created by initView(); loadView()
-   * fills in `logLink` and `namespace`.
+   * View data for the debug box template; has `logLink` and, from
+   * loadView() on, `namespace`.
    *
    * @var \stdClass|null
    */
@@ -212,8 +217,8 @@ class ShortPixelLogger
    * See the class description for the order of the `SHORTPIXEL_DEBUG`
    * request parameter and constant. The request parameter is only honoured
    * for administrators; on multisite that check waits for `wp_loaded`. When
-   * active, initView() is scheduled on `init`, when the current user is
-   * known.
+   * active, initView() is scheduled on `init` so the log link is built after
+   * the consumer has set the path.
    *
    * @return void
    */
@@ -269,9 +274,7 @@ class ShortPixelLogger
    *
    * Public because it is a hook callback; not meant to be called directly.
    * Enables manual logging when the request carries `SHORTPIXEL_DEBUG` and
-   * the current user is an administrator. The constructor returned before
-   * scheduling initView() in this case and `init` has already run, so the
-   * debug box is prepared here.
+   * the current user is an administrator.
    *
    * @return void
    */
@@ -280,7 +283,6 @@ class ShortPixelLogger
       if (isset($_REQUEST['SHORTPIXEL_DEBUG']) && true === $this->checkUserLevel())
       {
          $this->setManualLog();
-         $this->initView();
       }
 
   }
@@ -329,10 +331,10 @@ class ShortPixelLogger
    * Prepares the debug box, bound to `init`.
    *
    * Public because it is a hook callback; not meant to be called directly.
-   * Only acts in manual mode for administrators: creates $view and
-   * schedules loadView() on `admin_footer`. The log link is not built here,
-   * because a consumer that sets the log path on `init` may do so after
-   * this callback.
+   * Only acts in manual mode for administrators. Turns the log path into a
+   * URL when the file lives inside the uploads directory (otherwise the
+   * path itself is used), stores it as a `view-source:` link in $view and
+   * schedules loadView() on `admin_footer`.
    *
    * @return void
    */
@@ -341,55 +343,21 @@ class ShortPixelLogger
     $user_is_administrator = $this->checkUserLevel();
 
     if ($this->is_active && $this->is_manual_request && $user_is_administrator) {
+
+      $logPath = $logLink = $this->logPath; // default
+      $uploads = wp_get_upload_dir();
+
+
+      if (0 === strpos($logPath, $uploads['basedir'])) { // Simple as it should, filepath and basedir share.
+        // Replace file location with url location.
+        $logLink = str_replace($uploads['basedir'], $uploads['baseurl'], $logPath);
+      }
+
+
       $this->view = new \stdClass;
+      $this->view->logLink = 'view-source:' . esc_url($logLink);
       add_action('admin_footer', array($this, 'loadView'));
     }
-  }
-
-  /**
-   * Returns the link to the log file for the debug box.
-   *
-   * The URL of the file when it lives inside the uploads directory of the
-   * current site or, failing that, inside the content directory (on a
-   * multisite subsite a consumer may keep one log for the network above
-   * the site's own uploads directory); otherwise the path itself.
-   * Unescaped; the template escapes it on output. A plain link, without a
-   * `view-source:` prefix: browsers do not follow links to that scheme.
-   *
-   * On multisite only network administrators get the link: the log can
-   * hold entries of every site of the network, and the debug box is shown
-   * to the administrators of a single site too.
-   *
-   * @return string Empty when no log path is set, or on multisite for a
-   *                user who cannot manage the network.
-   */
-  protected function getLogLink()
-  {
-    $logPath = $this->logPath;
-
-    if (! is_string($logPath) || '' === $logPath) {
-      return '';
-    }
-
-    if (is_multisite() && ! current_user_can('manage_network_options')) {
-      return '';
-    }
-
-    $uploads = wp_get_upload_dir();
-    $uploadBase = trailingslashit($uploads['basedir']);
-
-    if (0 === strpos($logPath, $uploadBase)) { // Simple as it should, filepath and basedir share.
-      // Replace file location with url location.
-      return trailingslashit($uploads['baseurl']) . substr($logPath, strlen($uploadBase));
-    }
-
-    $contentBase = trailingslashit(WP_CONTENT_DIR);
-
-    if (0 === strpos($logPath, $contentBase)) {
-      return content_url(substr($logPath, strlen($contentBase)));
-    }
-
-    return $logPath;
   }
 
   /**
@@ -406,15 +374,11 @@ class ShortPixelLogger
   }
 
   /**
-   * Sets the log file.
+   * Sets the log file and opens it immediately.
    *
-   * An active logger opens the file at once, replacing any previously
-   * opened handle; problems opening it are reported through error_log() by
-   * getWriteFile(). An inactive logger only remembers the path and touches
-   * nothing on disk; the file is opened by the first write, should logging
-   * be switched on later in the request (the multisite manual mode is
-   * decided on `wp_loaded`). Consumers can therefore call this
-   * unconditionally right after getInstance().
+   * Consumers call this right after getInstance() when debugIsActive() is
+   * true. Any previously opened handle is replaced. Problems opening the
+   * file are reported through error_log() by getWriteFile().
    *
    * @param string $logPath Absolute path of the log file; its directory
    *                        must exist and be writable.
@@ -423,12 +387,7 @@ class ShortPixelLogger
   public function setLogPath($logPath)
   {
     $this->logPath = $logPath;
-
-    if ($this->is_active) {
-      $this->getWriteFile(true); // reset the writeFile here.
-    } else {
-      $this->logFile = null; // opened by the first write.
-    }
+    $this->getWriteFile(true); // reset the writeFile here.
   }
   /**
    * Records one entry and writes it to the log file.
@@ -438,7 +397,7 @@ class ShortPixelLogger
    * functions are not loaded yet or the current user is not an
    * administrator, so a `SHORTPIXEL_DEBUG` parameter from a visitor cannot
    * produce output. Picks the default log path on the first write when
-   * none is set: `<Namespace>.log` in the uploads base directory.
+   * none is set (see the class @todo).
    *
    * @param mixed $message Log message; arrays and objects are moved into the
    *                       data by DebugItem.
@@ -469,7 +428,7 @@ class ShortPixelLogger
     // Check where to log to.
     if ($this->logPath === false) {
       $upload_dir = wp_upload_dir(null, false, false);
-      $this->setLogPath($upload_dir['basedir'] . '/' . $this->namespace . ".log");
+      $this->logPath = $this->setLogPath($upload_dir['basedir'] . '/' . $this->namespace . ".log");
     }
 
     $arg = array();
@@ -678,8 +637,7 @@ class ShortPixelLogger
   /**
    * Includes the debug box template, bound to `admin_footer`.
    *
-   * Builds the log link now, when the consumer has set the log path. The
-   * template sees `$view` (with `logLink`, unescaped, and `namespace`) and
+   * The template sees `$view` (with `logLink` and `namespace`) and
    * `$controller` (this logger). A missing template is logged as an error
    * instead of rendered.
    *
@@ -691,7 +649,6 @@ class ShortPixelLogger
     $template = $this->template;
 
     $view = $this->view;
-    $view->logLink = $this->getLogLink();
     $view->namespace = $this->namespace;
     $controller = $this;
 
@@ -934,9 +891,8 @@ class ShortPixelLogger
   /**
    * Returns the log file path.
    *
-   * @return string|false Absolute path, or false when no path is set yet:
-   *                      the consumer has not called setLogPath() and
-   *                      nothing was logged, so no default was picked.
+   * @return string|false Absolute path, or false when no path is set yet
+   *                      (see the class @todo for the defaulted case).
    */
   public static function getLogPath()
   {

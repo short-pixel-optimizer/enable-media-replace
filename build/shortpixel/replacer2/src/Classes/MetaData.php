@@ -5,6 +5,8 @@
  * @package EnableMediaReplace\Replacer
  */
 namespace EnableMediaReplace\Replacer\Classes;
+use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
+
 
 if (! defined('ABSPATH')) {
 	exit; // Exit if accessed directly.
@@ -13,63 +15,90 @@ if (! defined('ABSPATH')) {
 /**
  * Attachment metadata for one side (search or replace) of a replacement.
  *
- * Created lazily by Setup::MetaData(), one per side. Holds the metadata in
- * $data and turns it into relative URLs. Fires and listens to no hooks.
+ * Created lazily by Setup::MetaData(), one per side. Keeps the raw metadata
+ * (getMetaData(), used by Setup to find the nearest size) and the map of
+ * name => file name in $data. The files only become relative URLs together
+ * with the main URL of the same side, see getFileUrls(); Setup does that
+ * in validateData(). Fires and listens to no hooks.
  */
 class MetaData extends Data
 {
-
-
-    /*public function addSearchMeta($meta)
-    {
-         $files = $this->getFilesFromMetadata($meta);
-    } */
+    /**
+     * Raw attachment metadata as delivered by WordPress; an empty array when
+     * the file has none.
+     *
+     * @var array
+     */
+    protected $metadata = [];
 
     /**
-     * Stores attachment metadata and returns its relative URLs.
+     * Stores attachment metadata for this side.
      *
-     * Extracts the file names (`file` and each size) with
-     * getFilesFromMetadata() and passes them to Data::getRelativeURLS().
+     * Replaces any metadata set before. "No metadata" is a valid input:
+     * wp_get_attachment_metadata() returns false and
+     * wp_generate_attachment_metadata() an empty array for files without
+     * sizes (PDF, SVG, ...), and both are stored as an empty array. Any other
+     * non-array input (a string, an object, a WP_Error) is refused and
+     * recorded as an error, so Setup::validateData() fails.
      *
-     * @param array $meta Attachment metadata (`file`, `sizes`).
-     * @return array Relative URLs as built by Data::getRelativeURLS().
-     *
-     * @todo Data::getRelativeURLS() expects items with `url` and `metadata`
-     *       keys, but this passes the flat map of name => file name, so each
-     *       item is a string and the `metadata`/`url` lookups fail. Suggested
-     *       fix: pass `[ $this->type => ['url' => <main file URL>, 'metadata'
-     *       => $files] ]`, which needs the main file URL as an argument.
+     * @param mixed $meta Attachment metadata (`file`, `width`, `sizes`), or
+     *                    false / null / an empty array for none.
+     * @return bool False (logged, error recorded) when $meta is not an array
+     *              and not empty.
      */
     public function addData($meta)
 	{
-		$this->data = $meta; 
-        $files = $this->getFilesFromMetadata($meta); 
+        if (false === $meta || null === $meta || '' === $meta) {
+            $meta = [];
+        }
 
-		$relativeUrls = $this->getRelativeURLS($files);
-        
-		return $relativeUrls;
+        if (! is_array($meta)) {
+            $type = is_object($meta) ? get_class($meta) : gettype($meta);
+            Log::addError('MetaData::addData (' . $this->type . ') expects an attachment metadata array, got ' . $type);
+            $this->errors[] = sprintf(__('Replacer: the %s metadata is not valid attachment metadata.', 'enable-media-replace'), $this->type);
+            return false;
+        }
+
+        $this->metadata = $meta;
+        $this->data = $this->getFilesFromMetadata($meta);
+        return true;
+    }
+
+    /**
+     * Returns the relative URL paths of the metadata files.
+     *
+     * @param string|null $mainUrl Full URL of the main file of this side
+     *                             (Url::getMainUrl()). The files are placed
+     *                             in its directory.
+     * @return array Map of name => relative URL path, empty when there is no
+     *               metadata or $mainUrl has no path.
+     */
+    public function getFileUrls($mainUrl): array
+    {
+        return $this->getRelativeURLS($mainUrl, $this->data);
     }
 
     /**
      * Extracts the file names from attachment metadata.
      *
-     * Same logic as Replacer::getFilesFromMetadata().
+     * Same logic as Replacer::getFilesFromMetadata(), limited to string file
+     * names.
      *
      * @param array $meta Attachment metadata.
      * @return array Map of `file` => metadata file and size name => size file,
-     *               for every entry that has a `file` key.
+     *               for every entry that has a non-empty string `file`.
      */
-    private function getFilesFromMetadata($meta)
+    private function getFilesFromMetadata(array $meta)
     {
           $fileArray = array();
-          if (isset($meta['file']))
+          if (isset($meta['file']) && is_string($meta['file']) && '' !== $meta['file'])
             $fileArray['file'] = $meta['file'];
 
-          if (isset($meta['sizes']))
+          if (isset($meta['sizes']) && is_array($meta['sizes']))
           {
             foreach($meta['sizes'] as $name => $data)
             {
-              if (isset($data['file']))
+              if (is_array($data) && isset($data['file']) && is_string($data['file']) && '' !== $data['file'])
               {
                 $fileArray[$name] = $data['file'];
               }
@@ -78,58 +107,14 @@ class MetaData extends Data
         return $fileArray;
     }
 
-    /** FindNearestsize
-	* This works on the assumption that when the exact image size name is not available, find the nearest width with the smallest possible difference to impact the site the least.
-	*
-	* Copy of Replacer::findNearestSize(). It is private and never called.
-	*
-	* @param string $sizeName Size name present in the source metadata.
-	* @return string|false File name of the closest target file, or false.
-	*
-	* @todo The method reads $this->source_metadata, $this->target_metadata
-	*       and $this->target_url, none of which exist on this class, and
-	*       nothing calls it. Suggested fix: remove it, or rewrite it against
-	*       the data of both sides once Setup exposes them.
-	*/
-	private function findNearestSize($sizeName)
-	{
+    /**
+     * Returns the raw metadata as stored by addData().
+     *
+     * @return array Empty array when none was set.
+     */
+    public function getMetaData(): array
+    {
+       return $this->metadata;
+    }
 
-			if (! isset($this->source_metadata['sizes'][$sizeName]) || ! isset($this->target_metadata['width'])) // This can happen with non-image files like PDF.
-			{
-				 // Check if metadata-less item is a svg file. Just the main file to replace all thumbnails since SVG's don't need thumbnails.
-				 if (strpos($this->target_url, '.svg') !== false)
-				 {
-					$svg_file = wp_basename($this->target_url);
-					return $svg_file;  // this is the relpath of the mainfile.
-				 }
-
-				return false;
-			}
-			$old_width = $this->source_metadata['sizes'][$sizeName]['width']; // the width from size not in new image
-			$new_width = $this->target_metadata['width']; // default check - the width of the main image
-
-			$diff = abs($old_width - $new_width);
-		//  $closest_file = str_replace($this->relPath, '', $this->newMeta['file']);
-			$closest_file = wp_basename($this->target_metadata['file']); // mainfile as default
-
-			foreach($this->target_metadata['sizes'] as $sizeName => $data)
-			{
-					$thisdiff = abs($old_width - $data['width']);
-
-					if ( $thisdiff  < $diff )
-					{
-							$closest_file = $data['file'];
-							if(is_array($closest_file)) { $closest_file = $closest_file[0];} // HelpScout case 709692915
-							if(!empty($closest_file)) {
-									$diff = $thisdiff;
-									$found_metasize = true;
-							}
-					}
-			}
-
-			if(empty($closest_file)) return false;
-
-			return $closest_file;
-	}
-    
-} // class 
+} // class

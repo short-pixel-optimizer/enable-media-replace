@@ -15,9 +15,16 @@ use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
 
 
 /**
- * Writes replaced content back to posts.
+ * Writes replaced content back to the database.
  *
- * A new object is created per use (Replacer::Updater()). It fires no hooks
+ * Two entry points:
+ * - updateRecord(): writes a Record found by the Finder back to the table
+ *   and row it came from, and clears the matching object cache. This is
+ *   what Replacer2::replace() uses.
+ * - updatePost(): saves post content through wp_update_post(), for callers
+ *   that want post hooks and revisions.
+ *
+ * A new object is created per use (Replacer2::Updater()). It fires no hooks
  * itself; wp_update_post() fires the usual post hooks.
  */
 class Updater
@@ -30,6 +37,113 @@ class Updater
      * @var int
      */
     protected static $updatesNumber = 0;
+
+    /**
+     * Writes a changed record back to where it was found.
+     *
+     * Unchanged and skipped records are not written. Per table key:
+     * - `posts`: direct UPDATE of `post_content` followed by
+     *   clean_post_cache(). No post hooks, no revision and `post_modified`
+     *   is untouched, as the replacer has always done: going through
+     *   wp_update_post() would run the content through kses for users
+     *   without `unfiltered_html` and fire save hooks of every plugin.
+     * - `options`: UPDATE on the id column, then the `alloptions`,
+     *   `notoptions` and the option's own name are removed from the
+     *   `options` cache group.
+     * - any other table: UPDATE on the id column, then the owning object
+     *   (`main_id` value) is removed from the definition's cache group, when
+     *   both are known.
+     *
+     * Values are written as they are; replaceContent() has already
+     * serialized arrays and objects unless the run asked otherwise.
+     *
+     * @global \wpdb $wpdb
+     *
+     * @param Record $record The record to write.
+     * @return bool True when a row was written, false when nothing was to be
+     *              written or the write failed (logged).
+     */
+    public function updateRecord(Record $record): bool
+    {
+        global $wpdb;
+
+        if (false === $record->isChanged()) {
+            return false;
+        }
+
+        $table_name = $record->getTableName();
+        $id = $record->getId();
+
+        if (null === $table_name || null === $id) {
+            Log::addError('Updater: record without table or id, not saved', [$record->getTable(), $record->getDefinition()]);
+            return false;
+        }
+
+        $result = $wpdb->update(
+            $table_name,
+            [ $record->getValueField() => $record->getContent() ],
+            [ $record->getIdField() => $id ],
+            [ '%s' ],
+            [ '%d' ]
+        );
+
+        if (false === $result) {
+            Log::addError('Updater: update failed on ' . $table_name . ' id ' . $id, $wpdb->last_error);
+            return false;
+        }
+
+        $this->clearRecordCache($record);
+
+        self::$updatesNumber++;
+        return true;
+    }
+
+    /**
+     * Writes several records, see updateRecord().
+     *
+     * @param Record[] $records Records to write.
+     * @return int Number of rows written.
+     */
+    public function updateRecords(array $records): int
+    {
+        $written = 0;
+        foreach ($records as $record) {
+            if (true === $this->updateRecord($record)) {
+                $written++;
+            }
+        }
+        return $written;
+    }
+
+    /**
+     * Clears the object cache entries of a written record.
+     *
+     * @param Record $record The written record.
+     * @return void
+     */
+    protected function clearRecordCache(Record $record)
+    {
+        $main_id = $record->getMainId();
+
+        switch ($record->getTable()) {
+            case 'posts':
+                clean_post_cache($record->getId());
+                break;
+            case 'options':
+                wp_cache_delete('alloptions', 'options');
+                wp_cache_delete('notoptions', 'options');
+                if (null !== $main_id) {
+                    wp_cache_delete($main_id, 'options');
+                }
+                break;
+            default:
+                $cache_group = $record->getCacheGroup();
+                if (null !== $cache_group && null !== $main_id) {
+                    wp_cache_delete($main_id, $cache_group);
+                }
+                break;
+        }
+    }
 
     /**
      * Replaces the content of a post, keeping its modified date.
