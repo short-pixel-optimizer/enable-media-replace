@@ -18,7 +18,7 @@ namespace EnableMediaReplace\Replacer\Modules;
  * the `shortpixel/externals/elementor_is_active` filter.
  *
  * Lifecycle: singleton via getInstance(), created by
- * Replacer::loadFormats().
+ * Replacer2::loadFormats().
  *
  * Hooks listened to: filter `shortpixel/replacer/custom_replace_query` ->
  * addElementor().

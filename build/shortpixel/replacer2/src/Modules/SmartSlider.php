@@ -19,7 +19,7 @@ use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
  * Detection: the `NEXTEND_SMARTSLIDER_3` constant is defined.
  *
  * Intended lifecycle: singleton via getInstance(), created by
- * Replacer::loadFormats() with the replacer instance; when Smart Slider is
+ * Replacer2::loadFormats() with the replacer instance; when Smart Slider is
  * active it stores the replacer and the upload directory parts and listens to
  * action `shortpixel/replacer/replace_urls` -> doReplaceQueries().
  *
@@ -44,7 +44,7 @@ class SmartSlider
      * Replacer used for replaceContent(). Never set while the constructor
      * returns early.
      *
-     * @var \EnableMediaReplace\Replacer\Replacer|null
+     * @var \EnableMediaReplace\Replacer\Replacer2|null
      */
     private $replacer;
 
@@ -74,9 +74,9 @@ class SmartSlider
     /**
      * Returns the shared instance, creating it on first use.
      *
-     * @param \EnableMediaReplace\Replacer\Replacer $replacer Replacer instance; only
-     *                                                the first one passed is
-     *                                                used.
+     * @param \EnableMediaReplace\Replacer\Replacer2 $replacer Replacer instance; only
+     *                                                 the first one passed is
+     *                                                 used.
      * @return SmartSlider
      */
     public static function getInstance($replacer)
@@ -98,7 +98,7 @@ class SmartSlider
      * @hook action shortpixel/replacer/replace_urls doReplaceQueries(),
      *       priority 10, 3 args (unreachable).
      *
-     * @param \EnableMediaReplace\Replacer\Replacer $replacer Replacer instance.
+     * @param \EnableMediaReplace\Replacer\Replacer2 $replacer Replacer instance.
      *
      * @todo The unconditional `return false;` makes the rest of the
      *       constructor unreachable. Suggested fix: remove it to enable the

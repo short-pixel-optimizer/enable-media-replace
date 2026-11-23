@@ -195,7 +195,7 @@ class Setup
      *
      * @return string|false
      */
-    protected function getSearchBase()
+    public function getSearchBase()
     {
         $path = $this->search()->getPath();
         $extension = pathinfo($path, PATHINFO_EXTENSION);

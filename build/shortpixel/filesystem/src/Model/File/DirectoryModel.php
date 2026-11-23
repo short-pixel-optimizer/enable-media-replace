@@ -36,9 +36,6 @@ use EnableMediaReplace\ShortpixelLogger\ShortPixelLogger as Log;
  *       the cached is_writable value, so the method reports failure even
  *       when the chmod helped. Suggested fix: use $new_directory_permission
  *       and reset $is_writable before testing again.
- * @todo getPermissionRecursive() calls exists() on the result of
- *       getParent(), which is false at the file system root. Suggested
- *       fix: return false when there is no parent.
  */
 /* Model for Directories
 *
@@ -546,12 +543,20 @@ class DirectoryModel
    * Returns the mode of the nearest existing ancestor, used as the mode
    * for directories created by check().
    *
-   * @return int|false fileperms() value (including type bits) or false.
+   * The directory itself is never read, only its ancestors, so the file
+   * system root, which has no parent, returns false.
+   *
+   * @return int|false fileperms() value (including type bits), or false
+   *                   at the file system root.
    */
 	public function getPermissionRecursive()
 	{
 		 $parent = $this->getParent();
-		  if (! $parent->exists())
+      if (false === $parent)
+      {
+         return false; 
+      }
+		  elseif (! $parent->exists())
 			{
 				 return $parent->getPermissionRecursive();
 			}

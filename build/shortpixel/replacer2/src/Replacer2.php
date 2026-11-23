@@ -2,7 +2,7 @@
 /**
  * Replacer module entry point.
  *
- * Holds the Replacer class, which rewrites every reference to one media file
+ * Holds the Replacer2 class, which rewrites every reference to one media file
  * (main file and thumbnail sizes) into references to another file across the
  * WordPress database.
  *
@@ -29,10 +29,10 @@ use EnableMediaReplace\Replacer\Libraries\Unserialize\Unserialize;
  * - Only replace thumbnails feature dependent on media library
  * - Support for page builders / strange data
  *
- * Search-and-replace engine for media URLs. The caller sets a source URL and
- * a target URL, optionally the attachment metadata of both (so thumbnail
- * sizes are replaced as well) and optional extra URL pairs, then calls
- * replace(). replace() builds balanced search/replace arrays of relative URL
+ * Search-and-replace engine for media URLs. Through Setup() the caller sets
+ * a source URL (`search()` side) and a target URL (`replace()` side),
+ * optionally the attachment metadata of both (so thumbnail sizes are
+ * replaced as well) and optional extra URLs, then calls replace(). replace() builds balanced search/replace arrays of relative URL
  * paths and rewrites them in `post_content`, in the post, comment, term and
  * user meta tables and in the options table, followed by any additional runs
  * that integrations register (page builders that store URLs escaped,
@@ -42,11 +42,11 @@ use EnableMediaReplace\Replacer\Libraries\Unserialize\Unserialize;
  * the integration modules; it understands plain strings, serialized data,
  * JSON, arrays and objects.
  *
- * Lifecycle: getInstance() returns a shared instance, but the constructor is
- * public and consumers may also create their own instances. Every
- * construction calls loadFormats(), which instantiates the integration
- * modules; those are singletons, so their hooks are registered only once per
- * request. Source, target, metadata, extra URL pairs and replace settings are
+ * Lifecycle: there is no shared instance; consumers create one with
+ * `new Replacer2($component)` per replacement. Every construction calls
+ * loadFormats(), which instantiates the integration modules; those are
+ * singletons, so their hooks are registered only once per request. The
+ * Setup (source, target, metadata, extra URLs) and the replace settings are
  * instance state and are not reset after replace().
  *
  * replace() is built from the classes of the newer API: Classes\Setup
@@ -75,15 +75,32 @@ use EnableMediaReplace\Replacer\Libraries\Unserialize\Unserialize;
  * - filter `shortpixel/replacer/content` (replaceContent())
  * - filter `shortpixel/file/basedir_check` (fileIsRestricted())
  *
- * @todo The extra URL pairs from addURLArray() accumulate in $search_urls and
- *       $replace_urls and are never cleared, so on the shared instance from
- *       getInstance() a second replace() in the same request reuses the pairs
- *       of the first one. Suggested fix: clear both arrays at the end of
- *       replace() or add a reset method.
+ * @todo Extra URLs added with Data::addUrls() are never cleared, so a
+ *       second replace() on the same instance reuses the extra URLs of the
+ *       first one (unless overwritten by key). The consumers create a new
+ *       instance per replacement, so it does not show there. Suggested fix:
+ *       add a reset method to Setup/Data, or clear the extra URLs at the end
+ *       of replace().
  */
 
 class Replacer2
 {
+
+	/**
+	 * json_encode() flags added to every JSON re-encode in replaceContent(),
+	 * on top of the run's `json_flags`.
+	 *
+	 * Decoding turns escapes such as `\u003c` into literal characters, and
+	 * json_encode() writes `<`, `>`, `&`, `'` and `"` literally unless told
+	 * otherwise. Post content is written back without kses, so content that
+	 * kses accepted as inert text (a JSON string holding `\u003cimg ...
+	 * onerror=...\u003e`) would come out as live markup. With these flags
+	 * the characters stay escaped. The output is equivalent JSON, so
+	 * anything that reads it with a JSON decoder sees the same value.
+	 *
+	 * @var int
+	 */
+	const JSON_SAFE_FLAGS = JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT;
 
 	/**
 	 * Defaults for the replace settings, see setReplaceSettings().
@@ -107,7 +124,7 @@ class Replacer2
 
 	/**
 	 * Name of the main replace run, passed to the meta filters so
-	 * integrations can tell runs apart (for example `emr`).
+	 * integrations can tell runs apart (for example `spio`).
 	 *
 	 * @var string
 	 */
@@ -453,10 +470,12 @@ class Replacer2
 	 * settings. Keys:
 	 * - `component` (string, default `unset`): name of the run, passed to the
 	 *   `load_meta_value` and `save_meta_value` filters so integrations can
-	 *   act only on their own run. replace() uses `emr` for the main run.
+	 *   act only on their own run. replace() uses the component given to the
+	 *   constructor for the main run.
 	 * - `json_flags` (int, default JSON_UNESCAPED_SLASHES |
 	 *   JSON_UNESCAPED_UNICODE): flags for json_encode() when
-	 *   replaceContent() re-encodes JSON.
+	 *   replaceContent() re-encodes JSON. JSON_SAFE_FLAGS are always added
+	 *   and cannot be switched off here.
 	 * - `replacer_do_save` (bool, default true): whether doReplaceRun()
 	 *   writes replaced records other than post content itself.
 	 * - `replace_no_serialize` (bool, default false): when true,
@@ -485,9 +504,18 @@ class Replacer2
 	 *   string is returned unchanged. An incomplete object nested in an
 	 *   array or stdClass is kept as it is, and serialize() writes it back
 	 *   under its original class name with its original properties.
+	 *   Whatever was unserialized is serialized back at the same level (top
+	 *   level or nested), so the stored value keeps its type, except for a
+	 *   serialized JSON string (see the @todo below). A value that
+	 *   unserializes to another serialized string (serialized twice) has its
+	 *   inner layer walked as well, so both layers keep valid lengths. A
+	 *   string that looks serialized but does not unserialize (a wrong
+	 *   length) is returned unchanged.
 	 * - JSON string (see isJSON()): decoded with json_decode() into objects
 	 *   and arrays, processed as such and encoded back at the same level
-	 *   (top level or nested), with the `json_flags` setting. The string is
+	 *   (top level or nested), with the `json_flags` setting plus
+	 *   JSON_SAFE_FLAGS, so `<`, `>`, `&`, `'` and `"` inside strings stay
+	 *   `\u` escaped and no markup appears that was not there. The string is
 	 *   only re-encoded when the processed value differs from a second
 	 *   decode of the input (compared by value, with `!=`); otherwise the
 	 *   original string is returned byte for byte, so JSON without a match
@@ -502,10 +530,10 @@ class Replacer2
 	 *   incomplete object is returned as it is (or, at the top level of a
 	 *   serialized value, the original serialized string is returned).
 	 * - Other scalars and null: returned untouched.
-	 * - At the top level, arrays and objects that were not JSON (including a
-	 *   walked serialized value) are passed
+	 * - At the top level, arrays and objects that were not JSON are passed
 	 *   through maybe_serialize(), unless the `replace_no_serialize` setting
-	 *   is true.
+	 *   is true. A walked serialized value is always serialized back, the
+	 *   setting notwithstanding (see the @todo below).
 	 *
 	 * When no replace run has set the settings yet, the defaults are applied
 	 * first. Otherwise the settings of the latest run apply.
@@ -527,12 +555,21 @@ class Replacer2
 	 * @return mixed The replaced content, in the input's form at the top
 	 *               level (string for serialized, JSON or string input).
 	 *
-	 * @todo A serialized string nested inside other data (a value serialized
-	 *       twice) is unserialized but not serialized back because $in_deep
-	 *       is true, so it comes back as an array or a stdClass object
-	 *       instead of a string and the stored value changes type. Suggested
-	 *       fix: re-serialize whenever this call unserialized, independent of
-	 *       $in_deep, as is already done for JSON.
+	 * @todo A serialized JSON string (`s:N:"{...}";`) loses its
+	 *       serialization layer: the `$isJson` branch re-encodes the JSON
+	 *       and the `$was_unserialized` branch, which would serialize it
+	 *       back, is an `elseif` of it. The "unchanged" comparison decodes
+	 *       the serialized original (null), so this happens even when
+	 *       nothing was replaced. Suggested fix: serialize() after the JSON
+	 *       re-encode when `$was_unserialized` is true, and compare against
+	 *       the unserialized original.
+	 * @todo With `replace_no_serialize` true, a serialized input still comes
+	 *       back as a serialized string: the `$was_unserialized` branch runs
+	 *       serialize() before the setting is checked, so a
+	 *       `save_meta_value` callback of such a run gets a string, not the
+	 *       array the setting promises. Suggested fix: check the setting in
+	 *       that branch too (top level only), or document that the setting
+	 *       only covers array and object input.
 	 */
 	public function replaceContent($content, $search, $replace, $in_deep = false, $strict_check = true)
 	{
@@ -547,13 +584,24 @@ class Replacer2
 			$this->setReplaceSettings([]);
 		}
 
+		$was_unserialized = false; 
+
 		if (true === is_serialized($content)) {
 
 			// Only allow stdClass which can't have magic methods. 
 			//$args = array('allowed_classes' => false);
 			$args = array('allowed_classes' => array('stdClass'));
 
-			$content = Unserialize::unserialize($content, $args);
+			// Suppressed: a broken value warns on PHP 8.3+ and is handled right below.
+			$content = @Unserialize::unserialize($content, $args);
+			$was_unserialized = true;
+
+			// Looks serialized but does not unserialize (e.g. a broken length): leave it as it is, serializing false back would destroy it.
+			if (false === $content && 'b:0;' !== trim($raw_content)) {
+				Log::addWarn('Replacer: value looks serialized but does not unserialize, left unchanged');
+				return $raw_content;
+			}
+
 			// bail directly on incomplete classes. In < PHP 7.2 is_object is false on incomplete objects!
 			if (true === $this->checkIncomplete($content)) {
 				return $raw_content;
@@ -567,7 +615,12 @@ class Replacer2
 			$decoded_previous_content = json_decode($raw_content);
 		}
 
-		if (is_string($content))  // let's check the normal one first.
+		if (true === $was_unserialized && is_string($content) && true === is_serialized($content))
+		{
+			// A value serialized twice: walk the inner layer too, so its lengths stay valid. A disallowed class inside comes back unchanged.
+			$content = $this->replaceContent($content, $search, $replace, true, $strict_check);
+		}
+		elseif (is_string($content))  // regular string.
 		{
 			$content = apply_filters('emr/replacer/content', $content, $search, $replace);
 			$content = str_replace($search, $replace, $content);
@@ -602,7 +655,8 @@ class Replacer2
 	    if ($isJson) // convert back to JSON, if this was JSON. Different than serialize which does WP automatically.
 	    {
 	      // wp-slash -> WP does stripslashes_deep which destroys JSON
-				$json_flags = $this->replace_settings['json_flags'];
+				// The HEX flags are always added, whatever the run asked for: see JSON_SAFE_FLAGS.
+				$json_flags = $this->replace_settings['json_flags'] | self::JSON_SAFE_FLAGS;
 		  //	Log::addDebug('Value was found to be JSON, encoding with flag: ' . $json_flags);
 
 		  		// Might work badly, but might help to limit to amount of re-encodes since there is always a risk of data loss
@@ -616,6 +670,10 @@ class Replacer2
 				}
 				
 	    }
+		elseif (true === $was_unserialized)
+		{
+			 $content = serialize($content);
+		}
 		 elseif (
 			$this->replace_settings['replace_no_serialize'] === false &&
 			$in_deep === false && (is_array($content) || is_object($content))
