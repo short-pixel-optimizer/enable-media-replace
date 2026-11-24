@@ -1,39 +1,22 @@
 <?php
 /**
- * Tests for the data classes of the newer search/replace API in
- * build/shortpixel/replacer2/src/Classes/: Data (abstract base), Url,
- * MetaData, and the stray global Utils class.
- *
- * Errors raised by the code under test are captured with a local error
- * handler: the harness's own handler in tests/bootstrap.php keeps PHPUnit
- * from converting notices and warnings into exceptions.
+ * Tests for EnableMediaReplace\Replacer\Classes\Data
+ * (build/shortpixel/replacer2/src/Classes/Data.php): one side of a replacement, its URL,
+ * metadata and extra URLs, and the relative URL paths built from them.
+ * Also checks the Utils placeholder.
  *
  * @package Enable_Media_Replace
  */
 
-use EnableMediaReplace\Replacer\Classes\MetaData;
-use EnableMediaReplace\Replacer\Classes\Url;
+use EnableMediaReplace\Replacer\Classes\Data;
 
 /**
- * Classes\Data, Classes\Url, Classes\MetaData, Classes\Utils.
+ * Classes\Data, Classes\Utils.
  */
 class ReplacerDataTest extends WP_UnitTestCase {
 
 	/**
-	 * Reads a protected property of an object.
-	 *
-	 * @param object $object Instance.
-	 * @param string $name   Property name.
-	 * @return mixed
-	 */
-	private function readProperty( $object, $name ) {
-		$prop = new ReflectionProperty( get_class( $object ), $name );
-		$prop->setAccessible( true );
-		return $prop->getValue( $object );
-	}
-
-	/**
-	 * Runs a callable and returns [result or Throwable, captured errors].
+	 * Runs a callable and returns [result, captured PHP errors].
 	 *
 	 * @param callable $callable Code to run.
 	 * @return array
@@ -42,162 +25,157 @@ class ReplacerDataTest extends WP_UnitTestCase {
 		$errors = array();
 		set_error_handler(
 			function ( $errno, $errstr ) use ( &$errors ) {
-				$errors[] = array( $errno, $errstr );
+				$errors[] = $errstr;
 				return true;
 			}
 		);
 		try {
 			$result = $callable();
-		} catch ( Throwable $e ) {
-			$result = $e;
 		} finally {
 			restore_error_handler();
 		}
 		return array( $result, $errors );
 	}
 
-	public function test_url_add_data_appends_and_the_base_url_comes_from_the_first_url() {
-		$url = new Url( 'search' );
+	public function test_set_url_keeps_the_url_and_its_path() {
+		$data = new Data( 'search' );
+		$this->assertFalse( $data->hasUrl(), 'precondition' );
 
-		$url->addData( 'http://example.org/wp-content/uploads/2026/10/photo.jpg' );
-		$url->addData( 'http://example.org/wp-content/uploads/2026/10/other.png' );
+		$this->assertTrue( $data->setUrl( 'http://example.org/wp-content/uploads/2026/10/photo.jpg' ) );
 
-		$this->assertSame(
-			array( 'http://example.org/wp-content/uploads/2026/10/photo.jpg', 'http://example.org/wp-content/uploads/2026/10/other.png' ),
-			$this->readProperty( $url, 'data' )
-		);
-		$this->assertSame( '/wp-content/uploads/2026/10/photo', $url->getBaseURL() );
+		$this->assertTrue( $data->hasUrl() );
+		$this->assertSame( 'http://example.org/wp-content/uploads/2026/10/photo.jpg', $data->getUrl() );
+		$this->assertSame( '/wp-content/uploads/2026/10/photo.jpg', $data->getPath() );
+		$this->assertSame( array( 'base' => '/wp-content/uploads/2026/10/photo.jpg' ), $data->getUrls() );
 	}
 
-	/**
-	 * getBaseURL() removes the extension with str_replace(), so the same
-	 * text earlier in the path goes too (`a.jpg-dir/a.jpg` becomes
-	 * `a-dir/a`), and for a URL without an extension every dot in the path
-	 * is removed. Either way the LIKE fragment matches nothing. The correct
-	 * behaviour is to strip only the trailing extension.
-	 *
-	 * How to recognise the fix: getBaseURL() returns
-	 * `/wp-content/uploads/a.jpg-dir/a` and `/uploads/v1.2/file`, and the
-	 * pinned assertSame() calls below fail.
-	 */
-	public function test_get_base_url_strips_the_extension_everywhere_in_the_path_pinned_for_deferred_fix() {
-		$with_extension = new Url( 'search' );
-		$with_extension->addData( 'http://example.org/wp-content/uploads/a.jpg-dir/a.jpg' );
-		$without_extension = new Url( 'search' );
-		$without_extension->addData( 'http://example.org/uploads/v1.2/file' );
+	public function test_set_url_again_replaces_the_main_file() {
+		$data = new Data( 'search' );
+		$data->setUrl( 'http://example.org/uploads/first.jpg' );
 
-		$this->assertSame( '/wp-content/uploads/a-dir/a', $with_extension->getBaseURL(), 'Pinned: the directory lost its ".jpg".' );
-		$this->assertSame( '/uploads/v12/file', $without_extension->getBaseURL(), 'Pinned: the dot in the directory is gone.' );
+		$data->setUrl( 'http://example.org/other/second.png' );
+
+		$this->assertSame( array( 'base' => '/other/second.png' ), $data->getUrls() );
 	}
 
-	public function test_data_has_no_errors_by_default() {
-		$this->assertFalse( ( new Url( 'replace' ) )->hasErrors() );
-		$this->assertFalse( ( new MetaData( 'replace' ) )->hasErrors() );
-	}
-
-	/**
-	 * MetaData::addData() hands Data::getRelativeURLS() the flat map of
-	 * name => file name, while that method expects items with `url` and
-	 * `metadata` keys. Each item is a string, so the `metadata` / `url`
-	 * lookups fail: on PHP 7.4 every lookup raises an "Illegal string
-	 * offset" warning, on PHP 8 the first one throws a TypeError. The method
-	 * is unusable for its only caller. The correct behaviour is to pass
-	 * `[ side => ['url' => <main file URL>, 'metadata' => $files] ]`.
-	 *
-	 * How to recognise the fix: addData() returns an array of relative URLs
-	 * without errors and the assertions on the failure below fail.
-	 */
-	public function test_metadata_add_data_fails_on_the_flat_file_map_pinned_for_deferred_fix() {
-		$meta     = array(
-			'file'  => '2026/10/photo.jpg',
-			'sizes' => array( 'thumbnail' => array( 'file' => 'photo-150x150.jpg' ) ),
-		);
-		$metadata = new MetaData( 'search' );
+	public function test_set_url_refuses_a_value_without_path_and_keeps_the_previous_url() {
+		$data = new Data( 'search' );
+		$data->setUrl( 'http://example.org/uploads/photo.jpg' );
 
 		list( $result, $errors ) = $this->capture(
-			function () use ( $metadata, $meta ) {
-				return $metadata->addData( $meta );
+			function () use ( $data ) {
+				return array( $data->setUrl( 'http://example.org' ), $data->setUrl( false ), $data->setUrl( null ), $data->setUrl( '' ), $data->setUrl( array( 'x' ) ) );
 			}
 		);
 
-		$this->assertSame( $meta, $this->readProperty( $metadata, 'data' ), 'Sentinel: the metadata is stored before the failure.' );
-		if ( PHP_VERSION_ID >= 80000 ) {
-			$this->assertInstanceOf( TypeError::class, $result, 'Pinned: the string offset lookup throws.' );
-			$this->assertStringContainsString( 'on string', $result->getMessage() );
-		} else {
-			$this->assertNotEmpty( $errors, 'Pinned: the string offset lookups raise warnings.' );
-			$this->assertStringContainsString( 'Illegal string offset', $errors[0][1] );
-			$this->assertIsArray( $result );
-		}
+		$this->assertSame( array( false, false, false, false, false ), $result );
+		$this->assertSame( array(), $errors, 'Refused without a PHP error' );
+		$this->assertSame( 'http://example.org/uploads/photo.jpg', $data->getUrl() );
 	}
 
-	/**
-	 * MetaData::findNearestSize() is a copy of the Replacer method that
-	 * reads $source_metadata, $target_metadata and $target_url, none of which
-	 * exist on MetaData, and nothing calls it. Called directly it reads an
-	 * undefined property and returns false for any input. The correct
-	 * behaviour is to remove it or rewrite it against data this class has.
-	 *
-	 * How to recognise the fix: the method is gone (the ReflectionMethod
-	 * below throws) or it no longer reads an undefined property.
-	 */
-	public function test_metadata_find_nearest_size_reads_properties_it_does_not_have_pinned_for_deferred_fix() {
-		$metadata = new MetaData( 'search' );
-		$method   = new ReflectionMethod( MetaData::class, 'findNearestSize' );
-		$method->setAccessible( true );
+	public function test_without_url_there_are_no_urls() {
+		$data = new Data( 'replace' );
+		$data->setMetaData( array( 'file' => '2026/10/photo.jpg' ) );
 
-		list( $result, $errors ) = $this->capture(
-			function () use ( $method, $metadata ) {
-				return $method->invoke( $metadata, 'thumbnail' );
-			}
-		);
+		$this->assertFalse( $data->hasUrl() );
+		$this->assertSame( array(), $data->getUrls() );
+	}
 
-		$this->assertFalse( $result, 'Pinned: always false.' );
-		$undefined = array_values(
-			array_filter(
-				$errors,
-				function ( $error ) {
-					return false !== strpos( $error[1], 'Undefined property' );
-				}
+	public function test_get_urls_places_the_metadata_files_next_to_the_main_file() {
+		$data = new Data( 'search' );
+		$data->setUrl( 'http://example.org/wp-content/uploads/2026/10/photo.jpg' );
+		$data->setMetaData(
+			array(
+				'file'  => '2026/10/photo-scaled.jpg',
+				'width' => 2560,
+				'sizes' => array(
+					'thumbnail' => array( 'file' => 'photo-150x150.jpg', 'width' => 150 ),
+					'no_file'   => array( 'width' => 300 ),
+					'array'     => array( 'file' => array( 'photo-300x200.jpg' ) ),
+				),
 			)
 		);
-		$this->assertCount( 1, $undefined, 'Pinned: reads an undefined property.' );
-		$this->assertStringContainsString( '$target_url', $undefined[0][1] );
+
+		$this->assertSame(
+			array(
+				'base'      => '/wp-content/uploads/2026/10/photo.jpg',
+				'file'      => '/wp-content/uploads/2026/10/photo-scaled.jpg',
+				'thumbnail' => '/wp-content/uploads/2026/10/photo-150x150.jpg',
+			),
+			$data->getUrls(),
+			'Sizes without a string file are left out'
+		);
 	}
 
-	/**
-	 * Classes/Utils.php declares an empty class with no namespace, so it is
-	 * the global `Utils` and collides with any other global class of that
-	 * name; the namespace rewrite of the build tool does not reach it. The
-	 * file is checked with the tokenizer: requiring it would declare the
-	 * global class for the rest of the process. The correct behaviour is a
-	 * namespaced class, or no file at all.
-	 *
-	 * How to recognise the fix: the file declares a namespace (or is gone)
-	 * and the pinned assertions below fail.
-	 */
-	public function test_utils_is_an_empty_class_in_the_global_namespace_pinned_for_deferred_fix() {
+	public function test_get_urls_cut_the_directory_at_the_last_slash() {
+		$sizes = array( 'sizes' => array( 'thumbnail' => array( 'file' => 'photo-150x150.jpg' ) ) );
+
+		$repeated = new Data( 'search' );
+		$repeated->setUrl( 'http://example.org/uploads/photo.jpg-dir/photo.jpg' );
+		$repeated->setMetaData( $sizes );
+		$encoded = new Data( 'search' );
+		$encoded->setUrl( 'http://example.org/uploads/my%20photo.jpg' );
+		$encoded->setMetaData( $sizes );
+
+		$this->assertSame( '/uploads/photo.jpg-dir/photo-150x150.jpg', $repeated->getUrls()['thumbnail'], 'The basename in a directory name does not cut the directory' );
+		$this->assertSame( '/uploads/photo-150x150.jpg', $encoded->getUrls()['thumbnail'], 'A percent-encoded basename does not stay in the directory' );
+	}
+
+	public function test_set_metadata_accepts_no_metadata_and_refuses_other_types() {
+		foreach ( array( false, null, '', array() ) as $none ) {
+			$data = new Data( 'replace' );
+			$this->assertTrue( $data->setMetaData( $none ), 'No metadata is valid: ' . var_export( $none, true ) );
+			$this->assertSame( array(), $data->getMetaData() );
+			$this->assertSame( array(), $data->getErrors() );
+		}
+
+		foreach ( array( 'a:0:{}', new WP_Error( 'x', 'y' ), 42 ) as $invalid ) {
+			$data = new Data( 'replace' );
+			$this->assertFalse( $data->setMetaData( $invalid ) );
+			$this->assertCount( 1, $data->getErrors() );
+			$this->assertStringContainsString( 'replace', $data->getErrors()[0] );
+			$this->assertSame( array(), $data->getMetaData() );
+		}
+	}
+
+	public function test_add_urls_come_last_and_override_by_key() {
+		$data = new Data( 'search' );
+		$data->setUrl( 'http://example.org/uploads/photo.jpg' );
+		$data->setMetaData( array( 'sizes' => array( 'thumbnail' => array( 'file' => 'photo-150x150.jpg' ) ) ) );
+
+		$this->assertTrue( $data->addUrls( array( 'webp' => '/uploads/photo.webp' ) ) );
+		$this->assertTrue( $data->addUrls( array( 'webp' => '/uploads/photo-2.webp', 'thumbnail' => '/uploads/custom.jpg' ) ) );
+
+		$this->assertSame(
+			array( 'base' => '/uploads/photo.jpg', 'thumbnail' => '/uploads/custom.jpg', 'webp' => '/uploads/photo-2.webp' ),
+			$data->getUrls()
+		);
+	}
+
+	public function test_add_urls_refuses_bad_input_as_a_whole() {
+		$data = new Data( 'replace' );
+		$data->setUrl( 'http://example.org/uploads/photo.jpg' );
+
+		$this->assertFalse( $data->addUrls( 'http://example.org/uploads/photo.webp' ), 'Not an array' );
+		$this->assertFalse( $data->addUrls( array( 'base' => '/uploads/other.jpg' ) ), 'Reserved key' );
+		$this->assertFalse( $data->addUrls( array( 'webp' => '/uploads/photo.webp', 'avif' => '' ) ), 'Empty value' );
+		$this->assertFalse( $data->addUrls( array( 'webp' => '/uploads/photo.webp', 'avif' => false ) ), 'Non-string value' );
+
+		$this->assertSame( array( 'base' => '/uploads/photo.jpg' ), $data->getUrls(), 'Nothing of a refused call is added' );
+	}
+
+	public function test_utils_is_a_namespaced_class() {
 		$file = dirname( dirname( __DIR__ ) ) . '/build/shortpixel/replacer2/src/Classes/Utils.php';
 		$this->assertFileExists( $file );
-		$tokens = token_get_all( file_get_contents( $file ) );
 
 		$namespaces = 0;
-		$classes    = array();
-		$count      = count( $tokens );
-		for ( $i = 0; $i < $count; $i++ ) {
-			if ( ! is_array( $tokens[ $i ] ) ) {
-				continue;
-			}
-			if ( T_NAMESPACE === $tokens[ $i ][0] ) {
+		foreach ( token_get_all( file_get_contents( $file ) ) as $token ) {
+			if ( is_array( $token ) && T_NAMESPACE === $token[0] ) {
 				$namespaces++;
-			}
-			if ( T_CLASS === $tokens[ $i ][0] && isset( $tokens[ $i + 2 ] ) && is_array( $tokens[ $i + 2 ] ) ) {
-				$classes[] = $tokens[ $i + 2 ][1];
 			}
 		}
 
-		$this->assertSame( array( 'Utils' ), $classes, 'Sentinel: the file declares Utils.' );
-		$this->assertSame( 0, $namespaces, 'Pinned: no namespace, so the class is the global Utils.' );
-		$this->assertFalse( class_exists( 'EnableMediaReplace\Replacer\Classes\Utils' ), 'Pinned: the namespaced name does not resolve.' );
+		$this->assertSame( 1, $namespaces );
+		$this->assertTrue( class_exists( 'EnableMediaReplace\\Replacer\\Classes\\Utils' ) );
 	}
 }

@@ -24,7 +24,7 @@ use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
  * abortOnContent() fallback is registered.
  *
  * Lifecycle: singleton via getInstance(), created by
- * Replacer::loadFormats().
+ * Replacer2::loadFormats().
  *
  * Hooks listened to:
  * - filter `shortpixel/replacer/custom_replace_query` -> addBreakdance()

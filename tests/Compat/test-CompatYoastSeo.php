@@ -123,7 +123,7 @@ class CompatYoastSeoTest extends EMR_IntegrationTestCase {
 	 * through WPSEO_VERSION and registers removeIndexes().
 	 */
 	public function test_replacer_construction_registers_the_yoast_module() {
-		new \EnableMediaReplace\Replacer\Replacer();
+		new \EnableMediaReplace\Replacer\Replacer2( 'emr' );
 
 		$module = \EnableMediaReplace\Replacer\Modules\YoastSeo::getInstance();
 		$this->assertSame( 10, has_action( 'emr/replacer/replace_urls', array( $module, 'removeIndexes' ) ) );

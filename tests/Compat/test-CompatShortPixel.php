@@ -112,7 +112,7 @@ class CompatShortPixelTest extends EMR_IntegrationTestCase {
 	 */
 	public function test_both_plugins_load_their_own_copy_of_the_shared_modules() {
 		$pairs = array(
-			array( 'EnableMediaReplace\Replacer\Replacer', 'ShortPixel\Replacer\Replacer' ),
+			array( 'EnableMediaReplace\Replacer\Libraries\Unserialize\Unserialize', 'ShortPixel\Replacer\Libraries\Unserialize\Unserialize' ),
 			array( 'EnableMediaReplace\ShortPixelLogger\ShortPixelLogger', 'ShortPixel\ShortPixelLogger\ShortPixelLogger' ),
 			array( 'EnableMediaReplace\Notices\NoticeController', 'ShortPixel\Notices\NoticeController' ),
 		);

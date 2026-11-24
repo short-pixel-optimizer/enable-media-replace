@@ -12,7 +12,7 @@
  * rename.
  *
  * The bundled replacer has no Beaver Builder module: these rows go through
- * the generic postmeta path, Replacer::replaceContent(). It unserializes
+ * the generic postmeta path, Replacer2::replaceContent(). It unserializes
  * meta values with `allowed_classes => ['stdClass']`, so the nodes are
  * walked as plain data objects, the URLs inside them are rewritten and the
  * layout is serialized back as stdClass nodes.
@@ -161,7 +161,7 @@ class CompatBeaverBuilderTest extends EMR_IntegrationTestCase {
 
 	/**
 	 * The generic replacer rewrites a Beaver Builder layout:
-	 * Replacer::replaceContent() unserializes meta values with
+	 * Replacer2::replaceContent() unserializes meta values with
 	 * `allowed_classes => ['stdClass']`, walks the nodes and serializes the
 	 * layout back. The result holds the new URL and still unserializes to
 	 * the same stdClass nodes.
@@ -173,7 +173,7 @@ class CompatBeaverBuilderTest extends EMR_IntegrationTestCase {
 		$raw                  = $this->rawPostMeta( $post_id, '_fl_builder_data' );
 		$this->assertStringContainsString( $old_url, $raw, 'Sentinel: the layout holds the URL.' );
 
-		$replaced = \EnableMediaReplace\Replacer\Replacer::getInstance()->replaceContent( $raw, array( $old_url ), array( $new_url ), false, false );
+		$replaced = ( new \EnableMediaReplace\Replacer\Replacer2( 'emr' ) )->replaceContent( $raw, array( $old_url ), array( $new_url ), false, false );
 
 		$this->assertIsString( $replaced );
 		$this->assertStringNotContainsString( $old_url, $replaced, 'The old URL is gone.' );
@@ -259,9 +259,9 @@ class CompatBeaverBuilderTest extends EMR_IntegrationTestCase {
 	/**
 	 * A rename of an image shown on a real Beaver Builder page (published
 	 * layout and editor draft, two matching postmeta rows in one replace)
-	 * completes without a notice or warning: Replacer::handleMetaData()
-	 * keeps the selected column name apart from each row's post id, so
-	 * every row clears the meta cache of its own post. Both layout rows and
+	 * completes without a notice or warning: every record the replacer
+	 * finds carries its own row, so every row clears the meta cache of its
+	 * own post. Both layout rows and
 	 * a plain string row on the same page are read back through
 	 * get_post_meta() without a manual cache clean.
 	 *

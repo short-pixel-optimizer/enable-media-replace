@@ -15,7 +15,7 @@
  * stripslashes().
  *
  * The bundled replacer has no Bricks module: these rows go through the
- * generic postmeta and options passes, Replacer::replaceContent(). When a
+ * generic postmeta and options passes, Replacer2::replaceContent(). When a
  * row contains a URL being replaced, the replacer json_decode()s every
  * JSON-looking string it meets while recursing and encodes it back at the
  * same level, so the slider's options stay the JSON string Bricks passes to
@@ -186,7 +186,7 @@ class CompatBricksTest extends EMR_IntegrationTestCase {
 	/**
 	 * An EMR rename of an image used on a Bricks page rewrites the Image
 	 * element and leaves the page's Nested Slider options the JSON string:
-	 * Replacer::replaceContent() encodes a nested JSON string back after
+	 * Replacer2::replaceContent() encodes a nested JSON string back after
 	 * walking it, so the page still renders.
 	 */
 	public function test_rename_keeps_the_nested_slider_on_a_bricks_page() {

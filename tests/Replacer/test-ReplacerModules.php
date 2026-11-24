@@ -8,8 +8,8 @@
  *
  * Every module is a singleton that decides in its constructor whether to
  * register its hooks. set_up() snapshots the five private static $instance
- * properties (and the Replacer's) and nulls them so each test constructs
- * fresh modules; tear_down() removes the hooks any fresh module registered
+ * properties and nulls them so each test constructs fresh modules (Replacer2
+ * itself has no shared instance: every `new Replacer2()` is its own); tear_down() removes the hooks any fresh module registered
  * and restores the snapshots. The override filters
  * `emr/externals/elementor_is_active` and `emr/externals/urlencode_is_active`
  * stand in for the real plugins.
@@ -20,7 +20,7 @@
  * @package Enable_Media_Replace
  */
 
-use EnableMediaReplace\Replacer\Replacer;
+use EnableMediaReplace\Replacer\Replacer2;
 use EnableMediaReplace\Replacer\Modules\Elementor;
 use EnableMediaReplace\Replacer\Modules\WpBakery;
 use EnableMediaReplace\Replacer\Modules\YoastSeo;
@@ -51,7 +51,6 @@ class ReplacerModulesTest extends WP_UnitTestCase {
 			array( 'emr/replacer/save_meta_value', 'saveContent' ),
 		),
 		SmartSlider::class => array( array( 'emr/replacer/replace_urls', 'doReplaceQueries' ) ),
-		Replacer::class    => array(),
 	);
 
 	/**
@@ -128,12 +127,12 @@ class ReplacerModulesTest extends WP_UnitTestCase {
 	/**
 	 * A replacer from SOURCE_URL to TARGET_URL without metadata.
 	 *
-	 * @return Replacer
+	 * @return Replacer2
 	 */
 	private function makeReplacer() {
-		$replacer = new Replacer();
-		$replacer->setSource( self::SOURCE_URL );
-		$replacer->setTarget( self::TARGET_URL );
+		$replacer = new Replacer2( 'test' );
+		$this->assertTrue( $replacer->Setup()->search()->setUrl( self::SOURCE_URL ), 'Sentinel: source URL accepted.' );
+		$this->assertTrue( $replacer->Setup()->replace()->setUrl( self::TARGET_URL ), 'Sentinel: target URL accepted.' );
 		return $replacer;
 	}
 
@@ -142,12 +141,30 @@ class ReplacerModulesTest extends WP_UnitTestCase {
 	// ---------------------------------------------------------------------
 
 	public function test_replacer_construction_instantiates_every_module_singleton() {
-		new Replacer();
+		foreach ( array_keys( self::$module_hooks ) as $class ) {
+			$this->assertNull( $this->instanceProperty( $class )->getValue(), "Precondition: $class is not built yet." );
+		}
 
-		foreach ( array( Elementor::class, WpBakery::class, YoastSeo::class, Breakdance::class, SmartSlider::class ) as $class ) {
+		$replacer = new Replacer2( 'test' );
+
+		foreach ( array_keys( self::$module_hooks ) as $class ) {
 			$this->assertInstanceOf( $class, $this->instanceProperty( $class )->getValue(), $class );
 		}
-		$this->assertNull( $this->instanceProperty( Replacer::class )->getValue(), 'new Replacer() does not set the shared instance' );
+		$this->assertSame( SmartSlider::getInstance( $replacer ), $this->instanceProperty( SmartSlider::class )->getValue(), 'SmartSlider was built with this replacer' );
+	}
+
+	public function test_a_second_replacer_reuses_the_module_singletons() {
+		new Replacer2( 'first' );
+		$modules = array();
+		foreach ( array_keys( self::$module_hooks ) as $class ) {
+			$modules[ $class ] = $this->instanceProperty( $class )->getValue();
+		}
+
+		new Replacer2( 'second' );
+
+		foreach ( $modules as $class => $module ) {
+			$this->assertSame( $module, $this->instanceProperty( $class )->getValue(), "$class is built once per request" );
+		}
 	}
 
 	public function test_elementor_registers_nothing_when_absent() {
@@ -220,7 +237,7 @@ class ReplacerModulesTest extends WP_UnitTestCase {
 
 	public function test_smartslider_registers_nothing_when_absent() {
 		$this->assertFalse( defined( 'NEXTEND_SMARTSLIDER_3' ), 'Precondition: Smart Slider is not loaded.' );
-		$replacer = new Replacer();
+		$replacer = new Replacer2( 'test' );
 
 		$module = SmartSlider::getInstance( $replacer );
 
@@ -295,7 +312,7 @@ class ReplacerModulesTest extends WP_UnitTestCase {
 		$row    = array( 'meta_id' => '5', 'meta_value' => 'v', 'post_id' => '9' );
 
 		$this->assertNull( $module->abortOnContent( 'v', $row, 'breakdance' ) );
-		$this->assertSame( 'v', $module->abortOnContent( 'v', $row, 'emr' ) );
+		$this->assertSame( 'v', $module->abortOnContent( 'v', $row, 'spm' ) );
 	}
 
 	public function test_breakdance_load_and_save_pass_through_other_runs_and_rows_without_post_id() {
@@ -303,7 +320,7 @@ class ReplacerModulesTest extends WP_UnitTestCase {
 		$row    = array( 'meta_id' => '5', 'meta_value' => 'v', 'post_id' => '9' );
 		$option = array( 'option_id' => '5', 'option_value' => 'v', 'main_id' => null );
 
-		$this->assertSame( 'v', $module->loadContent( 'v', $row, 'emr' ) );
+		$this->assertSame( 'v', $module->loadContent( 'v', $row, 'spm' ) );
 		$this->assertSame( 'v', $module->loadContent( 'v', $option, 'breakdance' ), 'isset() is false for a null main_id' );
 		$this->assertSame( 'v', $module->saveContent( 'v', $row, 'unset' ) );
 		$this->assertSame( 'v', $module->saveContent( 'v', $option, 'breakdance' ) );
@@ -325,7 +342,7 @@ class ReplacerModulesTest extends WP_UnitTestCase {
 		$result = $replacer->replace();
 
 		$after = get_post_meta( $carrier, '_elementor_data', true );
-		$this->assertSame( 1, $result, 'Only the Elementor run matched the row' );
+		$this->assertSame( 1, $result, 'Only the Elementor run found the row' );
 		$this->assertSame( '[{"settings":{"image":{"url":"' . self::TARGET_URL . '"}}}]', $after, 'Re-encoded with unescaped slashes' );
 	}
 

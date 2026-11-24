@@ -209,7 +209,7 @@ docs/                      - the documentation and test plan, the bulk design no
 - **Singletons:** `EnableMediaReplacePlugin`, `UIHelper`, `EnvHelper`,
   `ApiKeyManager`, `RemoteNoticeController`, the view controllers and the
   integrations use `getInstance()`. `ReplaceController`, `Api`, `emrCache`
-  and the bundled `Replacer` are instantiated per request.
+  and the bundled `Replacer2` are instantiated per request.
 - **Replace flow:** a view controller validates the request, builds the
   parameter array, calls `ReplaceController::setupParams()` then `run()`.
   `run()` swaps the file, regenerates metadata, hands the old and new URLs

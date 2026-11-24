@@ -12,7 +12,7 @@ if (! defined('ABSPATH')) {
 }
 
 use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
-use EnableMediaReplace\Replacer\Replacer as Replacer;
+use EnableMediaReplace\Replacer\Replacer2 as Replacer2;
 use EnableMediaReplace\emrCache as emrCache;
 
 /**
@@ -345,7 +345,7 @@ class ReplaceController
 	 *     wp_update_post() does not change the guid of an existing post. A WP_Error sets
 	 *     ERROR_UPDATE_POST.
 	 * 15. Applies `emr/replace/doreplace` (default true); when it returns exactly true,
-	 *     runs Replacer::replace() with `thumbnails_only` true in MODE_REPLACE and false in
+	 *     runs Replacer2::replace() with `thumbnails_only` true in MODE_REPLACE and false in
 	 *     MODE_SEARCHREPLACE.
 	 * 16. updateDate().
 	 * 17. Flushes caches through emrCache::flushCache() in 'post' mode with the post ID and
@@ -375,23 +375,23 @@ class ReplaceController
 
 		// Set Source / and Source Metadata
 		
-		/* (wip) $Replacer = new Replacer2('emr');
+		$Replacer = new Replacer2('emr');
 		$source_url = $this->getSourceUrl();
 
 		$attachment_meta = wp_get_attachment_metadata($this->post_id);
 
-		$Replacer->Setup()->forSearch()->URL()->addData($source_url); 
-		$Replacer->Setup()->forSearch()->MetaData()->addData($attachment_meta);
+		$Replacer->Setup()->search()->setUrl($source_url);
+		$Replacer->Setup()->search()->setMetaData($attachment_meta);
 
 		//$Replacer->setSourceMeta(wp_get_attachment_metadata($this->post_id));
-		*/
+		
 
 				// Set Source / and Source Metadata
-		$Replacer = new Replacer();
+		/*$Replacer = new Replacer();
 		$source_url = $this->getSourceUrl();
 		$Replacer->setSource($source_url);
 		$Replacer->setSourceMeta(wp_get_attachment_metadata($this->post_id));
-
+*/
 		$targetFileObj = $this->fs()->getFile($this->targetFile);
 		$directoryObj = $targetFileObj->getFileDir();
 
@@ -457,7 +457,9 @@ class ReplaceController
 		}
 
 		$target_url = $this->getTargetURL();
-		$Replacer->setTarget($target_url);
+		
+		$Replacer->Setup()->replace()->setUrl($target_url);
+		//$Replacer->setTarget($target_url);
 
 		// Check and update post mimetype, otherwise badly coded plugins cry.
 		$post_mime = get_post_mime_type($this->post_id);
@@ -474,7 +476,8 @@ class ReplaceController
 
 		wp_update_attachment_metadata($this->post_id, $target_metadata);
 
-		$Replacer->setTargetMeta($target_metadata);
+		$Replacer->Setup()->replace()->setMetaData($target_metadata);
+//		$Replacer->setTargetMeta($target_metadata);
 
 		/** If author is different from replacer, note this */
 		$post_author = get_post_field('post_author', $this->post_id);
@@ -518,7 +521,9 @@ class ReplaceController
 
 		$doreplace = apply_filters('emr/replace/doreplace', true);
 		if (true === $doreplace) {
+		
 			$Replacer->replace($args);
+			
 		}
 
 		// Here Updatedata and a ffew others.

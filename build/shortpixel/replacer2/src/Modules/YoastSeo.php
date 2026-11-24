@@ -18,7 +18,7 @@ use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
  * Detection: the `WPSEO_VERSION` constant is defined.
  *
  * Lifecycle: singleton via getInstance(), created by
- * Replacer::loadFormats().
+ * Replacer2::loadFormats().
  *
  * Hooks listened to: action `shortpixel/replacer/replace_urls` ->
  * removeIndexes().

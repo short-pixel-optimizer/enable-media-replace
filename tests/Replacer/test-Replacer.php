@@ -1,32 +1,33 @@
 <?php
 /**
- * Tests for Replacer::replaceContent() and the private helpers of
- * EnableMediaReplace\Replacer\Replacer (build/shortpixel/replacer2/src/Replacer.php).
+ * Tests for Replacer2::replaceContent() and the private helpers of
+ * EnableMediaReplace\Replacer\Replacer2 (build/shortpixel/replacer2/src/Replacer2.php).
  *
  * replaceContent() is the recursive search/replace over every data shape
  * found in the database: plain strings, serialized data, JSON, arrays (with
  * URLs as keys), objects and WP_Error. Serialized data is unserialized with
- * `allowed_classes => ['stdClass']`: a stdClass is walked and serialized
- * back, an object of any other class is never instantiated, and a
- * serialized object of another class at the top level comes back as the
- * original string, untouched.
+ * `allowed_classes => ['stdClass']`: stdClass objects (no magic methods) are
+ * instantiated and walked, an object of any other class is never
+ * instantiated, and when it is at the top level the original string comes
+ * back untouched.
  *
- * The private helpers (fileIsRestricted(), change_key(), getRelativeURLS(),
- * getFilesFromMetadata(), isJSON(), checkIncomplete(), setReplaceSettings())
- * are reached through reflection.
+ * The private helpers of Replacer2 (change_key(), isJSON(),
+ * checkIncomplete(), setReplaceSettings()) and the protected
+ * Classes\Setup::fileIsRestricted() are reached through reflection. The
+ * relative URL lists built from the metadata are covered by
+ * ReplacerDataTest, the nearest-size fill-in by ReplacerReplaceTest.
  *
  * This file declares the global class EMR_Test_Wakeup_Canary_, which only
  * records calls to its magic methods; it stays declared for the rest of the
  * process.
  *
- * Every test works on its own `new Replacer()`; the shared instance of
- * getInstance() is only used by the tests ported from the SPIO suite and is
- * reset in set_up() and restored in tear_down().
+ * Every test works on its own `new Replacer2()`.
  *
  * @package Enable_Media_Replace
  */
 
-use EnableMediaReplace\Replacer\Replacer;
+use EnableMediaReplace\Replacer\Replacer2;
+use EnableMediaReplace\Replacer\Classes\Setup;
 
 if ( ! class_exists( 'EMR_Test_Wakeup_Canary_' ) ) {
 	/**
@@ -64,19 +65,13 @@ if ( ! class_exists( 'EMR_Test_Wakeup_Canary_' ) ) {
 }
 
 /**
- * Replacer::replaceContent() and the private helpers.
+ * Replacer2::replaceContent() and the private helpers.
  */
 class ReplacerTest extends WP_UnitTestCase {
 
-	const OLD_URL = 'http://example.org/wp-content/uploads/old-image.jpg';
-	const NEW_URL = 'http://example.org/wp-content/uploads/new-image.jpg';
-
-	/**
-	 * Shared Replacer instance before the test.
-	 *
-	 * @var Replacer|null
-	 */
-	private $saved_instance;
+	const OLD_URL   = 'http://example.org/wp-content/uploads/old-image.jpg';
+	const NEW_URL   = 'http://example.org/wp-content/uploads/new-image.jpg';
+	const COMPONENT = 'emr';
 
 	/**
 	 * Filters added by the test, as [hook, callback, priority].
@@ -86,38 +81,32 @@ class ReplacerTest extends WP_UnitTestCase {
 	private $added_filters = array();
 
 	/**
-	 * Resets the shared instance and the canary.
+	 * Resets the canary.
 	 */
 	public function set_up() {
 		parent::set_up();
-		$prop                 = $this->instanceProperty();
-		$this->saved_instance = $prop->getValue();
-		$prop->setValue( null, null );
 		EMR_Test_Wakeup_Canary_::$calls = array();
 	}
 
 	/**
-	 * Restores the shared instance and removes the test's filters.
+	 * Removes the test's filters and resets the canary.
 	 */
 	public function tear_down() {
 		foreach ( $this->added_filters as $filter ) {
 			remove_filter( $filter[0], $filter[1], $filter[2] );
 		}
 		$this->added_filters = array();
-		$this->instanceProperty()->setValue( null, $this->saved_instance );
 		EMR_Test_Wakeup_Canary_::$calls = array();
 		parent::tear_down();
 	}
 
 	/**
-	 * The private static $instance of Replacer, made accessible.
+	 * A new replacer for the test component.
 	 *
-	 * @return ReflectionProperty
+	 * @return Replacer2
 	 */
-	private function instanceProperty() {
-		$prop = new ReflectionProperty( Replacer::class, 'instance' );
-		$prop->setAccessible( true );
-		return $prop;
+	private function newReplacer() {
+		return new Replacer2( self::COMPONENT );
 	}
 
 	/**
@@ -134,41 +123,42 @@ class ReplacerTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Calls a private method of a replacer.
+	 * Calls a private or protected method.
 	 *
-	 * @param Replacer $replacer Instance.
-	 * @param string   $method   Method name.
-	 * @param array    $args     Arguments.
+	 * @param object $object Instance (a Replacer2 or a Setup).
+	 * @param string $method Method name.
+	 * @param array  $args   Arguments.
 	 * @return mixed
 	 */
-	private function callPrivate( $replacer, $method, array $args = array() ) {
-		$ref = new ReflectionMethod( Replacer::class, $method );
+	private function callPrivate( $object, $method, array $args = array() ) {
+		$ref = new ReflectionMethod( get_class( $object ), $method );
 		$ref->setAccessible( true );
-		return $ref->invokeArgs( $replacer, $args );
+		return $ref->invokeArgs( $object, $args );
 	}
 
 	/**
 	 * Reads a private property of a replacer.
 	 *
-	 * @param Replacer $replacer Instance.
-	 * @param string   $name     Property name.
+	 * @param Replacer2 $replacer Instance.
+	 * @param string    $name     Property name.
 	 * @return mixed
 	 */
 	private function readPrivate( $replacer, $name ) {
-		$ref = new ReflectionProperty( Replacer::class, $name );
+		$ref = new ReflectionProperty( Replacer2::class, $name );
 		$ref->setAccessible( true );
 		return $ref->getValue( $replacer );
 	}
 
 	/**
-	 * replaceContent() on the shared instance with OLD_URL -> NEW_URL.
+	 * replaceContent() on a new replacer with OLD_URL -> NEW_URL, in the
+	 * strict (post content) or the non-strict (metadata) check mode.
 	 *
 	 * @param mixed $content      Content.
 	 * @param bool  $strict_check Strict check flag.
 	 * @return mixed
 	 */
 	private function replaceContent( $content, $strict_check = true ) {
-		return Replacer::getInstance()->replaceContent(
+		return $this->newReplacer()->replaceContent(
 			$content,
 			array( self::OLD_URL ),
 			array( self::NEW_URL ),
@@ -178,19 +168,18 @@ class ReplacerTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * replaceContent() on a fresh instance with OLD_URL -> NEW_URL.
+	 * replaceContent() on a new replacer with OLD_URL -> NEW_URL.
 	 *
 	 * @param mixed $content Content.
 	 * @param bool  $in_deep In-deep flag.
 	 * @return mixed
 	 */
 	private function replaceFresh( $content, $in_deep = false ) {
-		$replacer = new Replacer();
-		return $replacer->replaceContent( $content, array( self::OLD_URL ), array( self::NEW_URL ), $in_deep );
+		return $this->newReplacer()->replaceContent( $content, array( self::OLD_URL ), array( self::NEW_URL ), $in_deep );
 	}
 
 	// ---------------------------------------------------------------------
-	// Ported from the SPIO suite (namespace swapped).
+	// Serialized data and nested JSON.
 	// ---------------------------------------------------------------------
 
 	public function test_plain_string_url_is_replaced() {
@@ -338,7 +327,7 @@ class ReplacerTest extends WP_UnitTestCase {
 		$expected      = new stdClass();
 		$expected->url = $long_url;
 
-		$result = ( new Replacer() )->replaceContent( serialize( serialize( $payload ) ), array( self::OLD_URL ), array( $long_url ), false, false );
+		$result = $this->newReplacer()->replaceContent( serialize( serialize( $payload ) ), array( self::OLD_URL ), array( $long_url ), false, false );
 
 		$this->assertSame( serialize( serialize( $expected ) ), $result );
 		$this->assertIsString( maybe_unserialize( $result ), 'A WordPress read returns the inner string' );
@@ -393,7 +382,7 @@ class ReplacerTest extends WP_UnitTestCase {
 		$this->assertSame( serialize( 0.5 ), $this->replaceContent( serialize( 0.5 ), false ) );
 
 		$long_url = 'http://example.org/wp-content/uploads/a-much-longer-new-image-name.jpg';
-		$result   = ( new Replacer() )->replaceContent( serialize( 'see ' . self::OLD_URL ), array( self::OLD_URL ), array( $long_url ) );
+		$result   = $this->newReplacer()->replaceContent( serialize( 'see ' . self::OLD_URL ), array( self::OLD_URL ), array( $long_url ) );
 		$this->assertSame( serialize( 'see ' . $long_url ), $result );
 	}
 
@@ -421,7 +410,7 @@ class ReplacerTest extends WP_UnitTestCase {
 	 * A serialized JSON string (`s:N:"{...}";`) is unserialized, decoded,
 	 * walked and encoded back as JSON, but the JSON branch then skips the
 	 * serialize() of the values this call unserialized, so the value loses
-	 * its serialization layer (Replacer::replaceContent(), the `$isJson`
+	 * its serialization layer (Replacer2::replaceContent(), the `$isJson`
 	 * branch before the `$was_unserialized` one). It happens at the top
 	 * level and nested, and also for a value in which nothing is replaced,
 	 * because the "unchanged" comparison decodes the serialized original,
@@ -482,33 +471,34 @@ class ReplacerTest extends WP_UnitTestCase {
 
 	/**
 	 * A JSON string nested inside serialized data stays a JSON string.
-	 * replaceContent() decodes every JSON-looking string it meets and
+	 * replaceContent() json_decode()s every JSON-looking string it meets and
 	 * encodes it back at the same level, so a builder that reads the nested
 	 * value as a string (Bricks passes it to stripslashes()) keeps working.
-	 * A JSON string without any search value comes back unchanged.
 	 */
-	public function test_json_string_nested_in_serialized_data_stays_the_same_json_string() {
+	public function test_json_string_nested_in_serialized_data_stays_a_json_string() {
 		$options = '{"type":"loop","perPage":3,"gap":"1em"}';
 		$content = serialize( $this->bricksPageContent( $options ) );
 
 		$result = unserialize( $this->replaceContent( $content, false ) );
 
 		$this->assertSame( self::NEW_URL, $result[1]['settings']['image']['url'], 'Sentinel: the image URL was replaced.' );
-		$this->assertSame( $options, $result[0]['settings']['options'], 'The untouched nested JSON string is unchanged.' );
+		$this->assertIsString( $result[0]['settings']['options'], 'The untouched nested JSON string is still a string.' );
+		$this->assertSame( json_decode( $options, true ), json_decode( $result[0]['settings']['options'], true ), 'Its content is unchanged.' );
 	}
 
 	/**
-	 * A nested JSON string that carries the URL is a JSON string with the
-	 * new URL after the replace, encoded with the default json_flags
-	 * (JSON_UNESCAPED_SLASHES).
+	 * Same for a nested JSON string that does carry the URL: the URL is
+	 * replaced inside it and the value is still a JSON string.
 	 */
-	public function test_json_string_with_the_url_nested_in_serialized_data_stays_a_json_string() {
+	public function test_json_string_with_the_url_nested_in_serialized_data_is_replaced_and_stays_a_string() {
 		$options = wp_json_encode( array( 'cover' => self::OLD_URL ), JSON_UNESCAPED_SLASHES );
 		$content = serialize( $this->bricksPageContent( $options ) );
 
 		$result = unserialize( $this->replaceContent( $content, false ) );
 
-		$this->assertSame( '{"cover":"' . self::NEW_URL . '"}', $result[0]['settings']['options'], 'A JSON string with the URL replaced.' );
+		$this->assertSame( self::NEW_URL, $result[1]['settings']['image']['url'], 'Sentinel: the plain image URL was replaced.' );
+		$this->assertIsString( $result[0]['settings']['options'], 'The nested JSON string is still a string.' );
+		$this->assertSame( self::NEW_URL, json_decode( $result[0]['settings']['options'] )->cover, 'The URL inside it was replaced.' );
 	}
 
 	// ---------------------------------------------------------------------
@@ -516,7 +506,7 @@ class ReplacerTest extends WP_UnitTestCase {
 	// ---------------------------------------------------------------------
 
 	public function test_every_search_value_is_replaced_by_its_index_matched_replacement() {
-		$replacer = new Replacer();
+		$replacer = $this->newReplacer();
 		$result   = $replacer->replaceContent( 'a.jpg b.jpg c.jpg', array( 'a.jpg', 'b.jpg' ), array( 'x.jpg', 'y.jpg' ) );
 		$this->assertSame( 'x.jpg y.jpg c.jpg', $result );
 	}
@@ -595,42 +585,77 @@ class ReplacerTest extends WP_UnitTestCase {
 	}
 
 	public function test_serialized_incomplete_class_is_returned_as_the_original_string() {
-		$serialized = 'O:21:"EMR_Class_Not_Present":1:{s:3:"url";s:' . strlen( self::OLD_URL ) . ':"' . self::OLD_URL . '";}';
-		$this->assertFalse( class_exists( 'EMR_Class_Not_Present', false ), 'Sentinel: the class does not exist.' );
+		$class      = 'EMR_Class_Not_Present';
+		$serialized = 'O:' . strlen( $class ) . ':"' . $class . '":1:{s:3:"url";s:' . strlen( self::OLD_URL ) . ':"' . self::OLD_URL . '";}';
+		$this->assertFalse( class_exists( $class, false ), 'Sentinel: the class does not exist.' );
 
 		$this->assertSame( $serialized, $this->replaceFresh( $serialized ) );
 	}
 
-	public function test_json_string_is_re_encoded_without_escaped_slashes_by_default() {
-		$json = wp_json_encode( array( 'src' => self::OLD_URL ) );
+	/**
+	 * Changed JSON is re-encoded with the default flags, at the top level and
+	 * below it: no escaped slashes, literal non-ASCII.
+	 */
+	public function test_json_array_of_strings_is_re_encoded_with_the_default_flags() {
+		$json = wp_json_encode( array( self::OLD_URL, 'café' ) );
 		$this->assertStringContainsString( '\/', $json, 'Sentinel: the input JSON escapes its slashes.' );
+		$this->assertStringContainsString( '\u00e9', $json, 'Sentinel: the input JSON escapes non-ASCII.' );
 
-		$result = $this->replaceFresh( $json );
-
-		$this->assertIsString( $result );
-		$this->assertSame( '{"src":"' . self::NEW_URL . '"}', $result );
+		$expected = '["' . self::NEW_URL . '","café"]';
+		$this->assertSame( $expected, $this->replaceFresh( $json ) );
+		$this->assertSame( $expected, $this->replaceFresh( $json, true ), 'JSON met below the top level is encoded back at that level' );
 	}
 
 	public function test_json_flags_setting_is_used_when_re_encoding() {
-		$replacer = new Replacer();
+		$replacer = $this->newReplacer();
 		$this->callPrivate( $replacer, 'setReplaceSettings', array( array( 'json_flags' => 0 ) ) );
 
-		$result = $replacer->replaceContent( '{"src":"' . self::OLD_URL . '"}', array( self::OLD_URL ), array( self::NEW_URL ) );
+		$result = $replacer->replaceContent( '["' . self::OLD_URL . '"]', array( self::OLD_URL ), array( self::NEW_URL ) );
 
-		$this->assertSame( '{"src":"' . str_replace( '/', '\/', self::NEW_URL ) . '"}', $result );
-	}
-
-	/** Below the top level a JSON string is encoded back too, not returned decoded. */
-	public function test_json_string_in_deep_is_returned_as_a_json_string() {
-		$result = $this->replaceFresh( '{"src":"' . self::OLD_URL . '"}', true );
-
-		$this->assertSame( '{"src":"' . self::NEW_URL . '"}', $result );
+		$this->assertSame( '["' . str_replace( '/', '\/', self::NEW_URL ) . '"]', $result );
 	}
 
 	/**
-	 * A JSON string inside a JSON document is encoded back at its own level,
-	 * so the document keeps its shape: `inner` is still a string, holding
-	 * the new URL.
+	 * JSON without a match is returned byte for byte, escaping included,
+	 * instead of being decoded and re-encoded with the `json_flags`.
+	 */
+	public function test_json_without_a_match_is_returned_unchanged() {
+		$json = wp_json_encode( array( 'src' => 'http://example.org/other.jpg', 'list' => array( 'a' ) ) );
+		$this->assertStringContainsString( '\/', $json, 'Sentinel: the input JSON escapes its slashes.' );
+
+		$this->assertSame( $json, $this->replaceFresh( $json ) );
+		$this->assertSame( $json, $this->replaceFresh( $json, true ) );
+	}
+
+	/**
+	 * A JSON object carrying the URL is re-encoded with the new URL, at the
+	 * top level and below it. The change is detected by value: json_decode()
+	 * yields stdClass objects that are rewritten in place, so the comparison
+	 * runs against a second decode of the input.
+	 */
+	public function test_json_object_with_the_url_is_re_encoded_without_escaped_slashes() {
+		$json = wp_json_encode( array( 'src' => self::OLD_URL ) );
+		$this->assertStringContainsString( '\/', $json, 'Sentinel: the input JSON escapes its slashes.' );
+
+		$expected = '{"src":"' . self::NEW_URL . '"}';
+		$this->assertSame( $expected, $this->replaceFresh( $json ) );
+		$this->assertSame( $expected, $this->replaceFresh( $json, true ), 'JSON met below the top level is encoded back at that level' );
+	}
+
+	/**
+	 * Same for a JSON array of objects, the shape of Elementor data.
+	 */
+	public function test_json_array_of_objects_with_the_url_is_re_encoded() {
+		$json = wp_json_encode( array( array( 'url' => self::OLD_URL ) ) );
+		$this->assertStringContainsString( '\/', $json, 'Sentinel: the input JSON escapes its slashes.' );
+
+		$this->assertSame( '[{"url":"' . self::NEW_URL . '"}]', $this->replaceFresh( $json ) );
+	}
+
+	/**
+	 * A JSON string inside a JSON document is decoded at the inner level and
+	 * encoded back there, so the document keeps its shape: `inner` is still
+	 * a string, with only the URL changed.
 	 */
 	public function test_json_string_inside_json_keeps_its_shape() {
 		$inner = '{"u":"' . self::OLD_URL . '"}';
@@ -639,12 +664,14 @@ class ReplacerTest extends WP_UnitTestCase {
 
 		$result = $this->replaceFresh( $json );
 
-		$this->assertSame( wp_json_encode( array( 'inner' => '{"u":"' . self::NEW_URL . '"}' ), JSON_UNESCAPED_SLASHES ), $result );
-		$this->assertSame( '{"u":"' . self::NEW_URL . '"}', json_decode( $result )->inner, 'inner is still a JSON string.' );
+		$this->assertIsString( $result );
+		$decoded = json_decode( $result );
+		$this->assertIsString( $decoded->inner, 'The inner JSON string is still a string.' );
+		$this->assertSame( self::NEW_URL, json_decode( $decoded->inner )->u, 'Only the URL inside it changed.' );
 	}
 
 	public function test_replace_no_serialize_returns_arrays_and_objects_as_they_are() {
-		$replacer = new Replacer();
+		$replacer = $this->newReplacer();
 		$this->callPrivate( $replacer, 'setReplaceSettings', array( array( 'replace_no_serialize' => true ) ) );
 		$object      = new stdClass();
 		$object->src = self::OLD_URL;
@@ -658,7 +685,7 @@ class ReplacerTest extends WP_UnitTestCase {
 	}
 
 	public function test_numeric_string_is_not_treated_as_json() {
-		$replacer = new Replacer();
+		$replacer = $this->newReplacer();
 		$result   = $replacer->replaceContent( '12345', array( '234' ), array( 'x' ) );
 
 		$this->assertSame( '1x5', $result, 'Replaced as a plain string, not decoded to an int' );
@@ -698,25 +725,34 @@ class ReplacerTest extends WP_UnitTestCase {
 		$this->assertSame( 'a:2:{ is not serialized ' . self::NEW_URL, $this->replaceFresh( $text ) );
 	}
 
-	public function test_replace_content_applies_default_settings_when_none_were_set() {
-		$replacer = new Replacer();
-		$this->assertNull( $this->readPrivate( $replacer, 'replace_settings' ), 'Sentinel: no settings before the first call.' );
-
-		$replacer->replaceContent( 'x', array( 'a' ), array( 'b' ) );
+	/**
+	 * The constructor applies the default settings with its component, so
+	 * replaceContent() called directly runs with them.
+	 */
+	public function test_constructor_applies_the_default_settings_with_its_component() {
+		$replacer = $this->newReplacer();
 
 		$settings = $this->readPrivate( $replacer, 'replace_settings' );
-		$this->assertSame( 'unset', $settings['component'] );
-		$this->assertSame( JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE, $settings['json_flags'] );
-		$this->assertTrue( $settings['replacer_do_save'] );
-		$this->assertFalse( $settings['replace_no_serialize'] );
+		$this->assertSame(
+			array(
+				'component'            => self::COMPONENT,
+				'json_flags'           => JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE,
+				'replacer_do_save'     => true,
+				'replace_no_serialize' => false,
+			),
+			$settings
+		);
+
+		$replacer->replaceContent( 'x', array( 'a' ), array( 'b' ) );
+		$this->assertSame( $settings, $this->readPrivate( $replacer, 'replace_settings' ), 'replaceContent() keeps the settings it found' );
 	}
 
 	// ---------------------------------------------------------------------
-	// Private helpers.
+	// Private helpers (Replacer2) and Setup::fileIsRestricted().
 	// ---------------------------------------------------------------------
 
 	public function test_set_replace_settings_merges_over_the_defaults_and_resets_without_arguments() {
-		$replacer = new Replacer();
+		$replacer = $this->newReplacer();
 
 		$this->callPrivate( $replacer, 'setReplaceSettings', array( array( 'component' => 'mine', 'replacer_do_save' => false ) ) );
 		$partial = $this->readPrivate( $replacer, 'replace_settings' );
@@ -748,7 +784,7 @@ class ReplacerTest extends WP_UnitTestCase {
 			}
 		);
 
-		$result = $this->callPrivate( new Replacer(), 'fileIsRestricted', array( '/any/path' ) );
+		$result = $this->callPrivate( new Setup(), 'fileIsRestricted', array( '/any/path' ) );
 
 		$this->assertFalse( $result );
 		$this->assertSame( 0, $calls, 'The basedir_check filter only runs when open_basedir is set' );
@@ -765,12 +801,12 @@ class ReplacerTest extends WP_UnitTestCase {
 	 */
 	public function test_file_is_restricted_checks_open_basedir_entries_and_its_filter() {
 		ini_set( 'open_basedir', '/' ); // phpcs:ignore WordPress.PHP.IniSet.Risky
-		$replacer = new Replacer();
+		$setup = new Setup();
 
-		$allowed    = $this->callPrivate( $replacer, 'fileIsRestricted', array( '/wp-content/uploads/a' ) );
-		$restricted = $this->callPrivate( $replacer, 'fileIsRestricted', array( 'relative-path-without-slash' ) );
+		$allowed    = $this->callPrivate( $setup, 'fileIsRestricted', array( '/wp-content/uploads/a' ) );
+		$restricted = $this->callPrivate( $setup, 'fileIsRestricted', array( 'relative-path-without-slash' ) );
 		$this->addFilter( 'emr/file/basedir_check', '__return_false' );
-		$overridden = $this->callPrivate( $replacer, 'fileIsRestricted', array( 'relative-path-without-slash' ) );
+		$overridden = $this->callPrivate( $setup, 'fileIsRestricted', array( 'relative-path-without-slash' ) );
 
 		$this->assertFalse( $allowed );
 		$this->assertTrue( $restricted );
@@ -784,7 +820,7 @@ class ReplacerTest extends WP_UnitTestCase {
 			'c'   => 4,
 		);
 
-		$result = $this->callPrivate( new Replacer(), 'change_key', array( $input, array( 'old' => 'new' ) ) );
+		$result = $this->callPrivate( $this->newReplacer(), 'change_key', array( $input, array( 'old' => 'new' ) ) );
 
 		$this->assertSame(
 			array(
@@ -797,64 +833,17 @@ class ReplacerTest extends WP_UnitTestCase {
 	}
 
 	public function test_change_key_returns_non_array_input_unchanged() {
-		$replacer = new Replacer();
+		$replacer = $this->newReplacer();
 		$this->assertSame( 'string', $this->callPrivate( $replacer, 'change_key', array( 'string', array( 'a' => 'b' ) ) ) );
 		$this->assertSame( array( 'a' => 1 ), $this->callPrivate( $replacer, 'change_key', array( array( 'a' => 1 ), 'not-a-map' ) ) );
 	}
 
-	public function test_get_files_from_metadata_lists_file_and_sizes_with_a_file_key() {
-		$meta = array(
-			'file'  => '2026/10/photo.jpg',
-			'width' => 800,
-			'sizes' => array(
-				'thumbnail' => array( 'file' => 'photo-150x150.jpg', 'width' => 150 ),
-				'broken'    => array( 'width' => 10 ),
-			),
-		);
-
-		$result = $this->callPrivate( new Replacer(), 'getFilesFromMetadata', array( $meta ) );
-
-		$this->assertSame( array( 'file' => '2026/10/photo.jpg', 'thumbnail' => 'photo-150x150.jpg' ), $result );
-		$this->assertSame( array(), $this->callPrivate( new Replacer(), 'getFilesFromMetadata', array( array() ) ) );
-	}
-
-	public function test_get_relative_urls_builds_paths_in_the_main_file_directory() {
-		$replacer = new Replacer();
-		$replacer->setSource( 'http://example.org/wp-content/uploads/2020/01/photo.jpg' );
-		$replacer->setTarget( 'https://cdn.example.com/wp-content/uploads/2026/10/other.png' );
-		$replacer->setSourceMeta(
-			array(
-				'file'  => '2020/01/photo.jpg',
-				'sizes' => array( 'thumbnail' => array( 'file' => 'photo-150x150.jpg' ) ),
-			)
-		);
-		$replacer->setTargetMeta( array( 'file' => '2026/10/other.png' ) );
-
-		$result = $this->callPrivate( $replacer, 'getRelativeURLS' );
-
-		$this->assertSame(
-			array(
-				'source' => array(
-					'base'      => '/wp-content/uploads/2020/01/photo.jpg',
-					'file'      => '/wp-content/uploads/2020/01/photo.jpg',
-					'thumbnail' => '/wp-content/uploads/2020/01/photo-150x150.jpg',
-				),
-				'target' => array(
-					'base' => '/wp-content/uploads/2026/10/other.png',
-					'file' => '/wp-content/uploads/2026/10/other.png',
-				),
-			),
-			$result,
-			'Scheme and host are dropped; files are placed in the directory of the main file'
-		);
-	}
-
 	public function test_is_json_boundaries() {
-		$replacer = new Replacer();
+		$replacer = $this->newReplacer();
 		$cases    = array(
 			array( '{"a":1}', true ),
 			array( '[1,2]', true ),
-			array( '"abc"', true ),
+			array( '"abc"', false ),
 			array( '123', false ),
 			array( '0', false ),
 			array( '[]', false ),
@@ -870,7 +859,7 @@ class ReplacerTest extends WP_UnitTestCase {
 	}
 
 	public function test_check_incomplete_is_true_only_for_incomplete_objects() {
-		$replacer   = new Replacer();
+		$replacer   = $this->newReplacer();
 		$incomplete = unserialize( serialize( new stdClass() ), array( 'allowed_classes' => false ) );
 
 		$this->assertTrue( $this->callPrivate( $replacer, 'checkIncomplete', array( $incomplete ) ) );

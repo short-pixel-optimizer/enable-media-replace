@@ -243,10 +243,10 @@ class PackageLoaderTest extends WP_UnitTestCase {
 
 	public function test_module_loader_includes_a_class_not_loaded_yet() {
 		$candidates = array(
-			'EnableMediaReplace\Replacer\Classes\Url',
+			'EnableMediaReplace\Replacer\Classes\Data',
 			'EnableMediaReplace\Replacer\Classes\Setup',
 			'EnableMediaReplace\Replacer\Classes\Finder',
-			'EnableMediaReplace\Replacer\Classes\MetaData',
+			'EnableMediaReplace\Replacer\Classes\Record',
 			'EnableMediaReplace\Replacer\Libraries\Unserialize\DisallowedClassesSubstitutor',
 		);
 		$class = null;

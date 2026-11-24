@@ -86,6 +86,8 @@ class ReplaceViewController extends \EnableMediaReplace\ViewController
 
 			$replacer = new ReplaceController($attachment_id);
 
+			
+
 			$file = $replacer->getSourceFile(true);
 		/*	$filepath = $file->getFullPath();
 			$filename = $file->getFileName();

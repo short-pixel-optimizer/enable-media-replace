@@ -82,7 +82,7 @@ class CompatWpBakeryTest extends EMR_IntegrationTestCase {
 	public function test_replacer_construction_registers_the_wpbakery_module() {
 		$this->assertFalse( has_filter( 'emr/externals/urlencode_is_active' ), 'Precondition: no manual override.' );
 
-		new \EnableMediaReplace\Replacer\Replacer();
+		new \EnableMediaReplace\Replacer\Replacer2( 'emr' );
 
 		$module = \EnableMediaReplace\Replacer\Modules\WpBakery::getInstance();
 		$this->assertSame( 10, has_filter( 'emr/replacer/custom_replace_query', array( $module, 'addURLEncoded' ) ) );

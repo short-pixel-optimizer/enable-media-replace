@@ -137,7 +137,7 @@ class ReplaceFlowTest extends EMR_IntegrationTestCase {
 	}
 
 	/**
-	 * Replacer::replace() builds the search and replace arrays keyed by size
+	 * Replacer2::replace() builds the search and replace arrays keyed by size
 	 * name, and str_replace() pairs them by POSITION. A size the target lacks
 	 * is filled in by findNearestSize(); the replace array is then rebuilt in
 	 * the key order of the search array, so every reference goes to its own
@@ -417,7 +417,7 @@ class ReplaceFlowTest extends EMR_IntegrationTestCase {
 	 * Two posts carrying the URL in the same meta table: both rows are
 	 * rewritten and each post's meta cache is cleared, so both read the new
 	 * URL through the cache after the replace (the Replacer unit suite
-	 * covers the row loop of handleMetaData() itself).
+	 * covers the records of a replace run itself).
 	 */
 	public function test_search_replace_rewrites_two_matching_postmeta_rows_and_clears_both_caches() {
 		list( $id, , $url ) = $this->standardImage();
@@ -746,14 +746,14 @@ class ReplaceFlowTest extends EMR_IntegrationTestCase {
 	 * MODE_REPLACE deletes the `-scaled` file (removeCurrent()) and no new
 	 * one is generated, but the references to the `-scaled` URL, which is
 	 * the URL WordPress hands out for the image, are not rewritten: run()
-	 * passes `thumbnails_only`, and Replacer::replace() drops both `base`
+	 * passes `thumbnails_only`, and Replacer2::replace() drops both `base`
 	 * (the original) and `file` (the metadata file, here the `-scaled`
 	 * file) in that mode. Every post that embedded the image now points at
 	 * a missing file. The correct behaviour is to treat a vanished
 	 * `-scaled` file like a vanished size and rewrite it to the new main
 	 * file (keep the `file` pair in thumbnails-only mode when it differs
 	 * from `base`). Lives in ReplaceController::run() and
-	 * Replacer::replace().
+	 * Replacer2::replace().
 	 *
 	 * How to recognise the fix: the post content holds the new main URL and
 	 * the assertSame() on the old content fails.
@@ -878,13 +878,13 @@ class ReplaceFlowTest extends EMR_IntegrationTestCase {
 	 * but rewrites no reference at all: the source side has `file` and
 	 * size entries, the target metadata has neither `file` nor `width`,
 	 * findNearestSize() finds no partner (the SVG rule does not apply), the
-	 * search and replace arrays stay unbalanced and Replacer::replace()
+	 * search and replace arrays stay unbalanced and Replacer2::replace()
 	 * aborts before any query, including for the main URL (`base`), which
 	 * has a valid pair. run() ignores the abort. Every post that embedded
 	 * the image now points at a deleted file. The correct behaviour is to
 	 * map the unpaired entries to the new main file (as the SVG rule does)
 	 * or at least to run the balanced `base` pair. Lives in
-	 * Replacer::replace() / findNearestSize().
+	 * Classes\Setup::matchReplaceUrls() / findNearestSize().
 	 *
 	 * How to recognise the fix: the post content holds the new .txt URL and
 	 * the pinned assertSame() fails.
