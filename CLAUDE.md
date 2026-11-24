@@ -396,6 +396,52 @@ Production code changes only when the maintainer asks for them.
 Documentation-only edits (docblocks, comments) are not production changes;
 prove it with `git diff -w` and a comparison of the comment-stripped files.
 
+## Changing existing tests
+
+Existing tests are read-only by default. A red test is evidence, not an
+obstacle: it is first assumed to have found a defect. Never change a test
+just to make a run green.
+
+1. **Find the cause first.** A failing test has one of three causes: the
+   code is wrong, the intended behaviour changed, or the test is wrong. The
+   hand-off names the cause for every failing test before any assertion
+   changes.
+2. **Valid reasons to change an existing test** (the list is closed):
+   - the maintainer changed the intended behaviour, or approved the change;
+   - a pinned defect was fixed, so its pin flips to a regular test;
+   - the code under test was renamed or moved and the asserted behaviour
+     stays the same;
+   - the test was wrong, or depended on something outside its subject (the
+     date, the run order, the environment), and the hand-off shows the proof.
+3. **Never acceptable as a fix:** loosening an assertion (`assertSame` to
+   `assertEquals`, an exact value to "contains", a count to "at least"),
+   deleting an assertion or a test, widening an allow-list of known errors,
+   raising a timeout or a tolerance, adding a skip, refreshing a snapshot
+   without an intended UI change.
+4. **Ask before, not after.** A flipped pin and a pure rename need no
+   question. For every other reason, stop, report the failure and its cause,
+   and wait for the maintainer's decision. A newly found defect is pinned,
+   never fixed and never hidden.
+5. **Removal needs replacement.** A test is deleted only when the thing it
+   tested no longer exists. The hand-off names the test that covers the
+   behaviour now, or says that none does.
+6. **Report test changes on their own.** Every hand-off lists each changed,
+   removed or loosened test with its reason. Changes to existing tests go
+   into their own commit, apart from new tests and from code, and the
+   suggested commit message carries a `Tests-Changed: <reason>` line.
+7. **Prove a changed test still bites.** After changing a test, show that it
+   fails against the old or the broken behaviour, and say how in the
+   hand-off.
+8. **Snapshots:** `--update-snapshots` only for an intended UI change, one
+   spec at a time, with the before and after images named in the hand-off.
+
+`bin/check-test-changes.sh` reports the uncommitted changes that fall under
+these rules; run it before every hand-off that touches `tests/`. CI runs the
+same script (`.github/workflows/test-guard.yml`): a pushed commit that
+changes existing tests fails without a `Tests-Changed: <reason>` line in its
+message, and a pull request fails until a maintainer applies the
+`test-changes-approved` label.
+
 ## Known bugs and @todo (no bug numbers in the repo)
 
 Bug tracking is internal, and its numbering must never appear in the code,
