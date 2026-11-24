@@ -269,7 +269,8 @@ docs/                      - the documentation and test plan, the bulk design no
   campaign by default. Hooks: `emr/promo_banner/show`, `emr/promo_banner/in_window`,
   `emr/promo_banner/capability`, `emr/promo_banner/url`,
   `emr/settings/no_banner` (and the SHORTPIXEL_NO_BANNER constant). The E2E
-  support option `emr_e2e_promo_window` opens the window for the browser tests.
+  support option `emr_e2e_promo_window` alone decides the window in the browser
+  tests (open when set, closed otherwise, whatever the date).
 - **Bulk Enhance announcement:** `UIHelper::featureNotice()`, called by
   `route()` on EMR's own screens, queues the persistent notice
   `NOTICE_BULK_ENHANCE` (EMR002) for users with `manage_options` only, removes

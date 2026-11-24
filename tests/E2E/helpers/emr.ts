@@ -347,23 +347,10 @@ export async function withSelfReload(page: Page, action: () => Promise<unknown>,
  * Known JS defects the tripwire sees, as patterns over a tripwire entry
  * (message plus stack). A spec that has to cross one of them opts out with
  * `test.use({ allowConsoleErrors: true })` and calls expectOnlyKnownErrors();
- * each defect also has a pinned test that fails the day it is fixed.
+ * each defect also has a pinned test that fails the day it is fixed. None is
+ * known at the moment.
  */
-export const KNOWN_JS_DEFECTS = {
-	/**
-	 * js/emr_admin.js is enqueued on every EMR screen (route()), and its
-	 * init() ends with showReplaceOptions(), which dereferences
-	 * `section.options .location_option` without a null check. The
-	 * remove-background screen has no such element, so every load throws a
-	 * TypeError (Chromium: "Cannot read properties of null (reading
-	 * 'classList')", Firefox: "locationOption is null", WebKit: "null is not
-	 * an object (evaluating 'locationOption.classList')"). Pinned in
-	 * specs/smoke.spec.ts. Chromium and Firefox name the function in the
-	 * stack; WebKit reports the frame as `unknown`, so the pattern also
-	 * accepts the variable name WebKit's message carries.
-	 */
-	removeBackgroundLocationOption: /(showReplaceOptions|locationOption)[\s\S]*emr_admin\.js/,
-} as const;
+export const KNOWN_JS_DEFECTS: Record<string, RegExp> = {};
 
 /** Every captured error matches one of `allowed` (and, when given, at least one was captured). */
 export function expectOnlyKnownErrors(consoleErrors: string[], allowed: RegExp[]): void {

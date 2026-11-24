@@ -9,19 +9,14 @@
  *   - the replace screen's "remove the background after replacing" option;
  *   - the quota-exceeded (free) and plan-expired (keyed) notices;
  *   - the `background` feature off: no entry points, the URL refused.
- *
- * Every load of this screen throws the known emr_admin.js TypeError
- * (KNOWN_JS_DEFECTS.removeBackgroundLocationOption, pinned in
- * smoke.spec.ts), so the screen tests accept that error and nothing else.
  */
 import { test, expect } from '../fixtures';
-import { KNOWN_JS_DEFECTS, RemoveBackgroundScreen, ReplaceScreen, SuccessScreen, emrUrls, expectOnlyKnownErrors } from '../helpers/emr';
+import { RemoveBackgroundScreen, ReplaceScreen, SuccessScreen, emrUrls } from '../helpers/emr';
 import { expectSuccessThenRedirect, fetchBytes, submitReplace } from '../helpers/journeys';
 import { EditAttachment, MediaList } from '../helpers/media-list';
 import type { Page } from '@playwright/test';
 
 const KEY = 'E2EKEY0123456789ABCD';
-const KNOWN = [KNOWN_JS_DEFECTS.removeBackgroundLocationOption];
 
 /** Click Preview and wait for the emr_remove_background answer. */
 async function preview(page: Page, screen: RemoveBackgroundScreen): Promise<Record<string, unknown>> {
@@ -35,9 +30,7 @@ async function preview(page: Page, screen: RemoveBackgroundScreen): Promise<Reco
 }
 
 test.describe('Remove background', () => {
-	test.use({ allowConsoleErrors: true });
-
-	test('the screen shows the previews and the background options', async ({ page, emr, consoleErrors }) => {
+	test('the screen shows the previews and the background options', async ({ page, emr }) => {
 		const screen = new RemoveBackgroundScreen(page);
 		await screen.goto(emr.seed.attachment_id);
 
@@ -73,11 +66,9 @@ test.describe('Remove background', () => {
 
 		await screen.backgroundType('transparent').check();
 		await expect(page.locator('#solid_selecter')).toBeHidden();
-
-		expectOnlyKnownErrors(consoleErrors, KNOWN);
 	});
 
-	test('Cancel goes back to the page the screen was opened from, through the shared history-back link', async ({ page, emr, consoleErrors }) => {
+	test('Cancel goes back to the page the screen was opened from, through the shared history-back link', async ({ page, emr }) => {
 		const list = new MediaList(page);
 		await list.goto();
 		const screen = new RemoveBackgroundScreen(page);
@@ -89,10 +80,9 @@ test.describe('Remove background', () => {
 		await Promise.all([page.waitForURL(/upload\.php\?mode=list/), screen.cancelButton.click()]);
 
 		await expect(page.locator('table.wp-list-table.media')).toBeVisible();
-		expectOnlyKnownErrors(consoleErrors, KNOWN);
 	});
 
-	test('API key: a valid Unlimited key is saved, then removed', async ({ page, emr, consoleErrors }) => {
+	test('API key: a valid Unlimited key is saved, then removed', async ({ page, emr }) => {
 		const screen = new RemoveBackgroundScreen(page);
 		await screen.goto(emr.seed.attachment_id);
 		await expect(screen.account).toContainText('Free plan (10 images)');
@@ -122,11 +112,9 @@ test.describe('Remove background', () => {
 		await expect(screen.apiKeySave).toHaveText('Activate');
 		await expect(screen.maskedKey).toHaveCount(0);
 		expect((await emr.getOption('emr_shortpixel_api_key')).exists).toBe(false);
-
-		expectOnlyKnownErrors(consoleErrors, KNOWN);
 	});
 
-	test('API key: a wrong key and a key without the Unlimited plan are refused with their messages', async ({ page, emr, consoleErrors }) => {
+	test('API key: a wrong key and a key without the Unlimited plan are refused with their messages', async ({ page, emr }) => {
 		const screen = new RemoveBackgroundScreen(page);
 		await screen.goto(emr.seed.attachment_id);
 
@@ -150,11 +138,9 @@ test.describe('Remove background', () => {
 		await screen.apiKeySave.click();
 		await expect(screen.apiKeyNotice).toHaveText('The API key must be exactly 20 characters.');
 		expect((await emr.mockRequests('api-status.php')).length).toBe(2);
-
-		expectOnlyKnownErrors(consoleErrors, KNOWN);
 	});
 
-	test('Preview shows the API result and enables Replace', async ({ page, emr, consoleErrors }) => {
+	test('Preview shows the API result and enables Replace', async ({ page, emr }) => {
 		const screen = new RemoveBackgroundScreen(page);
 		await screen.goto(emr.seed.attachment_id);
 		await screen.backgroundType('solid').check();
@@ -189,11 +175,9 @@ test.describe('Remove background', () => {
 		await expect(screen.backgroundType('solid')).toBeChecked();
 		await expect(screen.colorPicker).toHaveValue('#ff0000');
 		await expect(screen.transparency).toHaveValue('40');
-
-		expectOnlyKnownErrors(consoleErrors, KNOWN);
 	});
 
-	test('Replace after a preview replaces the image with the result', async ({ page, emr, consoleErrors }) => {
+	test('Replace after a preview replaces the image with the result', async ({ page, emr }) => {
 		const id = emr.seed.attachment_id;
 		const before = await emr.attachment(id);
 		const screen = new RemoveBackgroundScreen(page);
@@ -218,11 +202,9 @@ test.describe('Remove background', () => {
 		expect(served.body.equals(result.body), 'the attachment holds the downloaded result').toBe(true);
 		expect((await emr.mockRequests('/f/')).length, 'the result was downloaded from the API').toBeGreaterThan(0);
 		await expect(new EditAttachment(page).thumbnailsBox).toBeAttached();
-
-		expectOnlyKnownErrors(consoleErrors, KNOWN);
 	});
 
-	test('quota exceeded on the free plan: a dismissible notice, no preview', async ({ page, emr, consoleErrors }) => {
+	test('quota exceeded on the free plan: a dismissible notice, no preview', async ({ page, emr }) => {
 		await emr.mock({ quotaExceeded: true });
 		const screen = new RemoveBackgroundScreen(page);
 		await screen.goto(emr.seed.attachment_id);
@@ -242,11 +224,9 @@ test.describe('Remove background', () => {
 
 		await screen.notice.locator('.notice-dismiss').click();
 		await expect(screen.notice).toBeHidden();
-
-		expectOnlyKnownErrors(consoleErrors, KNOWN);
 	});
 
-	test('plan expired with a stored key: the renew notice, no reducer call', async ({ page, emr, consoleErrors }) => {
+	test('plan expired with a stored key: the renew notice, no reducer call', async ({ page, emr }) => {
 		await emr.setApiKey(KEY);
 		await emr.mock({ unlimited: 'false' });
 		const screen = new RemoveBackgroundScreen(page);
@@ -267,11 +247,9 @@ test.describe('Remove background', () => {
 
 		expect((await emr.mockRequests('api-status.php')).length - statusCallsBefore, 'the preview checks the plan once').toBe(1);
 		expect(await emr.mockRequests('reducer.php')).toEqual([]);
-
-		expectOnlyKnownErrors(consoleErrors, KNOWN);
 	});
 
-	test('an API error message is shown in the result panel', async ({ page, emr, consoleErrors }) => {
+	test('an API error message is shown in the result panel', async ({ page, emr }) => {
 		await emr.mock({ forceStatusCode: '-201', errorMessage: 'Invalid image (E2E)' });
 		const screen = new RemoveBackgroundScreen(page);
 		await screen.goto(emr.seed.attachment_id);
@@ -281,10 +259,8 @@ test.describe('Remove background', () => {
 		await expect(screen.resultError).toHaveText('Invalid image (E2E)');
 		await expect(screen.notice).toBeHidden();
 		await expect(screen.replaceButton).toBeDisabled();
-
-		expectOnlyKnownErrors(consoleErrors, KNOWN);
 	});
-	test('"remove the background after replacing" sends the success redirect to this screen', async ({ page, emr, consoleErrors }) => {
+	test('"remove the background after replacing" sends the success redirect to this screen', async ({ page, emr }) => {
 		const id = emr.seed.attachment_id;
 		const replace = new ReplaceScreen(page);
 		await replace.goto(id);
@@ -301,8 +277,6 @@ test.describe('Remove background', () => {
 		await expect(screen.form).toBeVisible();
 		await expect(screen.form.locator('input[name="ID"]')).toHaveValue(String(id));
 		expect((await emr.attachment(id)).metadata).toMatchObject({ width: 640, height: 480 });
-
-		expectOnlyKnownErrors(consoleErrors, KNOWN);
 	});
 });
 

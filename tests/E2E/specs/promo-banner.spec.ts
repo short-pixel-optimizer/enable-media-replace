@@ -6,20 +6,18 @@
  * banner never shows.
  */
 import { test, expect } from '../fixtures';
-import { KNOWN_JS_DEFECTS, emrUrls, expectOnlyKnownErrors } from '../helpers/emr';
+import { emrUrls } from '../helpers/emr';
 
 const BANNER = '.shortpixel-bf';
 
 test.describe('Promo banner', () => {
-	test.use({ allowConsoleErrors: true });
-
 	test('outside the campaign window it shows nowhere', async ({ page }) => {
 		await page.goto(emrUrls.bulk);
 		await expect(page.locator('.emr-page-header')).toBeVisible();
 		await expect(page.locator(BANNER)).toHaveCount(0);
 	});
 
-	test('inside the window: on the bulk, replace, remove background and upscale pages, below the header bar, not elsewhere', async ({ page, emr, consoleErrors }) => {
+	test('inside the window: on the bulk, replace, remove background and upscale pages, below the header bar, not elsewhere', async ({ page, emr }) => {
 		await emr.setOption('emr_e2e_promo_window', 1);
 		const id = emr.seed.attachment_id;
 
@@ -43,8 +41,6 @@ test.describe('Promo banner', () => {
 		await expect(page.locator(BANNER)).toHaveCount(0);
 		await page.goto('/wp-admin/index.php');
 		await expect(page.locator(BANNER)).toHaveCount(0);
-
-		expectOnlyKnownErrors(consoleErrors, [KNOWN_JS_DEFECTS.removeBackgroundLocationOption]);
 	});
 
 	test('the server prints it right after the header bar (no script moves it, no flash) and it has no inline code', async ({ page, emr }) => {

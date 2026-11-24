@@ -665,11 +665,7 @@ media modal; `bulk.spec.ts` the bulk page).
   `test.use({ allowConsoleErrors: true })` and asserts on `consoleErrors`.
   Known defects are listed in `KNOWN_JS_DEFECTS` (`helpers/emr.ts`);
   `expectOnlyKnownErrors(consoleErrors, [...])` accepts those and nothing
-  else. The remove-background screen throws one on every load
-  (`emr_admin.js` `showReplaceOptions()` on a missing `.location_option`,
-  pinned in `smoke.spec.ts`), so every remove-background spec needs it; the
-  upscale screen enqueues the same script and the upscale specs accept the
-  same error.
+  else. The list is empty at the moment.
 - Node-side HTTP to the container sends `Connection: close`
   (`NO_KEEPALIVE_HEADERS` in `helpers/emr.ts`): Apache closes idle
   keep-alive sockets after 5 s, and Node, unlike a browser, does not retry
