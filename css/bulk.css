@@ -293,6 +293,15 @@
   outline-offset: 2px;
 }
 
+.emr-option-new {
+  display: inline-block;
+  width: 44px;
+  height: auto;
+  margin-inline-start: 6px;
+  vertical-align: middle;
+  pointer-events: none;
+}
+
 .emr-bulk-wrapper .hidden {
   display: none !important;
 }

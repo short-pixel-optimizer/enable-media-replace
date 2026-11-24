@@ -426,4 +426,154 @@ class BulkFlowTest extends EMR_IntegrationTestCase {
 		$prepared = $this->prepare();
 		$this->assertSame( '1', $prepared->media->stats->total );
 	}
+
+	// ---------------------------------------------------------------------
+	// The Transparent PNG option (bg_remove_format).
+	// ---------------------------------------------------------------------
+
+	public function test_bulk_remove_background_without_the_option_sends_no_bg_remove_format() {
+		$id   = $this->image();
+		$bulk = BulkController::getInstance();
+		$bulk->createNewBulk( array( 'operation' => 'background', 'items' => array( $id ) ) );
+		$this->prepare();
+		$bulk->startBulk();
+		$this->runUntilDone();
+
+		$bodies = $this->reducerBodies();
+		$this->assertCount( 1, $bodies );
+		$this->assertArrayNotHasKey( 'bg_remove_format', $bodies[0] );
+		$this->assertArrayNotHasKey( 'bg_remove_format', BulkImage::getById( $id )->getMarker()['background'] );
+	}
+
+	/** Without the option a result of another type never renames the file, as before. */
+	public function test_bulk_remove_background_without_the_option_keeps_the_jpg_name_for_a_png_result() {
+		$id   = $this->image();
+		$path = get_attached_file( $id );
+		$this->api->resultFixture = 'codeispoetry.png';
+		$bulk = BulkController::getInstance();
+		$bulk->createNewBulk( array( 'operation' => 'background', 'items' => array( $id ) ) );
+		$this->prepare();
+		$bulk->startBulk();
+		$done = $this->runUntilDone();
+
+		$this->assertSame( '1', $done->media->stats->done );
+		clean_post_cache( $id );
+		$this->assertSame( $path, get_attached_file( $id ) );
+		$this->assertFileExists( $path );
+	}
+
+	public function test_bulk_transparent_png_converts_the_jpg_rewrites_its_urls_and_a_restore_brings_the_jpg_back() {
+		$id       = $this->image();
+		$path     = get_attached_file( $id );
+		$original = file_get_contents( $path );
+		wp_update_post( array( 'ID' => $id, 'post_title' => 'A hand-written title' ) );
+		$oldUrl   = wp_get_attachment_url( $id );
+		$oldThumb = $this->sizeUrl( $id, 'thumbnail' );
+		$this->assertStringEndsWith( '.jpg', $oldUrl, 'Precondition: a JPG.' );
+		$oldContent = '<img src="' . $oldUrl . '"> <img src="' . $oldThumb . '">';
+		$post_id    = $this->makePost( $oldContent );
+		$this->api->resultFixture = 'codeispoetry.png';
+		$this->addHook( 'emr/bulk/item/done', $this->record( 'bulk-done' ), 10, 3 );
+
+		$bulk = BulkController::getInstance();
+		$bulk->createNewBulk( array( 'operation' => 'background', 'bg_remove_format' => 'auto', 'items' => array( $id ) ) );
+		$this->prepare();
+		$bulk->startBulk();
+		$done = $this->runUntilDone();
+
+		$this->assertSame( '1', $done->media->stats->done );
+		$this->assertSame( '0', $done->media->stats->errors );
+		$bodies = $this->reducerBodies();
+		$this->assertCount( 1, $bodies );
+		$this->assertSame( 1, $bodies[0]['bg_remove'] );
+		$this->assertSame( 'auto', $bodies[0]['bg_remove_format'] );
+
+		clean_post_cache( $id );
+		$newPath = get_attached_file( $id );
+		$this->assertSame( preg_replace( '/\.jpg$/', '.png', $path ), $newPath );
+		$this->assertFileExists( $newPath );
+		$this->assertFileDoesNotExist( $path );
+		$this->assertSame( file_get_contents( $this->fixturePath( 'codeispoetry.png' ) ), file_get_contents( $newPath ) );
+		$this->assertSame( 'image/png', get_post_mime_type( $id ) );
+		$newUrl = wp_get_attachment_url( $id );
+		$this->assertSame( preg_replace( '/\.jpg$/', '.png', $oldUrl ), $newUrl );
+		$content = $this->rawContent( $post_id );
+		$this->assertStringContainsString( '<img src="' . $newUrl . '">', $content );
+		$this->assertStringNotContainsString( '.jpg', $content );
+		$this->assertSame( 'A hand-written title', $this->rawPostField( $id, 'post_title' ) );
+
+		$image  = BulkImage::getById( $id );
+		$marker = $image->getMarker();
+		$this->assertSame( 'auto', $marker['background']['bg_remove_format'] );
+		$this->assertStringEndsWith( '.jpg', $marker['backup'], 'The backup is the JPG.' );
+		$this->assertSame( $original, file_get_contents( BackupController::getBackupFile( $marker['backup'] )->getFullPath() ) );
+		$events = $this->eventsNamed( 'bulk-done' );
+		$this->assertCount( 1, $events );
+		$this->assertStringEndsWith( '.png', $events[0][1][0]->getFileName(), 'The done hook sees the new file.' );
+
+		// Restore.
+		$bulk->finishBulk();
+		$this->api->reset();
+		$bulk->createNewBulk( array( 'operation' => 'background', 'customOp' => BulkQueue::CUSTOM_OP_RESTORE ) );
+		$this->prepare();
+		$bulk->startBulk();
+		$done = $this->runUntilDone();
+
+		$this->assertSame( '1', $done->media->stats->done );
+		clean_post_cache( $id );
+		$this->assertSame( $path, get_attached_file( $id ), 'The JPG is back under its own name.' );
+		$this->assertSame( $original, file_get_contents( $path ) );
+		$this->assertFileDoesNotExist( $newPath, 'The PNG is gone.' );
+		$this->assertSame( 'image/jpeg', get_post_mime_type( $id ) );
+		$this->assertSame( $oldUrl, wp_get_attachment_url( $id ) );
+		$this->assertSame( $oldContent, $this->rawContent( $post_id ), 'The links point to the JPG and its sizes again.' );
+		$this->assertSame( $oldUrl, $this->rawPostField( $id, 'guid' ) );
+		$this->assertSame( 'A hand-written title', $this->rawPostField( $id, 'post_title' ) );
+		$this->assertSame( array(), BulkImage::getById( $id )->getMarker() );
+		$this->assertFalse( BackupController::getBackupFile( $marker['backup'] )->exists() );
+		$this->assertCount( 0, $this->api->requests, 'No API traffic for a restore.' );
+	}
+
+	/** An upscale after a conversion keeps the one backup: the original JPG. */
+	public function test_an_upscale_after_a_transparent_png_conversion_keeps_the_jpg_as_the_only_backup() {
+		$id       = $this->image();
+		$path     = get_attached_file( $id );
+		$original = file_get_contents( $path );
+		$this->api->resultFixture = 'codeispoetry.png';
+		$bulk = BulkController::getInstance();
+		$bulk->createNewBulk( array( 'operation' => 'background', 'bg_remove_format' => 'auto', 'items' => array( $id ) ) );
+		$this->prepare();
+		$bulk->startBulk();
+		$this->runUntilDone();
+		$bulk->finishBulk();
+		clean_post_cache( $id );
+		$this->assertStringEndsWith( '.png', get_attached_file( $id ), 'Precondition: converted.' );
+		$backup = BulkImage::getById( $id )->getMarker()['backup'];
+
+		$bulk->createNewBulk( array( 'operation' => 'upscale', 'threshold' => 2000, 'items' => array( $id ) ) );
+		$this->prepare();
+		$bulk->startBulk();
+		$done = $this->runUntilDone();
+		$bulk->finishBulk();
+
+		$this->assertSame( '1', $done->media->stats->done );
+		$image = BulkImage::getById( $id );
+		$this->assertSame( $backup, $image->getOperationMarker( 'upscale' )['backup'] );
+		$this->assertSame( $backup, $image->getOperationMarker( 'background' )['backup'] );
+		$files = array();
+		foreach ( new RecursiveIteratorIterator( new RecursiveDirectoryIterator( BackupController::getBackupPath(), FilesystemIterator::SKIP_DOTS ) ) as $file ) {
+			if ( in_array( strtolower( $file->getExtension() ), array( 'jpg', 'png' ), true ) ) {
+				$files[] = $file->getPathname();
+			}
+		}
+		$this->assertSame( array( BackupController::getBackupFile( $backup )->getFullPath() ), $files, 'One backup: the original JPG.' );
+
+		$bulk->createNewBulk( array( 'operation' => 'upscale', 'customOp' => BulkQueue::CUSTOM_OP_RESTORE ) );
+		$this->prepare();
+		$bulk->startBulk();
+		$this->runUntilDone();
+		clean_post_cache( $id );
+		$this->assertSame( $path, get_attached_file( $id ) );
+		$this->assertSame( $original, file_get_contents( $path ) );
+	}
 }

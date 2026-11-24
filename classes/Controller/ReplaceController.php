@@ -203,6 +203,16 @@ class ReplaceController
 	protected $tmpUploadPath;
 
 	/**
+	 * MODE_SEARCHREPLACE only: true leaves the post title, slug and excerpt as they are
+	 * and updates the guid alone. Set by setupParams() from `keep_post_data`; a format
+	 * change (getFormatChangeParams()) uses it, because there the file is the same image
+	 * in another format, not a new upload whose name should become the title.
+	 *
+	 * @var bool
+	 */
+	protected $keepPostData = false;
+
+	/**
 	 * Last error code (one of the ERROR_* constants), or null when none.
 	 *
 	 * @var int|null
@@ -260,6 +270,8 @@ class ReplaceController
 	 *     @type string           $new_date          MySQL date for updateDate().
 	 *     @type string           $new_filename      Original name of the uploaded file.
 	 *     @type string           $uploadFile        Path of the temporary uploaded file.
+	 *     @type bool             $keep_post_data    Optional, search-replace only: keep the post title,
+	 *                                               slug and excerpt (see $keepPostData). Default false.
 	 * }
 	 * @return bool True when a target was resolved; false when setupTarget() fails (the
 	 *              error is then available via returnLastError() / returnLastErrorData()).
@@ -277,6 +289,7 @@ class ReplaceController
 
 		$this->new_filename = $params['new_filename'];
 		$this->tmpUploadPath = $params['uploadFile'];
+		$this->keepPostData  = isset($params['keep_post_data']) && true === $params['keep_post_data'];
 
 		$targetFile = $this->setupTarget();
 		if (is_null($targetFile)) {
@@ -285,6 +298,63 @@ class ReplaceController
 		$this->targetFile = $this->fs()->getFile($targetFile);
 
 		return true;
+	}
+
+	/**
+	 * The name the attachment's file gets when $uploadPath holds an image of another type
+	 * than the current file: the current name with the extension of the new type
+	 * (`photo.jpg` and a PNG give `photo.png`). The type is read from the content
+	 * (wp_get_image_mime()), not from the name: a result downloaded from the API is a
+	 * temporary file whose name says nothing.
+	 *
+	 * @param string $uploadPath Path of the uploaded or downloaded file.
+	 * @return string|false The new file name; false when the type is the same as the
+	 *                      current file's, is neither PNG nor JPEG, or cannot be read.
+	 */
+	public function getFormatChangeName($uploadPath)
+	{
+		$extensions = array('image/png' => 'png', 'image/jpeg' => 'jpg');
+
+		$mime = (is_string($uploadPath) && file_exists($uploadPath)) ? wp_get_image_mime($uploadPath) : false;
+		if (false === $mime || ! isset($extensions[ $mime ])) {
+			return false;
+		}
+
+		$name    = $this->getSourceFile()->getFileName();
+		$current = wp_check_filetype($name);
+		if ($mime === $current['type']) {
+			return false;
+		}
+
+		return pathinfo($name, PATHINFO_FILENAME) . '.' . $extensions[ $mime ];
+	}
+
+	/**
+	 * The setupParams() values that turn a same-name replace into a format change: when
+	 * $uploadPath is an image of another type (getFormatChangeName()), or when $newName
+	 * names the file to go back to (a restore), the file gets that name next to the
+	 * current one (made unique when taken), every reference to the old URLs is rewritten
+	 * (MODE_SEARCHREPLACE) and the post title, slug and excerpt stay (`keep_post_data`).
+	 * Merge the result over the MODE_REPLACE parameters.
+	 *
+	 * @param string      $uploadPath Path of the uploaded or downloaded file.
+	 * @param string|null $newName    The file name to use; null derives it from the type.
+	 * @return array Empty when the name does not change.
+	 */
+	public function getFormatChangeParams($uploadPath, $newName = null)
+	{
+		$name = is_null($newName) ? $this->getFormatChangeName($uploadPath) : $newName;
+		if (! is_string($name) || '' === $name || $name === $this->getSourceFile()->getFileName()) {
+			return array();
+		}
+
+		return array(
+			'replace_type'   => 'replace_and_search',
+			'new_location'   => false,
+			'location_dir'   => null,
+			'new_filename'   => $name,
+			'keep_post_data' => true,
+		);
 	}
 
 	/**
@@ -341,7 +411,8 @@ class ReplaceController
 	 * 13. `_emr_replace_author` post meta: set to the current user when the post author is
 	 *     someone else; deleted when the current user is the author and the meta exists.
 	 * 14. MODE_SEARCHREPLACE only: updates post_title, post_name (sanitize_title of the
-	 *     title), post_excerpt (when the image caption is non-empty) and guid via
+	 *     title), post_excerpt (when the image caption is non-empty; these three are left
+	 *     alone with `keep_post_data`) and guid via
 	 *     wp_update_post(), then writes the guid again with a direct $wpdb->update() because
 	 *     wp_update_post() does not change the guid of an existing post. A WP_Error sets
 	 *     ERROR_UPDATE_POST.
@@ -491,14 +562,16 @@ class ReplaceController
 		}
 
 		if ($this->replaceType == self::MODE_SEARCHREPLACE) {
-			// Write new image title.
-			$title = $this->getNewTitle($target_metadata);
-			$excerpt = $this->getNewExcerpt($target_metadata);
 			$update_ar = array('ID' => $this->post_id);
-			$update_ar['post_title'] = $title;
-			$update_ar['post_name'] = sanitize_title($title);
-			if ($excerpt !== false) {
-				$update_ar['post_excerpt'] = $excerpt;
+			if (false === $this->keepPostData) {
+				// Write new image title.
+				$title = $this->getNewTitle($target_metadata);
+				$excerpt = $this->getNewExcerpt($target_metadata);
+				$update_ar['post_title'] = $title;
+				$update_ar['post_name'] = sanitize_title($title);
+				if ($excerpt !== false) {
+					$update_ar['post_excerpt'] = $excerpt;
+				}
 			}
 			$update_ar['guid'] = $target_url; //wp_get_attachment_url($this->post_id);
 

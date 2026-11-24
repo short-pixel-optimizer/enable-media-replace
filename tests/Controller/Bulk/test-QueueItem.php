@@ -241,4 +241,24 @@ class BulkQueueItemTest extends WP_UnitTestCase {
 		$q->data()->action = 'restore';
 		$this->assertInstanceOf( ActionController::class, $q->getAPIController() );
 	}
+
+	/**
+	 * The Transparent PNG option: `bg_remove_format` is sent only when asked
+	 * for with the API's value, and only with a transparent background.
+	 */
+	public function test_newRemoveBackgroundAction_adds_bg_remove_format_only_for_the_transparent_png_option() {
+		$q = new QueueItem( array( 'imageModel' => $this->image() ) );
+
+		$q->newRemoveBackgroundAction( array( 'bg_remove_format' => 'auto' ) );
+		$this->assertSame( array( 'bg_remove' => 1, 'bg_remove_format' => 'auto', 'refresh' => true ), $q->data()->paramlist );
+
+		$q->newRemoveBackgroundAction( array( 'bg_remove_format' => null ) );
+		$this->assertSame( array( 'bg_remove' => 1, 'refresh' => true ), $q->data()->paramlist, 'Without the option the parameters are the same as before it existed.' );
+
+		$q->newRemoveBackgroundAction( array( 'bg_remove_format' => 'png' ) );
+		$this->assertArrayNotHasKey( 'bg_remove_format', $q->data()->paramlist, 'Only the value the API knows is passed on.' );
+
+		$q->newRemoveBackgroundAction( array( 'do_transparent' => false, 'replace_color' => '#ffffff', 'replace_transparency' => 100, 'bg_remove_format' => 'auto' ) );
+		$this->assertSame( array( 'bg_remove' => '#ffffffFF', 'refresh' => true ), $q->data()->paramlist, 'A solid background keeps the image format.' );
+	}
 }

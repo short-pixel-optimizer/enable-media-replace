@@ -150,6 +150,23 @@ class BulkImage
 	}
 
 	/**
+	 * Forgets the cached file, metadata and ReplaceController, after a replace
+	 * that changed the file's name (a format change or its restore).
+	 *
+	 * @return void
+	 */
+	public function resetStatus()
+	{
+		$this->replaceController = null;
+		$this->file              = null;
+		$this->meta              = null;
+		$post                    = get_post($this->id);
+		if ($post instanceof \WP_Post) {
+			$this->post = $post;
+		}
+	}
+
+	/**
 	 * File name of the main file.
 	 *
 	 * @return string
@@ -265,7 +282,8 @@ class BulkImage
 	 * The bulk marker: what was done and where the backup is, merged over
 	 * the operations: `['background' => data, 'upscale' => data, 'backup' => path]`.
 	 * Every operation backs up the same file (the original before the first
-	 * one, BackupController::backup() keeps an existing backup), so one
+	 * one: ActionController::applyResult() reuses the backup of an earlier
+	 * operation, and BackupController::backup() keeps an existing one), so one
 	 * `backup` entry stands for all.
 	 *
 	 * @return array Empty when the bulk never touched this attachment.

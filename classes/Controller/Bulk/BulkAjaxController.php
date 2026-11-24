@@ -10,6 +10,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+use EnableMediaReplace\Api;
 use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
 
 /**
@@ -227,7 +228,8 @@ class BulkAjaxController
 	 * Creates a new bulk from the selection panel.
 	 *
 	 * POST fields: `operation` ('background' or 'upscale'), `threshold`,
-	 * `bg_type` ('transparent' or 'solid'), `bg_color`, `bg_transparency`,
+	 * `bg_type` ('transparent', 'transparent_png' or 'solid'; anything else is
+	 * 'transparent'), `bg_color`, `bg_transparency`,
 	 * `background_process`. The choices are stored as the bulk settings and
 	 * passed to BulkController::createNewBulk().
 	 *
@@ -255,7 +257,8 @@ class BulkAjaxController
 			$settings['upscale_threshold'] = BulkController::sanitizeThreshold(wp_unslash($_POST['threshold']));
 		}
 		if (isset($_POST['bg_type'])) {
-			$settings['bg_type'] = ('solid' === sanitize_key(wp_unslash($_POST['bg_type']))) ? 'solid' : 'transparent';
+			$bg_type             = sanitize_key(wp_unslash($_POST['bg_type']));
+			$settings['bg_type'] = in_array($bg_type, array('solid', Api::BG_TYPE_TRANSPARENT_PNG), true) ? $bg_type : 'transparent';
 		}
 		if (isset($_POST['bg_color'])) {
 			$color = sanitize_hex_color(wp_unslash($_POST['bg_color']));
@@ -276,6 +279,9 @@ class BulkAjaxController
 			$args['do_transparent']       = ('solid' !== $settings['bg_type']);
 			$args['replace_color']        = $settings['bg_color'];
 			$args['replace_transparency'] = (int) $settings['bg_transparency'];
+			if (Api::BG_TYPE_TRANSPARENT_PNG === $settings['bg_type']) {
+				$args['bg_remove_format'] = Api::BG_REMOVE_FORMAT_AUTO;
+			}
 		}
 
 		$bulk->createNewBulk('media', $args);

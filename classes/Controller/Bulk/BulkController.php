@@ -71,7 +71,7 @@ class BulkController
 	/**
 	 * The bulk settings with their defaults: `background_process` (bool,
 	 * cron-driven ticks), `upscale_threshold` (int px), `bg_type`
-	 * ('transparent' or 'solid'), `bg_color` (hex), `bg_transparency` (0-100,
+	 * ('transparent', 'transparent_png' or 'solid'), `bg_color` (hex), `bg_transparency` (0-100,
 	 * the opacity of the colour: 100 is solid, the default, as on the single
 	 * remove background screen).
 	 * Stored under `bulk_*` keys of the `enable_media_replace` option.
@@ -162,6 +162,9 @@ class BulkController
 	 *     @type bool        $do_transparent       Background: transparent result (default true).
 	 *     @type string|null $replace_color        Background: colour when not transparent.
 	 *     @type int         $replace_transparency Background: alpha 0-100 for the colour.
+	 *     @type string      $bg_remove_format     Background, transparent only: 'auto' asks for a transparent
+	 *                                             PNG whenever possible (a JPG is then converted and renamed).
+	 *                                             Absent by default.
 	 *     @type int[]       $items                Explicit attachment IDs (tests, API callers).
 	 * }
 	 * @return \stdClass The queue stats after creation.

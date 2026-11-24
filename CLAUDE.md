@@ -245,6 +245,20 @@ docs/                      - the documentation and test plan, the bulk design no
   (`Api::download()`). The second API call is free of charge. `UIHelper::getUpscaleFactors()` maps
   each factor to the widest source it accepts; `isUpscalable()` hides the
   entry points above the largest one.
+- **Transparent PNG option:** the background type `transparent_png`
+  (`Api::BG_TYPE_TRANSPARENT_PNG`, the third radio with SPIO's NEW! badge on
+  the remove background screen and in the bulk selection) adds
+  `bg_remove_format` 'auto' to the reducer body, in the single flow and the
+  bulk alike (bulk option `bg_remove_format`); the API then answers a
+  transparent PNG whenever possible, also for a JPG. It is never the default
+  (`transparent` is), and every other request has the body it had before.
+  Only with this option may a result change the file's type:
+  `ReplaceController::getFormatChangeParams()` reads the real type of the
+  downloaded file and switches the replace to MODE_SEARCHREPLACE with the
+  `.png` name (made unique when taken) and `keep_post_data` (title, slug and
+  excerpt stay; the guid follows). In the bulk the backup stays the JPG, a
+  later operation reuses it, and a restore puts the JPG back under its own
+  name with the references rewritten back.
 - **Hooks for other plugins:** `wp_handle_replace` (before the swap),
   `enable-media-replace-upload-done` (after it), `emr/replace/*`,
   `emr/replacer/*` (from the module), `emr/feature/*`, `emr/upsell`,

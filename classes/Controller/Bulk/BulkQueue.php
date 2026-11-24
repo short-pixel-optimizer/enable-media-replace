@@ -452,6 +452,7 @@ class BulkQueue
 						'do_transparent'       => ! (is_array($options) && isset($options['do_transparent'])) || (bool) $options['do_transparent'],
 						'replace_color'        => (is_array($options) && isset($options['replace_color'])) ? $options['replace_color'] : null,
 						'replace_transparency' => (is_array($options) && isset($options['replace_transparency'])) ? $options['replace_transparency'] : 0,
+						'bg_remove_format'     => (is_array($options) && isset($options['bg_remove_format'])) ? $options['bg_remove_format'] : null,
 					));
 				}
 				$files[ $path ] = true;

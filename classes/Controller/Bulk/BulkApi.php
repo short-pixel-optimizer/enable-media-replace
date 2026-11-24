@@ -24,7 +24,7 @@ use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
  *
  * - The request body is the one EMR's single flow sends (Api::request()
  *   with a key): plugin_version, key, urllist, lossy 0, item_id, refresh
- *   and bg_remove or upscale. No timestamp is added to the URL; `refresh`
+ *   and bg_remove (with bg_remove_format for the Transparent PNG option) or upscale. No timestamp is added to the URL; `refresh`
  *   plus the cleanup call purge the remote cache instead.
  * - handleActionResponse() maps every per-item status that is not waiting
  *   or success to a failure with the API message, where SPIO returns null.
@@ -143,6 +143,9 @@ class BulkApi
 
 		if (isset($paramlist['bg_remove'])) {
 			$requestBody['bg_remove'] = $paramlist['bg_remove'];
+			if (isset($paramlist['bg_remove_format'])) { // the Transparent PNG option only
+				$requestBody['bg_remove_format'] = $paramlist['bg_remove_format'];
+			}
 		} elseif (isset($paramlist['upscale'])) {
 			$requestBody['upscale'] = (int) $paramlist['upscale'];
 		} else {

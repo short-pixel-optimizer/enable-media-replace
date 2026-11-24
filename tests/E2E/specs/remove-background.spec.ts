@@ -204,6 +204,62 @@ test.describe('Remove background', () => {
 		await expect(new EditAttachment(page).thumbnailsBox).toBeAttached();
 	});
 
+	test('Transparent PNG: marked as new, never the default, and a JPG becomes a PNG whose links are rewritten', async ({ page, emr }) => {
+		const upload = await emr.uploadGenerated(400, 300, { format: 'jpg', as: 'emr-png-option.jpg', title: 'PNG option' });
+		expect(upload.file).toMatch(/emr-png-option\.jpg$/);
+		const post = await emr.createPost({ content: `<img src="${upload.url}">` });
+		await emr.mock({ resultFixture: 'codeispoetry.png' });
+		const screen = new RemoveBackgroundScreen(page);
+		await screen.goto(upload.id);
+
+		// The default stays "Transparent (white for JPG)"; the new option is offered, unchecked, with the NEW! badge and its explanation.
+		await expect(screen.backgroundType('transparent')).toBeChecked();
+		const option = page.locator('.emr-option-transparent-png');
+		await expect(screen.backgroundType('transparent_png')).not.toBeChecked();
+		await expect(option.locator('label')).toContainText('Transparent PNG');
+		await expect(option.locator('img.emr-option-new')).toBeVisible();
+		await expect(option.locator('img.emr-option-new')).toHaveAttribute('alt', 'New');
+		await expect(option.locator('.howto')).toHaveText(
+			'The result is a PNG image with a transparent background. A JPG image is converted to PNG, so its file name and URLs change; the links to it on your site are updated.',
+		);
+
+		await screen.backgroundType('transparent_png').check();
+		await expect(page.locator('#solid_selecter')).toBeHidden();
+		const answer = await preview(page, screen);
+		expect(answer.success).toBe(true);
+		expect(answer.image).toMatch(/\.png\?ts=\d+$/);
+		const calls = await emr.mockRequests('free-reducer.php');
+		expect(calls.length).toBe(1);
+		expect(calls[0].request).toMatchObject({ bg_remove: '1', bg_remove_format: 'auto' });
+
+		await Promise.all([page.waitForURL(/action=do_background_replace/), screen.replaceButton.click()]);
+		await expectSuccessThenRedirect(page, upload.id);
+
+		const after = await emr.attachment(upload.id);
+		expect(after.file).toBe(upload.file.replace(/\.jpg$/, '.png'));
+		expect(after.file_exists).toBe(true);
+		expect(after.mime).toBe('image/png');
+		expect(after.url).toBe(upload.url.replace(/\.jpg$/, '.png'));
+		expect(after.title).toBe('PNG option');
+		expect((await emr.postContent(post.id)).content).toBe(`<img src="${after.url}">`);
+		const applied = await emr.mockRequests('free-reducer.php');
+		expect(applied.length).toBe(2);
+		expect(applied[1].request).toMatchObject({ bg_remove: '1', bg_remove_format: 'auto' });
+	});
+
+	test('the default Transparent option sends no bg_remove_format', async ({ page, emr }) => {
+		const screen = new RemoveBackgroundScreen(page);
+		await screen.goto(emr.seed.attachment_id);
+		await expect(screen.backgroundType('transparent')).toBeChecked();
+
+		const answer = await preview(page, screen);
+		expect(answer.success).toBe(true);
+		const calls = await emr.mockRequests('free-reducer.php');
+		expect(calls.length).toBe(1);
+		expect(calls[0].request).toMatchObject({ bg_remove: '1' });
+		expect(calls[0].request).not.toHaveProperty('bg_remove_format');
+	});
+
 	test('quota exceeded on the free plan: a dismissible notice, no preview', async ({ page, emr }) => {
 		await emr.mock({ quotaExceeded: true });
 		const screen = new RemoveBackgroundScreen(page);

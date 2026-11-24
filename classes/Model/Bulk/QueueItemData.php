@@ -46,7 +46,7 @@ class QueueItemData
 	/** @var array|null Structured return data echoed back by the API untouched. */
 	protected $returndatalist;
 
-	/** @var array|null Parameter list handed to the API (bg_remove / upscale / refresh). */
+	/** @var array|null Parameter list handed to the API (bg_remove / bg_remove_format / upscale / refresh). */
 	protected $paramlist;
 
 	/** @var array<int,mixed>|null Free-form flags; __get() coerces a non-array to []. */

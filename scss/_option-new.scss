@@ -1,0 +1,11 @@
+// SPIO's "NEW!" starburst (img/icons/new.svg) next to the label of a new
+// option: the Transparent PNG background of the remove background screen
+// and of the bulk selection panel.
+.emr-option-new {
+	display: inline-block;
+	width: 44px;
+	height: auto;
+	margin-inline-start: 6px;
+	vertical-align: middle;
+	pointer-events: none;
+}

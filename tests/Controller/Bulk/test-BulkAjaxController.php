@@ -371,4 +371,31 @@ class BulkAjaxControllerTest extends WP_Ajax_UnitTestCase {
 		$this->assertSame( 4, BulkImage::getById( $id )->getMarker()['upscale']['factor'] );
 		$this->assertCount( 1, $this->mock->requestsTo( 'reducer.php' ) );
 	}
+
+	/**
+	 * The Transparent PNG option of the selection panel: stored as the
+	 * bg_type and handed to the queue as `bg_remove_format`; the plain
+	 * transparent choice hands over no such option.
+	 */
+	public function test_createBulk_passes_bg_remove_format_only_for_the_transparent_png_type() {
+		$this->registerProductTypes();
+
+		$json = $this->request( 'createBulk', array( 'operation' => 'background', 'bg_type' => 'transparent_png' ) );
+		$this->assertTrue( $json->status, wp_json_encode( $json ) );
+		$this->assertSame( 'transparent_png', BulkController::getSettings()['bg_type'] );
+		$options = ( new BulkQueue() )->getOptions();
+		$this->assertTrue( $options['do_transparent'] );
+		$this->assertSame( 'auto', $options['bg_remove_format'] );
+
+		$json = $this->request( 'createBulk', array( 'operation' => 'background', 'bg_type' => 'transparent' ) );
+		$this->assertTrue( $json->status, wp_json_encode( $json ) );
+		$this->assertSame( 'transparent', BulkController::getSettings()['bg_type'] );
+		$options = ( new BulkQueue() )->getOptions();
+		$this->assertTrue( $options['do_transparent'] );
+		$this->assertArrayNotHasKey( 'bg_remove_format', $options );
+	}
+
+	public function test_the_bulk_default_background_type_is_transparent() {
+		$this->assertSame( 'transparent', BulkController::getSettings()['bg_type'] );
+	}
 }

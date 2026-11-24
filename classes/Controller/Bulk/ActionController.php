@@ -27,7 +27,8 @@ use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
  * whose result was already applied.
  *
  * Applying a result means: download the result image, back up the
- * current main file (BackupController), then replace the file in place
+ * current main file (BackupController; an earlier operation's backup is
+ * reused), then replace the file in place
  * through ReplaceController with the same parameters the single
  * remove-background and upscale flows use (MODE_REPLACE, modified date
  * updated), so thumbnails are regenerated and `wp_handle_replace`,
@@ -397,7 +398,10 @@ class ActionController
 			return false;
 		}
 
-		$backup = BackupController::backup($image);
+		// An earlier operation's backup is the original; it stays the one backup also when
+		// that operation changed the file's name (JPG to PNG), which a new backup would not match.
+		$marker = $image->getMarker();
+		$backup = (! empty($marker['backup']) && BackupController::hasBackup($image)) ? $marker['backup'] : BackupController::backup($image);
 		if (false === $backup) {
 			@unlink($tmpFile);
 			ResponseController::addData($item_id, 'issue_type', ResponseController::ISSUE_BACKUP_CREATE);
@@ -407,15 +411,19 @@ class ActionController
 		}
 		$qItem->setData('backup', $backup);
 
-		$replaced = $this->replaceFile($image, $tmpFile);
+		$action    = $qItem->data()->action;
+		$paramlist = is_array($qItem->data()->paramlist) ? $qItem->data()->paramlist : array();
+
+		// Only the Transparent PNG option may change the file's type (and so its name).
+		$formatChange = ('remove_background' === $action && isset($paramlist['bg_remove_format']));
+
+		$replaced = $this->replaceFile($image, $tmpFile, $formatChange);
 		if (false === $replaced) {
 			$this->failItem($qItem, BulkApi::STATUS_FAIL, __('Replacing the file failed', 'enable-media-replace'));
 			$this->unBlockItem($qItem);
 			return false;
 		}
 
-		$action    = $qItem->data()->action;
-		$paramlist = is_array($qItem->data()->paramlist) ? $qItem->data()->paramlist : array();
 		if ('scale_image' === $action) {
 			$image->setMarker('upscale', array(
 				'ts'         => time(),
@@ -423,10 +431,14 @@ class ActionController
 				'from_width' => (int) $qItem->data()->source_width,
 			), $backup);
 		} else {
-			$image->setMarker('background', array(
+			$data = array(
 				'ts'        => time(),
 				'bg_remove' => isset($paramlist['bg_remove']) ? $paramlist['bg_remove'] : 1,
-			), $backup);
+			);
+			if (true === $formatChange) {
+				$data['bg_remove_format'] = $paramlist['bg_remove_format'];
+			}
+			$image->setMarker('background', $data, $backup);
 		}
 		$qItem->addResult(array('backup' => $backup));
 
@@ -465,8 +477,14 @@ class ActionController
 			return;
 		}
 
+		// A backup of another type than the current file (the JPG behind a PNG the
+		// Transparent PNG option made) goes back under its own name.
+		$backupType  = wp_check_filetype($backupFile->getFileName());
+		$currentType = wp_check_filetype($image->getFileName());
+		$restoreName = ($backupType['type'] !== $currentType['type']) ? $backupFile->getFileName() : false;
+
 		$this->blockItem($qItem);
-		$replaced = $this->replaceFile($image, $tmpPath);
+		$replaced = $this->replaceFile($image, $tmpPath, $restoreName);
 		$this->unBlockItem($qItem);
 
 		if (false === $replaced) {
@@ -490,13 +508,20 @@ class ActionController
 
 	/**
 	 * Replaces the attachment's main file with $tmpPath, the way the single
-	 * remove-background and upscale flows do.
+	 * remove-background and upscale flows do: in place, under the same name.
 	 *
-	 * @param BulkImage $image
-	 * @param string    $tmpPath Temporary file, consumed by ReplaceController.
+	 * With $newName the file may get another name, through
+	 * ReplaceController::getFormatChangeParams(): the references to the old
+	 * URLs are rewritten and the post title stays. True takes the name from
+	 * the type of $tmpPath (a JPG that came back as a PNG becomes `.png`; the
+	 * same type keeps the name), a string is the name to use (a restore).
+	 *
+	 * @param BulkImage   $image
+	 * @param string      $tmpPath Temporary file, consumed by ReplaceController.
+	 * @param bool|string $newName False (default): never rename.
 	 * @return bool
 	 */
-	protected function replaceFile(BulkImage $image, $tmpPath)
+	protected function replaceFile(BulkImage $image, $tmpPath, $newName = false)
 	{
 		$replaceController = new ReplaceController($image->get('id'));
 		$sourceFile        = $replaceController->getSourceFile();
@@ -512,6 +537,13 @@ class ActionController
 			'new_filename'      => $sourceFile->getFileName(),
 		);
 
+		$renamed = false;
+		if (false !== $newName) {
+			$change  = $replaceController->getFormatChangeParams($tmpPath, is_string($newName) ? $newName : null);
+			$renamed = (array() !== $change);
+			$params  = array_merge($params, $change);
+		}
+
 		if (false === $replaceController->setupParams($params)) {
 			Log::addError('Bulk replace: setupParams failed', $replaceController->returnLastError());
 			@unlink($tmpPath);
@@ -519,6 +551,10 @@ class ActionController
 		}
 
 		$replaceController->run();
+
+		if (true === $renamed) {
+			$image->resetStatus(); // the cached file is the old name
+		}
 
 		if (! is_null($replaceController->returnLastError())) {
 			Log::addError('Bulk replace: run reported an error', $replaceController->returnLastError());
