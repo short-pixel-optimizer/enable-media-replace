@@ -1,27 +1,40 @@
 <?php
 /**
- * Tests for the database passes of Replacer::replace()
- * (build/shortpixel/replacer2/src/Replacer.php): doReplaceQuery() over
- * post_content and handleMetaData() over postmeta, termmeta, usermeta,
- * commentmeta and options, with their filters and their object cache
- * handling.
+ * Tests for Replacer2::replace() (build/shortpixel/replacer2/src/Replacer2.php) against the
+ * database: the records Classes\Finder finds in post_content, postmeta,
+ * termmeta, usermeta, commentmeta and options, their replacement and the
+ * writes and object cache handling of Classes\Updater, end to end with real
+ * attachments and real content shapes (srcset, blocks, serialized data,
+ * builder JSON).
+ *
+ * The single steps (finding, replacing one record, writing one record, the
+ * meta filters on one record) are covered in test-ReplacerFinder.php and
+ * test-ReplacerRecords.php.
  *
  * Source and target are real attachments uploaded from copies of
  * tests/fixtures/test-image.jpg. The fixture is 50x50, so WordPress makes no
  * thumbnails; the size entries the replacer works from are added to the
- * metadata handed to setSourceMeta() / setTargetMeta() (replace() reads the
- * metadata, not the files). The attachments and their files are deleted in
- * tear_down(); every row lives in the test transaction.
+ * metadata handed to Setup()->search()->setMetaData() and
+ * Setup()->replace()->setMetaData() (replace() reads the metadata, not the
+ * files). The attachments and their files are deleted in tear_down(); every
+ * row lives in the test transaction.
  *
  * @package Enable_Media_Replace
  */
 
-use EnableMediaReplace\Replacer\Replacer;
+use EnableMediaReplace\Replacer\Replacer2;
 
 /**
- * Replacer::replace() against the database.
+ * Replacer2::replace() against the database.
  */
 class ReplacerDatabaseTest extends WP_UnitTestCase {
+
+	/**
+	 * Component of the main replace run.
+	 *
+	 * @var string
+	 */
+	const COMPONENT = 'emr';
 
 	/**
 	 * Attachment IDs created by the test.
@@ -115,20 +128,43 @@ class ReplacerDatabaseTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * A replacer for the given source and target.
+	 *
+	 * @param string     $source      Source URL.
+	 * @param string     $target      Target URL.
+	 * @param array|null $source_meta Source metadata; none when null.
+	 * @param array|null $target_meta Target metadata; none when null.
+	 * @return Replacer2
+	 */
+	private function makeReplacer( $source, $target, $source_meta = null, $target_meta = null ) {
+		$replacer = new Replacer2( self::COMPONENT );
+		$this->assertTrue( $replacer->Setup()->search()->setUrl( $source ), 'Sentinel: the source URL is accepted.' );
+		$this->assertTrue( $replacer->Setup()->replace()->setUrl( $target ), 'Sentinel: the target URL is accepted.' );
+		if ( null !== $source_meta ) {
+			$replacer->Setup()->search()->setMetaData( $source_meta );
+		}
+		if ( null !== $target_meta ) {
+			$replacer->Setup()->replace()->setMetaData( $target_meta );
+		}
+		return $replacer;
+	}
+
+	/**
 	 * A source and a target attachment and a replacer set up for them.
 	 *
 	 * @param string $target_prefix File name prefix of the target.
-	 * @return array [Replacer, source id, target id, source url, target url]
+	 * @return array [Replacer2, source id, target id, source url, target url]
 	 */
 	private function pair( $target_prefix = 'emr-target-' ) {
 		$source_id = $this->upload( 'emr-source-' . strtolower( wp_generate_password( 6, false, false ) ) . '.jpg' );
 		$target_id = $this->upload( $target_prefix . strtolower( wp_generate_password( 6, false, false ) ) . '.jpg' );
 
-		$replacer = new Replacer();
-		$replacer->setSource( wp_get_attachment_url( $source_id ) );
-		$replacer->setTarget( wp_get_attachment_url( $target_id ) );
-		$replacer->setSourceMeta( $this->metaWithSizes( $source_id ) );
-		$replacer->setTargetMeta( $this->metaWithSizes( $target_id ) );
+		$replacer = $this->makeReplacer(
+			wp_get_attachment_url( $source_id ),
+			wp_get_attachment_url( $target_id ),
+			$this->metaWithSizes( $source_id ),
+			$this->metaWithSizes( $target_id )
+		);
 
 		return array( $replacer, $source_id, $target_id, wp_get_attachment_url( $source_id ), wp_get_attachment_url( $target_id ) );
 	}
@@ -278,9 +314,7 @@ class ReplacerDatabaseTest extends WP_UnitTestCase {
 		$source   = 'http://example.org/wp-content/uploads/emr-photo/emr-photo.jpg';
 		$target   = 'http://example.org/wp-content/uploads/emr-photo/emr-basenew.jpg';
 		$post_id  = $this->makePost( '<img src="' . $source . '" />' );
-		$replacer = new Replacer();
-		$replacer->setSource( $source );
-		$replacer->setTarget( $target );
+		$replacer = $this->makeReplacer( $source, $target );
 
 		$this->assertSame( 1, $replacer->replace() );
 
@@ -288,84 +322,28 @@ class ReplacerDatabaseTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * The extension is removed from the base URL with str_replace(), so a
-	 * file name that contains its extension in the middle
-	 * (`pic.jpg-edit.jpg`) loses both: the LIKE pattern becomes
-	 * `.../picXXXX-edit`, matches no row, and nothing is rewritten although
-	 * the post embeds the file. The correct behaviour is to strip only the
-	 * trailing extension.
-	 *
-	 * How to recognise the fix: replace() returns 1 and the post points at
-	 * the target; the assertSame( 0, ... ) below fails.
+	 * Only the trailing extension is stripped from the base URL, so a file
+	 * name that contains its extension in the middle (`pic.jpg-edit.jpg`)
+	 * keeps the inner `.jpg` in the LIKE pattern and the post is rewritten.
 	 */
-	public function test_file_name_with_the_extension_in_the_middle_is_not_rewritten_pinned_for_deferred_fix() {
+	public function test_file_name_with_the_extension_in_the_middle_is_rewritten() {
 		$source_id = $this->upload( 'pic' . strtolower( wp_generate_password( 4, false, false ) ) . '.jpg-edit.jpg' );
 		$target_id = $this->upload( 'emr-target-' . strtolower( wp_generate_password( 6, false, false ) ) . '.jpg' );
 		$source    = wp_get_attachment_url( $source_id );
+		$target    = wp_get_attachment_url( $target_id );
 		$this->assertStringContainsString( '.jpg-edit.jpg', $source, 'Sentinel: the name has ".jpg" in the middle.' );
 		$post_id  = $this->makePost( '<img src="' . $source . '" />' );
-		$replacer = new Replacer();
-		$replacer->setSource( $source );
-		$replacer->setTarget( wp_get_attachment_url( $target_id ) );
-		$replacer->setSourceMeta( wp_get_attachment_metadata( $source_id ) );
-		$replacer->setTargetMeta( wp_get_attachment_metadata( $target_id ) );
+		$replacer = $this->makeReplacer( $source, $target, wp_get_attachment_metadata( $source_id ), wp_get_attachment_metadata( $target_id ) );
 
 		$result = $replacer->replace();
 
-		$this->assertSame( 0, $result, 'Pinned: no row matched the mangled base URL.' );
-		$this->assertSame( '<img src="' . $source . '" />', $this->rawContent( $post_id ), 'Pinned: the post still points at the old file.' );
+		$this->assertSame( 1, $result, 'The post matched the base URL.' );
+		$this->assertSame( '<img src="' . $target . '" />', $this->rawContent( $post_id ), 'The post points at the new file.' );
 	}
 
 	// ---------------------------------------------------------------------
 	// Meta tables and options.
 	// ---------------------------------------------------------------------
-
-	public function test_postmeta_string_is_rewritten_and_the_post_meta_cache_is_cleared() {
-		list( $replacer, , , $source_url, $target_url ) = $this->pair();
-		$page_id = self::factory()->post->create( array( 'post_status' => 'draft' ) );
-		add_post_meta( $page_id, '_emr_test_builder', 'image:' . $source_url );
-		$this->assertSame( 'image:' . $source_url, get_post_meta( $page_id, '_emr_test_builder', true ), 'Sentinel: the cache is primed.' );
-
-		$this->assertSame( 1, $replacer->replace() );
-
-		$this->assertSame( 'image:' . $target_url, $this->rawPostMeta( $page_id, '_emr_test_builder' ) );
-		$this->assertSame( 'image:' . $target_url, get_post_meta( $page_id, '_emr_test_builder', true ), 'The cached read follows' );
-	}
-
-	/**
-	 * The rows handed to the meta filters carry the owner id column, which
-	 * the Breakdance integration needs to load the document tree.
-	 */
-	public function test_meta_rows_handed_to_the_filters_carry_the_post_id() {
-		list( $replacer, , , $source_url ) = $this->pair();
-		$page_id = self::factory()->post->create( array( 'post_status' => 'draft' ) );
-		add_post_meta( $page_id, '_emr_test_builder', 'image:' . $source_url );
-		$rows = array();
-		$this->addFilter(
-			'emr/replacer/load_meta_value',
-			function ( $content, $row ) use ( &$rows ) {
-				$rows['load'] = $row;
-				return $content;
-			},
-			10,
-			2
-		);
-		$this->addFilter(
-			'emr/replacer/save_meta_value',
-			function ( $content, $row ) use ( &$rows ) {
-				$rows['save'] = $row;
-				return $content;
-			},
-			10,
-			2
-		);
-
-		$replacer->replace();
-
-		$this->assertSame( array( 'meta_id', 'meta_value', 'post_id' ), array_keys( $rows['load'] ) );
-		$this->assertSame( $page_id, (int) $rows['load']['post_id'] );
-		$this->assertSame( $rows['load'], $rows['save'], 'Both filters get the same row' );
-	}
 
 	public function test_serialized_array_postmeta_is_rewritten_and_stays_valid() {
 		list( $replacer, $source_id, $target_id, $source_url, $target_url ) = $this->pair();
@@ -419,19 +397,13 @@ class ReplacerDatabaseTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * An option whose value is a serialized-object STRING (update_option()
+	 * An option whose value is a serialized stdClass STRING (update_option()
 	 * with a string from serialize(), so stored with a second serialization
-	 * layer) is unwrapped by replaceContent() to the inner string, the URL is
-	 * replaced inside it without fixing its `s:<length>` prefix, and the
-	 * inner string is written back without the outer layer. get_option() can
-	 * no longer read the value. The correct behaviour is to leave the inner
-	 * object payload alone, or to keep the outer layer and a valid length.
-	 *
-	 * How to recognise the fix: get_option() returns the stored string again
-	 * (unchanged or with a correctly serialized URL) and the assertFalse()
-	 * below fails.
+	 * layer) keeps its outer layer, and the URL inside the inner object is
+	 * replaced with valid lengths at both layers: get_option() returns a
+	 * string that still unserializes to the object with the new URL.
 	 */
-	public function test_option_holding_a_serialized_object_string_is_corrupted_pinned_for_deferred_fix() {
+	public function test_option_holding_a_serialized_object_string_keeps_its_layer_and_valid_lengths() {
 		list( $replacer, , , $source_url, $target_url ) = $this->pair( 'emr-longer-target-' );
 		$this->assertNotSame( strlen( $source_url ), strlen( $target_url ), 'Sentinel: the URLs differ in length.' );
 		$object      = new stdClass();
@@ -445,9 +417,40 @@ class ReplacerDatabaseTest extends WP_UnitTestCase {
 
 		$raw = $this->rawOption( 'emr_test_object_blob' );
 		$this->assertStringContainsString( $target_url, $raw, 'Sentinel: the replacer reached the row.' );
-		$this->assertStringStartsWith( 'O:8:"stdClass"', $raw, 'Pinned: the outer serialization layer is gone.' );
+		$this->assertStringStartsWith( 's:', $raw, 'The outer serialization layer is kept.' );
 		wp_cache_delete( 'emr_test_object_blob', 'options' );
-		$this->assertFalse( get_option( 'emr_test_object_blob' ), 'Pinned: the value no longer unserializes.' );
+		$read = get_option( 'emr_test_object_blob' );
+		$this->assertIsString( $read, 'get_option() returns a string, as before the replace.' );
+		$inner = unserialize( $read );
+		$this->assertInstanceOf( stdClass::class, $inner, 'The inner string still unserializes.' );
+		$this->assertSame( $target_url, $inner->url, 'With the new URL.' );
+	}
+
+	/**
+	 * A user meta value that is a serialized object STRING of a class other
+	 * than stdClass (stored by WordPress with a second serialization layer,
+	 * e.g. typed into a profile field by a low-privileged user) keeps that
+	 * outer layer when the file it names is replaced. get_user_meta() still
+	 * returns the string; the row never becomes a raw serialized object that
+	 * WordPress core would instantiate on the next read. The inner object is
+	 * not walked, so it is left byte for byte.
+	 */
+	public function test_user_meta_holding_a_serialized_object_string_is_never_turned_into_an_object() {
+		list( $replacer, , , $source_url ) = $this->pair( 'emr-longer-target-' );
+		$user_id = self::factory()->user->create();
+		$class   = 'EMR_Test_Injection_Probe_';
+		$this->assertFalse( class_exists( $class, false ), 'Sentinel: the probe class does not exist.' );
+		$payload = 'O:' . strlen( $class ) . ':"' . $class . '":1:{s:3:"url";s:' . strlen( $source_url ) . ':"' . $source_url . '";}';
+		add_user_meta( $user_id, 'emr_test_probe', $payload );
+		$this->assertSame( $payload, get_user_meta( $user_id, 'emr_test_probe', true ), 'Sentinel: reads back as a string.' );
+
+		$result = $replacer->replace();
+
+		$this->assertSame( 1, $result, 'Sentinel: the replacer reached the row.' );
+		wp_cache_delete( $user_id, 'user_meta' );
+		$read = get_user_meta( $user_id, 'emr_test_probe', true );
+		$this->assertIsString( $read, 'get_user_meta() returns a string, not an object.' );
+		$this->assertSame( $payload, $read, 'The inner payload is left byte for byte.' );
 	}
 
 	public function test_autoloaded_option_is_rewritten_and_its_cached_read_follows() {
@@ -463,8 +466,8 @@ class ReplacerDatabaseTest extends WP_UnitTestCase {
 
 	/**
 	 * A non-autoloaded option is cached under its own name in the `options`
-	 * group, outside `alloptions`. handleMetaData() selects `option_name`
-	 * with the row and deletes that key too, so a cached read follows the
+	 * group, outside `alloptions`. The Finder selects `option_name` with the
+	 * row and the Updater deletes that key too, so a cached read follows the
 	 * rewrite.
 	 */
 	public function test_non_autoloaded_option_is_rewritten_and_its_cached_read_follows() {
@@ -502,11 +505,10 @@ class ReplacerDatabaseTest extends WP_UnitTestCase {
 
 	/**
 	 * Every matching row of a meta table clears the meta cache of its own
-	 * owner. handleMetaData() keeps the selected column name (`post_id`)
-	 * apart from the value it reads from each row, so the second and later
-	 * rows of a table hand their own owner id to wp_cache_delete(): no
-	 * undefined-index error is raised and every primed cache reads the new
-	 * URL after the replace.
+	 * owner: each Record reads the owner id (`post_id`) from its own row, so
+	 * the second and later rows of a table hand their own owner id to
+	 * wp_cache_delete(), no undefined-index error is raised and every primed
+	 * cache reads the new URL after the replace.
 	 *
 	 * Notices and warnings are captured with a local error handler so that
 	 * a regression fails on the captured error (the harness's own handler
@@ -549,18 +551,14 @@ class ReplacerDatabaseTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * The postmeta query of handleMetaData() quotes its statuses with double
-	 * quotes. Under the ANSI_QUOTES SQL mode MySQL reads them as column
-	 * names, the query fails, and postmeta is silently skipped while
-	 * post_content (single quotes) is still rewritten. The correct behaviour
-	 * is to quote the statuses with single quotes.
-	 *
-	 * How to recognise the fix: the postmeta row is rewritten under
-	 * ANSI_QUOTES and the pinned assertSame() below fails.
+	 * The posts and postmeta queries of Classes\Finder pass their statuses
+	 * as prepared placeholders (single quotes), so they still run under the
+	 * ANSI_QUOTES SQL mode (where double quotes are identifiers) and postmeta
+	 * is rewritten with post_content.
 	 */
-	public function test_postmeta_is_skipped_under_ansi_quotes_pinned_for_deferred_fix() {
+	public function test_postmeta_is_rewritten_under_ansi_quotes() {
 		global $wpdb;
-		list( $replacer, , , $source_url ) = $this->pair();
+		list( $replacer, , , $source_url, $target_url ) = $this->pair();
 		$post_id = $this->makePost( 'x ' . $source_url, 'draft' );
 		add_post_meta( $post_id, '_emr_test_builder', 'image:' . $source_url );
 
@@ -571,9 +569,9 @@ class ReplacerDatabaseTest extends WP_UnitTestCase {
 		$result     = $replacer->replace();
 		$wpdb->suppress_errors( $suppressed );
 
-		$this->assertSame( 1, $result, 'Pinned: only the post counted, the postmeta query failed.' );
-		$this->assertStringNotContainsString( $source_url, $this->rawContent( $post_id ), 'Sentinel: post_content was rewritten.' );
-		$this->assertSame( 'image:' . $source_url, $this->rawPostMeta( $post_id, '_emr_test_builder' ), 'Pinned: postmeta was skipped.' );
+		$this->assertSame( 2, $result, 'The post and the postmeta row both matched.' );
+		$this->assertStringNotContainsString( $source_url, $this->rawContent( $post_id ), 'post_content was rewritten.' );
+		$this->assertSame( 'image:' . $target_url, $this->rawPostMeta( $post_id, '_emr_test_builder' ), 'postmeta was rewritten.' );
 	}
 
 	// ---------------------------------------------------------------------
@@ -616,24 +614,61 @@ class ReplacerDatabaseTest extends WP_UnitTestCase {
 		$this->assertSame( 'image:' . $source_url, $this->rawOption( 'emr_test_skipped' ), 'The options table was removed' );
 	}
 
-	public function test_load_meta_value_returning_null_skips_the_row_but_counts_it() {
-		list( $replacer, , , $source_url ) = $this->pair();
-		$page_id = self::factory()->post->create( array( 'post_status' => 'draft' ) );
-		add_post_meta( $page_id, '_emr_test_builder', 'image:' . $source_url );
-		$saved = 0;
-		$this->addFilter( 'emr/replacer/load_meta_value', '__return_null' );
+	/**
+	 * A table added through `emr/replacer/replacement_tables` with a
+	 * `cache_group` but no `main_id` has no owning object to clear: the row
+	 * is rewritten, no notice or warning is raised and wp_cache_delete() is
+	 * not called with a null key (WordPress would report that as an
+	 * incorrect usage of WP_Object_Cache::delete, which fails the test).
+	 *
+	 * Notices and warnings are captured with a local error handler (see
+	 * test_every_matching_postmeta_row_clears_the_meta_cache_of_its_owner()).
+	 */
+	public function test_cache_group_without_main_id_writes_the_row_without_a_cache_delete() {
+		global $wpdb;
+		list( $replacer, , , $source_url, $target_url ) = $this->pair();
+		$wpdb->insert(
+			$wpdb->links,
+			array(
+				'link_url'   => 'http://example.org/',
+				'link_name'  => 'emr test',
+				'link_image' => $source_url,
+			)
+		);
+		$link_id = (int) $wpdb->insert_id;
+		$this->assertGreaterThan( 0, $link_id, 'Sentinel: the link row exists.' );
 		$this->addFilter(
-			'emr/replacer/save_meta_value',
-			function ( $content ) use ( &$saved ) {
-				$saved++;
-				return $content;
+			'emr/replacer/replacement_tables',
+			function () {
+				return array(
+					'links' => array(
+						'id'          => 'link_id',
+						'value'       => 'link_image',
+						'cache_group' => 'emr_test_links',
+					),
+				);
 			}
 		);
 
-		$this->assertSame( 1, $replacer->replace() );
+		$errors = array();
+		set_error_handler(
+			function ( $errno, $errstr ) use ( &$errors ) {
+				if ( E_WARNING === $errno || E_NOTICE === $errno ) {
+					$errors[] = $errstr;
+					return true;
+				}
+				return false;
+			}
+		);
+		try {
+			$result = $replacer->replace();
+		} finally {
+			restore_error_handler();
+		}
 
-		$this->assertSame( 'image:' . $source_url, $this->rawPostMeta( $page_id, '_emr_test_builder' ) );
-		$this->assertSame( 0, $saved, 'save_meta_value is not reached' );
+		$this->assertSame( 1, $result, 'Sentinel: only the links row matched.' );
+		$this->assertSame( $target_url, (string) $wpdb->get_var( $wpdb->prepare( "SELECT link_image FROM {$wpdb->links} WHERE link_id = %d", $link_id ) ), 'The row is rewritten.' );
+		$this->assertSame( array(), $errors, 'No notice or warning is raised.' );
 	}
 
 	public function test_save_meta_value_result_is_what_gets_written() {
@@ -651,17 +686,19 @@ class ReplacerDatabaseTest extends WP_UnitTestCase {
 
 		$replacer->replace();
 
-		$this->assertSame( 'emr|image:' . $target_url, $this->rawPostMeta( $page_id, '_emr_test_builder' ) );
+		$this->assertSame( self::COMPONENT . '|image:' . $target_url, $this->rawPostMeta( $page_id, '_emr_test_builder' ) );
 	}
 
 	/**
 	 * Bricks-shaped builder data in postmeta and in an option: a nested
 	 * slider keeps its options as a JSON string next to the image element.
-	 * After the replace the image URL follows in both rows and the untouched
-	 * slider options are still the original JSON string, which Bricks
-	 * passes to stripslashes().
+	 * replaceContent() decodes every nested JSON string and encodes it back
+	 * at the same level, so after the replace the untouched slider options
+	 * are still JSON strings in both rows (older bundled copies handed back
+	 * stdClass objects here, and Bricks fataled on every page rendering the
+	 * element).
 	 */
-	public function test_json_strings_in_builder_data_stay_json_strings() {
+	public function test_json_strings_in_builder_data_stay_strings() {
 		list( $replacer, $source_id, , $source_url, $target_url ) = $this->pair();
 		$elements = array(
 			array(
@@ -685,7 +722,7 @@ class ReplacerDatabaseTest extends WP_UnitTestCase {
 		$components = get_option( 'emr_test_components' );
 		$this->assertSame( $target_url, $page[1]['settings']['image']['url'], 'Sentinel: the page image URL follows.' );
 		$this->assertSame( $target_url, $components[0]['elements'][1]['settings']['image']['url'], 'Sentinel: the component image URL follows.' );
-		$this->assertSame( '{"type":"loop","perPage":3}', $page[0]['settings']['options'], 'The page slider options are the JSON string.' );
-		$this->assertSame( '{"type":"loop","perPage":3}', $components[0]['elements'][0]['settings']['options'], 'The component slider options are the JSON string.' );
+		$this->assertSame( '{"type":"loop","perPage":3}', $page[0]['settings']['options'], 'The page slider options are still the JSON string.' );
+		$this->assertSame( '{"type":"loop","perPage":3}', $components[0]['elements'][0]['settings']['options'], 'The component slider options are still the JSON string.' );
 	}
 }

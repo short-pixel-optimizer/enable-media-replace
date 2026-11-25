@@ -176,14 +176,14 @@ class CompatSmartSliderTest extends EMR_IntegrationTestCase {
 	}
 
 	/**
-	 * With the real plugin, a fresh Replacer constructs the module, which
+	 * With the real plugin, a fresh Replacer2 constructs the module, which
 	 * detects Smart Slider and still registers nothing: no listener on
 	 * `emr/replacer/replace_urls`, no replacer stored. The module is
 	 * documented as inert (an unconditional return in its constructor); the
 	 * day it is enabled, this test fails and the pin below has to flip.
 	 */
 	public function test_module_registers_nothing_with_smart_slider_active() {
-		$replacer = new \EnableMediaReplace\Replacer\Replacer();
+		$replacer = new \EnableMediaReplace\Replacer\Replacer2( 'emr' );
 		$module   = $this->moduleInstanceProperty( self::MODULE )->getValue();
 
 		$this->assertInstanceOf( self::MODULE, $module, 'The Replacer constructed the module.' );
@@ -192,7 +192,7 @@ class CompatSmartSliderTest extends EMR_IntegrationTestCase {
 		$stored = new ReflectionProperty( self::MODULE, 'replacer' );
 		$stored->setAccessible( true );
 		$this->assertNull( $stored->getValue( $module ), 'The replacer is never stored.' );
-		$this->assertInstanceOf( 'EnableMediaReplace\Replacer\Replacer', $replacer );
+		$this->assertInstanceOf( 'EnableMediaReplace\Replacer\Replacer2', $replacer );
 	}
 
 	// -------------------------------------------------------------------

@@ -156,7 +156,7 @@ class CompatBreakdanceTest extends EMR_IntegrationTestCase {
 	 * fallback.
 	 */
 	public function test_replacer_construction_registers_the_breakdance_module() {
-		new \EnableMediaReplace\Replacer\Replacer();
+		new \EnableMediaReplace\Replacer\Replacer2( 'emr' );
 
 		$module = \EnableMediaReplace\Replacer\Modules\Breakdance::getInstance();
 		$this->assertSame( 10, has_filter( 'emr/replacer/custom_replace_query', array( $module, 'addBreakdance' ) ) );

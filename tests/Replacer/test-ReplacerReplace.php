@@ -1,24 +1,29 @@
 <?php
 /**
- * Tests for Replacer::replace() (build/shortpixel/replacer2/src/Replacer.php):
- * the guards and fail-safes, the building and balancing of the search and
- * replace arrays (thumbnails_only, addURLArray(), dropped sizes, the
- * nearest-size fill-in, identical pairs), the `emr/replacer/replace_urls`
- * action and the `emr/replacer/custom_replace_query` runs with their
- * per-run settings.
+ * Tests for Replacer2::replace() (build/shortpixel/replacer2/src/Replacer2.php) as seen from
+ * the outside: the guards, the arrays Classes\Setup builds for it (the base
+ * URL, dropped sizes, the nearest-size fill-in, identical pairs, the key
+ * order of the replace array, extra URLs kept on the instance), the
+ * `emr/replacer/replace_urls` action and the
+ * `emr/replacer/custom_replace_query` runs with their per-run
+ * settings.
+ *
+ * Setup on its own (validation errors, thumbnails_only, extra URL pairing,
+ * the directory fail-safe) is covered in test-ReplacerSetup.php; single runs
+ * through doReplaceRun() in test-ReplacerRecords.php.
  *
  * The arrays are observed through the `emr/replacer/replace_urls` action,
  * which receives them right before any query runs. Attachment metadata is
- * synthetic: replace() only reads its `file`, `width` and `sizes` keys.
+ * synthetic: Setup only reads its `file`, `width` and `sizes` keys.
  * Rows created for the custom runs live in the test transaction.
  *
  * @package Enable_Media_Replace
  */
 
-use EnableMediaReplace\Replacer\Replacer;
+use EnableMediaReplace\Replacer\Replacer2;
 
 /**
- * Replacer::replace().
+ * Replacer2::replace().
  */
 class ReplacerReplaceTest extends WP_UnitTestCase {
 
@@ -26,6 +31,7 @@ class ReplacerReplaceTest extends WP_UnitTestCase {
 	const TARGET_URL = 'http://example.org/wp-content/uploads/2026/10/target.jpg';
 	const SOURCE_DIR = '/wp-content/uploads/2020/01/';
 	const TARGET_DIR = '/wp-content/uploads/2026/10/';
+	const COMPONENT  = 'emr';
 
 	/**
 	 * Calls of the replace_urls action, each [search, replace, base].
@@ -42,20 +48,10 @@ class ReplacerReplaceTest extends WP_UnitTestCase {
 	private $added_hooks = array();
 
 	/**
-	 * Shared Replacer instance before the test.
-	 *
-	 * @var Replacer|null
-	 */
-	private $saved_instance;
-
-	/**
-	 * Resets the shared instance and hooks the capture.
+	 * Hooks the capture.
 	 */
 	public function set_up() {
 		parent::set_up();
-		$prop                 = $this->instanceProperty();
-		$this->saved_instance = $prop->getValue();
-		$prop->setValue( null, null );
 		$this->captured = array();
 		$this->addHook(
 			'emr/replacer/replace_urls',
@@ -68,26 +64,14 @@ class ReplacerReplaceTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Removes the hooks and restores the shared instance.
+	 * Removes the hooks.
 	 */
 	public function tear_down() {
 		foreach ( $this->added_hooks as $hook ) {
 			remove_filter( $hook[0], $hook[1], $hook[2] );
 		}
 		$this->added_hooks = array();
-		$this->instanceProperty()->setValue( null, $this->saved_instance );
 		parent::tear_down();
-	}
-
-	/**
-	 * The private static $instance of Replacer, made accessible.
-	 *
-	 * @return ReflectionProperty
-	 */
-	private function instanceProperty() {
-		$prop = new ReflectionProperty( Replacer::class, 'instance' );
-		$prop->setAccessible( true );
-		return $prop;
 	}
 
 	/**
@@ -145,29 +129,30 @@ class ReplacerReplaceTest extends WP_UnitTestCase {
 	 * @param string|null $target      Target URL.
 	 * @param array       $source_meta Source metadata.
 	 * @param array       $target_meta Target metadata.
-	 * @return Replacer
+	 * @return Replacer2
 	 */
 	private function makeReplacer( $source = self::SOURCE_URL, $target = self::TARGET_URL, $source_meta = null, $target_meta = null ) {
-		$replacer = new Replacer();
+		$replacer = new Replacer2( self::COMPONENT );
+		$setup    = $replacer->Setup();
 		if ( null !== $source ) {
-			$replacer->setSource( $source );
+			$this->assertTrue( $setup->search()->setUrl( $source ), 'Sentinel: the source URL is accepted.' );
 		}
 		if ( null !== $target ) {
-			$replacer->setTarget( $target );
+			$this->assertTrue( $setup->replace()->setUrl( $target ), 'Sentinel: the target URL is accepted.' );
 		}
-		$replacer->setSourceMeta( null === $source_meta ? $this->sourceMeta() : $source_meta );
-		$replacer->setTargetMeta( null === $target_meta ? $this->targetMeta() : $target_meta );
+		$setup->search()->setMetaData( null === $source_meta ? $this->sourceMeta() : $source_meta );
+		$setup->replace()->setMetaData( null === $target_meta ? $this->targetMeta() : $target_meta );
 		return $replacer;
 	}
 
 	/**
 	 * Reads the private replace settings of a replacer.
 	 *
-	 * @param Replacer $replacer Instance.
+	 * @param Replacer2 $replacer Instance.
 	 * @return array|null
 	 */
 	private function settingsOf( $replacer ) {
-		$prop = new ReflectionProperty( Replacer::class, 'replace_settings' );
+		$prop = new ReflectionProperty( Replacer2::class, 'replace_settings' );
 		$prop->setAccessible( true );
 		return $prop->getValue( $replacer );
 	}
@@ -229,22 +214,7 @@ class ReplacerReplaceTest extends WP_UnitTestCase {
 			$this->assertSame( $before, $wpdb->num_queries, $label . ': no query' );
 		}
 		$this->assertSame( array(), $this->captured, 'The replace_urls action never fired' );
-		$this->assertNull( $this->settingsOf( $cases['neither'] ), 'Returns before the settings are reset' );
-	}
-
-	public function test_source_url_path_that_is_a_directory_returns_an_errors_array() {
-		global $wpdb;
-		$this->assertTrue( is_dir( '/tmp' ), 'Precondition: /tmp exists in the container.' );
-		$replacer = $this->makeReplacer( 'http://example.org/tmp', self::TARGET_URL );
-
-		$before = $wpdb->num_queries;
-		$result = $replacer->replace();
-
-		$this->assertIsArray( $result );
-		$this->assertCount( 1, $result );
-		$this->assertStringContainsString( 'seems to be a directory', $result[0] );
-		$this->assertSame( $before, $wpdb->num_queries, 'No query ran' );
-		$this->assertSame( array(), $this->captured );
+		$this->assertSame( self::COMPONENT, $this->settingsOf( $cases['neither'] )['component'], 'Returns before any run changes the settings' );
 	}
 
 	public function test_empty_base_url_returns_an_errors_array() {
@@ -265,26 +235,14 @@ class ReplacerReplaceTest extends WP_UnitTestCase {
 	// Building and balancing the arrays.
 	// ---------------------------------------------------------------------
 
-	public function test_replace_urls_action_receives_balanced_arrays_and_the_base_url() {
-		$result = $this->makeReplacer()->replace();
+	public function test_base_url_removes_extension_only_from_the_end_of_the_path() {
+		$replacer = $this->makeReplacer( 'http://example.org/a.jpg-dir/b.jpg', self::TARGET_URL );
+
+		$result = $replacer->replace();
 
 		$this->assertIsInt( $result );
-		$this->assertCount( 1, $this->captured, 'The action fired once' );
-		list( $search, $replace, $base ) = $this->captured[0];
-		$this->assertSame( '/wp-content/uploads/2020/01/source', $base, 'Base URL: the source path without its extension' );
-		$this->assertSame(
-			array(
-				'base'      => self::SOURCE_DIR . 'source.jpg',
-				'file'      => self::SOURCE_DIR . 'source.jpg',
-				'thumbnail' => self::SOURCE_DIR . 'source-150x150.jpg',
-				'medium'    => self::SOURCE_DIR . 'source-300x200.jpg',
-				'large'     => self::SOURCE_DIR . 'source-1024x683.jpg',
-			),
-			$search
-		);
-		$this->assertSame( array_keys( $search ), array_keys( $replace ), 'Every search entry has its replacement under the same key' );
-		$this->assertSame( self::TARGET_DIR . 'target.jpg', $replace['base'] );
-		$this->assertSame( self::TARGET_DIR . 'target-150x150.jpg', $replace['thumbnail'] );
+		$this->assertCount( 1, $this->captured );
+		$this->assertSame( '/a.jpg-dir/b', $this->captured[0][2] );
 	}
 
 	public function test_target_sizes_absent_from_the_source_are_dropped() {
@@ -292,14 +250,6 @@ class ReplacerReplaceTest extends WP_UnitTestCase {
 
 		list( , $replace ) = $this->captured[0];
 		$this->assertArrayNotHasKey( 'medium_large', $replace );
-	}
-
-	public function test_thumbnails_only_drops_base_and_file_from_both_sides() {
-		$this->makeReplacer()->replace( array( 'thumbnails_only' => true ) );
-
-		list( $search, $replace ) = $this->captured[0];
-		$this->assertSame( array( 'thumbnail', 'medium', 'large' ), array_keys( $search ) );
-		$this->assertSame( array( 'thumbnail', 'medium', 'large' ), array_keys( $replace ) );
 	}
 
 	public function test_nearest_size_prefers_the_same_width() {
@@ -326,9 +276,9 @@ class ReplacerReplaceTest extends WP_UnitTestCase {
 
 	/**
 	 * The filled-in target file is placed in the directory of the SOURCE
-	 * size (replace(), step 9), so when the target lives in another
-	 * directory the replacement points at a file that does not exist there.
-	 * The correct directory is the one of the target's main file.
+	 * size (Classes\Setup::matchReplaceUrls()), so when the target lives in
+	 * another directory the replacement points at a file that does not exist
+	 * there. The correct directory is the one of the target's main file.
 	 *
 	 * How to recognise the fix: `large` is replaced by
 	 * /wp-content/uploads/2026/10/target.jpg and the assertSame() below
@@ -340,6 +290,36 @@ class ReplacerReplaceTest extends WP_UnitTestCase {
 		list( , $replace ) = $this->captured[0];
 		$this->assertSame( self::TARGET_DIR . 'target.jpg', $replace['base'], 'Sentinel: the target lives in 2026/10.' );
 		$this->assertSame( self::SOURCE_DIR . 'target.jpg', $replace['large'], 'Pinned: the filled-in file is placed in the source directory 2020/01.' );
+	}
+
+	/**
+	 * str_replace() pairs the search and replace arrays by position, not by
+	 * key. A size filled in by the nearest-size step is appended at the end
+	 * of the target array, so when the missing size sits in the middle of the
+	 * source sizes (here `medium`, between `thumbnail` and `large`) the
+	 * target array is rebuilt in the key order of the source array. Without
+	 * that, the source `large` file would be rewritten to the file filled in
+	 * for `medium`.
+	 */
+	public function test_filled_in_size_is_paired_by_position_with_its_own_search_entry() {
+		$target = $this->targetMeta();
+		unset( $target['sizes']['medium'] );
+		$target['sizes']['large'] = array( 'file' => 'target-1024x683.jpg', 'width' => 1024 );
+		$source_large             = 'http://example.org' . self::SOURCE_DIR . 'source-1024x683.jpg';
+		$source_medium            = 'http://example.org' . self::SOURCE_DIR . 'source-300x200.jpg';
+		$post_id                  = $this->makePost( '<img src="' . $source_large . '"><img src="' . $source_medium . '">' );
+
+		$result = $this->makeReplacer( self::SOURCE_URL, self::TARGET_URL, null, $target )->replace();
+
+		$this->assertSame( 1, $result, 'Sentinel: the post matched.' );
+		list( $search, $replace ) = $this->captured[0];
+		$this->assertSame( array( 'base', 'file', 'thumbnail', 'medium', 'large' ), array_keys( $search ), 'Sentinel: medium sits between thumbnail and large in the source.' );
+		$this->assertSame( array_keys( $search ), array_keys( $replace ), 'The replace array follows the key order of the search array' );
+		$this->assertSame( self::TARGET_DIR . 'target-1024x683.jpg', $replace['large'] );
+		$content = $this->rawContent( $post_id );
+		$this->assertStringContainsString( 'http://example.org' . self::TARGET_DIR . 'target-1024x683.jpg', $content, 'The source large file is rewritten to the target large file' );
+		$this->assertStringNotContainsString( $source_large, $content );
+		$this->assertStringNotContainsString( $source_medium, $content, 'The source medium file is rewritten too' );
 	}
 
 	public function test_svg_target_without_metadata_replaces_every_size_with_the_svg() {
@@ -356,8 +336,9 @@ class ReplacerReplaceTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * replace() returns three types: false for missing input, an array of
-	 * error strings when a fail-safe aborts and an int count on success, so
+	 * Replacer2::replace() returns three types: false for missing input, an
+	 * array of error strings when validation fails and an int count on
+	 * success, so
 	 * every caller has to type-check the result. A PDF target without
 	 * `width` gets no nearest size, the arrays stay unbalanced and the run
 	 * aborts with an array. The correct behaviour is one return type (a
@@ -400,51 +381,37 @@ class ReplacerReplaceTest extends WP_UnitTestCase {
 		$this->assertSame( array(), $this->captured[0][1] );
 	}
 
-	public function test_add_url_array_pairs_are_merged_and_string_keys_override_generated_pairs() {
-		$replacer = $this->makeReplacer();
-		$replacer->addURLArray( array( '/extra/a.webp', 'thumbnail' => '/custom/thumb-old.jpg' ), array( '/extra/b.webp', 'thumbnail' => '/custom/thumb-new.jpg' ) );
-		$replacer->addURLArray( 'not-an-array', 'not-an-array' );
-
-		$replacer->replace();
-
-		list( $search, $replace ) = $this->captured[0];
-		$this->assertSame( '/custom/thumb-old.jpg', $search['thumbnail'] );
-		$this->assertSame( '/custom/thumb-new.jpg', $replace['thumbnail'] );
-		$this->assertSame( '/extra/a.webp', $search[0] );
-		$this->assertSame( '/extra/b.webp', $replace[0] );
-		$this->assertCount( 6, $search, 'Non-array arguments are ignored' );
-	}
-
 	/**
-	 * The pairs added with addURLArray() are never cleared, so the shared
-	 * instance from getInstance() reuses the pairs of the first replace() in
-	 * every later replace() of the same request. The correct behaviour is to
+	 * Extra URLs added with Data::addUrls() are never cleared, so a second
+	 * replace() on the same instance searches the extra URLs of the first
+	 * one again, even after both sides are set to another file (see the
+	 * @todo on Replacer2). The consumers create a new instance per
+	 * replacement, so it does not show there. The correct behaviour is to
 	 * clear them at the end of replace() (or through a reset method).
 	 *
 	 * How to recognise the fix: the second run's search array no longer
-	 * holds the extra pair and the assertSame() on it fails.
+	 * holds the extra URL and the pinned assertSame() below fails.
 	 */
-	public function test_add_url_array_pairs_persist_across_replace_calls_on_the_shared_instance_pinned_for_deferred_fix() {
-		$shared = Replacer::getInstance();
-		$shared->setSource( self::SOURCE_URL );
-		$shared->setTarget( self::TARGET_URL );
-		$shared->setSourceMeta( $this->sourceMeta() );
-		$shared->setTargetMeta( $this->targetMeta() );
-		$shared->addURLArray( array( '/extra/first-run-old.webp' ), array( '/extra/first-run-new.webp' ) );
-		$shared->replace();
+	public function test_extra_urls_persist_across_replace_calls_on_one_instance_pinned_for_deferred_fix() {
+		$replacer = $this->makeReplacer();
+		$this->assertTrue( $replacer->Setup()->search()->addUrls( array( 'webp' => '/extra/first-run-old.webp' ) ), 'Sentinel: accepted.' );
+		$this->assertTrue( $replacer->Setup()->replace()->addUrls( array( 'webp' => '/extra/first-run-new.webp' ) ), 'Sentinel: accepted.' );
+		$first = $replacer->replace();
 
-		$again = Replacer::getInstance();
-		$again->setSource( 'http://example.org/wp-content/uploads/2020/01/second.jpg' );
-		$again->setTarget( 'http://example.org/wp-content/uploads/2020/01/second-new.jpg' );
-		$again->setSourceMeta( array() );
-		$again->setTargetMeta( array() );
-		$again->replace();
+		$replacer->Setup()->search()->setUrl( 'http://example.org/wp-content/uploads/2020/01/second.jpg' );
+		$replacer->Setup()->replace()->setUrl( 'http://example.org/wp-content/uploads/2020/01/second-new.jpg' );
+		$replacer->Setup()->search()->setMetaData( array() );
+		$replacer->Setup()->replace()->setMetaData( array() );
+		$second = $replacer->replace();
 
-		$this->assertSame( $shared, $again, 'Sentinel: the same shared instance.' );
+		$this->assertIsInt( $first, 'Sentinel: the first run succeeded.' );
+		$this->assertIsInt( $second, 'Sentinel: the second run succeeded.' );
 		$this->assertCount( 2, $this->captured );
-		$this->assertSame( '/extra/first-run-old.webp', $this->captured[0][0][0], 'Sentinel: the first run used the extra pair.' );
+		$this->assertSame( '/extra/first-run-old.webp', $this->captured[0][0]['webp'], 'Sentinel: the first run used the extra URL.' );
 		$this->assertSame( '/wp-content/uploads/2020/01/second.jpg', $this->captured[1][0]['base'], 'Sentinel: the second run is about another file.' );
-		$this->assertSame( '/extra/first-run-old.webp', $this->captured[1][0][0], 'Pinned: the first run\'s extra pair is searched again.' );
+		$this->assertArrayHasKey( 'webp', $this->captured[1][0], 'Pinned: the first run\'s extra URL is still on the search side.' );
+		$this->assertSame( '/extra/first-run-old.webp', $this->captured[1][0]['webp'], 'Pinned: the first run\'s extra URL is searched again.' );
+		$this->assertSame( '/extra/first-run-new.webp', $this->captured[1][1]['webp'], 'Pinned: and replaced again.' );
 	}
 
 	// ---------------------------------------------------------------------
@@ -516,7 +483,7 @@ class ReplacerReplaceTest extends WP_UnitTestCase {
 		$replacer = $this->makeReplacer();
 		$result   = $replacer->replace();
 
-		$this->assertSame( array( 'emr', 'mine', 'unset' ), $components );
+		$this->assertSame( array( self::COMPONENT, 'mine', 'unset' ), $components );
 		$this->assertSame( 3, $result, 'Each run counts the skipped row' );
 		$this->assertSame( 'unset', $this->settingsOf( $replacer )['component'], 'The settings of the last run stay on the instance' );
 		$this->assertSame( 'img ' . self::SOURCE_URL, $this->rawMeta( $post_id, '_emr_test_component' ) );
@@ -556,7 +523,22 @@ class ReplacerReplaceTest extends WP_UnitTestCase {
 		$this->assertSame( 'content marker-xyz', $this->rawContent( $post_id ), 'post_content is written regardless of replacer_do_save' );
 	}
 
-	public function test_replace_no_serialize_run_hands_the_array_to_save_meta_value() {
+	/**
+	 * A run with `replace_no_serialize` reads the raw meta value, a
+	 * serialized array. replaceContent() serializes back every value it
+	 * unserialized itself, whatever the setting says, so the
+	 * `save_meta_value` callback receives a serialized string instead of
+	 * the array the setting promises (Replacer2::replaceContent(), the
+	 * `$was_unserialized` branch runs before the `replace_no_serialize`
+	 * check; its docblock says a walked serialized value is left as it is
+	 * when the setting is true). The setting only has an effect on values
+	 * that arrive already unserialized, through `load_meta_value`.
+	 *
+	 * How to recognise the fix: the callback receives
+	 * `array( 'src' => 'marker-xyz' )` and the assertSame() on the
+	 * serialized string below fails.
+	 */
+	public function test_replace_no_serialize_run_hands_a_serialized_string_to_save_meta_value_pinned_for_deferred_fix() {
 		$post_id = $this->makePost( '' );
 		add_post_meta( $post_id, '_emr_test_noserialize', array( 'src' => 'marker-abc' ) );
 		$saved = array();
@@ -584,9 +566,59 @@ class ReplacerReplaceTest extends WP_UnitTestCase {
 			}
 		);
 
-		$this->makeReplacer()->replace();
+		$result = $this->makeReplacer()->replace();
 
+		$this->assertSame( 1, $result, 'Sentinel: the run reached the meta row.' );
+		$this->assertCount( 1, $saved, 'Sentinel: save_meta_value ran once.' );
+		$this->assertIsString( $saved[0], 'Pinned: the callback gets a string, not the array' );
+		$this->assertSame( serialize( array( 'src' => 'marker-xyz' ) ), $saved[0], 'Pinned: the replaced value, serialized back' );
+		$this->assertSame( serialize( array( 'src' => 'marker-abc' ) ), $this->rawMeta( $post_id, '_emr_test_noserialize' ), 'The meta row was not written' );
+	}
+
+	/**
+	 * The same run with a `load_meta_value` callback that hands over the
+	 * unserialized value, as the Breakdance module does with its tree:
+	 * replaceContent() did not unserialize it, so `replace_no_serialize`
+	 * applies and `save_meta_value` receives the replaced array.
+	 */
+	public function test_replace_no_serialize_run_keeps_an_array_loaded_by_load_meta_value() {
+		$post_id = $this->makePost( '' );
+		add_post_meta( $post_id, '_emr_test_noserialize', array( 'src' => 'marker-abc' ) );
+		$saved = array();
+		$this->addHook(
+			'emr/replacer/load_meta_value',
+			function ( $content ) {
+				return maybe_unserialize( $content );
+			}
+		);
+		$this->addHook(
+			'emr/replacer/save_meta_value',
+			function ( $content ) use ( &$saved ) {
+				$saved[] = $content;
+				return $content;
+			}
+		);
+		$this->addHook(
+			'emr/replacer/custom_replace_query',
+			function ( $runs ) {
+				$runs['raw'] = array(
+					'base_url'     => 'marker-abc',
+					'search_urls'  => array( 'marker-abc' ),
+					'replace_urls' => array( 'marker-xyz' ),
+					'args'         => array(
+						'component'            => 'raw',
+						'replacer_do_save'     => false,
+						'replace_no_serialize' => true,
+					),
+				);
+				return $runs;
+			}
+		);
+
+		$result = $this->makeReplacer()->replace();
+
+		$this->assertSame( 1, $result, 'Sentinel: the run reached the meta row.' );
 		$this->assertSame( array( array( 'src' => 'marker-xyz' ) ), $saved );
-		$this->assertSame( serialize( array( 'src' => 'marker-abc' ) ), $this->rawMeta( $post_id, '_emr_test_noserialize' ) );
+		$this->assertSame( serialize( array( 'src' => 'marker-abc' ) ), $this->rawMeta( $post_id, '_emr_test_noserialize' ), 'The meta row was not written' );
 	}
 }

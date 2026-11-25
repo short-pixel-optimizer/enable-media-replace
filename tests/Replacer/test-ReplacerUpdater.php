@@ -2,8 +2,9 @@
 /**
  * Tests for EnableMediaReplace\Replacer\Classes\Updater
  * (build/shortpixel/replacer2/src/Classes/Updater.php): updatePost() saves
- * through wp_update_post(), keeps the original modified dates and counts
- * its successes in a static counter.
+ * through wp_update_post() and keeps the original modified dates; its
+ * successes and the rows updateRecord() writes are counted in one static
+ * counter. updateRecord() itself is covered in test-ReplacerRecords.php.
  *
  * The static counter is snapshot in set_up() and restored in tear_down();
  * posts live in the test transaction.
@@ -11,6 +12,7 @@
  * @package Enable_Media_Replace
  */
 
+use EnableMediaReplace\Replacer\Classes\Record;
 use EnableMediaReplace\Replacer\Classes\Updater;
 
 /**
@@ -147,5 +149,26 @@ class ReplacerUpdaterTest extends WP_UnitTestCase {
 		( new Updater() )->updatePost( $second, 'two' );
 
 		$this->assertSame( $before + 2, $this->counter() );
+	}
+
+	public function test_counter_also_counts_the_rows_update_record_writes() {
+		$post_id    = $this->oldPost();
+		$definition = array(
+			'id'      => 'ID',
+			'value'   => 'post_content',
+			'main_id' => 'ID',
+		);
+		$record     = new Record( 'posts', $definition, array( 'ID' => $post_id, 'post_content' => 'before' ) );
+		$updater    = new Updater();
+		$before     = $this->counter();
+
+		$this->assertFalse( $updater->updateRecord( $record ), 'An unchanged record is not written' );
+		$this->assertSame( $before, $this->counter(), 'Nothing written, nothing counted' );
+
+		$record->setContent( 'after' );
+
+		$this->assertTrue( $updater->updateRecord( $record ) );
+		$this->assertSame( 'after', get_post( $post_id )->post_content, 'Sentinel: the row was written.' );
+		$this->assertSame( $before + 1, $this->counter() );
 	}
 }

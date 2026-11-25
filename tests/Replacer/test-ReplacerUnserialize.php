@@ -3,10 +3,10 @@
  * Tests for EnableMediaReplace\Replacer\Libraries\Unserialize\Unserialize
  * (build/shortpixel/replacer2/src/Libraries/Unserialize/Unserialize.php),
  * the unserialize() polyfill the replacer uses with
- * `allowed_classes => false`.
+ * `allowed_classes => ['stdClass']`.
  *
  * Only the native branch runs: the polyfill's own substitution branch
- * (DisallowedClassesSubstitutor) is for PHP below 7.0, and EMR requires
+ * (DisallowedClassesSubstitutor) is for PHP below 7.0, and the bundling plugins require
  * PHP 7.4.
  *
  * This file declares the global class EMR_Test_Unserialize_Probe, which only

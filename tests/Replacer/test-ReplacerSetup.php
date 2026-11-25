@@ -1,21 +1,18 @@
 <?php
 /**
  * Tests for EnableMediaReplace\Replacer\Classes\Setup
- * (build/shortpixel/replacer2/src/Classes/Setup.php) and for the accessors
- * Replacer::Setup(), Replacer::Finder() and Replacer::Updater() that hand
- * out the objects of the newer search/replace API.
+ * (build/shortpixel/replacer2/src/Classes/Setup.php) and for the way Replacer2::replace()
+ * relies on it.
  *
- * Setup is a fluent collector: forSearch() / forReplace() pick a side, then
- * MetaData() / URL() lazily create one data object per side and type.
- * Nothing here touches the database or fires hooks.
+ * Setup holds one Data object per side (search(), replace()) and validates
+ * the pairing of both into the arrays replace() runs on. replace() always validates itself.
  *
  * @package Enable_Media_Replace
  */
 
-use EnableMediaReplace\Replacer\Replacer;
+use EnableMediaReplace\Replacer\Replacer2;
 use EnableMediaReplace\Replacer\Classes\Setup;
-use EnableMediaReplace\Replacer\Classes\MetaData;
-use EnableMediaReplace\Replacer\Classes\Url;
+use EnableMediaReplace\Replacer\Classes\Data;
 use EnableMediaReplace\Replacer\Classes\Finder;
 use EnableMediaReplace\Replacer\Classes\Updater;
 
@@ -25,116 +22,270 @@ use EnableMediaReplace\Replacer\Classes\Updater;
 class ReplacerSetupTest extends WP_UnitTestCase {
 
 	/**
-	 * Reads a protected property of an object.
+	 * Fills both sides of a Setup with an image replaced by a smaller one.
 	 *
-	 * @param object $object Instance.
-	 * @param string $name   Property name.
-	 * @return mixed
+	 * @param Setup $setup Setup to fill.
+	 * @return Setup
 	 */
-	private function readProperty( $object, $name ) {
-		$prop = new ReflectionProperty( get_class( $object ), $name );
-		$prop->setAccessible( true );
-		return $prop->getValue( $object );
+	private function fill( Setup $setup ) {
+		$setup->search()->setUrl( 'http://example.org/wp-content/uploads/2026/10/old.jpg' );
+		$setup->search()->setMetaData(
+			array(
+				'file'  => '2026/10/old.jpg',
+				'width' => 1200,
+				'sizes' => array(
+					'thumbnail' => array( 'file' => 'old-150x150.jpg', 'width' => 150 ),
+					'medium'    => array( 'file' => 'old-300x200.jpg', 'width' => 300 ),
+				),
+			)
+		);
+		$setup->replace()->setUrl( 'http://example.org/wp-content/uploads/2026/11/new.jpg' );
+		$setup->replace()->setMetaData(
+			array(
+				'file'  => '2026/11/new.jpg',
+				'width' => 1000,
+				'sizes' => array(
+					'thumbnail' => array( 'file' => 'new-150x150.jpg', 'width' => 150 ),
+					'medium'    => array( 'file' => 'new-300x200.jpg', 'width' => 300 ),
+				),
+			)
+		);
+		return $setup;
 	}
 
-	public function test_get_instance_returns_a_new_instance_on_every_call() {
-		$first  = Setup::getInstance();
-		$second = Setup::getInstance();
-
-		$this->assertInstanceOf( Setup::class, $first );
-		$this->assertInstanceOf( Setup::class, $second );
-		$this->assertNotSame( $first, $second );
-	}
-
-	public function test_replacer_accessors_hand_out_new_api_objects() {
-		$replacer = new Replacer();
+	public function test_replacer_hands_out_one_setup_and_new_finders_and_updaters() {
+		$replacer = new Replacer2( 'test' );
 
 		$this->assertInstanceOf( Setup::class, $replacer->Setup() );
-		$this->assertNotSame( $replacer->Setup(), $replacer->Setup(), 'Every call starts with empty data' );
+		$this->assertSame( $replacer->Setup(), $replacer->Setup(), 'Data set through Setup() is what replace() uses' );
 		$this->assertInstanceOf( Finder::class, $replacer->Finder( array( 'base_url' => '/x' ) ) );
 		$this->assertInstanceOf( Updater::class, $replacer->Updater() );
 		$this->assertNotSame( $replacer->Finder(), $replacer->Finder() );
 	}
 
-	public function test_side_selectors_return_the_same_setup_for_chaining() {
-		$setup = Setup::getInstance();
+	public function test_each_side_is_one_data_object() {
+		$setup = new Setup();
 
-		$this->assertSame( $setup, $setup->forSearch() );
-		$this->assertSame( 'search', $this->readProperty( $setup, 'new_action' ) );
-		$this->assertSame( $setup, $setup->forReplace() );
-		$this->assertSame( 'replace', $this->readProperty( $setup, 'new_action' ) );
+		$this->assertInstanceOf( Data::class, $setup->search() );
+		$this->assertInstanceOf( Data::class, $setup->replace() );
+		$this->assertSame( $setup->search(), $setup->search() );
+		$this->assertNotSame( $setup->search(), $setup->replace() );
 	}
 
-	public function test_metadata_is_created_once_per_side_with_its_side_as_type() {
-		$setup = Setup::getInstance();
+	public function test_validate_data_fails_without_main_urls_and_reports_each_side() {
+		$setup = new Setup();
+		$setup->search()->setMetaData( array( 'file' => '2026/10/old.jpg' ) );
 
-		$search       = $setup->forSearch()->MetaData();
-		$search_again = $setup->forSearch()->MetaData();
-		$replace      = $setup->forReplace()->MetaData();
-
-		$this->assertInstanceOf( MetaData::class, $search );
-		$this->assertSame( $search, $search_again, 'Created lazily, then reused' );
-		$this->assertNotSame( $search, $replace );
-		$this->assertSame( 'search', $this->readProperty( $search, 'type' ) );
-		$this->assertSame( 'replace', $this->readProperty( $replace, 'type' ) );
-		$this->assertSame( $search, $this->readProperty( $setup, 'searchMetaData' ) );
-		$this->assertSame( $replace, $this->readProperty( $setup, 'replaceMetaData' ) );
+		$this->assertFalse( $setup->validateData() );
+		$this->assertCount( 2, $setup->getValidationErrors() );
+		$this->assertStringContainsString( 'search', $setup->getValidationErrors()[0] );
+		$this->assertStringContainsString( 'replace', $setup->getValidationErrors()[1] );
+		$this->assertFalse( $setup->getValidatedData() );
 	}
 
-	public function test_url_is_created_once_per_side_and_separate_from_metadata() {
-		$setup = Setup::getInstance();
+	public function test_validate_data_combines_base_metadata_and_extra_pairs() {
+		$setup = $this->fill( new Setup() );
+		$setup->search()->addUrls( array( 'webp' => '/wp-content/uploads/2026/10/old.webp' ) );
+		$setup->replace()->addUrls( array( 'webp' => '/wp-content/uploads/2026/11/new.webp' ) );
 
-		$search  = $setup->forSearch()->URL();
-		$replace = $setup->forReplace()->URL();
-
-		$this->assertInstanceOf( Url::class, $search );
-		$this->assertSame( $search, $setup->forSearch()->URL() );
-		$this->assertNotSame( $search, $replace );
-		$this->assertSame( 'replace', $this->readProperty( $replace, 'type' ) );
-		$this->assertSame( $search, $this->readProperty( $setup, 'searchURLData' ) );
-		$this->assertNull( $this->readProperty( $setup, 'searchMetaData' ), 'URL() does not create a MetaData object' );
+		$this->assertTrue( $setup->validateData() );
+		$this->assertSame( array(), $setup->getValidationErrors() );
+		$this->assertSame(
+			array(
+				'search'   => array(
+					'base'      => '/wp-content/uploads/2026/10/old.jpg',
+					'file'      => '/wp-content/uploads/2026/10/old.jpg',
+					'thumbnail' => '/wp-content/uploads/2026/10/old-150x150.jpg',
+					'medium'    => '/wp-content/uploads/2026/10/old-300x200.jpg',
+					'webp'      => '/wp-content/uploads/2026/10/old.webp',
+				),
+				'replace'  => array(
+					'base'      => '/wp-content/uploads/2026/11/new.jpg',
+					'file'      => '/wp-content/uploads/2026/11/new.jpg',
+					'thumbnail' => '/wp-content/uploads/2026/11/new-150x150.jpg',
+					'medium'    => '/wp-content/uploads/2026/11/new-300x200.jpg',
+					'webp'      => '/wp-content/uploads/2026/11/new.webp',
+				),
+				'base_url' => '/wp-content/uploads/2026/10/old',
+			),
+			$setup->getValidatedData()
+		);
 	}
 
-	/**
-	 * Without forSearch() / forReplace() the property name resolves to the
-	 * undeclared `MetaData`, as the docblock warns: reading it raises an
-	 * undefined-property notice (PHP 7.4) or warning (PHP 8). The object is
-	 * still created, with no side.
-	 */
-	public function test_metadata_without_a_side_reads_an_undeclared_property() {
-		$setup  = Setup::getInstance();
+	public function test_validate_data_without_target_sizes_uses_the_target_main_file_without_warnings() {
+		$setup = new Setup();
+		$setup->search()->setUrl( 'http://example.org/uploads/old.jpg' );
+		$setup->search()->setMetaData(
+			array(
+				'file'  => 'old.jpg',
+				'width' => 800,
+				'sizes' => array( 'thumbnail' => array( 'file' => 'old-150x150.jpg', 'width' => 150 ) ),
+			)
+		);
+		$setup->replace()->setUrl( 'http://example.org/uploads/new.jpg' );
+		$setup->replace()->setMetaData( array( 'file' => 'new.jpg', 'width' => 100 ) );
+
 		$errors = array();
 		set_error_handler(
 			function ( $errno, $errstr ) use ( &$errors ) {
-				$errors[] = array( $errno, $errstr );
+				$errors[] = $errstr;
 				return true;
 			}
 		);
 		try {
-			$metadata = $setup->MetaData();
+			$validated = $setup->validateData();
 		} finally {
 			restore_error_handler();
 		}
 
-		$this->assertInstanceOf( MetaData::class, $metadata );
-		$this->assertNull( $this->readProperty( $metadata, 'type' ) );
-		$undefined = array_values(
-			array_filter(
-				$errors,
-				function ( $error ) {
-					return false !== strpos( $error[1], 'Undefined property' );
-				}
-			)
-		);
-		$this->assertCount( 1, $undefined );
-		$this->assertSame( PHP_VERSION_ID >= 80000 ? E_WARNING : E_NOTICE, $undefined[0][0] );
-		$this->assertStringContainsString( '$MetaData', $undefined[0][1] );
+		$this->assertSame( array(), $errors, 'A target without sizes raises no warning' );
+		$this->assertTrue( $validated );
+		$this->assertSame( '/uploads/new.jpg', $setup->getValidatedData()['replace']['thumbnail'] );
 	}
 
-	public function test_validate_data_is_an_empty_placeholder() {
-		$setup = Setup::getInstance()->forSearch();
-		$setup->URL()->addData( 'http://example.org/a.jpg' );
+	public function test_a_failed_validation_drops_the_earlier_result() {
+		$setup = $this->fill( new Setup() );
+		$this->assertTrue( $setup->validateData(), 'precondition' );
+		$this->assertIsArray( $setup->getValidatedData(), 'precondition' );
 
-		$this->assertNull( $setup->validateData() );
+		$setup->replace()->setMetaData( 'not metadata' );
+
+		$this->assertFalse( $setup->validateData() );
+		$this->assertFalse( $setup->getValidatedData() );
+	}
+
+	public function test_thumbnails_only_leaves_the_main_file_out_without_changing_the_sides() {
+		$setup = $this->fill( new Setup() );
+
+		$this->assertTrue( $setup->validateData( array( 'thumbnails_only' => true ) ) );
+		$data = $setup->getValidatedData();
+
+		$this->assertSame( array( 'thumbnail', 'medium' ), array_keys( $data['search'] ) );
+		$this->assertSame( array( 'thumbnail', 'medium' ), array_keys( $data['replace'] ) );
+		$this->assertSame( '/wp-content/uploads/2026/10/old', $data['base_url'] );
+		$this->assertArrayHasKey( 'base', $setup->search()->getUrls(), 'The side keeps its main file' );
+	}
+
+	public function test_errors_of_an_earlier_run_are_cleared() {
+		$setup = new Setup();
+		$this->assertFalse( $setup->validateData(), 'precondition: fails without URLs' );
+		$this->assertNotEmpty( $setup->getValidationErrors() );
+
+		$this->fill( $setup );
+
+		$this->assertTrue( $setup->validateData() );
+		$this->assertSame( array(), $setup->getValidationErrors() );
+	}
+
+	public function test_invalid_metadata_blocks_validation() {
+		$setup = $this->fill( new Setup() );
+		$this->assertFalse( $setup->replace()->setMetaData( 'not metadata' ), 'precondition: refused' );
+
+		$this->assertFalse( $setup->validateData() );
+		$this->assertCount( 1, $setup->getValidationErrors() );
+		$this->assertStringContainsString( 'replace', $setup->getValidationErrors()[0] );
+	}
+
+	public function test_a_directory_as_search_base_fails_validation() {
+		$dir   = untrailingslashit( sys_get_temp_dir() );
+		$this->assertDirectoryExists( $dir, 'precondition' );
+		$setup = $this->fill( new Setup() );
+		$setup->search()->setUrl( 'http://example.org' . $dir . '.jpg' );
+
+		$this->assertFalse( $setup->validateData() );
+		$this->assertCount( 1, $setup->getValidationErrors() );
+		$this->assertStringContainsString( 'directory', $setup->getValidationErrors()[0] );
+	}
+
+	public function test_replace_without_source_or_target_returns_false() {
+		$replacer = new Replacer2( 'test' );
+		$replacer->Setup()->search()->setUrl( 'http://example.org/uploads/old.jpg' );
+
+		$this->assertFalse( $replacer->replace() );
+	}
+
+	public function test_replace_validates_itself_when_the_caller_did_not() {
+		$replacer = new Replacer2( 'test' );
+		$this->fill( $replacer->Setup() );
+		$this->assertFalse( $replacer->Setup()->getValidatedData(), 'precondition: not validated' );
+
+		$seen = array();
+		add_action(
+			'emr/replacer/replace_urls',
+			function ( $search, $replace, $base ) use ( &$seen ) {
+				$seen[] = array( $search, $replace, $base );
+			},
+			10,
+			3
+		);
+
+		$result = $replacer->replace();
+
+		$this->assertIsInt( $result );
+		$this->assertCount( 1, $seen );
+		$this->assertCount( 4, $seen[0][0] );
+		$this->assertSame( array_keys( $seen[0][0] ), array_keys( $seen[0][1] ) );
+		$this->assertSame( '/wp-content/uploads/2026/10/old', $seen[0][2] );
+	}
+
+	public function test_replace_validates_again_with_its_own_arguments() {
+		$replacer = new Replacer2( 'test' );
+		$this->fill( $replacer->Setup() );
+		$this->assertTrue( $replacer->Setup()->validateData(), 'precondition: validated without thumbnails_only' );
+
+		$seen = array();
+		add_action(
+			'emr/replacer/replace_urls',
+			function ( $search ) use ( &$seen ) {
+				$seen[] = array_keys( $search );
+			}
+		);
+
+		$replacer->replace( array( 'thumbnails_only' => true ) );
+
+		$this->assertSame( array( array( 'thumbnail', 'medium' ) ), $seen );
+		$this->assertArrayHasKey( 'base', $replacer->Setup()->search()->getUrls(), 'replace() does not change the sides' );
+	}
+
+	public function test_replace_returns_the_errors_and_runs_nothing_when_validation_fails() {
+		$replacer = new Replacer2( 'test' );
+		$this->fill( $replacer->Setup() );
+		$replacer->Setup()->search()->setMetaData( 42 );
+
+		$fired = 0;
+		add_action(
+			'emr/replacer/replace_urls',
+			function () use ( &$fired ) {
+				$fired++;
+			}
+		);
+
+		$result = $replacer->replace();
+
+		$this->assertIsArray( $result );
+		$this->assertCount( 1, $result );
+		$this->assertSame( 0, $fired );
+	}
+
+	public function test_incomplete_or_unbalanced_custom_runs_are_skipped() {
+		self::factory()->post->create( array( 'post_content' => 'nothing to replace here' ) );
+
+		$replacer = new Replacer2( 'test' );
+		$this->fill( $replacer->Setup() );
+
+		add_filter(
+			'emr/replacer/custom_replace_query',
+			function ( $runs ) {
+				$runs['empty_base'] = array( 'base_url' => '', 'search_urls' => array( 'a' ), 'replace_urls' => array( 'b' ) );
+				$runs['unbalanced'] = array( 'base_url' => 'nothing', 'search_urls' => array( 'a', 'c' ), 'replace_urls' => array( 'b' ) );
+				$runs['no_arrays']  = array( 'base_url' => 'nothing' );
+				$runs['valid']      = array( 'base_url' => 'nothing to replace', 'search_urls' => array( 'zzz' ), 'replace_urls' => array( 'yyy' ) );
+				return $runs;
+			}
+		);
+
+		$result = $replacer->replace();
+
+		$this->assertSame( 1, $result, 'Only the valid custom run finds the post; the empty base would have matched far more' );
 	}
 }

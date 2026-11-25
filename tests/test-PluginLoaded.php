@@ -42,7 +42,7 @@ class PluginLoadedTest extends WP_UnitTestCase {
 	}
 
 	public function test_bundled_autoloader_resolves_module_classes() {
-		$this->assertTrue( class_exists( 'EnableMediaReplace\\Replacer\\Replacer' ), 'The bundled autoloader should resolve the replacer module.' );
+		$this->assertTrue( class_exists( 'EnableMediaReplace\\Replacer\\Replacer2' ), 'The bundled autoloader should resolve the replacer module.' );
 		$this->assertTrue( class_exists( 'EnableMediaReplace\\FileSystem\\Controller\\FileSystemController' ), 'The bundled autoloader should resolve the filesystem module.' );
 	}
 

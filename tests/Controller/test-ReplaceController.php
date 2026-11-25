@@ -1031,6 +1031,12 @@ class ReplaceControllerTest extends WP_UnitTestCase {
 		);
 		$this->assertFalse( realpath( $missing ), 'Sentinel: the basedir does not resolve.' );
 
+		// Made accessible before the error handler is installed: setAccessible()
+		// is deprecated on PHP 8.5, and that notice is the helper's, not the
+		// method's.
+		$method = new ReflectionMethod( ReplaceController::class, 'getNewTargetLocation' );
+		$method->setAccessible( true );
+
 		$errors = array();
 		set_error_handler( // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_set_error_handler
 			function ( $number, $message ) use ( &$errors ) {
@@ -1042,7 +1048,7 @@ class ReplaceControllerTest extends WP_UnitTestCase {
 		// reports the missing folder through error_log(), kept off the output.
 		$error_log = ini_set( 'error_log', '/dev/null' ); // phpcs:ignore WordPress.PHP.IniSet.Risky
 		try {
-			$result = $this->call( $controller, 'getNewTargetLocation' );
+			$result = $method->invoke( $controller );
 		} finally {
 			restore_error_handler();
 			ini_set( 'error_log', (string) $error_log ); // phpcs:ignore WordPress.PHP.IniSet.Risky

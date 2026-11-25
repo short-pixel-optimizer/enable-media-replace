@@ -12,7 +12,7 @@
  * @package Enable_Media_Replace
  */
 
-use EnableMediaReplace\Replacer\Replacer;
+use EnableMediaReplace\Replacer\Replacer2;
 use EnableMediaReplace\Replacer\Modules\SmartSlider;
 
 /**
@@ -43,8 +43,10 @@ class SmartSliderInertTest extends WP_UnitTestCase {
 		$instance->setAccessible( true );
 		$instance->setValue( null, null );
 
-		$replacer = new Replacer();
+		$replacer = new Replacer2( 'test' );
 		$module   = SmartSlider::getInstance( $replacer );
+
+		$this->assertSame( $module, SmartSlider::getInstance( $replacer ), 'Sentinel: the module the replacer built.' );
 
 		$this->assertTrue( defined( 'NEXTEND_SMARTSLIDER_3' ), 'Sentinel: Smart Slider is detected.' );
 		$this->assertInstanceOf( SmartSlider::class, $module );

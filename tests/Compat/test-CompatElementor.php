@@ -139,7 +139,7 @@ class CompatElementorTest extends EMR_IntegrationTestCase {
 	public function test_replacer_construction_registers_the_elementor_module() {
 		$this->assertFalse( has_filter( 'emr/externals/elementor_is_active' ), 'Precondition: no manual override.' );
 
-		new \EnableMediaReplace\Replacer\Replacer();
+		new \EnableMediaReplace\Replacer\Replacer2( 'emr' );
 
 		$module = \EnableMediaReplace\Replacer\Modules\Elementor::getInstance();
 		$this->assertSame( 10, has_filter( 'emr/replacer/custom_replace_query', array( $module, 'addElementor' ) ) );

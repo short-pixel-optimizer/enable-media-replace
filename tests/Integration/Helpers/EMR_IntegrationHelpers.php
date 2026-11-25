@@ -66,7 +66,6 @@ trait EMR_IntegrationHelpers {
 			'EnableMediaReplace\ViewController\ReplaceViewController'           => 'instance',
 			'EnableMediaReplace\ViewController\UploadViewController'            => 'instance',
 			'EnableMediaReplace\ViewController\RemoveBackgroundViewController'  => 'instance',
-			'EnableMediaReplace\Replacer\Replacer'                              => 'instance',
 			'EnableMediaReplace\Notices\NoticeController'                       => 'instance',
 		);
 	}

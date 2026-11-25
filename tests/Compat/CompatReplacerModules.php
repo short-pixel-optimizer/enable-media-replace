@@ -13,7 +13,7 @@
  * after every test, but a singleton constructed earlier in the process would
  * keep its instance and never register again. snapshotModuleSingletons()
  * saves the current instances and nulls them, so the next getInstance()
- * (the Replacer's loadFormats(), run inside ReplaceController::run())
+ * (Replacer2's loadFormats(), run inside ReplaceController::run())
  * constructs fresh objects against the real partner plugin;
  * restoreModuleSingletons() puts the saved instances back.
  *
@@ -35,7 +35,6 @@ trait EMR_CompatReplacerModules {
 	 */
 	protected function moduleSingletonClasses() {
 		return array(
-			'EnableMediaReplace\Replacer\Replacer',
 			'EnableMediaReplace\Replacer\Modules\Elementor',
 			'EnableMediaReplace\Replacer\Modules\WpBakery',
 			'EnableMediaReplace\Replacer\Modules\YoastSeo',
