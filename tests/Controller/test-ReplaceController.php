@@ -844,10 +844,10 @@ class ReplaceControllerTest extends WP_UnitTestCase {
 	/**
 	 * Both sides of the prefix check are built on realpath() of the basedir,
 	 * so a basedir that is spelled differently from its resolved form (here
-	 * through a sibling and a `..` segment) is accepted, and the target is
-	 * built on the resolved spelling.
+	 * through a sibling and a `..` segment) is accepted. The target keeps the
+	 * spelling WordPress reports, so it stays relative to uploads.
 	 */
-	public function test_an_aliased_basedir_is_accepted_and_resolved() {
+	public function test_an_aliased_basedir_is_accepted_and_keeps_its_spelling() {
 		$id      = $this->upload();
 		$uploads = wp_upload_dir();
 		$real    = realpath( $uploads['basedir'] );
@@ -869,7 +869,8 @@ class ReplaceControllerTest extends WP_UnitTestCase {
 
 		$this->assertNotSame( $real, $alias, 'Sentinel: the basedir is not spelled as it resolves.' );
 		$this->assertSame( $real, realpath( $alias ), 'Sentinel: the alias is the uploads folder.' );
-		$this->assertSame( $real . '/emr-aliased/', $result );
+		$this->assertSame( $alias . '/emr-aliased/', $result );
+		$this->assertSame( 'emr-aliased/x.jpg', _wp_relative_upload_path( $result . 'x.jpg' ) );
 		$this->assertNull( $controller->returnLastError() );
 		$this->assertSame( array(), $controller->returnLastErrorData() );
 	}
@@ -963,7 +964,8 @@ class ReplaceControllerTest extends WP_UnitTestCase {
 	/**
 	 * A symlinked uploads folder: the requested path and the basedir are both
 	 * built on realpath() of the basedir, so a location inside uploads is
-	 * accepted. The directory returned is the resolved one, not the link.
+	 * accepted. The directory returned is spelled through the link, the
+	 * basedir WordPress reports.
 	 */
 	public function test_symlinked_basedir_accepts_a_location_inside_uploads() {
 		$id   = $this->upload();
@@ -975,25 +977,17 @@ class ReplaceControllerTest extends WP_UnitTestCase {
 		$result = $this->call( $controller, 'getNewTargetLocation' );
 
 		$this->assertSame( $link, wp_upload_dir()['basedir'], 'Sentinel: WordPress reports the link as basedir.' );
-		$this->assertSame( $real . '/emr-inside/', $result );
+		$this->assertSame( $link . '/emr-inside/', $result );
 		$this->assertNull( $controller->returnLastError() );
 	}
 
 	/**
-	 * getNewTargetLocation() returns the directory built on realpath() of the
-	 * basedir, not on the basedir WordPress reports. When the two are spelled
-	 * differently (a symlinked uploads folder here; on Windows, a basedir
-	 * with backslashes against the forward slashes of normalizePath()), the
-	 * target of a replacement with a new location does not start with
-	 * wp_upload_dir()['basedir']. update_attached_file() can then not make
-	 * the path relative and stores the absolute path in `_wp_attached_file`.
-	 *
-	 * Where: ReplaceController::getNewTargetLocation(), `return $realPath`.
-	 *
-	 * How to recognise the fix: the target starts with the basedir WordPress
-	 * reports and its relative upload path is `emr-moved/emr-moved.jpg`.
+	 * A replacement with a new location under a symlinked uploads folder:
+	 * the checks run on the resolved basedir, but the target is built on the
+	 * basedir WordPress reports, so update_attached_file() can store it
+	 * relative to uploads in `_wp_attached_file`.
 	 */
-	public function test_new_location_under_a_symlinked_basedir_leaves_the_reported_basedir_pinned_for_deferred_fix() {
+	public function test_new_location_under_a_symlinked_basedir_keeps_the_reported_basedir() {
 		$id   = $this->upload();
 		$real = realpath( wp_upload_dir()['basedir'] );
 		$link = $this->symlinked_basedir( $real );
@@ -1013,24 +1007,17 @@ class ReplaceControllerTest extends WP_UnitTestCase {
 		$this->assertTrue( $result );
 		$this->assertSame( 'emr-moved/emr-moved.jpg', _wp_relative_upload_path( $link . '/emr-moved/emr-moved.jpg' ), 'Sentinel: a path under the reported basedir is made relative.' );
 		$target = $this->prop( $controller, 'targetFile' )->getFullPath();
-		$this->assertSame( $real . '/emr-moved/emr-moved.jpg', $target, 'Pinned: the target is built on the resolved basedir.' );
-		$this->assertSame( $target, _wp_relative_upload_path( $target ), 'Pinned: WordPress keeps the absolute path.' );
+		$this->assertSame( $link . '/emr-moved/emr-moved.jpg', $target, 'The target is built on the reported basedir.' );
+		$this->assertSame( 'emr-moved/emr-moved.jpg', _wp_relative_upload_path( $target ), 'WordPress makes the target relative.' );
 	}
 
 	/**
 	 * When realpath() cannot resolve the uploads basedir (the folder is
-	 * missing or not reachable), getNewTargetLocation() goes on with `false`:
-	 * normalizePath() reads the first character of an empty string, and the
-	 * directory returned is the location directly under the file system
-	 * root, outside uploads, without an error code.
-	 *
-	 * Where: ReplaceController::getNewTargetLocation(), the result of
-	 * realpath() is used unchecked.
-	 *
-	 * How to recognise the fix: no PHP error is raised and the call returns
-	 * false with an error code, or a directory under the reported basedir.
+	 * missing or not reachable), getNewTargetLocation() falls back to the
+	 * basedir WordPress reports: no PHP error, no error code, and the
+	 * directory returned is the location under that basedir.
 	 */
-	public function test_an_unresolvable_basedir_targets_the_file_system_root_pinned_for_deferred_fix() {
+	public function test_an_unresolvable_basedir_falls_back_to_the_reported_basedir() {
 		$id      = $this->upload();
 		$missing = get_temp_dir() . 'emr-no-uploads-' . strtolower( wp_generate_password( 6, false, false ) );
 		$controller = new ReplaceController( $id );
@@ -1061,10 +1048,9 @@ class ReplaceControllerTest extends WP_UnitTestCase {
 			ini_set( 'error_log', (string) $error_log ); // phpcs:ignore WordPress.PHP.IniSet.Risky
 		}
 
-		$this->assertSame( '/emr-rootless/', $result, 'Pinned: the location lands under the file system root.' );
-		$this->assertNull( $controller->returnLastError(), 'Pinned: no error code.' );
-		$offsets = preg_grep( '/Uninitialized string offset/', $errors );
-		$this->assertCount( 1, $offsets, 'Pinned: normalizePath() reads the first character of an empty string. Raised: ' . implode( ' | ', $errors ) );
+		$this->assertSame( $missing . '/emr-rootless/', $result, 'The location lands under the reported basedir.' );
+		$this->assertNull( $controller->returnLastError(), 'No error code.' );
+		$this->assertSame( array(), $errors, 'No PHP error is raised.' );
 		$this->assertDirectoryDoesNotExist( '/emr-rootless', 'Nothing is created by resolving the location.' );
 	}
 

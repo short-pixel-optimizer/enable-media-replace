@@ -152,8 +152,8 @@ class ReplaceController
 
 	/**
 	 * Error: the requested new location does not exist. Defined for the view's message
-	 * table; nothing in this class sets it (the check in getNewTargetLocation() is
-	 * commented out, the directory is created by run() instead).
+	 * table; nothing in this class sets it (getNewTargetLocation() does not require the
+	 * directory to exist, run() creates it).
 	 *
 	 * @var int
 	 */
@@ -901,7 +901,8 @@ class ReplaceController
 	/**
 	 * Resolves and validates the directory for search-replace mode.
 	 *
-	 * Joins the realpath() of the uploads basedir with $new_location (empty when no new
+	 * Joins the realpath() of the uploads basedir (the basedir as WordPress reports it when
+	 * realpath() fails, e.g. a missing folder) with $new_location (empty when no new
 	 * location is set, so the result is the basedir itself), normalizes it with
 	 * normalizePath() (realpath() would fail on directories that do not exist yet) and adds
 	 * a trailing slash. The basedir goes through the same two steps, so both sides of the
@@ -911,40 +912,36 @@ class ReplaceController
 	 * Traversal check: the result must start with the resolved, normalized basedir. Because
 	 * normalizePath() drops `..` segments instead of resolving them, a location such as
 	 * `../../etc` becomes `<basedir>/etc`; it does not escape uploads, and since both sides
-	 * are built on the same basedir the check always passes when the basedir resolves.
+	 * are built on the same basedir the check always passes.
 	 *
 	 * Multisite guard: on the main site of a multisite (EnvHelper flags), a result containing
 	 * `<basedir>sites` is rejected, so main-site files cannot be moved into sub-site upload
 	 * folders. This is a prefix match, so any main-site folder whose name starts with
 	 * `sites` is rejected as well.
 	 *
-	 * A failure sets ERROR_DIRECTORY_SECURITY and $lastErrorData
-	 * `array('path' => $realPath, 'basedir' => $basedir)`. The directory-exists check
-	 * (ERROR_DIRECTORY_NOTEXIST) is commented out.
+	 * The resolved strings serve the checks only. The directory returned is the basedir
+	 * WordPress reports (wp_upload_dir()['basedir']) joined with the validated, normalized
+	 * location: the same physical directory, spelled so that update_attached_file() can
+	 * store it relative to uploads (a symlinked uploads folder, a basedir with `//` or `..`,
+	 * a Windows basedir with backslashes). The directory is not required to exist; run()
+	 * creates it.
 	 *
-	 * @todo The directory returned is built on realpath() of the basedir, not on the basedir
-	 *       WordPress reports. Where the two are spelled differently (a symlinked uploads
-	 *       folder; on Windows, backslashes against the forward slashes of normalizePath())
-	 *       the target of a replacement with a new location does not start with
-	 *       wp_upload_dir()['basedir'], so update_attached_file() stores the absolute path
-	 *       in `_wp_attached_file` instead of the relative one. Suggested fix: keep the
-	 *       resolved strings for the comparison only and return the reported basedir
-	 *       joined with the normalized location.
-	 * @todo The result of realpath() is used unchecked. When the basedir does not resolve
-	 *       (missing or unreachable folder) it is false: normalizePath() reads the first
-	 *       character of an empty string (PHP warning) and the directory returned is
-	 *       `/<location>/`, under the file system root, without an error code. Suggested
-	 *       fix: fall back to the reported basedir, or fail with an error code, when
-	 *       realpath() returns false.
+	 * A failure sets ERROR_DIRECTORY_SECURITY and $lastErrorData
+	 * `array('path' => $realPath, 'basedir' => $basedir)`, both the resolved, normalized
+	 * spellings.
 	 *
 	 * @uses self::ERROR_DIRECTORY_SECURITY
-	 * @return string|false The absolute target directory with trailing slash, or false.
+	 * @return string|false The absolute target directory, on the reported basedir, with
+	 *                      trailing slash, or false.
 	 */
 	protected function getNewTargetLocation()
 	{
 		$uploadDir = wp_upload_dir();
 		$new_rel_location = $this->new_location;
 		$baseDir = realpath($uploadDir['basedir']);
+		$baseDir = realpath($uploadDir['basedir']);
+		if (false === $baseDir) { $baseDir = $uploadDir['basedir']; }
+		
 
 		$newPath = trailingslashit($baseDir) . $new_rel_location;
 		
@@ -981,10 +978,8 @@ class ReplaceController
 			}
 		}
 
-		/*if (! is_dir($realPath)) {
-			$this->lastError = self::ERROR_DIRECTORY_NOTEXIST;
-			return false;
-		} */
+		// Final result
+		$realPath = trailingslashit($uploadDir['basedir']) . substr($realPath, strlen($basedir));
 		return $realPath;
 	}
 
