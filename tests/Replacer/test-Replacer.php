@@ -843,6 +843,7 @@ class ReplacerTest extends WP_UnitTestCase {
 		$cases    = array(
 			array( '{"a":1}', true ),
 			array( '[1,2]', true ),
+			array( '"abc"', false ),
 			array( '123', false ),
 			array( '0', false ),
 			array( '[]', false ),
@@ -855,100 +856,6 @@ class ReplacerTest extends WP_UnitTestCase {
 			$this->assertSame( $case[1], $this->callPrivate( $replacer, 'isJSON', array( $case[0] ) ), 'isJSON(' . wp_json_encode( $case[0] ) . ')' );
 		}
 		$this->assertFalse( $this->callPrivate( $replacer, 'isJSON', array( new stdClass() ) ) );
-	}
-
-	/**
-	 * A text wrapped in double quotes, such as `"abc"`, is a quotation
-	 * somebody typed with the quotes (a page builder heading) or a string a
-	 * plugin stored JSON-encoded. isJSON() reads it as a JSON document,
-	 * because json_decode() gives a string that differs from the input, so
-	 * replaceContent() decodes it and encodes it again (see the two tests
-	 * below).
-	 *
-	 * Where: Replacer2::isJSON() in the bundled build
-	 * (build/shortpixel/replacer2/src/Replacer2.php). The module source
-	 * already answers false for everything that decodes to a scalar; the
-	 * bundled copy gets that with the next `composer run buildSP`.
-	 *
-	 * How to recognise the fix: isJSON() answers false for a quoted text.
-	 */
-	public function test_quoted_text_counts_as_a_json_document_pinned_for_deferred_fix() {
-		$replacer = $this->newReplacer();
-		$this->assertSame( 'abc', json_decode( '"abc"' ), 'Sentinel: the quoted text decodes to a string, not to a document.' );
-
-		$this->assertTrue( $this->callPrivate( $replacer, 'isJSON', array( '"abc"' ) ), 'Pinned: a quoted text is taken for a JSON document.' );
-	}
-
-	/**
-	 * Because a quoted text counts as a JSON document (see the test above),
-	 * replaceContent() decodes it, replaces in the decoded text and encodes
-	 * it again. The URL is replaced, but the rest of the value is rewritten
-	 * too: the whitespace around the quotes is dropped, `\/` and `\uXXXX`
-	 * escapes are written as plain characters and an inner `\"` becomes
-	 * `\u0022`. A value in which nothing is replaced is returned as stored.
-	 *
-	 * Where: Replacer2::replaceContent(), the JSON branch, in the bundled
-	 * build. The module source replaces inside the literal and keeps its
-	 * bytes; the bundled copy gets that with the next
-	 * `composer run buildSP`.
-	 *
-	 * How to recognise the fix: each result is the stored value with only
-	 * the URL changed.
-	 */
-	public function test_quoted_text_with_the_url_is_rewritten_as_json_pinned_for_deferred_fix() {
-		$replacer = $this->newReplacer();
-		$replace  = function ( $content ) use ( $replacer ) {
-			return $replacer->replaceContent( $content, array( self::OLD_URL ), array( self::NEW_URL ) );
-		};
-
-		$untouched = " \n\"Caf\u{00e9}\"\n\t";
-		$this->assertSame( $untouched, $replace( $untouched ), 'Sentinel: without a match the value is returned as stored.' );
-
-		$this->assertSame(
-			"\"Caf\u{00e9}: " . self::NEW_URL . '"',
-			$replace( " \n\"Caf\u{00e9}: " . self::OLD_URL . "\"\n\t" ),
-			'Pinned: the whitespace around the quotes is dropped.'
-		);
-
-		$literal = json_encode( "Caf\u{00e9} " . self::OLD_URL );
-		$this->assertSame( '"Caf\u00e9 http:\/\/example.org\/wp-content\/uploads\/old-image.jpg"', $literal, 'Sentinel: slashes and non-ASCII are escaped.' );
-		$this->assertSame(
-			"\"Caf\u{00e9} " . self::NEW_URL . '"',
-			$replace( $literal ),
-			'Pinned: the escapes of the stored literal are written as plain characters.'
-		);
-
-		$quotes = '"say \"hi\" in C:\\\\dir: ' . self::OLD_URL . '"';
-		$this->assertSame( 'say "hi" in C:\\dir: ' . self::OLD_URL, json_decode( $quotes ), 'Sentinel: a literal with escaped quotes and a backslash.' );
-		$this->assertSame(
-			'"say \u0022hi\u0022 in C:\\\\dir: ' . self::NEW_URL . '"',
-			$replace( $quotes ),
-			'Pinned: the inner quotes are written as \u0022.'
-		);
-	}
-
-	/**
-	 * A serialized quoted text (`s:N:""...";`) is unserialized, taken for a
-	 * JSON document, replaced and encoded back as JSON, and the JSON branch
-	 * skips the serialize() of the value this call unserialized: the bare
-	 * quoted text comes back, without its serialization layer.
-	 *
-	 * Where: Replacer2::replaceContent() in the bundled build, the `$isJson`
-	 * branch before the `$was_unserialized` one. The module source handles a
-	 * quoted text as a string, which is serialized back; the bundled copy
-	 * gets that with the next `composer run buildSP`.
-	 *
-	 * How to recognise the fix: the result is the serialized quoted text
-	 * with the new URL and a valid length.
-	 */
-	public function test_serialized_quoted_text_loses_its_serialization_layer_pinned_for_deferred_fix() {
-		$stored = serialize( '"' . self::OLD_URL . '"' );
-		$this->assertTrue( is_serialized( $stored ), 'Sentinel: the value is a serialized string.' );
-
-		$result = $this->newReplacer()->replaceContent( $stored, array( self::OLD_URL ), array( self::NEW_URL ) );
-
-		$this->assertSame( '"' . self::NEW_URL . '"', $result, 'Pinned: the bare quoted text comes back.' );
-		$this->assertFalse( is_serialized( $result ), 'Pinned: the serialization layer is gone.' );
 	}
 
 	public function test_check_incomplete_is_true_only_for_incomplete_objects() {
