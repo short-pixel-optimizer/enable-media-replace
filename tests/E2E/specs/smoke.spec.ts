@@ -10,10 +10,10 @@
  *      remove-background screen goes through the REAL ajax handler and
  *      ApiKeyManager, and the key is stored;
  *   6. the console-error tripwire really fails a test.
- * It also pins the JS error the remove-background screen throws on load.
+ * It also checks that the remove-background screen loads without a JS error.
  */
 import { test, expect } from '../fixtures';
-import { KNOWN_JS_DEFECTS, RemoveBackgroundScreen, ReplaceScreen, emrQuery, expectOnlyKnownErrors } from '../helpers/emr';
+import { RemoveBackgroundScreen, ReplaceScreen, emrQuery } from '../helpers/emr';
 import { MediaList } from '../helpers/media-list';
 import { adminUrls, login } from '../helpers/wp-admin';
 
@@ -103,12 +103,7 @@ test.describe('Smoke', () => {
 });
 
 test.describe('Smoke: remove-background screen', () => {
-	// The screen throws a known JS error on every load (see
-	// KNOWN_JS_DEFECTS.removeBackgroundLocationOption and the pin below);
-	// these tests accept that one error and nothing else.
-	test.use({ allowConsoleErrors: true });
-
-	test('the mock answers api-status.php when an API key is saved on the remove-background screen', async ({ page, emr, consoleErrors }) => {
+	test('the mock answers api-status.php when an API key is saved on the remove-background screen', async ({ page, emr }) => {
 		const key = 'E2EKEY0123456789ABCD';
 		expect(key).toHaveLength(20);
 
@@ -132,37 +127,22 @@ test.describe('Smoke: remove-background screen', () => {
 		expect(calls.length, 'one validation call to api-status.php').toBe(1);
 		expect(calls[0].host).toBe('api.shortpixel.com');
 		expect(calls[0].request).toMatchObject({ key, DomainCheck: 'http://localhost:8031' });
-
-		expectOnlyKnownErrors(consoleErrors, [KNOWN_JS_DEFECTS.removeBackgroundLocationOption]);
 	});
 
 	/**
-	 * js/emr_admin.js runs on the remove-background screen too
-	 * (EnableMediaReplacePlugin::route() enqueues it for every action), and
-	 * its init() ends with showReplaceOptions(), which calls
-	 * `document.querySelector('section.options .location_option').classList`
-	 * without a null check. The remove-background screen
-	 * (views/prepare-remove-background.php) has no `.location_option`, so
-	 * every load throws an uncaught TypeError. The correct behaviour is a
-	 * silent load: guard the element (and the checked replace_type radio)
-	 * against null, or enqueue emr_admin.js on the replace screen only.
-	 *
-	 * How to recognise the fix: the load no longer throws, `consoleErrors`
-	 * stays empty and the assertion below fails; then drop this pin, the
-	 * entry in KNOWN_JS_DEFECTS and the allowConsoleErrors of this describe.
+	 * js/emr_admin.js is enqueued on the remove-background screen too
+	 * (EnableMediaReplacePlugin::route() enqueues it for every action),
+	 * although the screen has none of the replace options the script works
+	 * on. The load is silent: no uncaught error and no console.error.
 	 */
-	test('emr_admin.js throws on the remove-background screen load, pinned_for_deferred_fix', async ({ page, emr, consoleErrors }) => {
+	test('the remove-background screen loads without a JavaScript error', async ({ page, emr, consoleErrors }) => {
 		const screen = new RemoveBackgroundScreen(page);
 		await screen.goto(emr.seed.attachment_id);
+		await page.waitForLoadState('load');
 		// Sentinel: the screen really rendered.
 		await expect(screen.previewButton).toBeVisible();
 
-		await expect
-			.poll(() => consoleErrors.filter((e) => KNOWN_JS_DEFECTS.removeBackgroundLocationOption.test(e)).length, {
-				message: 'the showReplaceOptions TypeError from emr_admin.js',
-			})
-			.toBeGreaterThan(0);
-		expectOnlyKnownErrors(consoleErrors, [KNOWN_JS_DEFECTS.removeBackgroundLocationOption]);
+		expect(consoleErrors).toEqual([]);
 	});
 });
 
