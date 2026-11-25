@@ -304,18 +304,22 @@ class UploadViewController extends \EnableMediaReplace\ViewController
 			$uploadFileArray = $_FILES['userfile'];
 
 			// New method for validating that the uploaded file is allowed, using WP:s internal wp_check_filetype_and_ext() function.
-			$filedata = wp_check_filetype_and_ext($uploadFileArray["tmp_name"], $uploadFileArray["name"]);
 
 			$uploadFileArray = apply_filters('wp_handle_upload_prefilter', $uploadFileArray); 
 
 			Log::addDebug('Data after check', $filedata);
-			if (isset($uploadFilearray['error']) && $uploadFileArray['userfile']['error'] > 0) {
+			if (isset($uploadFileArray['error']) && ! is_numeric($uploadFileArray['error']) && $uploadFileArray['error']) 
+			{
 				$this->viewError(self::ERROR_UPDATE_FAILED);
 			}
+
+			$filedata = wp_check_filetype_and_ext($uploadFileArray["tmp_name"], $uploadFileArray["name"]);
+
 
 			if ($filedata["ext"] == false && ! current_user_can('unfiltered_upload')) {
 				$this->viewError(self::ERROR_SECURITY);
 			}
+
 
 
 			// Here we have the uploaded file
