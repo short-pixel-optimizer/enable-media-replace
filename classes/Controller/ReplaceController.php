@@ -345,7 +345,7 @@ class ReplaceController
 	 *     wp_update_post() does not change the guid of an existing post. A WP_Error sets
 	 *     ERROR_UPDATE_POST.
 	 * 15. Applies `emr/replace/doreplace` (default true); when it returns exactly true,
-	 *     runs Replacer::replace() with `thumbnails_only` true in MODE_REPLACE and false in
+	 *     runs Replacer2::replace() with `thumbnails_only` true in MODE_REPLACE and false in
 	 *     MODE_SEARCHREPLACE.
 	 * 16. updateDate().
 	 * 17. Flushes caches through emrCache::flushCache() in 'post' mode with the post ID and
