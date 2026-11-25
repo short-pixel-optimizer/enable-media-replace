@@ -307,13 +307,13 @@ class UploadViewController extends \EnableMediaReplace\ViewController
 
 			$uploadFileArray = apply_filters('wp_handle_upload_prefilter', $uploadFileArray); 
 
-			Log::addDebug('Data after check', $filedata);
 			if (isset($uploadFileArray['error']) && ! is_numeric($uploadFileArray['error']) && $uploadFileArray['error']) 
 			{
 				$this->viewError(self::ERROR_UPDATE_FAILED);
 			}
 
 			$filedata = wp_check_filetype_and_ext($uploadFileArray["tmp_name"], $uploadFileArray["name"]);
+			Log::addDebug('Data after check', $filedata);
 
 
 			if ($filedata["ext"] == false && ! current_user_can('unfiltered_upload')) {
