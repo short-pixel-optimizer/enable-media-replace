@@ -32,10 +32,11 @@ use EnableMediaReplace\Replacer\Libraries\Unserialize\Unserialize;
  * Search-and-replace engine for media URLs. Through Setup() the caller sets
  * a source URL (`search()` side) and a target URL (`replace()` side),
  * optionally the attachment metadata of both (so thumbnail sizes are
- * replaced as well) and optional extra URLs, then calls replace(). replace() builds balanced search/replace arrays of relative URL
- * paths and rewrites them in `post_content`, in the post, comment, term and
- * user meta tables and in the options table, followed by any additional runs
- * that integrations register (page builders that store URLs escaped,
+ * replaced as well) and optional extra URLs, then calls replace(). replace()
+ * builds balanced search/replace arrays of relative URL paths and rewrites
+ * them in `post_content`, in the post, comment, term and user meta tables
+ * and in the options table, followed by any additional runs that
+ * integrations register (page builders that store URLs escaped,
  * urlencoded or through their own save API).
  *
  * replaceContent() is public and is also used directly by consumers and by
@@ -49,7 +50,7 @@ use EnableMediaReplace\Replacer\Libraries\Unserialize\Unserialize;
  * Setup (source, target, metadata, extra URLs) and the replace settings are
  * instance state and are not reset after replace().
  *
- * replace() is built from the classes of the newer API: Classes\Setup
+ * replace() is built from the classes of this module: Classes\Setup
  * collects and balances the search/replace data, Classes\Finder finds the
  * rows as Classes\Record objects (each knowing its table and row),
  * replaceRecord() replaces their content and Classes\Updater writes them
@@ -73,7 +74,7 @@ use EnableMediaReplace\Replacer\Libraries\Unserialize\Unserialize;
  * - filter `shortpixel/replacer/load_meta_value` (replaceRecord())
  * - filter `shortpixel/replacer/save_meta_value` (replaceRecord())
  * - filter `shortpixel/replacer/content` (replaceContent())
- * - filter `shortpixel/file/basedir_check` (fileIsRestricted())
+ * - filter `shortpixel/file/basedir_check` (Classes\Setup::fileIsRestricted())
  *
  * @todo Extra URLs added with Data::addUrls() are never cleared, so a
  *       second replace() on the same instance reuses the extra URLs of the
@@ -87,8 +88,9 @@ class Replacer2
 {
 
 	/**
-	 * json_encode() flags added to every JSON re-encode in replaceContent(),
-	 * on top of the run's `json_flags`.
+	 * json_encode() flags added to every JSON re-encode of the replacer, on
+	 * top of the run's `json_flags`. encodeJSON() is the only place in this
+	 * class that encodes, so no re-encode can leave them out.
 	 *
 	 * Decoding turns escapes such as `\u003c` into literal characters, and
 	 * json_encode() writes `<`, `>`, `&`, `'` and `"` literally unless told
@@ -115,10 +117,11 @@ class Replacer2
 	);
 
 	/**
-	 * Settings of the current replace run, see setReplaceSettings(). Null
-	 * until the first run or the first replaceContent() call.
+	 * Settings of the current replace run, see setReplaceSettings(). The
+	 * constructor sets the defaults with this replacer's component; every
+	 * run replaces them with its own.
 	 *
-	 * @var array|null
+	 * @var array
 	 */
 	private $replace_settings;
 
@@ -189,7 +192,7 @@ class Replacer2
 	}
 
 	/**
-	 * Returns a new Finder of the newer search/replace API.
+	 * Returns a new Finder.
 	 *
 	 * @param array $args Finder constructor arguments (`callback`, `base_url`,
 	 *                    `return_data`), see Classes\Finder::__construct().
@@ -202,7 +205,7 @@ class Replacer2
 	}
 
 	/**
-	 * Returns a new Updater of the newer search/replace API.
+	 * Returns a new Updater.
 	 *
 	 * @return Updater
 	 */
@@ -511,7 +514,8 @@ class Replacer2
 	 *   inner layer walked as well, so both layers keep valid lengths. A
 	 *   string that looks serialized but does not unserialize (a wrong
 	 *   length) is returned unchanged.
-	 * - JSON string (see isJSON()): decoded with json_decode() into objects
+	 * - JSON document (a string that decodes to an array or object, see
+	 *   isJSON()): decoded with json_decode() into objects
 	 *   and arrays, processed as such and encoded back at the same level
 	 *   (top level or nested), with the `json_flags` setting plus
 	 *   JSON_SAFE_FLAGS, so `<`, `>`, `&`, `'` and `"` inside strings stay
@@ -521,7 +525,11 @@ class Replacer2
 	 *   original string is returned byte for byte, so JSON without a match
 	 *   keeps its escaping.
 	 * - String: passed through the `shortpixel/replacer/content` filter, then
-	 *   str_replace($search, $replace).
+	 *   str_replace($search, $replace). A JSON string literal (a text
+	 *   wrapped in double quotes, see isJSONString()) is not decoded as a
+	 *   document: replaceJSONString() replaces in it and keeps its quotes,
+	 *   surrounding whitespace and escaping, and also finds a search value
+	 *   written with escaped slashes (`\/`).
 	 * - WP_Error: returned untouched.
 	 * - Array: every value is processed recursively ($in_deep true). String
 	 *   keys are processed too, and a key that changes (a URL used as key)
@@ -535,8 +543,8 @@ class Replacer2
 	 *   is true. A walked serialized value is always serialized back, the
 	 *   setting notwithstanding (see the @todo below).
 	 *
-	 * When no replace run has set the settings yet, the defaults are applied
-	 * first. Otherwise the settings of the latest run apply.
+	 * The settings of the latest replace run apply; before the first run
+	 * these are the defaults with the constructor's component.
 	 *
 	 * @hook filter shortpixel/replacer/content Receives ($content, $search,
 	 *       $replace) for every string leaf (values and array keys) before
@@ -545,9 +553,11 @@ class Replacer2
 	 * @param mixed $content      The content to replace in.
 	 * @param array $search       Values to search for.
 	 * @param array $replace      Replacements, index-matched to $search.
-	 * @param bool  $in_deep      True for nested levels; prevents
-	 *                            re-serialising and JSON re-encoding below the
-	 *                            top level.
+	 * @param bool  $in_deep      True for nested levels: an array or object
+	 *                            is then returned as it is, without the
+	 *                            top-level maybe_serialize(). Serialized and
+	 *                            JSON values are written back in their own
+	 *                            form at every level.
 	 * @param bool  $strict_check Passed down the recursion but not otherwise
 	 *                            read; every unserialize uses
 	 *                            `allowed_classes => ['stdClass']`
@@ -623,7 +633,14 @@ class Replacer2
 		elseif (is_string($content))  // regular string.
 		{
 			$content = apply_filters('emr/replacer/content', $content, $search, $replace);
-			$content = str_replace($search, $replace, $content);
+			if (true === $this->isJSONString($content))
+			{
+				$content = $this->replaceJSONString($content, $search, $replace);
+			}
+			else
+			{
+				$content = str_replace($search, $replace, $content);
+			}
 		} elseif (is_wp_error($content)) // seen this.
 		{
 			//return $content;  // do nothing.
@@ -655,14 +672,12 @@ class Replacer2
 	    if ($isJson) // convert back to JSON, if this was JSON. Different than serialize which does WP automatically.
 	    {
 	      // wp-slash -> WP does stripslashes_deep which destroys JSON
-				// The HEX flags are always added, whatever the run asked for: see JSON_SAFE_FLAGS.
-				$json_flags = $this->replace_settings['json_flags'] | self::JSON_SAFE_FLAGS;
-		  //	Log::addDebug('Value was found to be JSON, encoding with flag: ' . $json_flags);
+		  //	Log::addDebug('Value was found to be JSON, encoding it back');
 
 		  		// Might work badly, but might help to limit to amount of re-encodes since there is always a risk of data loss
 		  		if ($content != $decoded_previous_content)
 				{
-					$content = json_encode($content, $json_flags);
+					$content = $this->encodeJSON($content);
 				}
 				else 
 				{
@@ -713,15 +728,16 @@ class Replacer2
 
 	/* Check if given content is JSON format. */
 	/**
-	 * Checks whether a value is a JSON document.
+	 * Checks whether a value is a JSON document: a string that decodes to an
+	 * array or an object.
 	 *
 	 * Arrays, objects and null are never JSON. Other values are passed to
-	 * json_decode(); the result is true when the decoded value is truthy and
-	 * loosely differs from the input. Numeric strings and `true` decode to a
-	 * value that loosely equals the input, so they return false; `0`,
-	 * `false` and `[]` decode to falsy values and also return false. A
-	 * quoted JSON string literal such as `"abc"` (with the quotes) returns
-	 * true.
+	 * json_decode(); the result is true when the decoded value is a
+	 * non-empty array or an object. Everything that decodes to a scalar
+	 * returns false: numeric strings, `true`, `false`, `null` and a quoted
+	 * JSON string literal such as `"abc"`, which is a text wrapped in quotes
+	 * and is handled as a string (see isJSONString()). `[]` decodes to an
+	 * empty array and also returns false.
 	 *
 	 * @param mixed $content Value to check.
 	 * @return bool True when the content is treated as JSON.
@@ -732,7 +748,92 @@ class Replacer2
 			return false; // can never be.
 
 		$json = json_decode($content);
+
+		// A scalar is not a document. Decoding and encoding a quoted text would rewrite it for nothing.
+		if (false === is_array($json) && false === is_object($json))
+			return false;
+
 		return $json && $json != $content;
+	}
+
+	/**
+	 * Checks whether a string is a JSON string literal: a text wrapped in
+	 * double quotes that json_decode() reads as a string, such as `"abc"` or
+	 * `"http:\/\/example.org\/a.jpg"`. This is both a quotation somebody
+	 * typed with the quotes and a string a plugin stored JSON-encoded;
+	 * the two cannot be told apart.
+	 *
+	 * @param mixed $content Value to check.
+	 * @return bool True for a string that is a JSON string literal.
+	 */
+	private function isJSONString($content)
+	{
+		if (false === is_string($content) || '"' !== substr(ltrim($content), 0, 1))
+			return false;
+
+		return is_string(json_decode($content));
+	}
+
+	/**
+	 * Replaces inside a JSON string literal (see isJSONString()) and keeps
+	 * its bytes: the quotes, the whitespace around them and the escaping of
+	 * everything that is not replaced.
+	 *
+	 * The text is replaced as it is, first with the search values and then
+	 * with their slash-escaped form (`\/`), which is how json_encode()
+	 * writes a URL by default. The result is accepted when it decodes to the
+	 * same text as replacing in the decoded literal gives. When it does not
+	 * (a search value that is written with other escapes in the literal,
+	 * such as `\u00e9`), the replaced decoded text is encoded with
+	 * encodeJSON() (the `json_flags` setting plus JSON_SAFE_FLAGS, so markup
+	 * characters that were escaped stay escaped) and the original
+	 * surrounding whitespace is put back. A literal in which nothing is
+	 * replaced is returned unchanged.
+	 *
+	 * @param string       $content A JSON string literal.
+	 * @param array|string $search  Values to search for.
+	 * @param array|string $replace Replacements, index-matched to $search.
+	 * @return string The literal with the values replaced.
+	 */
+	private function replaceJSONString($content, $search, $replace)
+	{
+		$decoded  = json_decode($content);
+		$expected = str_replace($search, $replace, $decoded);
+
+		if ($expected === $decoded)
+		{
+			return $content;
+		}
+
+		$replaced = str_replace($search, $replace, $content);
+		$replaced = str_replace(str_replace('/', '\\/', $search), str_replace('/', '\\/', $replace), $replaced);
+
+		if (json_decode($replaced) === $expected)
+		{
+			return $replaced;
+		}
+
+		$leading  = substr($content, 0, strlen($content) - strlen(ltrim($content)));
+		$trailing = substr($content, strlen(rtrim($content)));
+
+		return $leading . $this->encodeJSON($expected) . $trailing;
+	}
+
+	/**
+	 * Encodes a value as JSON for writing back to the database.
+	 *
+	 * Every JSON re-encode of the replacer goes through here: the run's
+	 * `json_flags` setting with JSON_SAFE_FLAGS always added, whatever the
+	 * run asked for. Replaced content is written back without kses, so an
+	 * encode that leaves these flags out turns escaped markup characters
+	 * into literal ones.
+	 *
+	 * @param mixed $value Decoded value to encode.
+	 * @return string|false The JSON text, or false when json_encode() fails.
+	 */
+	private function encodeJSON($value)
+	{
+		return json_encode($value, $this->replace_settings['json_flags'] | self::JSON_SAFE_FLAGS);
 	}
 
 	/**

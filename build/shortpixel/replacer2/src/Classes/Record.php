@@ -1,6 +1,6 @@
 <?php
 /**
- * Record class of the newer search/replace API.
+ * Record class of the replacer module.
  *
  * @package EnableMediaReplace\Replacer
  */

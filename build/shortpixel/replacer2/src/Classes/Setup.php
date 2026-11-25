@@ -1,6 +1,6 @@
 <?php
 /**
- * Setup class of the newer search/replace API.
+ * Setup class of the replacer module.
  *
  * @package EnableMediaReplace\Replacer
  */
@@ -66,6 +66,9 @@ class Setup
      */
     protected $validatedData = [];
 
+    /**
+     * Creates the two sides, both empty.
+     */
     public function __construct()
     {
         $this->searchData = new Data('search');

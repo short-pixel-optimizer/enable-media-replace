@@ -1,6 +1,6 @@
 <?php
 /**
- * Finder class of the newer search/replace API.
+ * Finder class of the replacer module.
  *
  * @package EnableMediaReplace\Replacer
  */

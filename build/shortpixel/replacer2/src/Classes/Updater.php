@@ -1,6 +1,6 @@
 <?php
 /**
- * Updater class of the newer search/replace API.
+ * Updater class of the replacer module.
  *
  * @package EnableMediaReplace\Replacer
  */
@@ -31,8 +31,9 @@ class Updater
 {
 
     /**
-     * Number of successful updatePost() calls in this request, shared by all
-     * instances. Not read anywhere in the module.
+     * Number of rows written by updateRecord() plus successful updatePost()
+     * calls in this request, shared by all instances. Not read anywhere in
+     * the module.
      *
      * @var int
      */
