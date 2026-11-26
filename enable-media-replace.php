@@ -3,7 +3,7 @@
  * Plugin Name: Enable Media Replace
  * Plugin URI: https://shortpixel.com
  * Description: Enable replacing media files by uploading a new file in the "Edit Media" section of the WordPress Media Library.
- * Version: 4.2.3
+ * Version: 5.0.0-BETA1
  * Author: ShortPixel
  * Author URI: https://shortpixel.com
  * GitHub Plugin URI: https://github.com/short-pixel-optimizer/enable-media-replace
@@ -44,7 +44,7 @@
  *       them with a PSR-4 autoloader (also noted at the require block).
  */
 
-define( 'EMR_VERSION', '4.2.3' );
+define( 'EMR_VERSION', '5.0.0-BETA1' );
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit; // Exit if accessed directly.
