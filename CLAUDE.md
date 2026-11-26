@@ -294,7 +294,8 @@ docs/                      - the documentation and test plan, the bulk design no
   lines with the img/icons SVGs, the "Open Bulk Enhance" button) is built and
   escaped in PHP; `scss/notices.scss` compiles to `css/notices.css`, enqueued
   on those screens by `admin_scripts()`.
-- **AI credits:** background removal and upscale use one AI credit per image.
+- **AI credits:** background removal and upscale use 8 AI credits per image
+  (`ApiKeyManager::AI_CREDITS_PER_IMAGE`, the one place the number lives).
   `ApiKeyManager::getAiCredits()` reads the `PlanType` / `CaptionsCalls*`
   fields of api-status (the same fields SPIO shows as AI credits; Unlimited AI
   is `PlanType` 'Unlimited AI', and on that plan the quota and remaining

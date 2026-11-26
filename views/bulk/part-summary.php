@@ -3,7 +3,8 @@
  * Bulk summary panel: what is queued, start or go back.
  *
  * The AI credits box (views/ai-credits.php) follows, with a warning the
- * screen script shows when the queue is larger than the credits left.
+ * screen script shows when the queue needs more AI credits
+ * (ApiKeyManager::AI_CREDITS_PER_IMAGE per image) than are left.
  *
  * `[data-operation-detail]` is filled by the screen script with the chosen
  * options ("Transparent", "Solid color #ffffff, 100% opacity", "Images
@@ -43,20 +44,21 @@ if (! defined('ABSPATH')) {
 	</div>
 
 	<?php if ($view->hasKey) : ?>
-		<?php // The AI credits; the warning shows when the queue is larger than the credits left (js/bulk/emr-bulk-screen.js, CheckCredits()). ?>
+		<?php // The AI credits; the warning shows when the queue needs more credits than are left (js/bulk/emr-bulk-screen.js, CheckCredits()). ?>
 		<div class="emr-bulk-summary-box emr-bulk-credits" <?php echo $controller->operationOnly('background upscale'); ?>>
 			<?php
 			$emr_credits = $view->aiCredits;
 			include \emr()->plugin_path('views/ai-credits.php');
 			?>
 			<?php if (is_array($view->aiCredits) && ! $view->aiCredits['unlimited']) : ?>
-				<p class="emr-bulk-credits-warning" data-ai-remaining="<?php echo esc_attr($view->aiCredits['remaining']); ?>" hidden>
+				<p class="emr-bulk-credits-warning" data-ai-remaining="<?php echo esc_attr($view->aiCredits['remaining']); ?>" data-ai-per-image="<?php echo esc_attr(ApiKeyManager::AI_CREDITS_PER_IMAGE); ?>" hidden>
 					<?php
 					printf(
-						/* translators: %1$s: images in the bulk, %2$s: AI credits left. */
-						esc_html(_n('This bulk has %1$s image(s), but only %2$s AI credit is left this month. The images beyond that fail until your credits renew, unless you upgrade to Unlimited AI.', 'This bulk has %1$s image(s), but only %2$s AI credits are left this month. The images beyond that fail until your credits renew, unless you upgrade to Unlimited AI.', $view->aiCredits['remaining'], 'enable-media-replace')),
+						/* translators: %1$s: images in the bulk, %2$s: AI credits left, %3$s: AI credits one image uses. */
+						esc_html(_n('This bulk has %1$s image(s) at %3$s AI credits each, but only %2$s AI credit is left this month. The images beyond that fail until your credits renew, unless you upgrade to Unlimited AI.', 'This bulk has %1$s image(s) at %3$s AI credits each, but only %2$s AI credits are left this month. The images beyond that fail until your credits renew, unless you upgrade to Unlimited AI.', $view->aiCredits['remaining'], 'enable-media-replace')),
 						'<strong data-stats-media="total">0</strong>',
-						'<strong>' . esc_html(number_format_i18n($view->aiCredits['remaining'])) . '</strong>'
+						'<strong>' . esc_html(number_format_i18n($view->aiCredits['remaining'])) . '</strong>',
+						esc_html(number_format_i18n(ApiKeyManager::AI_CREDITS_PER_IMAGE))
 					);
 					?>
 				</p>

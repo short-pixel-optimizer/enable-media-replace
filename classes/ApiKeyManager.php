@@ -42,6 +42,17 @@ class ApiKeyManager
     const API_ENDPOINT = 'https://api.shortpixel.com/v2/api-status.php';
 
     /**
+     * AI credits one background removal or one image upscale uses, on a single
+     * image and in the bulk alike. The texts that state the cost
+     * (views/ai-credits.php) and the bulk summary's shortage warning
+     * (views/bulk/part-summary.php, CheckCredits() in js/bulk/emr-bulk-screen.js)
+     * read it from here.
+     *
+     * @var int
+     */
+    const AI_CREDITS_PER_IMAGE = 8;
+
+    /**
      * Transient caching the AI credits of the stored key (getAiCredits()).
      *
      * @var string
@@ -197,8 +208,8 @@ class ApiKeyManager
 
     /**
      * The AI credits of the stored key: background removal and image upscale
-     * use one per image. Unlimited plans get a monthly amount, Unlimited AI has
-     * no limit.
+     * use AI_CREDITS_PER_IMAGE of them per image. Unlimited plans get a monthly
+     * amount, Unlimited AI has no limit.
      *
      * Read from the `PlanType` and `CaptionsCalls*` fields of api-status.php,
      * the same fields ShortPixel Image Optimizer shows as "AI credits". Cached

@@ -4,7 +4,8 @@
  * (views/shortpixel-account.php) and on the bulk summary
  * (views/bulk/part-summary.php).
  *
- * Background removal and image upscale use one AI credit per image.
+ * Background removal and image upscale use ApiKeyManager::AI_CREDITS_PER_IMAGE
+ * AI credits per image.
  * Unlimited AI: ShortPixel Image Optimizer's "do not have to worry about AI
  * credits" line. Other Unlimited plans: the credits left of the monthly
  * amount, a <progress> meter and SPIO's "Buy Unlimited AI credits" button
@@ -37,7 +38,15 @@ if (! defined('ABSPATH')) {
 			?>
 		</p>
 		<progress class="emr-ai-credits-meter" max="<?php echo esc_attr(max(1, $emr_credits['quota'])); ?>" value="<?php echo esc_attr($emr_credits['remaining']); ?>"></progress>
-		<p class="emr-ai-credits-help"><?php esc_html_e('Background removal and image upscale use one AI credit per image. The Unlimited AI plan has no limit.', 'enable-media-replace'); ?></p>
+		<p class="emr-ai-credits-help">
+			<?php
+			printf(
+				/* translators: %s: AI credits one image uses. */
+				esc_html__('Background removal and image upscale use %s AI credits per image. The Unlimited AI plan has no limit.', 'enable-media-replace'),
+				esc_html(number_format_i18n(ApiKeyManager::AI_CREDITS_PER_IMAGE))
+			);
+			?>
+		</p>
 		<?php echo \emr()->uiHelper()->getUpgradeAiButton(); // Escaped by getUpgradeAiButton(). ?>
 	</div>
 <?php endif; ?>

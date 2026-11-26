@@ -708,8 +708,10 @@ class EmrBulkScreen {
 	}
 
 	/**
-	 * Shows the summary warning when the queue holds more images than the AI
-	 * credits left (`data-ai-remaining`, Unlimited plans without Unlimited AI).
+	 * Shows the summary warning when the queue needs more AI credits than are
+	 * left: the images queued times the credits one image uses
+	 * (`data-ai-per-image`) against `data-ai-remaining` (Unlimited plans
+	 * without Unlimited AI).
 	 */
 	CheckCredits() {
 		var self = this;
@@ -717,7 +719,8 @@ class EmrBulkScreen {
 		var count = total ? self.ParseNumber(total.textContent) : 0;
 		document.querySelectorAll('[data-ai-remaining]').forEach(function (warning) {
 			var remaining = self.ParseNumber(warning.getAttribute('data-ai-remaining'));
-			warning.hidden = ! (! isNaN(count) && ! isNaN(remaining) && count > remaining);
+			var perImage = self.ParseNumber(warning.getAttribute('data-ai-per-image'));
+			warning.hidden = ! (! isNaN(count) && ! isNaN(remaining) && ! isNaN(perImage) && count * perImage > remaining);
 		});
 	}
 
