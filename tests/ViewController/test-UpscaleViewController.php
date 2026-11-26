@@ -521,7 +521,7 @@ class UpscaleViewControllerTest extends WP_UnitTestCase {
 		list( , $output ) = $this->load( $id );
 
 		$this->assertStringContainsString( '<span class="emr-sp-account-credits">1,000 AI credits left</span>', $output );
-		$this->assertStringContainsString( 'Background removal and image upscale use one AI credit per image. The Unlimited AI plan has no limit.', $output );
+		$this->assertStringContainsString( 'Background removal and image upscale use 8 AI credits per image. The Unlimited AI plan has no limit.', $output );
 		$this->assertStringNotContainsString( 'have no limit while your plan is active', $output );
 		$this->assertStringContainsString( '<code class="emr-sp-key-value">' . esc_html( $manager->getMaskedKey() ) . '</code>', $output );
 		$this->assertStringNotContainsString( $key, $output );

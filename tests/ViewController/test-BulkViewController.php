@@ -15,6 +15,7 @@
 require_once dirname( __DIR__ ) . '/Controller/Bulk/BulkTestHelpers.php';
 require_once dirname( __DIR__ ) . '/Integration/Helpers/MockEmrApi.php';
 
+use EnableMediaReplace\ApiKeyManager;
 use EnableMediaReplace\Controller\Bulk\BackupController;
 use EnableMediaReplace\Controller\Bulk\BulkController;
 use EnableMediaReplace\Controller\Bulk\BulkQueue;
@@ -350,15 +351,17 @@ class BulkViewControllerTest extends WP_UnitTestCase {
 		$this->assertStringNotContainsString( 'data-ai-remaining', $html );
 	}
 
-	public function test_the_summary_shows_the_credits_and_a_warning_for_more_images_than_credits() {
+	public function test_the_summary_shows_the_credits_and_a_warning_for_a_bulk_that_needs_more_credits_than_are_left() {
 		update_option( 'emr_shortpixel_api_key', 'abcdEFGHIJKLMNOPwxyz' );
 		$this->mock->setKnob( 'captionsMade', 997 );
 		$html = $this->render();
 
 		$this->assertMatchesRegularExpression( '/<div class="emr-bulk-summary-box emr-bulk-credits" data-operation-only="background upscale">/', $html );
 		$this->assertStringContainsString( 'AI credits: <strong>3</strong> of 1,000 left this month', $html );
-		$this->assertMatchesRegularExpression( '/<p class="emr-bulk-credits-warning" data-ai-remaining="3" hidden>/', $html, 'Hidden until the script compares it with the queue.' );
-		$this->assertStringContainsString( 'but only <strong>3</strong> AI credits are left this month', $html );
+		$this->assertSame( 8, ApiKeyManager::AI_CREDITS_PER_IMAGE );
+		$this->assertMatchesRegularExpression( '/<p class="emr-bulk-credits-warning" data-ai-remaining="3" data-ai-per-image="8" hidden>/', $html, 'Hidden until the script compares the credits the queue needs with the credits left.' );
+		$this->assertStringContainsString( 'image(s) at 8 AI credits each, but only <strong>3</strong> AI credits are left this month', $html );
+		$this->assertStringContainsString( 'Background removal and image upscale use 8 AI credits per image. The Unlimited AI plan has no limit.', $html );
 		$this->assertCount( 1, $this->mock->requestsTo( 'api-status.php' ), 'One API call for the account row and the summary: the second read is cached.' );
 	}
 

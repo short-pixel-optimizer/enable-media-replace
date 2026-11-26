@@ -69,7 +69,7 @@ test.describe('Bulk page: upscale', () => {
 
 		// The summary counts the three images narrower than 1200 px, not the wide one.
 		await expect(bulk.stat('total')).toHaveText('3');
-		// 1000 AI credits left (the mock's default): no shortage warning.
+		// 1000 AI credits left (the mock's default), 24 needed (3 images at 8 each): no shortage warning.
 		await expect(bulk.panel('summary').locator('.emr-bulk-credits')).toContainText('AI credits: 1,000 of 1,000 left this month');
 		await expect(bulk.panel('summary').locator('.emr-bulk-credits-warning')).toBeHidden();
 		await bulk.startBulk();
@@ -130,9 +130,9 @@ test.describe('Bulk page: upscale', () => {
 		await expect(bulk.restoreButton('upscale')).toHaveCount(0);
 	});
 
-	test('the summary warns when the bulk has more images than the AI credits left, and Start stays enabled', async ({ page, emr }) => {
+	test('the summary warns when the bulk needs more AI credits than are left, and Start stays enabled', async ({ page, emr }) => {
 		await seedLibrary(emr);
-		await emr.mock({ captionsMade: 998 }); // 2 AI credits left, 3 images queued
+		await emr.mock({ captionsMade: 998 }); // 2 AI credits left, 3 images queued at 8 credits each
 
 		const bulk = new BulkPage(page);
 		await bulk.goto();
@@ -143,9 +143,38 @@ test.describe('Bulk page: upscale', () => {
 		await expect(bulk.stat('total')).toHaveText('3');
 		const warning = bulk.panel('summary').locator('.emr-bulk-credits-warning');
 		await expect(warning).toBeVisible();
-		await expect(warning).toContainText('This bulk has 3 image(s), but only 2 AI credits are left this month.');
+		await expect(warning).toContainText('This bulk has 3 image(s) at 8 AI credits each, but only 2 AI credits are left this month.');
 		await expect(bulk.panel('summary').getByRole('link', { name: 'Buy Unlimited AI credits' })).toHaveAttribute('href', /utm_campaign=emr_unlimited_ai/);
 		await expect(bulk.panel('summary').locator('[data-action="StartBulk"]')).toBeEnabled();
+		await bulk.cancelSummary(emr);
+	});
+
+	test('the warning counts 8 AI credits per image: 23 credits are not enough for 3 images', async ({ page, emr }) => {
+		await seedLibrary(emr);
+		await emr.mock({ captionsMade: 977 }); // 23 AI credits left: more than the 3 images, less than the 24 credits they need
+
+		const bulk = new BulkPage(page);
+		await bulk.goto();
+		await bulk.startSelection('upscale');
+		await bulk.prepare();
+		await expect(bulk.stat('total')).toHaveText('3');
+		const warning = bulk.panel('summary').locator('.emr-bulk-credits-warning');
+		await expect(warning).toBeVisible();
+		await expect(warning).toContainText('This bulk has 3 image(s) at 8 AI credits each, but only 23 AI credits are left this month.');
+		await bulk.cancelSummary(emr);
+	});
+
+	test('no warning when the AI credits left are exactly what the bulk needs', async ({ page, emr }) => {
+		await seedLibrary(emr);
+		await emr.mock({ captionsMade: 976 }); // 24 AI credits left: exactly what 3 images need
+
+		const bulk = new BulkPage(page);
+		await bulk.goto();
+		await bulk.startSelection('upscale');
+		await bulk.prepare();
+		await expect(bulk.stat('total')).toHaveText('3');
+		await expect(bulk.panel('summary').locator('.emr-bulk-credits')).toContainText('AI credits: 24 of 1,000 left this month');
+		await expect(bulk.panel('summary').locator('.emr-bulk-credits-warning')).toBeHidden();
 		await bulk.cancelSummary(emr);
 	});
 
