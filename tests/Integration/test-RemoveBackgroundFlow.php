@@ -619,4 +619,170 @@ class RemoveBackgroundFlowTest extends EMR_AjaxTestCase {
 		$this->assertTrue( $result->success, 'Pinned: the request is served.' );
 		$this->assertCount( 1, $this->api->requestsTo( 'free-reducer.php' ) );
 	}
+
+	// ---------------------------------------------------------------------
+	// The Transparent PNG option (bg_remove_format).
+	// ---------------------------------------------------------------------
+
+	/** The src of an <input> by id, with its attributes, from the screen's HTML. */
+	private function radioTag( $html, $id ) {
+		$this->assertSame( 1, preg_match( '/<input\b[^>]*\bid="' . preg_quote( $id, '/' ) . '"[^>]*>/', $html, $m ), "The screen has one #$id input." );
+		return $m[0];
+	}
+
+	public function test_prepare_screen_offers_transparent_png_with_the_new_badge_and_keeps_transparent_the_default() {
+		list( $id ) = $this->image();
+		delete_option( 'enable_media_replace' );
+
+		$html = $this->prepareScreen( $id );
+
+		$default = $this->radioTag( $html, 'transparent_background' );
+		$this->assertStringContainsString( 'value="transparent"', $default );
+		$this->assertStringContainsString( 'checked', $default, 'Transparent (white for JPG) stays the default.' );
+		$new = $this->radioTag( $html, 'transparent_png_background' );
+		$this->assertStringContainsString( 'value="transparent_png"', $new );
+		$this->assertStringNotContainsString( 'checked', $new, 'The new option is never preselected by default.' );
+		$this->assertStringNotContainsString( 'checked', $this->radioTag( $html, 'solid_background' ) );
+		$this->assertStringContainsString( 'Transparent PNG', $html );
+		$this->assertStringContainsString( 'The result is a PNG image with a transparent background.', $html );
+		$this->assertStringContainsString( 'img/icons/new.svg', $html, 'The option carries the NEW! badge.' );
+	}
+
+	public function test_preview_with_transparent_sends_the_same_body_as_before_without_bg_remove_format() {
+		list( $id ) = $this->image();
+
+		$this->preview( $id, array( 'type' => 'transparent' ) );
+
+		$this->assertSame(
+			array(
+				'plugin_version' => 'EMR4.2.0',
+				'bg_remove'      => '1',
+				'urllist'        => array( urlencode( esc_url( wp_get_original_image_url( $id ) ) ) ),
+				'lossy'          => 0,
+				'refresh'        => true,
+			),
+			$this->api->lastRequest()['request']
+		);
+	}
+
+	public function test_preview_with_transparent_png_adds_bg_remove_format_auto_and_saves_the_choice() {
+		list( $id ) = $this->image();
+
+		$result = $this->preview( $id, array( 'type' => 'transparent_png' ) );
+
+		$this->assertTrue( $result->success );
+		$this->assertSame(
+			array(
+				'plugin_version'   => 'EMR4.2.0',
+				'bg_remove'        => '1',
+				'urllist'          => array( urlencode( esc_url( wp_get_original_image_url( $id ) ) ) ),
+				'lossy'            => 0,
+				'refresh'          => true,
+				'bg_remove_format' => 'auto',
+			),
+			$this->api->lastRequest()['request']
+		);
+		$this->assertSame( 'transparent_png', get_option( 'enable_media_replace' )['bg_type'] );
+		$this->assertStringContainsString( 'checked', $this->radioTag( $this->prepareScreen( $id ), 'transparent_png_background' ), 'The last choice is shown again, as for the other options.' );
+	}
+
+	public function test_with_a_saved_key_transparent_png_sends_bg_remove_format_to_the_keyed_reducer() {
+		list( $id ) = $this->image();
+		$this->saveKeyThroughTheEndpoint();
+
+		$this->preview( $id, array( 'type' => 'transparent_png' ) );
+
+		$reducer = $this->api->requestsTo( '/v2/reducer.php' );
+		$this->assertCount( 1, $reducer );
+		$this->assertSame( '1', $reducer[0]['request']['bg_remove'] );
+		$this->assertSame( 'auto', $reducer[0]['request']['bg_remove_format'] );
+		$this->assertSame( self::API_KEY, $reducer[0]['request']['key'] );
+	}
+
+	public function test_apply_with_transparent_png_turns_the_jpg_into_a_png_and_rewrites_its_urls() {
+		list( $id, $path ) = $this->image();
+		wp_update_post( array( 'ID' => $id, 'post_title' => 'A hand-written title', 'post_name' => 'a-hand-written-slug' ) );
+		$oldUrl   = wp_get_attachment_url( $id );
+		$oldThumb = $this->sizeUrl( $id, 'thumbnail' );
+		$this->assertStringEndsWith( '.jpg', $oldUrl, 'Precondition: a JPG.' );
+		$this->assertNotEmpty( $oldThumb, 'Precondition: a thumbnail exists.' );
+		$post_id  = $this->makePost( '<img src="' . $oldUrl . '"> <img src="' . $oldThumb . '">' );
+		$this->api->resultFixture = 'codeispoetry.png';
+
+		list( $controller, $exit ) = $this->apply( $id, array( 'background_type' => 'transparent_png' ) );
+
+		$this->assertInstanceOf( EMR_ViewExit::class, $exit );
+		$this->assertSame( 'success', $exit->template );
+		$this->assertSame( 0, $controller->errorCalls );
+		$reducer = $this->api->requestsTo( 'free-reducer.php' );
+		$this->assertCount( 1, $reducer );
+		$this->assertSame( 'auto', $reducer[0]['request']['bg_remove_format'], 'The apply step sends the option too.' );
+
+		clean_post_cache( $id );
+		$newPath = get_attached_file( $id );
+		$this->assertSame( preg_replace( '/\.jpg$/', '.png', $path ), $newPath, 'Same folder and name, .png extension.' );
+		$this->assertFileExists( $newPath );
+		$this->assertFileDoesNotExist( $path, 'The JPG is gone.' );
+		$this->assertSame( md5_file( $this->fixturePath( 'codeispoetry.png' ) ), md5_file( $newPath ), 'The bytes the mock served.' );
+		$this->assertSame( 'image/png', get_post_mime_type( $id ) );
+		$this->assertSame( 'image/png', wp_get_attachment_metadata( $id )['sizes']['thumbnail']['mime-type'] );
+
+		$newUrl  = wp_get_attachment_url( $id );
+		$this->assertSame( preg_replace( '/\.jpg$/', '.png', $oldUrl ), $newUrl );
+		$content = $this->rawContent( $post_id );
+		$this->assertStringContainsString( '<img src="' . $newUrl . '">', $content, 'The link to the full image is rewritten.' );
+		$this->assertStringNotContainsString( '.jpg', $content, 'No link to the JPG or its sizes is left.' );
+		$this->assertStringContainsString( $this->sizeUrl( $id, 'thumbnail' ), $content );
+
+		$this->assertSame( 'A hand-written title', $this->rawPostField( $id, 'post_title' ), 'A format change keeps the title.' );
+		$this->assertSame( 'a-hand-written-slug', $this->rawPostField( $id, 'post_name' ), 'And the slug.' );
+		$this->assertSame( $newUrl, $this->rawPostField( $id, 'guid' ) );
+	}
+
+	/** Existing behaviour: without the new option nothing is ever renamed, whatever the API answers. */
+	public function test_apply_with_transparent_keeps_the_jpg_name_even_when_the_result_is_a_png() {
+		list( $id, $path ) = $this->image();
+		$this->api->resultFixture = 'codeispoetry.png';
+
+		list( $controller, $exit ) = $this->apply( $id, array( 'background_type' => 'transparent' ) );
+
+		$this->assertSame( 'success', $exit->template );
+		$this->assertArrayNotHasKey( 'bg_remove_format', $this->api->requestsTo( 'free-reducer.php' )[0]['request'] );
+		clean_post_cache( $id );
+		$this->assertSame( $path, get_attached_file( $id ), 'Same file name and location.' );
+		$this->assertFileExists( $path );
+		$this->assertFileDoesNotExist( preg_replace( '/\.jpg$/', '.png', $path ) );
+	}
+
+	public function test_apply_with_transparent_png_and_a_jpg_result_replaces_in_place() {
+		list( $id, $path ) = $this->image();
+		wp_update_post( array( 'ID' => $id, 'post_title' => 'A hand-written title' ) );
+
+		list( $controller, $exit ) = $this->apply( $id, array( 'background_type' => 'transparent_png' ) );
+
+		$this->assertSame( 'success', $exit->template );
+		clean_post_cache( $id );
+		$this->assertSame( $path, get_attached_file( $id ), 'The API answered a JPG: nothing to rename.' );
+		$this->assertSame( $this->fixtureMd5(), md5_file( $path ) );
+		$this->assertSame( 'image/jpeg', get_post_mime_type( $id ) );
+		$this->assertSame( 'A hand-written title', $this->rawPostField( $id, 'post_title' ) );
+	}
+
+	public function test_apply_with_transparent_png_takes_a_free_name_when_the_png_name_is_taken() {
+		list( $id, $path ) = $this->image();
+		$taken             = preg_replace( '/\.jpg$/', '.png', $path );
+		$this->makePng( $taken, 10, 10 );
+		$this->flowFiles[] = $taken;
+		$takenMd5          = md5_file( $taken );
+		$this->api->resultFixture = 'codeispoetry.png';
+
+		list( $controller, $exit ) = $this->apply( $id, array( 'background_type' => 'transparent_png' ) );
+
+		$this->assertSame( 'success', $exit->template );
+		clean_post_cache( $id );
+		$newPath = get_attached_file( $id );
+		$this->assertSame( preg_replace( '/\.jpg$/', '-1.png', $path ), $newPath );
+		$this->assertSame( $takenMd5, md5_file( $taken ), 'The other file is untouched.' );
+		$this->assertSame( md5_file( $this->fixturePath( 'codeispoetry.png' ) ), md5_file( $newPath ) );
+	}
 }

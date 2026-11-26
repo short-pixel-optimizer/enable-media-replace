@@ -11,6 +11,7 @@
 @use 'emr-colors' as *;
 @use 'page-header';
 @use 'shortpixel-account';
+@use 'option-new';
 
 @mixin emr-bulk-button {
 	display: inline-flex;

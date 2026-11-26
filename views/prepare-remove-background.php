@@ -13,14 +13,16 @@
  *   - attachment (\WP_Post) the attachment
  *   - sourceFile (FileModel) current main file, for the previews
  *   - settings (array) `enable_media_replace` option merged with defaults:
- *     bg_type (`transparent`|`solid`), bg_color (hex), bg_transparency (0-100)
+ *     bg_type (`transparent`|`transparent_png`|`solid`), bg_color (hex), bg_transparency (0-100)
  * Uses ApiKeyManager (hasApiKey, getMaskedKey) and current_user_can('manage_options').
  *
  * Form `#emr_replace_form`: POST to UIHelper::getFormUrl($id, 'do_background_replace'),
  * handled by RemoveBackGroundViewController::loadPost(). Nonce: action
  * `media_remove_background`, field `emr_nonce`. Inputs:
  * - ID (hidden) attachment id
- * - background_type `transparent` or `solid`
+ * - background_type `transparent` (the default), `transparent_png` (Api::BG_TYPE_TRANSPARENT_PNG,
+ *   the option with the NEW! badge: the result is a PNG with a transparent background, a JPG
+ *   is converted and renamed) or `solid`
  * - bg_display_picker (colour picker) and bg_color (hidden hex copy used by the script)
  * - bg_transparency (range, 0-100)
  * loadPost() runs the request again with these three on the original (nothing of the
@@ -48,6 +50,7 @@ namespace EnableMediaReplace;
 
 use EnableMediaReplace\EnableMediaReplacePlugin;
 use EnableMediaReplace\UIHelper;
+use EnableMediaReplace\Api;
 
 if (! defined('ABSPATH')) {
     exit; // Exit if accessed directly.
@@ -129,6 +132,16 @@ $email_body = sprintf(__('Hello! %s This is a report of a background removal tha
 						</label>
 						<p class="howto">
 							<?php esc_html_e('Returns a transparent background if it is a PNG image, or a white one if it is a JPG image.', 'enable-media-replace'); ?>
+						</p>
+					</div>
+					<div class="option replace emr-option-transparent-png">
+						<label for="transparent_png_background">
+							<input id="transparent_png_background" type="radio" name="background_type" value="<?php echo esc_attr(Api::BG_TYPE_TRANSPARENT_PNG); ?>" <?php checked(Api::BG_TYPE_TRANSPARENT_PNG, $view->settings['bg_type']); ?> >
+							<?php esc_html_e('Transparent PNG', 'enable-media-replace'); ?>
+							<img class="emr-option-new" src="<?php echo esc_url(plugins_url('img/icons/new.svg', EMR_ROOT_FILE)); ?>" width="58" height="27" alt="<?php esc_attr_e('New', 'enable-media-replace'); ?>">
+						</label>
+						<p class="howto">
+							<?php esc_html_e('The result is a PNG image with a transparent background. A JPG image is converted to PNG, so its file name and URLs change; the links to it on your site are updated.', 'enable-media-replace'); ?>
 						</p>
 					</div>
 					<div class="option searchreplace">

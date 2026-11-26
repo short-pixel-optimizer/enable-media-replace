@@ -204,6 +204,8 @@ class EmrBulkScreen {
 					.replace('%1$s', color ? color.value : '')
 					.replace('%2$s', opacity ? opacity.value : '')
 					.replace('%%', '%');
+			} else if (type && type.value === 'transparent_png') {
+				detail = this.strings.detailTransparentPng;
 			} else {
 				detail = this.strings.detailTransparent;
 			}

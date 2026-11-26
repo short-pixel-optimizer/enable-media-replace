@@ -889,6 +889,7 @@ class EnableMediaReplacePlugin
                 'reloadPage'      => __('Reload the page', 'enable-media-replace'),
                 /* translators: summary detail of a background removal to a transparent background. */
                 'detailTransparent' => __('Transparent', 'enable-media-replace'),
+                'detailTransparentPng' => __('Transparent PNG', 'enable-media-replace'),
                 /* translators: %1$s: hex color, %2$s: opacity in percent. */
                 'detailSolid'     => __('Solid background %1$s, %2$s%% opacity', 'enable-media-replace'),
                 /* translators: %s: width in pixels. */

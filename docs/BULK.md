@@ -67,7 +67,13 @@ the three plugins never see each other's items.
    the item in the queue for the next tick (ShortQ `wait` mode,
    `process_timeout` 10 s); a result is downloaded, the original backed up,
    the file replaced, the marker set; a failure is logged and the item is
-   done with an error.
+   done with an error. With the background type "Transparent PNG" (bulk
+   option `bg_remove_format` 'auto', sent as `bg_remove_format` next to
+   `bg_remove`) the API answers a transparent PNG also for a JPG: the file
+   then takes the `.png` name and the references to its URLs are rewritten
+   (`ReplaceController::getFormatChangeParams()`); the backup stays the
+   JPG. No other option changes a file's name. An operation that follows
+   on the same attachment reuses that backup instead of making a new one.
 4. **Finish.** `finishBulk()` writes the log entry (operation, images,
    errors, date), resets the queue and unschedules the cron event.
    The finished panel's "View in Media Library", and the dashboard's next
@@ -76,7 +82,9 @@ the three plugins never see each other's items.
    and keeps the attachments carrying the operation's marker meta.
 5. **Restore.** The `bulk-restore` custom operation enqueues the marked
    attachments of an operation; each item copies its backup back through
-   the same replace flow and deletes the marker. Its result carries
+   the same replace flow and deletes the marker. A backup of another type
+   than the current file (the JPG behind a converted PNG) goes back under
+   its own name, with the references rewritten back. Its result carries
    `FILE_STATUS_RESTORED` (SPIO's value), so the process panel shows no
    before/after preview during a restore.
 

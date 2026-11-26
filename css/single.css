@@ -366,6 +366,15 @@
   box-shadow: none;
 }
 
+.emr-option-new {
+  display: inline-block;
+  width: 44px;
+  height: auto;
+  margin-inline-start: 6px;
+  vertical-align: middle;
+  pointer-events: none;
+}
+
 .emr-operations {
   margin-block: 20px 4px;
 }

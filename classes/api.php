@@ -93,6 +93,16 @@ class Api {
 	const PRICING_TEXT = 'shortpixel.com/pricing';
 
 	/**
+	 * The `background.type` (and stored `bg_type`) of the "Transparent PNG" option: the
+	 * request carries `bg_remove_format`, and the result is a PNG with a transparent
+	 * background even when the source is a JPG.
+	 */
+	const BG_TYPE_TRANSPARENT_PNG = 'transparent_png';
+
+	/** Value of the `bg_remove_format` request parameter: a transparent PNG whenever possible. */
+	const BG_REMOVE_FORMAT_AUTO = 'auto';
+
+	/**
 	 * Creates the client. No setup.
 	 */
 	public function __construct()
@@ -136,14 +146,17 @@ class Api {
 	 *    `$posted_data['background']` into the `enable_media_replace` option before any
 	 *    request is sent, and again on every retry. Skipped for an upscale, which has no
 	 *    background options to remember.
-	 * 3. `bg_remove`: '1' for transparent; for type 'solid' the colour from
+	 * 3. `bg_remove`: '1' for transparent (types 'transparent' and 'transparent_png'); for type 'solid' the colour from
 	 *    `$posted_data['background']`, with a two-character alpha suffix when the
 	 *    transparency is 0-100 ('FF' for 100). `background.type` is read without isset(),
 	 *    but only for a background removal: an upscale skips this step, so it accepts
 	 *    posted data without a background.
 	 * 4. Builds the body: `plugin_version`, `bg_remove`, `urllist` (urlencoded esc_url),
 	 *    `lossy` (always 0), `refresh`. For an upscale `bg_remove` is removed from the body
-	 *    and `upscale` (the integer factor) is added instead.
+	 *    and `upscale` (the integer factor) is added instead. For the type
+	 *    BG_TYPE_TRANSPARENT_PNG, and only then, `bg_remove_format` 'auto' is added: the
+	 *    API then answers a transparent PNG whenever possible, also for a JPG source. Every
+	 *    other request has the same body as before that option existed.
 	 * 5. With an API key: on the first call, verifyUnlimitedPlan() must pass (else a result
 	 *    with `plan_expired` true); adds `key`, `item_id`, a raw `urllist`, uses the
 	 *    authenticated endpoint, and on the first call with refresh purges the remote cache.
@@ -260,6 +273,8 @@ class Api {
 		if ($upscale > 0) {
 			unset($data['bg_remove']);
 			$data['upscale'] = $upscale;
+		} elseif (self::BG_TYPE_TRANSPARENT_PNG === $settings['bg_type']) {
+			$data['bg_remove_format'] = self::BG_REMOVE_FORMAT_AUTO;
 		}
 
 		$apiKeyManager = ApiKeyManager::getInstance();

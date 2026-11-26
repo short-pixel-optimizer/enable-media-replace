@@ -163,7 +163,11 @@ class RemoveBackGroundViewController extends \EnableMediaReplace\ViewController
 	 *    date, the downloaded temp file as upload and the current source file name as the
 	 *    new name, so the file is overwritten in place. `replace_type` is passed as the
 	 *    integer MODE_REPLACE, which setupParams() also reads as replace mode because it is
-	 *    not 'replace_and_search'.
+	 *    not 'replace_and_search'. With the background type Api::BG_TYPE_TRANSPARENT_PNG,
+	 *    and a result of another image type than the file (a JPG that came back as a PNG),
+	 *    ReplaceController::getFormatChangeParams() switches to search-replace: the file
+	 *    takes the `.png` name, the references to the old URLs are rewritten and the post
+	 *    title stays.
 	 * 5. viewError() with the controller's last error when setupParams() fails (without the
 	 *    error data); viewSuccess() when run() returns true.
 	 *
@@ -230,6 +234,13 @@ class RemoveBackGroundViewController extends \EnableMediaReplace\ViewController
 			 'new_filename' => $sourceFile->getFileName(),
 		);
 
+		// The Transparent PNG option: a JPG that came back as a PNG takes the .png name and
+		// every reference to it is rewritten. No other option changes the file name.
+		$apiData = $this->apiData($post_id);
+		if (isset($apiData['background']['type']) && Api::BG_TYPE_TRANSPARENT_PNG === $apiData['background']['type']) {
+			$params = array_merge($params, $replaceController->getFormatChangeParams($result->image));
+		}
+
 
 		 $check = $replaceController->setupParams($params);
 		 $this->setView($post_id, $params);
@@ -272,7 +283,8 @@ class RemoveBackGroundViewController extends \EnableMediaReplace\ViewController
 	/**
 	 * The API request data of the apply step, built from the form the way the preview
 	 * script builds the AJAX data: the attachment and, for a background removal, the
-	 * `background` type / colour / transparency (type defaults to 'transparent'); for an
+	 * `background` type ('transparent', 'transparent_png' or 'solid') / colour /
+	 * transparency (type defaults to 'transparent'); for an
 	 * upscale, the checked `upscale` factor.
 	 *
 	 * @param int $post_id Attachment ID.

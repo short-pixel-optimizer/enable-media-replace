@@ -589,7 +589,7 @@ export class RemoveBackgroundScreen {
 		return this.page.locator('#overlay');
 	}
 
-	backgroundType(value: 'transparent' | 'solid'): Locator {
+	backgroundType(value: 'transparent' | 'transparent_png' | 'solid'): Locator {
 		return this.page.locator(`input[name="background_type"][value="${value}"]`);
 	}
 

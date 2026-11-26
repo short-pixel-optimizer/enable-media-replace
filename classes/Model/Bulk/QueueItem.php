@@ -254,8 +254,11 @@ class QueueItem
 	 * Api::request() uses for the single flow. `refresh` asks the API to
 	 * drop its cache for the URL on the first send (the single flow does the
 	 * same), so a second run on a changed file is not served the old result.
+	 * `bg_remove_format` 'auto' (Api::BG_REMOVE_FORMAT_AUTO) is added for a
+	 * transparent background only, and only when asked for: the API then
+	 * answers a transparent PNG whenever possible, also for a JPG.
 	 *
-	 * @param array{do_transparent?: bool, replace_color?: string|null, replace_transparency?: int|string, refresh?: bool} $args
+	 * @param array{do_transparent?: bool, replace_color?: string|null, replace_transparency?: int|string, bg_remove_format?: string|null, refresh?: bool} $args
 	 * @return void
 	 */
 	public function newRemoveBackgroundAction($args = array())
@@ -266,6 +269,7 @@ class QueueItem
 			'do_transparent'       => true,
 			'replace_color'        => null,
 			'replace_transparency' => 0,
+			'bg_remove_format'     => null,
 			'refresh'              => true,
 		);
 		$args = wp_parse_args($args, $defaults);
@@ -273,6 +277,9 @@ class QueueItem
 		$paramlist = array();
 		if (true === $args['do_transparent'] || is_null($args['replace_color'])) {
 			$paramlist['bg_remove'] = 1;
+			if (\EnableMediaReplace\Api::BG_REMOVE_FORMAT_AUTO === $args['bg_remove_format']) {
+				$paramlist['bg_remove_format'] = \EnableMediaReplace\Api::BG_REMOVE_FORMAT_AUTO;
+			}
 		} else {
 			$paramlist['bg_remove'] = $args['replace_color'];
 			$transparency = intval($args['replace_transparency']);
