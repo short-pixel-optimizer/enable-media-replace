@@ -28,7 +28,8 @@ use EnableMediaReplace\emrCache as emrCache;
  *
  * Two replace modes:
  * - MODE_REPLACE (1): the uploaded file overwrites the current file at the same path and
- *   name. Only the thumbnail URLs are search-replaced (`thumbnails_only`).
+ *   name. Only the thumbnail URLs are search-replaced (`thumbnails_only`), plus the
+ *   URL of a `-scaled` file when the new image is too small to get one.
  * - MODE_SEARCHREPLACE (2): the uploaded file keeps its own (uniquified) name and may be
  *   placed in another directory under uploads; the post title, slug, excerpt and GUID are
  *   updated, and all URLs of the old file and its sizes are search-replaced in the database.

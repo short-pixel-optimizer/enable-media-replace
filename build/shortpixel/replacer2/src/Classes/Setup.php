@@ -97,7 +97,10 @@ class Setup
      * Steps:
      * 1. checkInput(): both sides have a URL and no input errors.
      * 2. getSearchBase(): the LIKE fragment passes the fail-safes.
-     * 3. With `thumbnails_only`, the main file (`base`, `file`) is left out.
+     * 3. With `thumbnails_only`, the main file (`base`) is left out, and so is
+     *    the metadata file (`file`) when it is the main file. A metadata file
+     *    that differs from it (a `-scaled` image) stays: a replace that drops
+     *    the `-scaled` file then rewrites its references like those of a size.
      * 4. matchReplaceUrls(): a replacement for every search URL.
      * 5. removeUnchanged(): pairs that are already equal are dropped.
      * 6. isBalanced(): both sides have exactly the same keys.
@@ -105,7 +108,8 @@ class Setup
      * Every run starts from scratch; the sides themselves are not changed.
      *
      * @param array $args {
-     *     @type bool $thumbnails_only Leave the main file out. Default false.
+     *     @type bool $thumbnails_only Leave the main file out (step 3). Default
+     *                                 false.
      * }
      * @return bool False when a step fails; see getValidationErrors().
      */
@@ -228,8 +232,9 @@ class Setup
      * Finds a replacement for every search URL, in the order of the search.
      *
      * Same key on the replace side: that one. Otherwise the nearest target
-     * size (findNearestSize()). Without either, the key stays unmatched and
-     * isBalanced() fails. Replace URLs without a search counterpart (a larger
+     * size (findNearestSize(), which answers the target's main file when
+     * there are no widths to compare). Without either, the key stays
+     * unmatched and isBalanced() fails. Replace URLs without a search counterpart (a larger
      * target has more sizes) are dropped: nothing can use them yet.
      *
      * @param array $search_urls  Search URLs by key.
@@ -303,11 +308,15 @@ class Setup
 	 * Finds the target file closest in width to a source size the target lacks.
 	 *
 	 * Starts from the target's main file and takes any target size with a
-	 * smaller width difference. Without widths (any non-image file / SVG), a target
-	 * replaces every size with its main file.
+	 * smaller width difference. Without widths to compare (the source entry
+	 * has none, or the target is an SVG or a non-image file such as a PDF or
+	 * a text file), the target's main file replaces the entry, so no
+	 * reference is left on a file the replace deleted.
 	 *
 	 * @param string $sizeName Size name present on the search side.
-	 * @return string|false File name of the closest target file, or false.
+	 * @return string|false File name of the closest target file; false when
+	 *                      the target has a width but neither a main file
+	 *                      nor a size with a file.
 	 */
 	protected function findNearestSize($sizeName)
 	{
