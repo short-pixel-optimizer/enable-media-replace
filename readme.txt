@@ -1,72 +1,87 @@
 === Enable Media Replace ===
 Contributors: ShortPixel
 Donate link: https://www.paypal.me/resizeImage
-Tags: replace, replace image, remove background, replace jpg, change media
-Requires at least: 4.9.7
+Tags: replace image, replace media, remove background, upscale image, change media
+Requires at least: 5.9
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 4.2.3
+Stable tag: 5.0.0
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
-Easily replace any attached image/file by simply uploading a new file in the Media Library edit view - a real time saver!
+Replace any image or file in the Media Library by uploading a new one. Remove backgrounds and upscale images with AI, one by one or in bulk.
 
 == Description ==
 
-**A free, lightweight and easy to use plugin that allows you to seamlessly replace an image or file in your Media Library by uploading a new file in its place. No more deleting, renaming and re-uploading files! Now fully compatible with <a href="https://wordpress.org/plugins/amazon-s3-and-cloudfront/" target="_blank">WP Offload Media!</a>
-New beta feature! You can now remove the background of your images for better integration with eCommerce solutions!
-Supported by the friendly team that created <a href="https://wordpress.org/plugins/shortpixel-image-optimiser/" target="_blank">ShortPixel</a>  :)**
+**A free, lightweight and easy to use plugin that lets you replace an image or file in your Media Library by uploading a new file in its place. No more deleting, renaming and re-uploading files! It also removes image backgrounds and upscales small images with AI, one image at a time or in bulk.
+Supported by the friendly team that created <a href="https://wordpress.org/plugins/shortpixel-image-optimiser/" target="_blank">ShortPixel</a> :)**
+
+### 🆕 New! Bulk Enhance, AI image upscale and transparent PNG ###
+
+* Bulk Enhance - A new page under Media > Bulk Enhance processes many images in one run: remove the background of all your WooCommerce product images, or upscale the small images of your Media Library.
+* AI image upscale - Enlarge a small image 2×, 3× or 4× with AI upscaling, with a preview before you replace it.
+* Transparent PNG - When you remove a background you can now get a PNG with a transparent background, also from a JPG image. The links to the image on your site are updated.
+* Backups and restore - Bulk Enhance backs up every original first, so you can restore a whole run anytime.
+* Runs in the background - A started bulk keeps going after you close the page.
 
 #### A real timesaver
 
-Don't you find it tedious and complicated to first delete a file and then upload another one with the exact same name every time you want to update an image or other uploaded file in the WordPress media library?
+Don't you find it tedious and complicated to first delete a file and then upload another one with the exact same name every time you want to update an image or other uploaded file in the WordPress Media Library?
 
 Well, no longer!
 
-Now you can replace any uploaded file in the Edit Media view, where it should be. Replacing Media can be done in two ways:
+Now you can replace any uploaded file from the Media Library or the Edit Media view, where it should be.
 
 #### It's simple to replace a file
 
-1. Simply replace the file. This option requires you to upload a file of the same type as the file you want to replace. The attachment name remains the same regardless of what the file you upload is called.
+Replacing media can be done in two ways:
+
+1. Just replace the file. This option requires you to upload a file of the same type as the file you want to replace. The attachment name remains the same regardless of what the file you upload is called.
 2. Replace the file, use the new file name, and update all links. If you check this option, the old file will be replaced with the name and type of the file you are uploading. All links pointing to the current file will be updated to point to the new file name. Additional options for the folder to put the new file in or the date of the new file are also available on the replace screen.
 
-This plugin is very powerful and a must-have for all major websites built with WordPress. It also offers a preview of the replaced image!
+The links are also updated in the content saved by page builders such as Elementor, Bricks, Breakdance, Beaver Builder and WPBakery, and the cache of the most popular caching plugins is cleared after a replacement. The plugin is compatible with <a href="https://wordpress.org/plugins/amazon-s3-and-cloudfront/" target="_blank">WP Offload Media</a> and offers a preview of the replaced image.
 
-#### New beta feature: You can now remove the background of any image!
-Similar to replacing media, you can also remove the background of the images from the Media Library! The background removal feature sends the images to ShortPixel's API, removes the background and sends them back in a preview window. If everything looks good, just replace the image with the one that has the background removed! If the source image is a PNG file, you will get a transparent background, while the other images default to a solid white background. You also have the option to choose a different color with an embedded color picker.
-The background removal feature is still in beta and will be free of charge for a reasonable usage.
+#### Remove the background of any image
 
-If you don't want to use the background removal feature, add this line to your theme's functions.php file, or use a plugin like <a href="https://wordpress.org/plugins/code-snippets/" target="_blank">Code Snippets</a>:
+Similar to replacing media, you can remove the background of the images from the Media Library. The image is sent to ShortPixel's API, the background is removed and the result is shown in a preview. If everything looks good, replace the image with the one that has the background removed. You can choose between:
 
-```add_filter( 'emr/feature/background', '__return_false' );```
+* a transparent background for PNG images (JPG images cannot be transparent, so they get a white one);
+* a solid background in the color and opacity of your choice;
+* a transparent PNG, also for JPG images: the image is converted to PNG and the links to it on your site are updated.
 
-A similar filter, for the remote notification system is:
+#### Upscale small images with AI
 
-```add_filter( 'emr/feature/remote_notice', '__return_false' );```
+Enlarge an image 2×, 3× or 4× with AI upscaling, right from the Media Library. Pick the factor, check the preview, and replace the image with the upscaled version. Images up to 1200 pixels wide can be upscaled.
 
-To shorten the wait time before redirecting to the media editing screen, use the following filter and specify the wait time in seconds (0 means that redirection is immediate, but may cause problems in certain configurations):
+#### Bulk Enhance: many images in one run
 
-```add_filter('emr/success/timeout', function () { return 3; });```
+The Media > Bulk Enhance page runs one of two operations over many images:
 
-To set "Just replace the file" as the default replacing method, use the following filter:
+* Bulk background removal - Removes the background from all images of your WooCommerce products: featured image, gallery and variations.
+* Bulk image upscale - Makes the small JPG and PNG images of your Media Library larger. You choose the width below which images are upscaled (1200 pixels by default), and each image is enlarged as far as its size allows, up to 4×.
 
-```add_filter( 'emr/replace/default_type', function() {
-    return 'replace';
-} );```
+The originals are copied to a backup folder first, so you can restore them anytime from the same page. The bulk is fastest with the page open, and it can keep going in the background after you close it. When it is done, a filter in the Media Library shows the images that were processed.
 
-To set "Replace the file, use the new file name, and update all links" as the default replacing method, use the following filter:
+Bulk Enhance needs a ShortPixel API key on an Unlimited plan.
 
-```add_filter( 'emr/replace/default_type', function() {
-    return 'replace_and_search';
-} );```
+#### How much does it cost?
 
+Replacing media is free, with no limits.
+
+Background removal and image upscale are done by ShortPixel's AI and use 8 AI credits per image:
+
+* The Free plan includes 10 background removals and image upscales, with no API key needed.
+* For more, add an API key from a <a href="https://shortpixel.com/pricing?utm_source=wp-repository&utm_medium=referral" target="_blank">ShortPixel Unlimited plan</a>: it comes with monthly AI credits and unlocks Bulk Enhance.
+* The ShortPixel Unlimited AI plan has no limit on AI credits.
+
+The API key is added on the remove background, upscale or Bulk Enhance screen, where you can also see how many AI credits are left this month.
 
 #### Show file modification time
 
 There is a shortcode that takes the file modification date and displays it in a post or on a page. The code is:
 `[file_modified id=XX format=XXXX]` where the "id" is required and the "format" is optional and defaults to your current WordPress settings for date and time format.
 
-So `[file_modified id=870]` would show the last time the file with ID 870 was updated on your site. To get the ID for a file, check the URL when editing a file in the media library (see screenshot #4)
+So `[file_modified id=870]` would show the last time the file with ID 870 was updated on your site. To get the ID for a file, check the URL when editing a file in the Media Library: it is the number after `post=`.
 
 If you want more control over the format in which the time is shown, you can use the format option. So `[file_modified id=870 format=Y-m-d]` would show the date the file was modified but not the time. The format string uses [the standard PHP date() formatting tags](http://php.net/manual/en/function.date.php).
 
@@ -86,12 +101,174 @@ If you want more control over the format in which the time is shown, you can use
 * Facebook <a href="https://www.facebook.com/ShortPixel" target="_blank">https://www.facebook.com/ShortPixel</a>
 * LinkedIn <a href="https://www.linkedin.com/company/shortpixel" target="_blank">https://www.linkedin.com/company/shortpixel</a>
 
+**Contribute**
+
+Want to help us improve the plugin? Feel free to submit pull requests via <a href="https://github.com/short-pixel-optimizer/enable-media-replace" target="_blank">GitHub</a>. Do you have suggestions? Contact ShortPixel <a href="https://shortpixel.com/contact" target="_blank">here</a>.
+
+== Installation ==
+
+Quick and easy installation:
+
+1. Upload the folder `enable-media-replace` to your plugin directory
+1. Activate the plugin through the 'Plugins' menu in WordPress
+1. Done!
+
 == Frequently Asked Questions ==
+
+= What does this plugin actually do? =
+
+This plugin makes it easy to update/replace files that have been uploaded to the WordPress Media Library. It can also remove the background of an image and upscale small images with AI, one image at a time or in bulk.
+
+= How does it work? =
+
+A "Replace media" option is available in the Media Library list, in the Edit Media view and in the media modal. This is where you can upload a new file to replace the old one. For images, the "Remove background" and "Upscale image" options are next to it.
+
+= I replaced a file, but it didn't change! =
+
+There are two main reasons this would happen.
+
+First, make sure you are not viewing a cached version of the file, especially if you replaced an image. Press "Refresh" in your browser to make sure. If your site uses a CDN, clear its cache too.
+
+Second, if the file really looks unchanged, make sure WordPress has write permissions to the files in your uploads folder. If you have ever moved your WP installation (maybe when you moved it to a new server), the permissions on your uploaded files are commonly reset so that WordPress no longer has permissions to change the files. If you don't know how to do this, contact your web server operator.
+
+= Is the plugin free? =
+
+Replacing media is free, with no limits. Background removal and image upscale use ShortPixel's AI: the Free plan includes 10 images, and an API key from a ShortPixel Unlimited plan gives you monthly AI credits. The Unlimited AI plan has no limit.
+
+= Do I need an API key? =
+
+Not for replacing media, and not for the first 10 background removals and image upscales. You need a ShortPixel API key on an Unlimited plan to go beyond the Free plan and to use Bulk Enhance.
+
+= What is an AI credit? =
+
+One background removal or one image upscale uses 8 AI credits. The remove background, upscale and Bulk Enhance screens show how many AI credits your API key has left this month.
+
+= Which images does Bulk Enhance process? =
+
+The bulk background removal processes the images of your WooCommerce products (featured image, gallery and variations), so it needs WooCommerce. The bulk image upscale processes the JPG and PNG images of the Media Library that are narrower than the width you set. Images that a previous bulk already processed are skipped.
+
+= Can I undo a bulk? =
+
+Yes. Bulk Enhance copies every original to the `EMR_Backups` folder inside your uploads folder before it replaces it. The Bulk Enhance page has a restore option for each operation, which puts the originals back and removes the backups.
+
+= Who can use these features? =
+
+Replacing a file is available to the users who can upload files. Renaming the file, changing its folder, removing a background and upscaling are limited to Editors and above. Bulk Enhance is for administrators.
+
+= Does the plugin use any external services? =
+
+Yes, for background removal and image upscale only. When you use one of these features (on a single image or in a bulk), the image and the options you chose are sent to the ShortPixel API (api.shortpixel.com), which sends the result back. If you added an API key, it is sent along and checked there, together with the address of your site. Nothing is sent when you only replace media. The plugin also asks api.shortpixel.com for news about the plugin, which you can switch off with the `emr/feature/remote_notice` filter.
+
+The service is provided by ShortPixel: <a href="https://shortpixel.com/tos" target="_blank">Terms of Service</a>, <a href="https://shortpixel.com/privacy" target="_blank">Privacy Policy</a>.
 
 = Where do I report security bugs found in this plugin? =
 Please report security bugs found in the source code of the Enable Media Replace plugin through the [Patchstack Vulnerability Disclosure Program](https://patchstack.com/database/vdp/enable-media-replace). The Patchstack team will assist you with verification, CVE assignment, and notify the developers of this plugin.
 
+== Actions and Filters for Developers ==
+
+Add these lines to your theme's functions.php file, or use a plugin like <a href="https://wordpress.org/plugins/code-snippets/" target="_blank">Code Snippets</a>.
+
+To switch off the background removal feature:
+
+```add_filter( 'emr/feature/background', '__return_false' );```
+
+To switch off the image upscale feature:
+
+```add_filter( 'emr/feature/upscale', '__return_false' );```
+
+To switch off the remote notification system:
+
+```add_filter( 'emr/feature/remote_notice', '__return_false' );```
+
+To shorten the wait time before redirecting to the media editing screen, specify the wait time in seconds (0 means that redirection is immediate, but may cause problems in certain configurations):
+
+```add_filter('emr/success/timeout', function () { return 3; });```
+
+To set "Just replace the file" as the default replacing method:
+
+```add_filter( 'emr/replace/default_type', function() {
+    return 'replace';
+} );```
+
+To set "Replace the file, use the new file name, and update all links" as the default replacing method:
+
+```add_filter( 'emr/replace/default_type', function() {
+    return 'replace_and_search';
+} );```
+
+To skip the database search and replace after a replacement:
+
+```add_filter( 'emr/replace/doreplace', '__return_false' );```
+
+To change the default width below which the bulk upscales images (in pixels):
+
+```add_filter( 'emr/bulk/upscale/threshold', function() { return 800; } );```
+
+== Screenshots ==
+
+1. The replace screen: the current file, the new file and the replacement options.
+2. The Replace media, Remove background and Upscale image buttons in the Edit Media view.
+3. The remove background screen, with the transparent, transparent PNG and solid background options.
+4. The upscale screen, with a 4× preview next to the current image.
+5. Bulk Enhance: remove the background of your WooCommerce product images or upscale the small images of your Media Library.
+6. Bulk Enhance: choosing the operation and its options.
+7. Bulk Enhance: the progress of a run, with the original and the result of the latest image.
+8. The Media Library filtered on the images a bulk upscaled.
+
 == Changelog ==
+
+= 5.0.0 =
+
+✨ The Bulk Enhance & AI Upscale Update
+
+Release Date: November 26, 2026
+
+✨ New Features
+
+* Bulk Enhance: A new page under Media > Bulk Enhance processes many images in one run, with a summary before you start, live progress and a before/after preview of each result. It needs a ShortPixel API key on an Unlimited plan.
+* Bulk Background Removal: Remove the background from all images of your WooCommerce products (featured image, gallery and variations) in one go.
+* Bulk Image Upscale: Upscale the small JPG and PNG images of your Media Library. You choose the width below which images are upscaled, and each image is enlarged as far as its size allows, up to 4×.
+* AI Image Upscale: Enlarge a single image 2×, 3× or 4× from the Media Library, with a preview before you replace it.
+* Transparent PNG: A new background removal option returns a PNG with a transparent background, also for JPG images. The image is converted to PNG and the links to it on your site are updated. Available on the remove background screen and in Bulk Enhance.
+* Backups & Restore: Bulk Enhance copies every original to a backup folder before replacing it, and each operation can be restored from the Bulk Enhance page.
+* Background Processing: A started bulk keeps going through WP-Cron after you close the page.
+* Media Library Filter: A new filter in the Media Library (list, grid and media modal) shows the images processed by each bulk operation.
+* AI Credits: The remove background, upscale and Bulk Enhance screens now show how many AI credits your API key has left this month, and Bulk Enhance warns you before a run that needs more credits than you have.
+
+⚙️ Improvements
+
+* Refreshed Interface: The replace, remove background and upscale screens have a new layout, with a header bar, one-click buttons to switch between the three operations and a magnifier on the previews. The same buttons are available in the Edit Media view and in the media modal.
+* Clearer Plans: The background removal is no longer in beta. The Free plan includes 10 background removals and image upscales, and an API key from a ShortPixel Unlimited plan can be added right on these screens.
+* New Replacement Engine: The engine that updates the links in the database after a replacement was rebuilt. It keeps every value in the form it was stored in (serialized data, JSON, plain text) and only writes the rows that really changed.
+* Uploads Follow the WordPress Order: A replacement file now passes through the upload filters of other plugins before its type is checked, as in a regular WordPress upload, and a file refused by one of these filters is no longer replaced.
+* Readable Errors: When a bulk request fails, the page shows a readable message with advice, not the raw server answer.
+* Minimum Requirements: The plugin now declares its minimum requirements (WordPress 5.9 and PHP 7.4), so WordPress will no longer install or update it on older, unsupported versions.
+* More Translatable Texts: Texts across the plugin were rewritten for clarity, and several texts that could not be translated are now included in the translation files.
+* Cleaner Uninstall: The bulk queue, its scheduled task and the cached AI credits are removed when the plugin is uninstalled.
+
+🔒 Security
+
+* PHP Object Injection Fix: When updating links in the database after a replacement, the plugin now keeps values that WordPress stored as plain text exactly as they were, preventing a potential PHP object injection issue, safely disclosed through the Patchstack team.
+
+🛠️ Fixes
+
+* Symlinked Uploads Folder: "Replace the file, use the new file name, and update all links" works again when the uploads folder is a symbolic link (for example on Capistrano-style deployments and on Pantheon), where it failed with "Specified directory is outside the upload directory".
+* Windows Servers: The same replacement option works again on Windows servers, and a file moved to another folder keeps a correct path.
+* WordPress VIP & Stream Wrappers: The same replacement option works again when the uploads folder is not a regular folder on the server, as on WordPress VIP.
+* Page Builders: The links are now updated correctly in the content saved by Bricks, Elementor and other builders that store settings as text inside their data. This fixes a fatal error on Bricks pages with a Nested Slider and on Elementor pages with AdSanity widgets (thanks to @guyinpv and @jessedyck for the detailed reports).
+* Quoted Text: A text typed with double quotes (such as a heading in a page builder) no longer loses its quotes or its special characters after a replacement.
+* SVG Sanitizers: Replacing a file with an SVG no longer fails with "The file upload has been rejected for security reason" on sites where a theme or plugin sanitizes SVG uploads, such as Divi 5.
+* Replacing an Image with Another File Type: When an image is replaced with a file that is not an image (a PDF or a text file, for example), the links to the image and to its thumbnails are now updated.
+* Large Images Replaced with Smaller Ones: When a large (scaled) image is replaced with a smaller one, the links to the old scaled file are now updated.
+* Breakdance 2: A replacement no longer clears part of the data Breakdance keeps for a page.
+* Synology NAS: Fixed a fatal error ("Call to a member function exists() on bool") when replacing media on some server setups, such as a Synology NAS (thanks to @locksoft for the report and the proposed fix).
+* Thumbnail Links: When the new image has fewer thumbnail sizes than the old one, the links to the missing sizes now go to the closest size, and no longer to an unrelated one.
+* File Names: Links to a file whose name contains its extension in the middle (such as `photo.jpg-edit.jpg`) are now updated.
+* Databases in ANSI Mode: The links in the custom fields are now updated on databases that run in ANSI quotes mode.
+* Remove Background Screen: Fixed a JavaScript error on the remove background screen.
+* Other Fixes: Several smaller fixes in the debug log and the folder permission checks.
+
+Update now to enhance your images in bulk and enjoy safer, more reliable replacements! 🚀
 
 = 4.2.3 =
 
@@ -609,45 +786,3 @@ Release date: 18th June 2019
 
 = 1.0 =
 * First stable version of plugin.
-
-== Installation ==
-
-Quick and easy installation:
-
-1. Upload the folder `enable-media-replace` to your plugin directory
-1. Activate the plugin through the 'Plugins' menu in WordPress
-1. Done!
-
-== Frequently Asked Questions ==
-
-= What does this plugin actually do? =
-
-This plugin makes it easy to update/replace files that have been uploaded to the WordPress Media Library.
-
-= How does it work? =
-
-A new option will be available in the Edit Media view, called "Replace Media". This is where you can upload a new file to replace the old one.
-
-= I replaced a file, but it didn't change! =
-
-There are two main reasons this would happen.
-
-First, make sure you are not viewing a cached version of the file, especially if you replaced an image. Press "Refresh" in your browser to make sure.
-
-Second, if the file really looks unchanged, make sure WordPress has write permissions to the files in your uploads folder. If you have ever moved your WP installation (maybe when you moved it to a new server), the permissions on your uploaded files are commonly reset so that WordPress no longer has permissions to change the files. If you don't know how to do this, contact your web server operator.
-
-== Screenshots ==
-
-1. The new link in the media library.
-2. The replace media-button as seen in the "Edit media" view.
-3. The upload options.
-4. Get the file ID in the edit file URL
-
-== Wishlist / Coming attractions ==
-
-Do you have suggestions? Feel free to contact ShortPixel <a href="https://shortpixel.com/contact" target="_blank">here</a>
-
-
-== Contribute ==
-
-Want to help us improve the plugin feel free to submit PRs via GitHub <a href="https://github.com/short-pixel-optimizer/enable-media-replace" target="_blank">here</a>.

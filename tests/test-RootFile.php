@@ -154,4 +154,18 @@ class RootFileTest extends WP_UnitTestCase {
 		$this->assertSame( 'enable-media-replace', $header['TextDomain'] );
 		$this->assertSame( '7.4', $header['RequiresPHP'] );
 	}
+
+	/**
+	 * The supported floors (WordPress 5.9, PHP 7.4) are declared in the
+	 * plugin header, where WordPress enforces them on install and update,
+	 * and repeated in readme.txt for WordPress.org; the two always agree.
+	 */
+	public function test_plugin_header_and_readme_declare_the_same_minimum_versions() {
+		$fields = array( 'RequiresWP' => 'Requires at least', 'RequiresPHP' => 'Requires PHP' );
+		$header = get_file_data( $this->root_file(), $fields );
+		$readme = get_file_data( dirname( $this->root_file() ) . '/readme.txt', $fields );
+
+		$this->assertSame( array( 'RequiresWP' => '5.9', 'RequiresPHP' => '7.4' ), $header );
+		$this->assertSame( $header, $readme );
+	}
 }

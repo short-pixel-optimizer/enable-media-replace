@@ -3,11 +3,12 @@
  * Plugin Name: Enable Media Replace
  * Plugin URI: https://shortpixel.com
  * Description: Enable replacing media files by uploading a new file in the "Edit Media" section of the WordPress Media Library.
- * Version: 5.0.0-BETA1
+ * Version: 5.0.0
  * Author: ShortPixel
  * Author URI: https://shortpixel.com
  * GitHub Plugin URI: https://github.com/short-pixel-optimizer/enable-media-replace
  * Text Domain: enable-media-replace
+ * Requires at least: 5.9
  * Requires PHP: 7.4
  * Dual licensed under the MIT and GPL licenses:
  * License URI: http://www.opensource.org/licenses/mit-license.php
@@ -33,18 +34,17 @@
  * @package     WordPress
  * @subpackage  enable-media-replace
  *
- * The supported floor is PHP 7.4 (`Requires PHP` in this header and in
- * readme.txt, `php` in composer.json). The code still carries shims from the
- * PHP 5.6 and WordPress 4.x era; each one is marked with a @todo where it is
- * dead on that floor.
+ * The supported floors are WordPress 5.9 and PHP 7.4 (`Requires at least` and
+ * `Requires PHP` in this header and in readme.txt, `php` in composer.json);
+ * WordPress refuses to install or update the plugin below them. The code still
+ * carries shims from the PHP 5.6 and WordPress 4.x era; each one is marked with
+ * a @todo where it is dead on those floors.
  *
- * @todo The plugin header declares no `Requires at least` field; readme.txt
- *       declares WordPress 4.9.7. Add the field so WordPress enforces it.
  * @todo The classes/ files are loaded with explicit require_once calls; replace
  *       them with a PSR-4 autoloader (also noted at the require block).
  */
 
-define( 'EMR_VERSION', '5.0.0-BETA1' );
+define( 'EMR_VERSION', '5.0.0' );
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit; // Exit if accessed directly.

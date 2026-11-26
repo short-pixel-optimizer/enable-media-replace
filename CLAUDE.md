@@ -12,7 +12,8 @@ ShortPixel API. For the current
 version read the `Version:` header in `enable-media-replace.php` (also
 defined as `EMR_VERSION`) and the `Stable tag:` in `readme.txt`; the number
 is deliberately not duplicated here. The PHP and WordPress floors are the
-`Requires PHP:` and `Requires at least:` lines of `readme.txt`.
+`Requires PHP:` and `Requires at least:` lines of `readme.txt`, repeated in
+the plugin header.
 
 ## Build & Dependencies
 
