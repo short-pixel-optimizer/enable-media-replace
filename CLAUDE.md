@@ -1,0 +1,491 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Plugin Overview
+
+Enable Media Replace (EMR) is a WordPress plugin that replaces an existing
+attachment with a newly uploaded file, either in place (same file name) or
+with a new name while rewriting every reference in the database, and that
+removes image backgrounds or upscales small images (2x, 3x, 4x) through the
+ShortPixel API. For the current
+version read the `Version:` header in `enable-media-replace.php` (also
+defined as `EMR_VERSION`) and the `Stable tag:` in `readme.txt`; the number
+is deliberately not duplicated here. The PHP and WordPress floors are the
+`Requires PHP:` and `Requires at least:` lines of `readme.txt`, repeated in
+the plugin header.
+
+## Build & Dependencies
+
+Dependencies live in `../modules/*` (sibling directory path repositories,
+loaded via Composer path repositories with symlinks). Run after cloning:
+
+```bash
+composer install
+```
+
+To rebuild the bundled modules after editing their sources in `../modules`:
+
+```bash
+composer run buildSP
+```
+
+The build tool (`shortpixel/build`) copies every `vendor/shortpixel/*`
+module into `build/shortpixel/` and rewrites the namespace to
+`EnableMediaReplace\`, the text domain to `enable-media-replace` and the
+hook prefixes (`shortpixel/replacer/*` becomes `emr/replacer/*`, see the
+`extra` block of `composer.json`). `build/shortpixel/` is generated output:
+never edit it by hand. The bundled modules are `filesystem`, `log`,
+`notices`, `promo-banner`, `replacer2` and `shortq`; all but `filesystem` are shared with
+ShortPixel Image Optimizer (SPIO), which bundles them under its own
+namespace. `buildSP` copies whatever is checked out in `../modules`, so
+check `git diff build/` after a rebuild and keep only the module changes you
+meant to ship.
+
+There is no JavaScript build step. `js/` and `css/` are shipped as they are;
+`scss/` holds the stylesheet sources.
+
+## Testing
+
+Test dependencies (PHPUnit and the Yoast polyfills) are kept separate from
+the main `composer.json` (the build tool). They live in `composer.tests.json`
+/ `composer.tests.lock` and install into `vendor-tests/`:
+
+```bash
+COMPOSER=composer.tests.json composer install
+```
+
+All suites run against a real WordPress test install inside Docker via
+`bin/test.sh` (see `TESTING.md` for the full reference):
+
+```bash
+bin/test.sh --verify                 # FIRST: prove the environment works (fails unless tests really ran)
+bin/test.sh                          # all unit suites (PHP 8.3, matches CI)
+bin/test.sh --testsuite Replacer     # one suite, by its case-sensitive name
+bin/test.sh --integration            # integration suite (phpunit-integration.xml)
+bin/test.sh --ms                     # multisite suite
+bin/test.sh --compat                 # cross-plugin compatibility suite
+bin/test.sh --all                    # unit + integration + multisite + compat
+bin/test.sh --matrix                 # unit suites on PHP 7.4, 8.3 and 8.5
+bin/test.sh --php 8.5 --integration
+bin/test.sh --testsuite Controllers --filter '^ReplaceControllerTest'   # one file: filter on CLASS name
+bin/test-e2e.sh --project chromium  # browser E2E (Playwright) on http://localhost:8031, separate stack, never together with bin/test.sh
+```
+
+Testsuite names are **case-sensitive**. The unit suites are `Helper`,
+`Replacer`, `Modules`, `Api`, `Controllers`, `ViewControllers` and
+`EMR Main`, declared in `phpunit.xml.dist`; the integration-config suites are
+`Integration`, `IntegrationIsolated`, `Compat`, `Multisite` and `Smoke`,
+declared in `phpunit-integration.xml`. `bin/test.sh` rejects an unknown
+name, but calling PHPUnit directly with a wrong name prints
+`No tests executed!` and exits **0**, a green run that tested nothing. The
+same applies to a `--filter` that matches nothing, so always check the test
+count in the output.
+
+Unit bootstrap: `tests/bootstrap.php`; integration bootstrap:
+`tests/Integration/bootstrap.php`; multisite bootstrap:
+`tests/Multisite/bootstrap.php`. Test files follow the naming convention
+`test-*.php` and test classes are named `<Name>Test`.
+
+The smoke suite (`tests/Smoke`) talks to the real ShortPixel API and is
+keyed by the `SHORTPIXEL_SMOKE_KEY` environment variable. It runs only with
+`bin/test.sh --smoke`, never as part of `--all`, `--matrix` or CI.
+
+Only one test stack runs at a time on a machine: the Docker harness is a
+shared singleton (one MySQL, one test database, one site port). Never start
+`bin/test.sh` or `bin/test-e2e.sh` while another run, including an SPIO run,
+is in progress.
+
+## Architecture
+
+### Entry Points
+
+- `enable-media-replace.php`: plugin bootstrap. Defines `EMR_VERSION`,
+  `EMR_ROOT_FILE` and `EMR_CAPABILITY`, requires `build/shortpixel/autoload.php`
+  and every file under `classes/` explicitly (there is no PSR-4 autoloader
+  for the plugin's own classes), exposes the `emr()` accessor and registers
+  the deactivation and uninstall hooks on `InstallHelper`.
+- `classes/emr-plugin.php`: `EnableMediaReplacePlugin`, the singleton
+  returned by `emr()`. Hooks `init` (`runtime()`) and `admin_init`
+  (`adminInit()`).
+
+### Initialization Flow
+
+1. Require time: every class file is loaded; `emr()` creates the singleton
+   and points the logger at `wp-content/uploads/emr_log` when debugging is on.
+2. `init`: `runtime()` registers the `[file_modified]` shortcode for everyone,
+   then returns unless the current user passes the `EMR_CAPABILITY` check
+   (default: `upload_files`). For allowed users it instantiates `Externals`
+   (the third-party integrations) and registers the admin UI hooks.
+3. `admin_init`: `adminInit()` resolves the feature flags
+   (`emr/feature/background`, `emr/feature/upscale`,
+   `emr/feature/remote_notice`) and instantiates `Ajax`.
+4. Requests to the hidden `upload.php?page=enable-media-replace/enable-media-replace.php`
+   page are dispatched by `EnableMediaReplacePlugin::route()` on the `action`
+   query argument to a view controller (`media_replace`,
+   `media_replace_upload`, `emr_prepare_remove`, `do_background_replace`,
+   `emr_prepare_upscale`, `do_upscale_replace`).
+
+### Namespace & Autoloading
+
+Plugin classes use the `EnableMediaReplace\` namespace with sub-namespaces
+`Controller\`, `ViewController\`, `Externals\` and `Helper\`. Two loading
+schemes coexist. The legacy files, whose names do not match their class names
+(`uihelper.php`, `ajax.php`, `emr-plugin.php`, `cache.php`, ...), are
+required explicitly from the root file. Files whose path matches their class
+name (PSR-4, for example `classes/Controller/Bulk/BulkQueue.php`) are
+autoloaded: the root file creates a second `PackageLoader` with
+`classes/plugin.json`, which maps `EnableMediaReplace` to `classes/`, the
+same way SPIO's `class/plugin.json` works. New classes go into the PSR-4
+scheme and need no `require_once`. The bundled modules are autoloaded by
+`build/shortpixel/PackageLoader.php` under `EnableMediaReplace\Replacer\`,
+`EnableMediaReplace\FileSystem\`, `EnableMediaReplace\ShortPixelLogger\`,
+`EnableMediaReplace\Notices\` and `EnableMediaReplace\ShortQ\`.
+
+### Code Structure
+
+```
+enable-media-replace.php   - bootstrap, constants, emr()
+classes/
+  emr-plugin.php           - EnableMediaReplacePlugin: hooks, routing, permissions, UI entry points
+  Controller/
+    ReplaceController.php  - the replace flow (source/target, copy, metadata, replacer, dates, cache)
+    MediaLibraryFilterController.php - the Bulk Enhance filter of the Media Library (list and grid dropdown, query on the marker meta)
+    RemoteNoticeController.php - remote notices from api.shortpixel.com
+    Bulk/                  - the bulk queue, ported from SPIO's queue layer (PSR-4, autoloaded)
+      BulkAjaxController.php - wp_ajax_emr_bulk_process / _request / _settings, the two-tab processor key
+      CronController.php   - WP-Cron ticks (event emr_bulk_cron) while the background_process setting is on
+      BulkQueue.php        - the ShortQ queue (slug emr, name bulk): prepare / dequeue lifecycle, stats
+      QueueController.php  - one tick: key and plan gates, run the queue, process the items
+      BulkController.php   - create / start / finish a bulk run, the bulk logs (option emr_bulk_logs)
+      ActionController.php - sends an item to the API, applies the result through ReplaceController, restores
+      BulkApi.php          - reducer / cleanup client for remove_background and scale_image
+      BackupController.php - originals under uploads/EMR_Backups/<yyyy>/<mm>/ before the swap
+      ResponseController.php - per-item messages for the bulk screen and the log
+      Selector/            - the prepare-phase sources: WooCommerceProductImages (background), UpscaleCandidates (upscale)
+  Model/Bulk/              - QueueItem (attachment + action + data + result), QueueItemData, QueueItemResult,
+                             BulkImage (attachment adapter: file, URL, width, upscale factor, the _emr_bulk_<operation> markers)
+  ViewController.php       - abstract base: view loading (loadView($template, $unique, $args), $args as
+                             $view->template_args like SPIO's), error codes, viewError()/viewSuccess()
+  ViewController/
+    ReplaceViewController.php          - the replace screen
+    UploadViewController.php           - the replace POST handler
+    RemoveBackgroundViewController.php - the remove-background screen and POST handler
+    UpscaleViewController.php          - the upscale screen and POST handler (subclass: own template and nonce)
+    BulkViewController.php             - the visible Media > Bulk Enhance page (slug emr-bulk, manage_options)
+  ajax.php                 - wp_ajax_emr_remove_background (also the upscale preview) / _save_api_key / _delete_api_key;
+                             registers the bulk actions on BulkAjaxController::getInstance()
+  api.php                  - the remove-background and upscale API client
+  ApiKeyManager.php        - the ShortPixel API key option and plan check
+  cache.php                - emrCache: cache-plugin detection and flushing
+  uihelper.php             - UIHelper: screen URLs, previews, placeholders, author restriction,
+                             isBackgroundRemovable() / isUpscalable() and the upscale factor table,
+                             formatNumber() / formatTS() (SPIO's UiHelper formatters: bulk stats, history, logs)
+  Helper/envHelper.php     - EnvHelper: multisite/ajax/cron flags, IsOverMemoryLimit() / IsOverTimeLimit()
+                             (SPIO's EnvironmentModel budget checks; filters emr/process/max_memory, emr/process/max_execution)
+  externals.php            - Externals: loads the integrations below
+  external/                - Elementor, WPBakery, SiteOrigin, WP Offload Media, the upsell installer
+  installHelper.php        - deactivation and uninstall
+  compat.php               - polyfills for old WordPress versions
+views/                     - PHP templates (screen, prepare-remove-background, prepare-upscale,
+                             shortpixel-account (the collapsible API key row of the bulk page and both
+                             single screens, $emr_account_context), operation-buttons (the SVG tiles to the
+                             other operations under the previews, UIHelper::getOperationButton(), which the
+                             media modal fields reuse), success, error, upsell,
+                             bulk/ (view-bulk + the dashboard, selection, summary, process, finished, restore panels,
+                             part-steps (the step bar)))
+js/, css/, scss/, img/     - assets, no build step; js/bulk/ holds the bulk processor, worker and screen
+                             (vanilla JS, no jQuery); js/emr-magnifier.js is the preview hover lens;
+                             scss/bulk.scss, scss/single.scss (the single screens) and scss/media-modal.scss
+                             (the modal tiles) share _emr-colors (SPIO's palette), _page-header,
+                             _shortpixel-account and _operation-buttons, and compile to css/*.css with `sass`; img/icons/ holds the operation
+                             SVGs and SPIO's new.svg badge
+build/shortpixel/          - bundled modules (generated, do not edit)
+tests/                     - PHPUnit suites, E2E stack, fixtures (see TESTING.md)
+docs/                      - the documentation and test plan, the bulk design note (BULK.md)
+```
+
+### Key Patterns
+
+- **Singletons:** `EnableMediaReplacePlugin`, `UIHelper`, `EnvHelper`,
+  `ApiKeyManager`, `RemoteNoticeController`, the view controllers and the
+  integrations use `getInstance()`. `ReplaceController`, `Api`, `emrCache`
+  and the bundled `Replacer2` are instantiated per request.
+- **Replace flow:** a view controller validates the request, builds the
+  parameter array, calls `ReplaceController::setupParams()` then `run()`.
+  `run()` swaps the file, regenerates metadata, hands the old and new URLs
+  to the bundled `Replacer` module, which rewrites `post_content`, the meta
+  tables and options, then flushes caches. Two modes: `MODE_REPLACE`
+  (same name, thumbnails only rewritten) and `MODE_SEARCHREPLACE` (new name,
+  optional new location, every reference rewritten).
+- **Error handling:** view controllers call `viewError($code)`, which
+  renders `views/error.php` and ends the request with `exit()`. Error codes
+  are constants on `ViewController` and `ReplaceController` (the 20-25
+  range is shared between them).
+- **Entry points and controls:** the Media Library row actions are plain text
+  links by WordPress convention; the SVG operation tiles are for the meta box,
+  the media modal fields and the single screens. Every "Cancel" and "previous
+  page" link is the same `data-action="history-back"` anchor with the Media
+  Library as href fallback, handled in `js/emr_admin.js` (no inline handlers,
+  no `javascript:` URLs). Elements are hidden with the `hidden` attribute, set
+  by PHP for the initial state and toggled by the scripts; no inline styles.
+  The Preview button of both single screens is `#emr_preview_button`.
+- **Permissions:** `EnableMediaReplacePlugin::checkImagePermission($post)`
+  is the single gate. Users without `edit_others_posts` are "author
+  restricted": no remove background, no upscale and no replace-and-search.
+- **Remove background and upscale share one flow:** the same AJAX endpoint
+  (`emr_remove_background`), `Api::request()` (an `upscale` factor of 2, 3
+  or 4 in the posted data replaces `bg_remove` in the reducer body), the
+  same script (`js/remove_bg.js`) and stylesheet, and the same
+  `loadPost()`; `UpscaleViewController` only swaps the template, the
+  nonce action (`media_upscale_image`) and the `$operation`. As in SPIO's
+  editor preview, nothing is stored between the preview and the apply: the
+  preview answers the result URL for display, and `loadPost()` runs
+  `Api::request()` again with the form's options on the original
+  (`apiData()`, `fetchResult()`), then downloads that result
+  (`Api::download()`). The second API call is free of charge. `UIHelper::getUpscaleFactors()` maps
+  each factor to the widest source it accepts; `isUpscalable()` hides the
+  entry points above the largest one.
+- **Transparent PNG option:** the background type `transparent_png`
+  (`Api::BG_TYPE_TRANSPARENT_PNG`, the third radio with SPIO's NEW! badge on
+  the remove background screen and in the bulk selection) adds
+  `bg_remove_format` 'auto' to the reducer body, in the single flow and the
+  bulk alike (bulk option `bg_remove_format`); the API then answers a
+  transparent PNG whenever possible, also for a JPG. It is never the default
+  (`transparent` is), and every other request has the body it had before.
+  Only with this option may a result change the file's type:
+  `ReplaceController::getFormatChangeParams()` reads the real type of the
+  downloaded file and switches the replace to MODE_SEARCHREPLACE with the
+  `.png` name (made unique when taken) and `keep_post_data` (title, slug and
+  excerpt stay; the guid follows). In the bulk the backup stays the JPG, a
+  later operation reuses it, and a restore puts the JPG back under its own
+  name with the references rewritten back.
+- **Hooks for other plugins:** `wp_handle_replace` (before the swap),
+  `enable-media-replace-upload-done` (after it), `emr/replace/*`,
+  `emr/replacer/*` (from the module), `emr/feature/*`, `emr/upsell`,
+  `emr_returnurl`, `emr_unique_filename`, `enable_media_replace_title`.
+- **Remote API:** only `api.shortpixel.com` (reducer, cleanup, api-status,
+  notices). Tests stub it at the `pre_http_request` boundary.
+- **Promo banner:** the bundled `promo-banner` module (a reusable, plugin-neutral
+  campaign banner; assets in `build/shortpixel/promo-banner/assets/`).
+  `EnableMediaReplacePlugin::promoBanner()` configures the Black Friday 2026
+  campaign (`PROMO_START` / `PROMO_END` in UTC, inclusive; the end is 23:59:59
+  US Pacific on November 30; `PROMO_ENDS_ON` is the label's day) for the
+  Bulk Enhance page and, through `isPromoBannerScreen()`, the replace, remove
+  background and upscale screens; the four views print it right after their
+  header bar (`'hook' => false`: not on admin_notices, which WordPress's script
+  would move there only after load); `manage_options` only; dismissed per site
+  (one close hides it for everyone) in the option `emr-promo-banner`
+  (one per plugin, named from the banner's `prefix`, `PROMO_PREFIX`, which also
+  names the AJAX action and the asset handle; an array campaign id to time,
+  pruned to the current campaign on each dismissal, deleted by
+  `PromoBanner::uninstall(PROMO_PREFIX)` from `InstallHelper::unInstallPlugin()`).
+  A banner without `id`, `start` and `end` never shows: the module has no
+  campaign by default. Hooks: `emr/promo_banner/show`, `emr/promo_banner/in_window`,
+  `emr/promo_banner/capability`, `emr/promo_banner/url`,
+  `emr/settings/no_banner` (and the SHORTPIXEL_NO_BANNER constant). The E2E
+  support option `emr_e2e_promo_window` alone decides the window in the browser
+  tests (open when set, closed otherwise, whatever the date).
+- **Bulk Enhance announcement:** `UIHelper::featureNotice()`, called by
+  `route()` on EMR's own screens, queues the persistent notice
+  `NOTICE_BULK_ENHANCE` (EMR002) for users with `manage_options` only, removes
+  the former beta notice EMR001 from the store, and the notices module prints
+  it on the Media Library, the edit-attachment screen and EMR's screens
+  (`setScreen()`, `isNoticeScreen()`). Its content (heading, the two operation
+  lines with the img/icons SVGs, the "Open Bulk Enhance" button) is built and
+  escaped in PHP; `scss/notices.scss` compiles to `css/notices.css`, enqueued
+  on those screens by `admin_scripts()`.
+- **AI credits:** background removal and upscale use 8 AI credits per image
+  (`ApiKeyManager::AI_CREDITS_PER_IMAGE`, the one place the number lives).
+  `ApiKeyManager::getAiCredits()` reads the `PlanType` / `CaptionsCalls*`
+  fields of api-status (the same fields SPIO shows as AI credits; Unlimited AI
+  is `PlanType` 'Unlimited AI', and on that plan the quota and remaining
+  fields are null), cached in
+  the `emr_ai_credits` transient (10 min, `emr/ai_credits/ttl`; every
+  api-status call refreshes it). `views/ai-credits.php` shows them in the
+  account row and on the bulk summary: Unlimited AI has no limit, other
+  Unlimited plans get a monthly amount and the "Upgrade to Unlimited AI"
+  button (`ApiKeyManager::UPGRADE_AI_URL`). Wording: an Unlimited key
+  *unlocks* the features; only Unlimited AI is unlimited.
+- **Bulk queue:** `Controller/Bulk/` is a port of SPIO's queue layer on the
+  bundled ShortQ module and keeps SPIO's class and method names so fixes
+  port one-to-one. One queue (`InstallHelper::QUEUE_SLUG` / `QUEUE_NAME`)
+  runs one operation at a time: `background` or `upscale`, or the
+  `bulk-restore` custom operation. `BulkController::createNewBulk()` stores
+  the operation and its options in the queue's custom_data and flags
+  `preparing`; `QueueController::processQueue()` is one tick (prepare a page
+  of IDs, or dequeue and process `numitems`); `startBulk()` moves to
+  `running`; `finishBulk()` logs and resets. Results are applied in place
+  through `ReplaceController` with the single flow's parameters, after the
+  original was copied to `EMR_Backups`; the attachment then carries the
+  `_emr_bulk_<operation>` post meta (one key per operation, SPIO's one-flag-
+  per-fact style: operation data and backup path; `BulkImage::getMarkerKey()`,
+  `countMarked()`, `queryMarked()` are the only queries on it), which a later
+  run of the same operation skips and a restore consumes. The prepare phase
+  takes its IDs from the explicit `items` list of the bulk options when one
+  is given, else from the `emr/bulk/source_ids` filter, else from the
+  operation's `Selector` (`Selector::forOperation()`, replaceable through
+  `emr/bulk/selector`): `WooCommerceProductImages` reads `_thumbnail_id` and
+  `_product_image_gallery` of products and variations (not trashed), paged
+  by product, and is unavailable without the `product` post type
+  (`BulkController::canRun()`); `UpscaleCandidates` pages the JPEG/PNG
+  attachments and leaves the width threshold to `prepareItems()`. Other hooks:
+  `emr/bulk/background/post_types`, `emr/bulk/queue_options`,
+  `emr/bulk/custom_options`, `emr/bulk/backup_dir`, `emr/bulk/api/request`,
+  `emr/bulk/api/timeout`, `emr/bulk/plan_check_ttl`, `emr/bulk/prepare_items`,
+  `emr/bulk/item/done`, `emr/bulk/item/failed`, `emr/bulk/interval`,
+  `emr/bulk/defer_interval`, `emr/bulk/upscale/threshold` (the default
+  threshold), `emr/process/max_memory`, `emr/process/max_execution` (the
+  prepare loop and the cron loop stop at 90 % of the budget, through
+  `EnvHelper`). The design note is `docs/BULK.md`. The bulk needs an API key on an Unlimited plan
+  (checked once per hour, transient `emr_bulk_plan_ok`).
+- **Bulk screen:** `upload.php?page=emr-bulk` (`BulkViewController`,
+  `manage_options`). The browser drives the queue like SPIO's bulk page:
+  `js/bulk/emr-processor.js` posts ticks through the Web Worker
+  `js/bulk/emr-worker.js` to `wp_ajax_emr_bulk_process` and hands the
+  answers to `js/bulk/emr-bulk-screen.js`, which switches the panels and
+  writes the stats into `data-stats-media` / `data-stats-total` elements;
+  the before/after preview opens on `FILE_STATUS_SUCCESS` results only (a
+  restore answers `FILE_STATUS_RESTORED`, as in SPIO, and shows none). The
+  finished panel's "View in Media Library", and the dashboard's next to each
+  "Restore N originals", open the list filtered on the
+  operation (`upload.php?mode=list&emr_bulk=<op>`): `MediaLibraryFilterController`
+  (PSR-4) ports SPIO's status filter, a dropdown on `restrict_manage_posts`, the
+  same dropdown in the grid and media modal toolbar (`js/emr-media-filter.js`,
+  `wp_enqueue_media`, localized `emrMediaFilter`) and a `pre_get_posts` listener
+  that appends a `posts_where` clause on the operation's marker meta key; a
+  restore removes the markers, so restored images drop out. Browser error codes
+  live on `BulkAjaxController` (SPIO: `AjaxController`): SPIO's -1 to -8
+  (`QUEUE_FULL` -8 defers the processor) plus EMR's `PLAN_EXPIRED` -9; the
+  file statuses `FILE_STATUS_*` live on `BulkImage` (SPIO: `ImageModel`); a
+  tick answers status 1 and keeps item errors on the items.
+  Screen actions go to `wp_ajax_emr_bulk_request` (`screen_action`:
+  createBulk, startBulk, finishBulk, startRestoreAll, getStatus,
+  skipPreparing, recheckActive, loadLogFile), settings to
+  `wp_ajax_emr_bulk_settings` (`screen_action` saveBulkSettings). Every action
+  needs its own nonce and passes `checkActionAccess($action, $access)` with
+  SPIO's level (`is_author`, `is_editor`, `is_admin_user`), all of which map to
+  `manage_options` in `BulkAjaxController::ACCESS_LEVELS`. The screen's method,
+  action and event names are SPIO's (`BulkRestoreAll` / `startRestoreAll`,
+  `ShowLogModal` / `emr.showLogModal`, `panelLoad` and `panelUnload` on
+  `emr.bulk.onSwitchPanel`), and the bulk controller methods keep SPIO's
+  ignored queue-type parameters. The first processor claims the `emr_bulk_secret`
+  transient (2 min, renewed per tick; deleted on deactivation and uninstall
+  with the `emr_ai_credits` transient, as SPIO drops `bulk-secret` and
+  `quotaData`); other tabs get PROCESSOR_ACTIVE and
+  recheck after three minutes. Everything the scripts need is localized as
+  `emrBulk` (`EnableMediaReplacePlugin::bulkScriptData()`); nothing is
+  inline. Settings live in `enable_media_replace` under `bulk_*` keys
+  (`BulkController::getSettings()`).
+- **Bulk cron:** `CronController` (created on `init` for every request, so
+  WP-Cron knows the schedule) keeps a started bulk going without the page:
+  with the `background_process` setting on and the queue running with items
+  waiting, `startBulk()` schedules `emr_bulk_cron` on the `emr_bulk_interval`
+  schedule (60 s, filter `emr/bulk/cron_interval`); each run is
+  `processCronHook()`, a loop of ticks (10 runs, 50 s, 1 s between; filter
+  `emr/bulk/cron/options`) that ends on an empty queue or a refused tick;
+  `finishBulk()`, deactivation and uninstall clear the event. Cron never
+  drives the preparing phase and does not take the browser's processor key.
+
+## Git workflow (no commits, no branches, no worktrees unless asked)
+
+The maintainer reviews every change locally before anything is committed.
+These rules override any default agent behaviour (background-job or
+worktree-isolation defaults included):
+
+- **Never commit** in this repository unless specifically instructed to.
+  Leave the work uncommitted in the working tree and end the hand-off with
+  a ready-to-paste `git commit -m` suggestion instead.
+- **Never create a branch or a git worktree** unless clearly asked for one.
+- **Code, docs and test changes go into the current working tree** (the
+  checkout and branch that are checked out when the task starts), unless
+  instructed differently.
+- Never push, open a PR, merge or rebase on your own initiative.
+- The same rules apply to the sibling `../modules` repository when module
+  sources are edited there.
+
+## Never fix production code speculatively
+
+When a test reveals a defect, do not change the production code. Write a
+pinned test (below), document the defect with a `@todo`, and report it.
+Production code changes only when the maintainer asks for them.
+Documentation-only edits (docblocks, comments) are not production changes;
+prove it with `git diff -w` and a comparison of the comment-stripped files.
+
+## Changing existing tests
+
+Existing tests are read-only by default. A red test is evidence, not an
+obstacle: it is first assumed to have found a defect. Never change a test
+just to make a run green.
+
+1. **Find the cause first.** A failing test has one of three causes: the
+   code is wrong, the intended behaviour changed, or the test is wrong. The
+   hand-off names the cause for every failing test before any assertion
+   changes.
+2. **Valid reasons to change an existing test** (the list is closed):
+   - the maintainer changed the intended behaviour, or approved the change;
+   - a pinned defect was fixed, so its pin flips to a regular test;
+   - the code under test was renamed or moved and the asserted behaviour
+     stays the same;
+   - the test was wrong, or depended on something outside its subject (the
+     date, the run order, the environment), and the hand-off shows the proof.
+3. **Never acceptable as a fix:** loosening an assertion (`assertSame` to
+   `assertEquals`, an exact value to "contains", a count to "at least"),
+   deleting an assertion or a test, widening an allow-list of known errors,
+   raising a timeout or a tolerance, adding a skip, refreshing a snapshot
+   without an intended UI change.
+4. **Ask before, not after.** A flipped pin and a pure rename need no
+   question. For every other reason, stop, report the failure and its cause,
+   and wait for the maintainer's decision. A newly found defect is pinned,
+   never fixed and never hidden.
+5. **Removal needs replacement.** A test is deleted only when the thing it
+   tested no longer exists. The hand-off names the test that covers the
+   behaviour now, or says that none does.
+6. **Report test changes on their own.** Every hand-off lists each changed,
+   removed or loosened test with its reason. Changes to existing tests go
+   into their own commit, apart from new tests and from code, and the
+   suggested commit message carries a `Tests-Changed: <reason>` line.
+7. **Prove a changed test still bites.** After changing a test, show that it
+   fails against the old or the broken behaviour, and say how in the
+   hand-off.
+8. **Snapshots:** `--update-snapshots` only for an intended UI change, one
+   spec at a time, with the before and after images named in the hand-off.
+
+`bin/check-test-changes.sh` reports the uncommitted changes that fall under
+these rules; run it before every hand-off that touches `tests/`. CI runs the
+same script (`.github/workflows/test-guard.yml`): a pushed commit that
+changes existing tests fails without a `Tests-Changed: <reason>` line in its
+message, and a pull request fails until a maintainer applies the
+`test-changes-approved` label.
+
+## Known bugs and @todo (no bug numbers in the repo)
+
+Bug tracking is internal, and its numbering must never appear in the code,
+tests or docs: no ticket numbers, no `E#` ledger numbers, no commit hashes
+as history, no review dates and no people's names. This holds until bug
+tracking moves to GitHub issues; only then may a public issue reference be
+used.
+
+- A known, not-yet-fixed defect is documented with a `@todo` in the nearest
+  docblock (`// @todo` inline, `# @todo` in shell/YAML): what is wrong, where,
+  and the suggested fix if known. Present tense, no number, no date.
+- A test that pins such a defect is named `test_<description>_pinned_for_deferred_fix`
+  and its docblock describes the defect and how to recognise the fix. The
+  pin must fail the day the bug is fixed: assert type as well as value, use
+  numerically distinct ids, verify preconditions, and pair every "did not
+  throw" with a positive assertion.
+- A fixed bug needs no mention at all. Keep only the reason the code is the way
+  it is, in the present tense, never the history.
+
+## Test discipline
+
+- A green run that ran nothing is a failure: always report the executed test
+  count, never just "green".
+- No retries, no sleeps, no skips as a fix. A flaky test is a red test; find
+  the race or the missing wait. A skip needs a reason in the skip message
+  and a line in the hand-off.
+- Test code runs on PHP 7.4 and 8.5 alike: no `readonly`, enums, `never`,
+  named arguments or `match`. Use the PHPUnit 9 assertion names
+  (`assertMatchesRegularExpression`, `assertObjectHasProperty`).
+- Snapshot and restore every option, transient, meta value,
+  constant-dependent state and filesystem fixture a test touches.

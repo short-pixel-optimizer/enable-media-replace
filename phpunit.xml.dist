@@ -7,10 +7,48 @@
 	convertNoticesToExceptions="true"
 	convertWarningsToExceptions="true"
 	>
+	<!-- Unit suites. Names are case-sensitive; bin/test.sh rejects an
+	     unknown name, PHPUnit itself would print "No tests executed!" and
+	     exit 0. The integration-config suites live in
+	     phpunit-integration.xml. -->
 	<testsuites>
-		<testsuite name="replacer">
+		<testsuite name="Helper">
+			<directory prefix="test-" suffix=".php">./tests/Helper</directory>
+		</testsuite>
+		<testsuite name="Replacer">
+			<directory prefix="test-" suffix=".php">./tests/Replacer</directory>
+		</testsuite>
+		<testsuite name="Modules">
+			<directory prefix="test-" suffix=".php">./tests/Modules</directory>
+		</testsuite>
+		<testsuite name="Api">
+			<directory prefix="test-" suffix=".php">./tests/Api</directory>
+		</testsuite>
+		<testsuite name="Controllers">
+			<directory prefix="test-" suffix=".php">./tests/Controller</directory>
+		</testsuite>
+		<testsuite name="ViewControllers">
+			<directory prefix="test-" suffix=".php">./tests/ViewController</directory>
+		</testsuite>
+		<testsuite name="EMR Main">
 			<directory prefix="test-" suffix=".php">./tests/</directory>
-			<exclude>./tests/test-sample.php</exclude>
+			<exclude>./tests/Helper</exclude>
+			<exclude>./tests/Replacer</exclude>
+			<exclude>./tests/Modules</exclude>
+			<exclude>./tests/Api</exclude>
+			<exclude>./tests/Controller</exclude>
+			<exclude>./tests/ViewController</exclude>
+			<!-- Integration tests need a real WP install + their own bootstrap
+			     (phpunit-integration.xml); the unit bootstrap can't load them. -->
+			<exclude>./tests/Integration</exclude>
+			<exclude>./tests/Smoke</exclude>
+			<exclude>./tests/Compat</exclude>
+			<exclude>./tests/Multisite</exclude>
+			<!-- Browser suite (Playwright), fixtures and partner zips hold no
+			     PHPUnit tests. -->
+			<exclude>./tests/E2E</exclude>
+			<exclude>./tests/fixtures</exclude>
+			<exclude>./tests/partner-plugins</exclude>
 		</testsuite>
 	</testsuites>
 </phpunit>

@@ -1,4 +1,9 @@
 <?php
+/**
+ * The replace flow: replaces the file of one attachment with an uploaded file.
+ *
+ * @package EnableMediaReplace\Controller
+ */
 
 namespace EnableMediaReplace\Controller;
 
@@ -7,53 +12,239 @@ if (! defined('ABSPATH')) {
 }
 
 use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
-use EnableMediaReplace\Replacer\Replacer as Replacer;
+use EnableMediaReplace\Replacer\Replacer2 as Replacer2;
 use EnableMediaReplace\emrCache as emrCache;
 
+/**
+ * Replaces the file behind one attachment and updates everything that points to it.
+ *
+ * Lifecycle: not a singleton. A new instance is created with `new ReplaceController($post_id)`
+ * for every attachment and request (by UploadViewController::load(),
+ * RemoveBackGroundViewController::load() and loadPost(), ReplaceViewController::load()
+ * and Api::request()). The constructor resolves the source file immediately
+ * (setupSource()); setupParams() resolves the target; run() performs the replacement.
+ * The class registers no hooks itself; it fires the actions and filters listed on run()
+ * and the other methods.
+ *
+ * Two replace modes:
+ * - MODE_REPLACE (1): the uploaded file overwrites the current file at the same path and
+ *   name. Only the thumbnail URLs are search-replaced (`thumbnails_only`), plus the
+ *   URL of a `-scaled` file when the new image is too small to get one.
+ * - MODE_SEARCHREPLACE (2): the uploaded file keeps its own (uniquified) name and may be
+ *   placed in another directory under uploads; the post title, slug, excerpt and GUID are
+ *   updated, and all URLs of the old file and its sizes are search-replaced in the database.
+ *
+ * Three time modes (see updateDate()):
+ * - TIME_UPDATEALL (1): post date and modified date are set to the new date (now).
+ * - TIME_UPDATEMODIFIED (2): post date is kept, only the modified date is set (now).
+ * - TIME_CUSTOM (3): post date and modified date are set to a user-supplied date.
+ *
+ * Error codes (20-25) are stored in $lastError and read by the view controllers through
+ * returnLastError(). They share their values with the ERROR_* constants of
+ * \EnableMediaReplace\ViewController, which turns them into messages.
+ */
 class ReplaceController
 {
+	/**
+	 * Attachment (post) ID being replaced.
+	 *
+	 * @var int
+	 */
 	protected $post_id;
+
+	/**
+	 * The file being replaced, as a local path. For offloaded (virtual) files this is the
+	 * translated local path when the `emr/file/virtual/translate` filter provides one.
+	 *
+	 * @var \EnableMediaReplace\FileSystem\Model\File\FileModel
+	 */
 	protected $sourceFile;
+
+	/**
+	 * The source file before virtual-path translation; only set when the source is virtual
+	 * (offloaded). Used for previews. Null otherwise.
+	 *
+	 * @var \EnableMediaReplace\FileSystem\Model\File\FileModel|null
+	 */
 	protected $sourceFileUntranslated;
+
+	/**
+	 * Full path (as file object) where the new file is written. Set by setupParams() and
+	 * replaced in run() when the `wp_handle_upload` filter returns another file.
+	 *
+	 * @var \EnableMediaReplace\FileSystem\Model\File\FileModel|null
+	 */
 	protected $targetFile;
 
+	/**
+	 * Replace mode: overwrite the current file in place, update thumbnail URLs only.
+	 *
+	 * @var int
+	 */
 	const MODE_REPLACE = 1;
+
+	/**
+	 * Replace mode: new file name and optional new location, full search and replace of URLs.
+	 *
+	 * @var int
+	 */
 	const MODE_SEARCHREPLACE = 2;
 
+	/**
+	 * Time mode: set post date and modified date to the new date.
+	 *
+	 * @var int
+	 */
 	const TIME_UPDATEALL = 1; // replace the date
+
+	/**
+	 * Time mode: keep the post date, set only the modified date.
+	 *
+	 * @var int
+	 */
 	const TIME_UPDATEMODIFIED = 2; // keep the date, update only modified
+
+	/**
+	 * Time mode: set post date and modified date to a custom, user-entered date.
+	 *
+	 * @var int
+	 */
 	const TIME_CUSTOM = 3; // custom time entry
 
+	/**
+	 * Error: in search-replace mode with a new location, a different file with the target
+	 * name already exists there.
+	 *
+	 * @var int
+	 */
 	const ERROR_TARGET_EXISTS = 20;
+
+	/**
+	 * Error: the computed target is a directory and wp_upload_dir() gives no fallback path.
+	 *
+	 * @var int
+	 */
 	const ERROR_DESTINATION_FAIL = 21;
+
+	/**
+	 * Error: copying the uploaded file to the target failed and the target does not exist.
+	 * Set inside run(), which still continues and returns true.
+	 *
+	 * @var int
+	 */
 	const ERROR_COPY_FAILED = 22;
+
+	/**
+	 * Error: wp_update_post() returns a WP_Error in search-replace mode. Set inside run(),
+	 * which still continues and returns true.
+	 *
+	 * @var int
+	 */
 	const ERROR_UPDATE_POST = 23;
+
+	/**
+	 * Error: the requested new location resolves outside the uploads base directory, or
+	 * (on the main site of a multisite) into its `sites/` subdirectory. $lastErrorData then
+	 * holds `path` and `basedir`.
+	 *
+	 * @var int
+	 */
 	const ERROR_DIRECTORY_SECURITY = 24;
+
+	/**
+	 * Error: the requested new location does not exist. Defined for the view's message
+	 * table; nothing in this class sets it (getNewTargetLocation() does not require the
+	 * directory to exist, run() creates it).
+	 *
+	 * @var int
+	 */
 	const ERROR_DIRECTORY_NOTEXIST = 25;
 
+	/**
+	 * MODE_REPLACE or MODE_SEARCHREPLACE, set by setupParams(). Null before that.
+	 *
+	 * @var int|null
+	 */
 	protected $replaceType;
-	/** @var string */
+	/**
+	 * New location relative to the uploads base directory. Only set in search-replace mode
+	 * when the form asks for a new location and a directory is given. Null otherwise.
+	 *
+	 * @var string
+	 */
 	protected $new_location;
+
+	/**
+	 * TIME_UPDATEALL, TIME_UPDATEMODIFIED or TIME_CUSTOM, as passed in setupParams().
+	 *
+	 * @var int
+	 */
 	protected $timeMode;
+
+	/**
+	 * The new date in MySQL format (site local time), used by updateDate().
+	 *
+	 * @var string
+	 */
 	protected $newDate;
 
+	/**
+	 * Original file name of the upload (as sent by the browser, not sanitized).
+	 *
+	 * @var string
+	 */
 	protected $new_filename;
 
+	/**
+	 * Path to the uploaded temporary file that run() copies to the target and then deletes.
+	 *
+	 * @var string
+	 */
 	protected $tmpUploadPath;
 
+	/**
+	 * MODE_SEARCHREPLACE only: true leaves the post title, slug and excerpt as they are
+	 * and updates the guid alone. Set by setupParams() from `keep_post_data`; a format
+	 * change (getFormatChangeParams()) uses it, because there the file is the same image
+	 * in another format, not a new upload whose name should become the title.
+	 *
+	 * @var bool
+	 */
+	protected $keepPostData = false;
+
+	/**
+	 * Last error code (one of the ERROR_* constants), or null when none.
+	 *
+	 * @var int|null
+	 */
 	protected $lastError;
+
+	/**
+	 * Optional extra data for the last error, e.g. `array('path' => ..., 'basedir' => ...)`
+	 * for ERROR_DIRECTORY_SECURITY. Null when none.
+	 *
+	 * @var array|null
+	 */
 	protected $lastErrorData; // optional extra data for last error.
 
+	/**
+	 * Creates the controller for one attachment and resolves its source file.
+	 *
+	 * @param int $post_id Attachment ID.
+	 */
 	public function __construct($post_id)
 	{
 		$this->post_id = $post_id;
 		$this->setupSource();
 	}
 
-	/* getSourceFile
-		*
-		* @param $untranslated boolean if file is offloaded, this indicates to return remote variant. Used for displaying preview
-		*/
+	/**
+	 * Returns the file being replaced.
+	 *
+	 * @param bool $untranslated When true and the file is offloaded (virtual), returns the
+	 *                           untranslated remote variant. Used for displaying the preview.
+	 * @return \EnableMediaReplace\FileSystem\Model\File\FileModel The source file object.
+	 */
 	public function getSourceFile($untranslated = false)
 	{
 
@@ -63,6 +254,28 @@ class ReplaceController
 		return $this->sourceFile;
 	}
 
+	/**
+	 * Stores the request parameters and resolves the target file.
+	 *
+	 * `replace_type` 'replace_and_search' selects MODE_SEARCHREPLACE; any other value
+	 * (including an integer or false) selects MODE_REPLACE. The new location is only taken
+	 * in search-replace mode, when `new_location` is exactly true and `location_dir` is
+	 * not null.
+	 *
+	 * @param array $params {
+	 *     @type string|int|false $replace_type      'replace' or 'replace_and_search'.
+	 *     @type bool             $new_location      Whether to move the file (search-replace only).
+	 *     @type string|null      $location_dir      New directory relative to uploads basedir.
+	 *     @type int              $timestamp_replace One of the TIME_* constants.
+	 *     @type string           $new_date          MySQL date for updateDate().
+	 *     @type string           $new_filename      Original name of the uploaded file.
+	 *     @type string           $uploadFile        Path of the temporary uploaded file.
+	 *     @type bool             $keep_post_data    Optional, search-replace only: keep the post title,
+	 *                                               slug and excerpt (see $keepPostData). Default false.
+	 * }
+	 * @return bool True when a target was resolved; false when setupTarget() fails (the
+	 *              error is then available via returnLastError() / returnLastErrorData()).
+	 */
 	public function setupParams($params)
 	{
 		$this->replaceType = ($params['replace_type'] === 'replace_and_search') ? self::MODE_SEARCHREPLACE : self::MODE_REPLACE;
@@ -76,6 +289,7 @@ class ReplaceController
 
 		$this->new_filename = $params['new_filename'];
 		$this->tmpUploadPath = $params['uploadFile'];
+		$this->keepPostData  = isset($params['keep_post_data']) && true === $params['keep_post_data'];
 
 		$targetFile = $this->setupTarget();
 		if (is_null($targetFile)) {
@@ -86,11 +300,79 @@ class ReplaceController
 		return true;
 	}
 
+	/**
+	 * The name the attachment's file gets when $uploadPath holds an image of another type
+	 * than the current file: the current name with the extension of the new type
+	 * (`photo.jpg` and a PNG give `photo.png`). The type is read from the content
+	 * (wp_get_image_mime()), not from the name: a result downloaded from the API is a
+	 * temporary file whose name says nothing.
+	 *
+	 * @param string $uploadPath Path of the uploaded or downloaded file.
+	 * @return string|false The new file name; false when the type is the same as the
+	 *                      current file's, is neither PNG nor JPEG, or cannot be read.
+	 */
+	public function getFormatChangeName($uploadPath)
+	{
+		$extensions = array('image/png' => 'png', 'image/jpeg' => 'jpg');
+
+		$mime = (is_string($uploadPath) && file_exists($uploadPath)) ? wp_get_image_mime($uploadPath) : false;
+		if (false === $mime || ! isset($extensions[ $mime ])) {
+			return false;
+		}
+
+		$name    = $this->getSourceFile()->getFileName();
+		$current = wp_check_filetype($name);
+		if ($mime === $current['type']) {
+			return false;
+		}
+
+		return pathinfo($name, PATHINFO_FILENAME) . '.' . $extensions[ $mime ];
+	}
+
+	/**
+	 * The setupParams() values that turn a same-name replace into a format change: when
+	 * $uploadPath is an image of another type (getFormatChangeName()), or when $newName
+	 * names the file to go back to (a restore), the file gets that name next to the
+	 * current one (made unique when taken), every reference to the old URLs is rewritten
+	 * (MODE_SEARCHREPLACE) and the post title, slug and excerpt stay (`keep_post_data`).
+	 * Merge the result over the MODE_REPLACE parameters.
+	 *
+	 * @param string      $uploadPath Path of the uploaded or downloaded file.
+	 * @param string|null $newName    The file name to use; null derives it from the type.
+	 * @return array Empty when the name does not change.
+	 */
+	public function getFormatChangeParams($uploadPath, $newName = null)
+	{
+		$name = is_null($newName) ? $this->getFormatChangeName($uploadPath) : $newName;
+		if (! is_string($name) || '' === $name || $name === $this->getSourceFile()->getFileName()) {
+			return array();
+		}
+
+		return array(
+			'replace_type'   => 'replace_and_search',
+			'new_location'   => false,
+			'location_dir'   => null,
+			'new_filename'   => $name,
+			'keep_post_data' => true,
+		);
+	}
+
+	/**
+	 * Returns the last error code.
+	 *
+	 * @return int|null One of the ERROR_* constants, or null when no error is recorded.
+	 */
 	public function returnLastError()
 	{
 		return $this->lastError;
 	}
 
+	/**
+	 * Returns the extra data recorded with the last error.
+	 *
+	 * @return array The data (e.g. `path` and `basedir` for ERROR_DIRECTORY_SECURITY), or an
+	 *               empty array when none.
+	 */
 	public function returnLastErrorData()
 	{
 		if (! is_null($this->lastErrorData))
@@ -100,16 +382,88 @@ class ReplaceController
 		}
 	}
 
+	/**
+	 * Performs the replacement. Must be called after a successful setupParams().
+	 *
+	 * Sequence, in order:
+	 * 1. Fires the `wp_handle_replace` action with `array('post_id' => $post_id)`.
+	 * 2. Creates a Replacer and sets the source URL (getSourceUrl()) and the current
+	 *    attachment metadata as source metadata.
+	 * 3. Checks (and creates when missing) the target directory; a failure is only logged.
+	 * 4. Snapshots the permissions of the source file (-1 when it does not exist).
+	 * 5. removeCurrent(): deletes the current file, its sizes and backups from disk. In
+	 *    MODE_REPLACE the source and target paths are the same, so a failed copy in the next
+	 *    step leaves the attachment without a file.
+	 * 6. Copies the temporary upload to the target. On failure, ERROR_COPY_FAILED is set
+	 *    only when the target does not exist; execution continues either way.
+	 * 7. Deletes the temporary upload (a failure is logged), resets the target status and
+	 *    restores the permission snapshot with chmod() when it is > 0.
+	 * 8. update_attached_file() with the target's raw (not normalized) full path, because
+	 *    update_attached_file does not normalize either.
+	 * 9. Applies the core `wp_handle_upload` filter with context 'sideload'; when the
+	 *    returned `file` differs, the attached file is updated again and that file becomes
+	 *    the target.
+	 * 10. Sets the Replacer target URL (getTargetURL()).
+	 * 11. Updates the post MIME type when it differs from the target's non-empty MIME type.
+	 * 12. Brackets wp_generate_attachment_metadata() with the `emr/converter/prevent-offload`
+	 *     and `emr/converter/prevent-offload-off` actions, then saves the new metadata and
+	 *     sets it as the Replacer target metadata.
+	 * 13. `_emr_replace_author` post meta: set to the current user when the post author is
+	 *     someone else; deleted when the current user is the author and the meta exists.
+	 * 14. MODE_SEARCHREPLACE only: updates post_title, post_name (sanitize_title of the
+	 *     title), post_excerpt (when the image caption is non-empty; these three are left
+	 *     alone with `keep_post_data`) and guid via
+	 *     wp_update_post(), then writes the guid again with a direct $wpdb->update() because
+	 *     wp_update_post() does not change the guid of an existing post. A WP_Error sets
+	 *     ERROR_UPDATE_POST.
+	 * 15. Applies `emr/replace/doreplace` (default true); when it returns exactly true,
+	 *     runs Replacer2::replace() with `thumbnails_only` true in MODE_REPLACE and false in
+	 *     MODE_SEARCHREPLACE.
+	 * 16. updateDate().
+	 * 17. Flushes caches through emrCache::flushCache() in 'post' mode with the post ID and
+	 *     both URLs.
+	 * 18. Fires `enable-media-replace-upload-done` with ($target_url, $source_url, $post_id).
+	 *
+	 * @todo run() returns true even when ERROR_COPY_FAILED or ERROR_UPDATE_POST is set in
+	 *       steps 6 and 14, so callers that only check the return value show the success
+	 *       screen. Suggested fix: return false (or check $this->lastError) after those
+	 *       errors so the view controllers call viewError().
+	 *
+	 * @global \wpdb $wpdb Used for the direct guid update.
+	 * @hook action wp_handle_replace
+	 * @hook filter wp_handle_upload
+	 * @hook action emr/converter/prevent-offload
+	 * @hook action emr/converter/prevent-offload-off
+	 * @hook filter emr/replace/doreplace
+	 * @hook action enable-media-replace-upload-done
+	 * @uses self::MODE_SEARCHREPLACE
+	 * @uses self::ERROR_COPY_FAILED
+	 * @uses self::ERROR_UPDATE_POST
+	 * @return bool Always true.
+	 */
 	public function run()
 	{
 		do_action('wp_handle_replace', array('post_id' => $this->post_id));
 
 		// Set Source / and Source Metadata
-		$Replacer = new Replacer();
+		
+		$Replacer = new Replacer2('emr');
+		$source_url = $this->getSourceUrl();
+
+		$attachment_meta = wp_get_attachment_metadata($this->post_id);
+
+		$Replacer->Setup()->search()->setUrl($source_url);
+		$Replacer->Setup()->search()->setMetaData($attachment_meta);
+
+		//$Replacer->setSourceMeta(wp_get_attachment_metadata($this->post_id));
+		
+
+				// Set Source / and Source Metadata
+		/*$Replacer = new Replacer();
 		$source_url = $this->getSourceUrl();
 		$Replacer->setSource($source_url);
 		$Replacer->setSourceMeta(wp_get_attachment_metadata($this->post_id));
-
+*/
 		$targetFileObj = $this->fs()->getFile($this->targetFile);
 		$directoryObj = $targetFileObj->getFileDir();
 
@@ -149,9 +503,14 @@ class ReplaceController
 
 		// Uspdate the file attached. This is required for wp_get_attachment_url to work.
 		// Using RawFullPath because FullPath does normalize path, which update_attached_file doesn't so in case of windows / strange Apspaths it fails.
+		// @todo In MODE_REPLACE the path does not change, so update_attached_file() answers
+		//       false for "same value" and every same-name replace (every bulk item) logs an
+		//       error that is none; the log of a bulk run fills with them. Suggested fix: read
+		//       the current `_wp_attached_file` first and log only when the paths differ and the
+		//       update still failed, or log the same-value case at debug level.
 		$updated = update_attached_file($this->post_id, $this->targetFile->getRawFullPath());
 		if (! $updated) {
-			Log::addError('Update Attached File reports as not updated or same value');
+			Log::addWarn('Update Attached File reports as not updated or same value. This is normal if attached filename is the same');
 		}
 
 
@@ -170,7 +529,9 @@ class ReplaceController
 		}
 
 		$target_url = $this->getTargetURL();
-		$Replacer->setTarget($target_url);
+		
+		$Replacer->Setup()->replace()->setUrl($target_url);
+		//$Replacer->setTarget($target_url);
 
 		// Check and update post mimetype, otherwise badly coded plugins cry.
 		$post_mime = get_post_mime_type($this->post_id);
@@ -187,7 +548,8 @@ class ReplaceController
 
 		wp_update_attachment_metadata($this->post_id, $target_metadata);
 
-		$Replacer->setTargetMeta($target_metadata);
+		$Replacer->Setup()->replace()->setMetaData($target_metadata);
+//		$Replacer->setTargetMeta($target_metadata);
 
 		/** If author is different from replacer, note this */
 		$post_author = get_post_field('post_author', $this->post_id);
@@ -200,14 +562,16 @@ class ReplaceController
 		}
 
 		if ($this->replaceType == self::MODE_SEARCHREPLACE) {
-			// Write new image title.
-			$title = $this->getNewTitle($target_metadata);
-			$excerpt = $this->getNewExcerpt($target_metadata);
 			$update_ar = array('ID' => $this->post_id);
-			$update_ar['post_title'] = $title;
-			$update_ar['post_name'] = sanitize_title($title);
-			if ($excerpt !== false) {
-				$update_ar['post_excerpt'] = $excerpt;
+			if (false === $this->keepPostData) {
+				// Write new image title.
+				$title = $this->getNewTitle($target_metadata);
+				$excerpt = $this->getNewExcerpt($target_metadata);
+				$update_ar['post_title'] = $title;
+				$update_ar['post_name'] = sanitize_title($title);
+				if ($excerpt !== false) {
+					$update_ar['post_excerpt'] = $excerpt;
+				}
 			}
 			$update_ar['guid'] = $target_url; //wp_get_attachment_url($this->post_id);
 
@@ -231,7 +595,9 @@ class ReplaceController
 
 		$doreplace = apply_filters('emr/replace/doreplace', true);
 		if (true === $doreplace) {
+		
 			$Replacer->replace($args);
+			
 		}
 
 		// Here Updatedata and a ffew others.
@@ -254,6 +620,31 @@ class ReplaceController
 	} // run
 
 
+	/**
+	 * Resolves the file being replaced and stores it in $sourceFile.
+	 *
+	 * - Starts from get_attached_file() (unfiltered by default), which may be the
+	 *   `-scaled` image.
+	 * - When wp_get_original_image_path() exists (WP 5.3+), prefers the original (pre-scaled)
+	 *   image, so replacing does not produce names like `image-scaled-scaled.jpg`. The result
+	 *   passes through `emr/replace/original_image_path`. Falls back to the attached file
+	 *   when that returns false (not scaled, or not an image). The function_exists() guard
+	 *   only matters for WordPress 4.9.7 to 5.2; the readme's minimum is 4.9.7.
+	 * - Virtual (offloaded) files: the untranslated file is kept in $sourceFileUntranslated
+	 *   and `emr/file/virtual/translate` may return a local path, which then becomes the
+	 *   source.
+	 * - Relative-path repair: when the path is not virtual, does not exist, is not absolute
+	 *   (no leading `/` and no Windows drive letter), it is prefixed with the uploads basedir
+	 *   from wp_get_upload_dir(). This covers a broken upload-dir setup returning relative
+	 *   paths.
+	 *
+	 * The local `$file` read from `_wp_attached_file` in the repair branch is never used.
+	 *
+	 * @hook filter emr_unfiltered_get_attached_file Whether to read the attached file unfiltered (default true).
+	 * @hook filter emr/replace/original_image_path
+	 * @hook filter emr/file/virtual/translate
+	 * @return void
+	 */
 	protected function setupSource()
 	{
 		$source_file = false;
@@ -314,7 +705,34 @@ class ReplaceController
 		$this->sourceFile = $this->fs()->getFile($source_file);
 	}
 
-	/** Returns a full target path to place to new file. Including the file name!  **/
+	/**
+	 * Returns the full target path (including the file name) for the new file.
+	 *
+	 * - MODE_REPLACE: the source file's full path (overwrite in place).
+	 * - MODE_SEARCHREPLACE: the source directory, or the new location from
+	 *   getNewTargetLocation() when one is set, plus the new file name. getNewTargetLocation()
+	 *   runs (and can fail) even when no new location is requested. With a new location, an
+	 *   existing different file with that name gives ERROR_TARGET_EXISTS. When the computed
+	 *   path equals the source path, the source file name is kept; otherwise
+	 *   wp_unique_filename() makes the name unique. The name then passes through
+	 *   `emr_unique_filename`.
+	 * - When the result is a directory (a broken source), falls back to the current upload
+	 *   path from wp_upload_dir() with a unique name, or ERROR_DESTINATION_FAIL when that
+	 *   has no `path`.
+	 *
+	 * The local `$targetPath` is unused (the code uses `$targetpath`). When $replaceType is
+	 * neither mode, `$targetFile` is undefined.
+	 *
+	 * @todo On the "same path" branch, `$this->replaceType == self::MODE_REPLACE;` is a
+	 *       comparison with no effect, so the mode stays MODE_SEARCHREPLACE and run() still
+	 *       updates the title/guid and does a full search and replace. Suggested fix: use
+	 *       `=` if switching to MODE_REPLACE is intended, or remove the statement.
+	 *
+	 * @hook filter emr_unique_filename
+	 * @uses self::ERROR_TARGET_EXISTS
+	 * @uses self::ERROR_DESTINATION_FAIL
+	 * @return string|null Full target path, or null on error (see $lastError).
+	 */
 	protected function setupTarget()
 	{
 		$targetPath = null;
@@ -366,6 +784,17 @@ class ReplaceController
 		return $targetFile;
 	}
 
+	/**
+	 * Returns the new attachment title for search-replace mode.
+	 *
+	 * Uses the original upload name without extension (keeps accents and spaces that
+	 * sanitize_file_name() removes from the target name), or the target file name when no
+	 * upload name is set. A non-empty `image_meta.title` in the new metadata wins.
+	 *
+	 * @param array $meta Attachment metadata generated for the new file.
+	 * @hook filter enable_media_replace_title
+	 * @return string The title.
+	 */
 	protected function getNewTitle($meta)
 	{
 		// Use the original uploaded filename (preserves diacritics and spaces)
@@ -388,6 +817,13 @@ class ReplaceController
 		return $title;
 	}
 
+	/**
+	 * Returns the new attachment excerpt (caption) for search-replace mode.
+	 *
+	 * @param array $meta Attachment metadata generated for the new file.
+	 * @return string|false The non-empty `image_meta.caption`, or false when there is none
+	 *                      (the excerpt is then left unchanged).
+	 */
 	protected function getNewExcerpt($meta)
 	{
 		//	 $meta = $this->target_metadata;
@@ -404,6 +840,16 @@ class ReplaceController
 		return $excerpt;
 	}
 
+	/**
+	 * Returns the URL of the file being replaced.
+	 *
+	 * Uses wp_get_original_image_url() when it exists (WP 5.3+; the readme's minimum is
+	 * 4.9.7, so the guard only matters for 4.9.7 to 5.2), falling back to
+	 * wp_get_attachment_url() when it returns false. The `$source_url = $source_url;` line is
+	 * a no-op.
+	 *
+	 * @return string|false The source URL, or false when WordPress cannot build one.
+	 */
 	public function getSourceUrl()
 	{
 		if (function_exists('wp_get_original_image_url')) // WP 5.3+
@@ -419,7 +865,19 @@ class ReplaceController
 		return $source_url;
 	}
 
-	/** Handle new dates for the replacement */
+	/**
+	 * Writes the new dates for the replacement directly to the posts table.
+	 *
+	 * post_modified / post_modified_gmt are always set to $newDate. post_date / post_date_gmt
+	 * are set only for TIME_UPDATEALL and TIME_CUSTOM. The GMT values come from
+	 * get_gmt_from_date(). The write uses $wpdb->update() (no post hooks fire), its result is
+	 * not checked, and the post's object cache entry is deleted afterwards.
+	 *
+	 * @global \wpdb $wpdb
+	 * @uses self::TIME_UPDATEALL
+	 * @uses self::TIME_CUSTOM
+	 * @return void
+	 */
 	protected function updateDate()
 	{
 		global $wpdb;
@@ -440,8 +898,19 @@ class ReplaceController
 		wp_cache_delete($this->post_id, 'posts');
 	}
 
-	/** Tries to remove all of the old image, without touching the metadata in database
-	 *  This might fail on certain files, but this is not an indication of success ( remove might fail, but overwrite can still work)
+	/**
+	 * Tries to remove all files of the current image from disk, without touching the
+	 * metadata in the database.
+	 *
+	 * Calls wp_delete_attachment_files() with the current metadata, the
+	 * `_wp_attachment_backup_sizes` meta and the source file (the original, pre-scaled
+	 * image). Then, when the (filtered) attached file still exists, it is removed with a
+	 * hard, error-suppressed unlink(). This covers the `-scaled` file and plugins (such as
+	 * Polylang) that block deletion while a translation or duplicate references the file.
+	 * A failed removal is not an error: the copy in run() can still overwrite the file.
+	 *
+	 * @hook action emr_after_remove_current Fired with ($post_id, $meta, $backup_sizes, $sourceFile, $targetFile).
+	 * @return void
 	 */
 	protected function removeCurrent()
 	{
@@ -454,7 +923,7 @@ class ReplaceController
 
 		// If Attached file is not the same path as file, this indicates a -scaled images is in play.
 		// Also plugins like Polylang tend to block delete image while there is translation / duplicate item somewhere
-		// 10/06/22 : Added a hard delete if file still exists.  Be gone, hard way.
+		// A hard delete runs when the file still exists.
 		$attached_file = get_attached_file($this->post_id);
 		if (file_exists($attached_file)) {
 			@unlink($attached_file);
@@ -463,7 +932,24 @@ class ReplaceController
 		do_action('emr_after_remove_current', $this->post_id, $meta, $backup_sizes, $this->sourceFile, $this->targetFile);
 	}
 
-	/** Since WP functions also can't be trusted here in certain cases, create the URL by ourselves */
+	/**
+	 * Builds the URL of the target file, because WordPress functions cannot be trusted here
+	 * in certain cases.
+	 *
+	 * - Returns wp_get_attachment_url() unchanged when its basename equals the target
+	 *   file name.
+	 * - When that URL has no `://` (a relative URL), builds it by replacing the uploads
+	 *   basedir with baseurl in the target's full path.
+	 * - Otherwise (a stale GUID or old file name), replaces the old basename in the URL with
+	 *   the target file name.
+	 *
+	 * @todo `strpos($url, '://') >= 0` is always true (false >= 0 is true in PHP), so the
+	 *       first branch returns a relative URL unchanged whenever the basename matches.
+	 *       Suggested fix: `strpos($url, '://') !== false`.
+	 *
+	 * @return string|false The target URL, or false (with an error log entry) when no target
+	 *                      file is set.
+	 */
 	protected function getTargetURL()
 	{
 		if (is_null($this->targetFile)) {
@@ -491,18 +977,60 @@ class ReplaceController
 		return $url;
 	}
 
+	/**
+	 * Resolves and validates the directory for search-replace mode.
+	 *
+	 * Joins the realpath() of the uploads basedir (the basedir as WordPress reports it when
+	 * realpath() fails, e.g. a missing folder) with $new_location (empty when no new
+	 * location is set, so the result is the basedir itself), normalizes it with
+	 * normalizePath() (realpath() would fail on directories that do not exist yet) and adds
+	 * a trailing slash. The basedir goes through the same two steps, so both sides of the
+	 * comparison are spelled alike: symlinks in the uploads path are resolved on both, and
+	 * on Windows both have forward slashes.
+	 *
+	 * Traversal check: the result must start with the resolved, normalized basedir. Because
+	 * normalizePath() drops `..` segments instead of resolving them, a location such as
+	 * `../../etc` becomes `<basedir>/etc`; it does not escape uploads, and since both sides
+	 * are built on the same basedir the check always passes.
+	 *
+	 * Multisite guard: on the main site of a multisite (EnvHelper flags), a result containing
+	 * `<basedir>sites` is rejected, so main-site files cannot be moved into sub-site upload
+	 * folders. This is a prefix match, so any main-site folder whose name starts with
+	 * `sites` is rejected as well.
+	 *
+	 * The resolved strings serve the checks only. The directory returned is the basedir
+	 * WordPress reports (wp_upload_dir()['basedir']) joined with the validated, normalized
+	 * location: the same physical directory, spelled so that update_attached_file() can
+	 * store it relative to uploads (a symlinked uploads folder, a basedir with `//` or `..`,
+	 * a Windows basedir with backslashes). The directory is not required to exist; run()
+	 * creates it.
+	 *
+	 * A failure sets ERROR_DIRECTORY_SECURITY and $lastErrorData
+	 * `array('path' => $realPath, 'basedir' => $basedir)`, both the resolved, normalized
+	 * spellings.
+	 *
+	 * @uses self::ERROR_DIRECTORY_SECURITY
+	 * @return string|false The absolute target directory, on the reported basedir, with
+	 *                      trailing slash, or false.
+	 */
 	protected function getNewTargetLocation()
 	{
 		$uploadDir = wp_upload_dir();
 		$new_rel_location = $this->new_location;
-		$newPath = trailingslashit($uploadDir['basedir']) . $new_rel_location;
+		$baseDir = realpath($uploadDir['basedir']);
+		$baseDir = realpath($uploadDir['basedir']);
+		if (false === $baseDir) { $baseDir = $uploadDir['basedir']; }
+		
 
+		$newPath = trailingslashit($baseDir) . $new_rel_location;
+		
 		//$realPath = realpath($newPath);
-		/** Fix 1  -  Normalize function added because realpath eats non-existing paths
-		 *  Fix 2 - Trailingslashit added, for multisite dir check ( so /2  and /20 won't much on the strpos all the same)
+		/** normalizePath() is used because realpath() returns false for non-existing paths.
+		 *  The trailing slash keeps the multisite check from matching /2 against /20.
 		 */
 		$realPath = trailingslashit($this->normalizePath($newPath));
-		$basedir = trailingslashit(realpath($uploadDir['basedir'])); // both need to go to realpath, otherwise some servers will have issues with it.
+		$basedir = trailingslashit( $this->normalizePath($baseDir)); 
+		
 
 		// Detect traversal by making sure the canonical path starts with uploads' basedir.
 		if (strpos($realPath, $basedir) !== 0) {
@@ -529,13 +1057,22 @@ class ReplaceController
 			}
 		}
 
-		/*if (! is_dir($realPath)) {
-			$this->lastError = self::ERROR_DIRECTORY_NOTEXIST;
-			return false;
-		} */
+		// Final result
+		$realPath = trailingslashit($uploadDir['basedir']) . substr($realPath, strlen($basedir));
 		return $realPath;
 	}
 
+	/**
+	 * Normalizes a path without touching the filesystem.
+	 *
+	 * Converts backslashes to forward slashes, drops empty, `.` and `..` segments (`..` is
+	 * discarded, not resolved against its parent), and keeps a leading slash for absolute
+	 * paths. A Windows drive letter stays as the first segment, without a leading slash.
+	 * Expects a non-empty string (reads `$path[0]`).
+	 *
+	 * @param string $path Path to normalize.
+	 * @return string The normalized path, without trailing slash.
+	 */
 	private function normalizePath($path)
 	{
     // Convert all separators to forward slashes
@@ -562,6 +1099,11 @@ class ReplaceController
 
 
 
+	/**
+	 * Returns the plugin's filesystem controller.
+	 *
+	 * @return \EnableMediaReplace\FileSystem\Controller\FileSystemController A new instance on every call.
+	 */
 	private function fs()
 	{
 		return emr()->filesystem();

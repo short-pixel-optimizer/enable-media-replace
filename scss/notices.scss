@@ -1,0 +1,42 @@
+// The Bulk Enhance announcement notice (UIHelper::featureNotice()), printed by
+// the bundled notices module on the Media Library, the edit-attachment screen
+// and EMR's own screens. The module brings the notice frame; this is the
+// content: the two operation lines with their SVG icons and the button.
+// The paragraph rules are prefixed to win over WordPress's `.notice p` margins.
+.shortpixel-notice .emr-notice-ops {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px 28px;
+	margin: 8px 0 10px;
+}
+
+.emr-notice-op {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	font-weight: 600;
+}
+
+// The module gives every image of a notice a 25px right margin (its robot
+// icon); the operation icons keep the 8px gap of their line instead.
+.shortpixel.shortpixel-notice .emr-notice-op-icon {
+	width: 28px;
+	height: 28px;
+	flex: none;
+	margin: 0;
+}
+
+// The closing sentence and the button: side by side with room between them
+// while they fit, the button on a line of its own, flush left with the text
+// and clear of it, on narrow screens.
+.shortpixel-notice .emr-notice-action {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 12px 20px;
+	margin-bottom: 12px;
+}
+
+.emr-notice-open {
+	flex: none;
+}

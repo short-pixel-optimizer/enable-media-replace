@@ -1,4 +1,9 @@
 <?php
+/**
+ * The remove-background screen and its POST handler.
+ *
+ * @package EnableMediaReplace\ViewController
+ */
 
 namespace EnableMediaReplace\ViewController;
 
@@ -13,15 +18,73 @@ use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
 use EnableMediaReplace\Controller\ReplaceController as ReplaceController;
 use EnableMediaReplace\Api as Api;
 
+/**
+ * Remove-background screen (`action=emr_prepare_remove`) and the replacement with the
+ * processed image (`action=do_background_replace`).
+ *
+ * The class is declared as `RemoveBackGroundViewController` (capital G) in
+ * `RemoveBackgroundViewController.php`, and getInstance() and the router refer to it as
+ * `RemoveBackgroundViewController`. PHP class names are case-insensitive and the file is
+ * required explicitly, so this works; a case-sensitive autoloader would not find it.
+ *
+ * Lifecycle: singleton via getInstance(), called from EnableMediaReplacePlugin::route()
+ * when the `background` feature is on. Registers no hooks. The preview runs over AJAX
+ * (Ajax::remove_background() -> Api::request()) and is shown only; this class shows the
+ * screen and, after the user confirms, runs the same request again on the original
+ * (fetchResult()), downloads that result and replaces the file. Nothing is stored between
+ * the two steps, as in ShortPixel Image Optimizer's editor preview, whose apply step also
+ * sends the image a second time. The imported `Unserialize` class is not used.
+ *
+ * The screen template, the form nonce action and the operation are the properties
+ * `$view_name`, `$nonce_action` and `$operation`, so that UpscaleViewController can reuse
+ * load() and loadPost() unchanged with its own template, nonce and form fields; the two
+ * controllers differ in nothing else.
+ */
 class RemoveBackGroundViewController extends \EnableMediaReplace\ViewController
 {
+	/**
+	 * The singleton instance.
+	 *
+	 * @var RemoveBackGroundViewController|null
+	 */
 	static $instance;
 
+	/**
+	 * Template under views/ that load() renders.
+	 *
+	 * @var string
+	 */
+	protected $view_name = 'prepare-remove-background';
+
+	/**
+	 * Nonce action loadPost() verifies `emr_nonce` against; the view creates the field
+	 * with the same action.
+	 *
+	 * @var string
+	 */
+	protected $nonce_action = 'media_remove_background';
+
+	/**
+	 * The operation loadPost() runs again on the original: 'background' reads the
+	 * background_type / bg_color / bg_transparency fields, 'upscale' the upscale factor.
+	 *
+	 * @var string
+	 */
+	protected $operation = 'background';
+
+	/**
+	 * Creates the controller; see ViewController::__construct().
+	 */
 	public function __construct()
 	{
 		parent::__construct();
 	}
 
+	/**
+	 * Returns the singleton.
+	 *
+	 * @return RemoveBackGroundViewController
+	 */
 	public static function getInstance()
 	{
 		if (is_null(self::$instance))
@@ -30,6 +93,19 @@ class RemoveBackGroundViewController extends \EnableMediaReplace\ViewController
 		return self::$instance;
 	}
 
+	/**
+	 * Prepares the view data and loads the remove-background screen.
+	 *
+	 * Requires `upload_files` (ERROR_UPLOAD_PERMISSION) and checkImagePermission()
+	 * (ERROR_IMAGE_PERMISSION; the wp_die() after it is unreachable because viewError()
+	 * exits). Unlike loadPost(), it does not check the author restriction. Sets the preview
+	 * and source sizes on UIHelper and fills `$view` with `attachment`, `sourceFile`
+	 * (untranslated, for display) and `settings`: the `enable_media_replace` option merged
+	 * over the defaults `bg_type` 'transparent', `bg_color` '#ffffff', `bg_transparency` 100.
+	 * Loads the `$view_name` template (`views/prepare-remove-background.php` here).
+	 *
+	 * @return void
+	 */
 	public function load()
 	{
 	 if (!current_user_can('upload_files')) {
@@ -65,23 +141,46 @@ class RemoveBackGroundViewController extends \EnableMediaReplace\ViewController
 	 $this->view->settings = $settings;
 	 $this->view->sourceFile = $file;
 
-	 $this->loadView('prepare-remove-background');
+	 $this->loadView($this->view_name);
 
 	}
 
 	// When the background has been posted - process.
+	/**
+	 * Replaces the attachment with the processed image and ends the request.
+	 *
+	 * Sequence:
+	 * 1. Nonce `emr_nonce` for the `$nonce_action` action (`media_remove_background` here)
+	 *    (ERROR_NONCE).
+	 * 2. `ID` present (ERROR_FORM), checkImagePermission() (ERROR_IMAGE_PERMISSION), and the
+	 *    user must not be author restricted (ERROR_IMAGE_PERMISSION). The wp_die() calls
+	 *    after viewError() are unreachable.
+	 * 3. setView(), then fetchResult() runs Api::request() again with the form's options
+	 *    (apiData()) on the original and downloads the result to a temp file. A refused or
+	 *    failed request, a failed download or a missing file shows ERROR_DOWNLOAD_FAILED
+	 *    with the API's message as the description.
+	 * 4. A new ReplaceController runs with MODE_REPLACE, TIME_UPDATEMODIFIED, now as the
+	 *    date, the downloaded temp file as upload and the current source file name as the
+	 *    new name, so the file is overwritten in place. `replace_type` is passed as the
+	 *    integer MODE_REPLACE, which setupParams() also reads as replace mode because it is
+	 *    not 'replace_and_search'. With the background type Api::BG_TYPE_TRANSPARENT_PNG,
+	 *    and a result of another image type than the file (a JPG that came back as a PNG),
+	 *    ReplaceController::getFormatChangeParams() switches to search-replace: the file
+	 *    takes the `.png` name, the references to the old URLs are rewritten and the post
+	 *    title stays.
+	 * 5. viewError() with the controller's last error when setupParams() fails (without the
+	 *    error data); viewSuccess() when run() returns true.
+	 *
+	 * @uses ReplaceController::MODE_REPLACE
+	 * @uses ReplaceController::TIME_UPDATEMODIFIED
+	 * @return void Normally never returns: every path ends in viewSuccess() or viewError().
+	 */
 	public function loadPost()
 	{
 		 if ( ! isset( $_POST['emr_nonce'] )
-		 || ! wp_verify_nonce( $_POST['emr_nonce'], 'media_remove_background' ))
+		 || ! wp_verify_nonce( $_POST['emr_nonce'], $this->nonce_action ))
 		 {
 			 $this->viewError(self::ERROR_NONCE);
-		 }
-
-		 $key = isset($_POST['key']) ? sanitize_text_field($_POST['key']) : null;
-		 if (is_null($key) || strlen($key) === 0)
-		 {
-			 $this->viewError(self::ERROR_KEY);
 		 }
 
 		 $post_id = isset($_POST['ID']) ? intval($_POST['ID']) : null; // sanitize, post_id.
@@ -108,12 +207,11 @@ class RemoveBackGroundViewController extends \EnableMediaReplace\ViewController
 
 
 		 $this->setView($post_id);
-		 $result = $this->replaceBackground($post_id, $key);
+		 $result = $this->fetchResult($post_id);
 
 		 if (false === $result->success)
 		 {
-			  $this->view->errorMessage = $result->message;
-				$this->viewError(self::ERROR_DOWNLOAD_FAILED);
+				$this->viewError(self::ERROR_DOWNLOAD_FAILED, array('message' => $result->message));
 		 }
 		 elseif (! file_exists($result->image))
 		 {
@@ -136,6 +234,13 @@ class RemoveBackGroundViewController extends \EnableMediaReplace\ViewController
 			 'new_filename' => $sourceFile->getFileName(),
 		);
 
+		// The Transparent PNG option: a JPG that came back as a PNG takes the .png name and
+		// every reference to it is rewritten. No other option changes the file name.
+		$apiData = $this->apiData($post_id);
+		if (isset($apiData['background']['type']) && Api::BG_TYPE_TRANSPARENT_PNG === $apiData['background']['type']) {
+			$params = array_merge($params, $replaceController->getFormatChangeParams($result->image));
+		}
+
 
 		 $check = $replaceController->setupParams($params);
 		 $this->setView($post_id, $params);
@@ -155,6 +260,16 @@ class RemoveBackGroundViewController extends \EnableMediaReplace\ViewController
 	}
 
 	// Low init might only be w/ post_id ( error handling et al ), most advanced / nicer with params.
+	/**
+	 * Sets the view data used by the success and error screens.
+	 *
+	 * Sets `post_id`, `postUrl` (success redirect) and `emrUrl` (failure redirect).
+	 * $params is accepted but not used.
+	 *
+	 * @param int|null $post_id Attachment ID.
+	 * @param array    $params  Unused.
+	 * @return void
+	 */
 	protected function setView($post_id, $params = array())
 	{
 		 $uiHelper = \emr()->uiHelper();
@@ -165,12 +280,49 @@ class RemoveBackGroundViewController extends \EnableMediaReplace\ViewController
 	}
 
 
-	protected function replaceBackground($post_id, $key)
+	/**
+	 * The API request data of the apply step, built from the form the way the preview
+	 * script builds the AJAX data: the attachment and, for a background removal, the
+	 * `background` type ('transparent', 'transparent_png' or 'solid') / colour /
+	 * transparency (type defaults to 'transparent'); for an
+	 * upscale, the checked `upscale` factor.
+	 *
+	 * @param int $post_id Attachment ID.
+	 * @return array
+	 */
+	protected function apiData($post_id)
 	{
-		$api = new Api();
-		$result = $api->handleDownload($key);
+		$data = array('attachment_id' => (int) $post_id);
+		if ('upscale' === $this->operation) {
+			$data['upscale'] = isset($_POST['upscale']) ? intval($_POST['upscale']) : 0;
+			return $data;
+		}
+		$data['background'] = array(
+			'type'         => isset($_POST['background_type']) ? sanitize_text_field(wp_unslash($_POST['background_type'])) : 'transparent',
+			'color'        => isset($_POST['bg_color']) ? sanitize_text_field(wp_unslash($_POST['bg_color'])) : '#ffffff',
+			'transparency' => isset($_POST['bg_transparency']) ? sanitize_text_field(wp_unslash($_POST['bg_transparency'])) : 100,
+		);
+		return $data;
+	}
 
-		return $result;
+	/**
+	 * Runs the operation again on the original and downloads the result: Api::request()
+	 * with apiData(), then Api::download() of the answered image. The replacement itself
+	 * happens in loadPost().
+	 *
+	 * @param int $post_id Attachment ID.
+	 * @return \stdClass Result object: `success`, `image` (temp file path on success),
+	 *                   `message` (on failure: the API's, or the download's).
+	 */
+	protected function fetchResult($post_id)
+	{
+		$api    = new Api();
+		$result = $api->request($this->apiData($post_id));
+		if (true !== $result->success) {
+			$result->image = null;
+			return $result;
+		}
+		return $api->download($result->image);
 	}
 
 

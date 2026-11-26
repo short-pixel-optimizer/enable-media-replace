@@ -1,0 +1,253 @@
+// Collapsible rows (<details>/<summary>, the whole summary is the toggle) and
+// the ShortPixel Account row (views/shortpixel-account.php). Shared by
+// css/bulk.css (account and bulk history) and css/single.css (the remove
+// background and upscale screens).
+@use "sass:color";
+@use 'emr-colors' as *;
+
+.emr-collapsible {
+	margin-block-start: 24px;
+	border: 1px solid color.adjust($blue_background, $lightness: -4%);
+	border-radius: 15px;
+	background: #fff;
+
+	> summary {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 10px;
+		padding: 14px 20px;
+		border-radius: 15px;
+		background: $blue_background;
+		cursor: pointer;
+		list-style: none;
+		font-size: 14px;
+
+		&::-webkit-details-marker { display: none; }
+		&::marker { content: ''; }
+
+		&:hover { background: color.adjust($blue_background, $lightness: -2%); }
+
+		&:focus-visible {
+			outline: 2px solid $blue_default;
+			outline-offset: 2px;
+		}
+	}
+
+	&[open] > summary { border-radius: 15px 15px 0 0; }
+
+	.emr-collapsible-title {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		font-weight: 700;
+		color: #000;
+
+		.dashicons { color: $blue_default; }
+	}
+
+	.emr-collapsible-chevron {
+		margin-inline-start: auto;
+		color: $blue_dark;
+		transition: transform .2s linear;
+	}
+
+	&[open] .emr-collapsible-chevron { transform: rotate(180deg); }
+
+	.emr-collapsible-content { padding: 16px 20px 20px; }
+}
+
+.emr-sp-account {
+	.emr-sp-account-status,
+	.emr-sp-account-plan {
+		display: inline-flex;
+		align-items: center;
+
+		&::before {
+			content: '\2014';
+			margin-inline-end: 8px;
+			color: #a7aaad;
+			font-weight: 400;
+		}
+
+		.dashicons { font-size: 18px; width: 18px; height: 18px; }
+	}
+
+	.emr-sp-account-connected { color: $emr-green; font-weight: 600; }
+	.emr-sp-account-disconnected { color: #996800; font-weight: 600; }
+	.emr-sp-account-free,
+	.emr-sp-account-plan,
+	.emr-sp-account-credits { color: #3c434a; }
+
+	.emr-sp-account-credits {
+		&::before {
+			content: '\2014';
+			margin-inline-end: 8px;
+			color: #a7aaad;
+		}
+	}
+
+	.emr-ai-credits { margin-block-end: 14px; }
+
+	.emr-sp-intro { margin: 0 0 12px; font-size: 13px; color: $emr-text-muted; }
+
+	.emr-sp-key-card {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: space-between;
+		gap: 12px;
+		padding: 12px 16px;
+		background: $blue_background;
+		border-radius: 10px;
+	}
+
+	.emr-sp-key-status { display: flex; align-items: center; gap: 10px; }
+
+	.emr-sp-status-dot {
+		width: 9px;
+		height: 9px;
+		border-radius: 50%;
+		background: #46b450;
+		box-shadow: 0 0 0 3px rgba(70, 180, 80, .15);
+	}
+
+	.emr-sp-key-value { font-size: 13px; }
+	.emr-sp-key-actions { display: flex; gap: 8px; }
+
+	.button.emr-button-danger {
+		color: $emr-red;
+		border-color: $emr-red;
+
+		&:hover,
+		&:focus { background: $emr-red; border-color: $emr-red; color: #fff; }
+	}
+
+	.emr-sp-edit-form {
+		margin-block-start: 12px;
+
+		label {
+			display: block;
+			margin-block-end: 6px;
+			font-size: 13px;
+			font-weight: 600;
+			color: #1d2327;
+		}
+
+		&[hidden] { display: none; }
+	}
+
+	.emr-sp-edit-row {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 8px;
+	}
+
+	// Wide enough for the whole 20-character key and the placeholder.
+	input.emr-sp-key-input {
+		width: 26ch;
+		max-width: 100%;
+		min-height: 36px;
+		font-family: Consolas, Monaco, monospace;
+		font-size: 14px;
+	}
+
+	.emr-sp-cancel-link { font-size: 12px; color: $emr-text-muted; }
+
+	.description { margin: 8px 0 0; }
+
+	#emr-apikey-notice {
+		margin: 12px 0 0;
+		border-radius: 4px;
+
+		&[hidden] { display: none; }
+		p { margin: 6px 0; }
+	}
+}
+
+// AI credits (views/ai-credits.php): the account row and the bulk summary.
+.emr-ai-credits {
+	p { margin: 0 0 8px; }
+
+	&.emr-ai-credits-unlimited {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		color: $emr-green;
+		font-weight: 600;
+	}
+
+	&.emr-ai-credits-unknown { color: $emr-text-muted; }
+
+	.emr-ai-credits-count { font-size: 14px; color: #1d2327; }
+	.emr-ai-credits-help { font-size: 12px; color: $emr-text-muted; }
+
+	.emr-ai-credits-meter {
+		display: block;
+		width: 100%;
+		max-width: 360px;
+		height: 10px;
+		margin: 0 0 8px;
+		border: 0;
+		border-radius: 5px;
+		background: $blue_extralight;
+		overflow: hidden;
+		appearance: none;
+
+		&::-webkit-progress-bar { background: $blue_extralight; border-radius: 5px; }
+		&::-webkit-progress-value { background: $blue_default; border-radius: 5px; }
+		&::-moz-progress-bar { background: $blue_default; border-radius: 5px; }
+	}
+}
+
+// Bulk summary: more images queued than AI credits left.
+.emr-bulk-credits-warning {
+	margin: 12px 0 0;
+	padding: 10px 14px;
+	border-inline-start: 4px solid $emr-orange;
+	border-radius: 4px;
+	background: #fcf9e8;
+	font-size: 13px;
+
+	&[hidden] { display: none; }
+}
+
+// SPIO's "Buy Unlimited AI credits" button (shortpixel-bulk.scss `.button.unlimited`
+// and its bulk `.button` base), from UIHelper::getUpgradeAiButton().
+.button.button-primary.unlimited.emr-ai-upgrade {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	min-height: 0;
+	padding: 8px 16px;
+	background: $blue_background;
+	color: $blue_dark;
+	border: 1px solid $blue_default;
+	border-radius: 0;
+	box-shadow: none;
+	font-size: 14px;
+	font-weight: 700;
+	line-height: 1;
+	letter-spacing: .3px;
+	text-decoration: none;
+	transition: all .1s ease-in-out;
+
+	.icon {
+		width: 30px;
+		height: auto;
+	}
+
+	&:hover,
+	&:focus {
+		background: color.adjust($blue_default, $lightness: 10%);
+		border-color: $blue_default;
+		color: #fff;
+	}
+
+	&:focus-visible {
+		outline: 2px solid $blue_dark;
+		outline-offset: 2px;
+	}
+}

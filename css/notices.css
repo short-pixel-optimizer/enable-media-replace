@@ -1,0 +1,34 @@
+.shortpixel-notice .emr-notice-ops {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 28px;
+  margin: 8px 0 10px;
+}
+
+.emr-notice-op {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.shortpixel.shortpixel-notice .emr-notice-op-icon {
+  width: 28px;
+  height: 28px;
+  flex: none;
+  margin: 0;
+}
+
+.shortpixel-notice .emr-notice-action {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 20px;
+  margin-bottom: 12px;
+}
+
+.emr-notice-open {
+  flex: none;
+}
+
+/*# sourceMappingURL=notices.css.map */

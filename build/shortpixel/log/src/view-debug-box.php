@@ -1,13 +1,25 @@
 <?php
-// Debug Box to load Log File
+/**
+ * Admin debug box template of the logger.
+ *
+ * Included by ShortPixelLogger::loadView() on `admin_footer` when logging
+ * was enabled through the `SHORTPIXEL_DEBUG` request parameter. Renders a
+ * small draggable box (jQuery UI draggable is enqueued here) with a link
+ * that opens the log file. Expects from the including scope:
+ * - `$view` (\stdClass) with `namespace` (string, shown in the header) and
+ *   `logLink` (string, unescaped URL of the log file, escaped here; empty
+ *   when no log path is set, in which case no link is printed).
+ * - `$controller` (ShortPixelLogger), available but not used.
+ *
+ * @package EnableMediaReplace\ShortPixelLogger
+ */
 namespace EnableMediaReplace\ShortPixelLogger;
-wp_enqueue_script( 'jquery-ui-draggable' );
-
-namespace ShortPixel;
 
 if ( ! defined( 'ABSPATH' ) ) {
  exit; // Exit if accessed directly.
 }
+
+wp_enqueue_script( 'jquery-ui-draggable' );
 ?>
 
 <style>
@@ -55,7 +67,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 <div class='sp_debug_box'>
      <div class='header'><?php echo esc_html($view->namespace) ?> Debug Box </div>
-     <a target="_blank" href='<?php echo $view->logLink ?>'>Logfile</a>
+     <?php if ('' !== $view->logLink) : ?>
+     <a target="_blank" rel="noopener" href='<?php echo esc_url($view->logLink); ?>'>Logfile</a>
+     <?php endif; ?>
      <div class='content_box'>
 
      </div>

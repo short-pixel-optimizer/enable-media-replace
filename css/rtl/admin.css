@@ -1040,8 +1040,18 @@
   margin: 0 auto;
 }
 
+.emr_upload_form {
+  color: #1d2327;
+}
+.emr_upload_form h1 {
+  font-size: 23px;
+  font-weight: 600;
+  margin: 18px 0 18px;
+  color: #1d2327;
+}
 .emr_upload_form form {
   display: flex;
+  gap: 20px;
 }
 .emr_upload_form form .upsell-wrapper {
   margin-right: 10px;
@@ -1049,18 +1059,29 @@
 .emr_upload_form .editor-wrapper {
   width: 100%;
 }
+.emr_upload_form .editor-wrapper > button, .emr_upload_form .editor-wrapper > .button, .emr_upload_form .editor-wrapper > a.button {
+  margin-top: 8px;
+  margin-left: 6px;
+}
 .emr_upload_form .emr_drop_area {
   display: none;
 }
 .emr_upload_form .wrapper {
-  padding: 18px;
-  border: 1px solid #ccc;
+  padding: 22px 24px;
+  margin-bottom: 18px;
+  border: 1px solid #e6e7e9;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.06), 0 1px 2px rgba(16, 24, 40, 0.04);
 }
 .emr_upload_form .wrapper .section-header {
-  font-size: 18px;
-  border-bottom: 1px solid #ccc;
-  padding: 6px 0;
-  margin: 0 0 15px 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: #1d2327;
+  border-bottom: 1px solid #f0f0f1;
+  padding: 0 0 12px;
+  margin: 0 0 16px;
+  letter-spacing: 0;
 }
 .emr_upload_form .explainer {
   font-size: 14px;
@@ -1084,10 +1105,12 @@
   display: inline-block;
   margin-left: 25px;
   margin-bottom: 10px;
-  border: 1px solid #ddd;
+  border: 1px solid #e6e7e9;
+  border-radius: 8px;
+  overflow: hidden;
   vertical-align: top;
   box-sizing: border-box;
-  background: #fff;
+  background: #fafafa;
   max-width: calc(50% - 25px);
 }
 .emr_upload_form .image_chooser.wrapper .image_previews .image_placeholder img {
@@ -1170,7 +1193,8 @@
 }
 .emr_upload_form .form-error, .emr_upload_form .form-warning {
   background: #fff;
-  padding: 8px;
+  padding: 10px 14px;
+  border-radius: 6px;
   border-right: 4px solid #ff0000;
   margin: 10px 0;
   display: none;
@@ -1185,18 +1209,30 @@
 }
 .emr_upload_form .option-flex-wrapper {
   display: flex;
+  gap: 18px;
+}
+.emr_upload_form .option-flex-wrapper .options.wrapper {
+  margin-right: 0;
 }
 .emr_upload_form .replace_type.wrapper {
   flex: 1;
-  border: 1px solid #ccc;
-  margin: 15px 0;
+  border: 1px solid #e6e7e9;
+  margin: 0 0 15px 0;
 }
 .emr_upload_form .replace_type.wrapper .option {
   position: relative;
   z-index: 1;
+  padding: 4px 0;
 }
 .emr_upload_form .replace_type.wrapper .option label {
-  font-size: 1.2em;
+  font-size: 14px;
+  font-weight: 500;
+}
+.emr_upload_form .replace_type.wrapper .option .howto {
+  color: #646970;
+  font-size: 13px;
+  line-height: 1.55;
+  margin: 6px 24px 14px 0;
 }
 .emr_upload_form .replace_type.wrapper .option .nofeature-notice {
   border: 1px solid #ccc;
@@ -1218,9 +1254,9 @@
 }
 .emr_upload_form .options.wrapper {
   flex: 1;
-  border: 1px solid #ccc;
+  border: 1px solid #e6e7e9;
   padding: 15px;
-  margin: 15px 35px 15px 0;
+  margin: 0 35px 15px 0;
 }
 .emr_upload_form .options.wrapper .custom_date .emr_datepicker {
   width: 150px;
@@ -1241,7 +1277,14 @@
 .emr_upload_form .options.wrapper .option label {
   vertical-align: top;
 }
+.emr_upload_form .options.wrapper .option .howto {
+  color: #646970;
+  font-size: 13px;
+  line-height: 1.55;
+  margin: 6px 24px 14px 0;
+}
 .emr_upload_form .options.wrapper .small {
+  color: #646970;
   font-size: 10px;
   vertical-align: top;
   margin-right: 8px;
@@ -1250,6 +1293,10 @@
   margin: 8px 25px 0 0;
   visibility: hidden;
   opacity: 0;
+}
+.emr_upload_form .options.wrapper .custom_date input[type=text] {
+  border-radius: 6px;
+  border-color: #d6d8db;
 }
 .emr_upload_form .options.wrapper .custom_date span.field-title {
   display: inline-block;
@@ -1267,7 +1314,6 @@
   margin-left: 4px;
 }
 .emr_upload_form .options.wrapper .location_option {
-  display: none;
   margin-top: 12px;
 }
 .emr_upload_form .options.wrapper .location_option label {
@@ -1276,9 +1322,11 @@
 }
 .emr_upload_form .form_controls.wrapper {
   clear: both;
-  margin: 8px 0 15px 0;
-  border: 0;
-  padding: 0;
+  margin: 0 0 15px 0;
+  border: none;
+  padding: 4px 0 0;
+  box-shadow: none;
+  background: transparent;
 }
 .emr_upload_form .form_controls.wrapper .button {
   padding-right: 20px;
@@ -1291,12 +1339,18 @@
   background: #fff;
   width: 250px;
   min-height: 270px;
-  border: 1px solid #ccc;
+  border: 1px solid #e6e7e9;
+  border-radius: 10px;
+  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.06), 0 1px 2px rgba(16, 24, 40, 0.04);
+  overflow: hidden;
   padding: 10px;
   margin-bottom: 10px;
   float: left;
   clear: both;
-  background-color: #dcfdff;
+  background-color: #fff;
+}
+.emr_upload_form .shortpixel-offer.fp {
+  background-color: #fff;
 }
 .emr_upload_form .shortpixel-offer h3 {
   color: #00d0e5;
@@ -1313,7 +1367,7 @@
   color: #ff0000;
 }
 .emr_upload_form .shortpixel-offer .cyan {
-  color: #00d0e5;
+  color: #116C7E;
 }
 .emr_upload_form .shortpixel-offer .grey {
   color: grey;
@@ -1323,6 +1377,9 @@
 }
 .emr_upload_form .shortpixel-offer a {
   text-decoration: none;
+}
+.emr_upload_form .shortpixel-offer.fp .cyan {
+  color: #00d0e5;
 }
 .emr_upload_form .shortpixel-offer .button-wrapper {
   text-align: center;
@@ -1337,13 +1394,15 @@
   font-weight: 700;
   font-size: 20px;
   text-transform: uppercase;
+  border: 0;
+  border-radius: 6px;
 }
 .emr_upload_form .shortpixel-offer .hidden {
   display: none !important;
 }
 .emr_upload_form .shortpixel-offer .img-wrapper {
   text-align: center;
-  margin: 0 0 25px 0;
+  margin: 10px 0 20px 0;
 }
 .emr_upload_form .shortpixel-offer .img-wrapper img {
   max-width: 140px;
@@ -1358,6 +1417,67 @@
 }
 .emr_upload_form .shortpixel-offer.theme-offer img {
   max-width: 100%;
+}
+.emr_upload_form .shortpixel-offer.theme-offer .button-wrapper {
+  margin-top: 20px;
+}
+.emr_upload_form .button,
+.emr_upload_form .button-primary,
+.emr_upload_form input[type=submit].button,
+.emr_upload_form input[type=submit].button-primary {
+  border-radius: 6px;
+  font-weight: 600;
+  padding: 0 18px;
+  height: 36px !important;
+  min-height: 36px !important;
+  line-height: 34px;
+  min-width: 110px;
+  text-align: center;
+  box-sizing: border-box;
+  vertical-align: middle;
+  text-shadow: none;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04);
+}
+.emr_upload_form a.button,
+.emr_upload_form button.button,
+.emr_upload_form button.button-primary {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  line-height: 1 !important;
+}
+.emr_upload_form .button-primary,
+.emr_upload_form input[type=submit].button-primary {
+  background: #1abdca;
+  border-color: #15a8b4;
+  color: #fff;
+}
+.emr_upload_form .button-primary:hover,
+.emr_upload_form input[type=submit].button-primary:hover {
+  background: #15a8b4;
+  border-color: #138c96;
+  color: #fff;
+}
+.emr_upload_form .button-primary:focus,
+.emr_upload_form .button-primary:active {
+  background: #15a8b4;
+  border-color: #138c96;
+  box-shadow: 0 0 0 1px #fff, 0 0 0 3px rgba(26, 189, 202, 0.4);
+}
+.emr_upload_form .button-primary[disabled],
+.emr_upload_form input[type=submit][disabled] {
+  background: #c8cdd1 !important;
+  border-color: #c8cdd1 !important;
+  color: #fff !important;
+}
+.emr_upload_form .button:not(.button-primary) {
+  border-color: #d6d8db;
+  background: #fff;
+  color: #50575e;
+}
+.emr_upload_form .button:not(.button-primary):hover {
+  border-color: #1abdca;
+  color: #1abdca;
 }
 @media (max-width: 1200px) {
   .emr_upload_form .image_previews {

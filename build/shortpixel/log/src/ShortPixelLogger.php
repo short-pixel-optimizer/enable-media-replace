@@ -1,49 +1,221 @@
 <?php
+/**
+ * Log module entry point.
+ *
+ * Holds the ShortPixelLogger class, the file logger that every ShortPixel
+ * plugin uses through the `Log` alias.
+ *
+ * @package EnableMediaReplace\ShortPixelLogger
+ */
 
 namespace EnableMediaReplace\ShortPixelLogger;
 
-/*** Logger class
+/**
+ * Leveled file logger with an optional admin debug box.
  *
- * Class uses the debug data model for keeping log entries.
- * Logger should not be called before init hook!
+ * Consumers alias the class (`use ...\ShortPixelLogger as Log`) and call the
+ * static entry points: addError(), addWarn()/addWarning(), addInfo(),
+ * addDebug(), addTrace(), addMemory() and addTemp(). Each call wraps the
+ * message and optional data in a DebugItem, keeps it in $items and appends
+ * one formatted line to the log file. Nothing is written when the logger is
+ * inactive or when the item's level is above the configured level.
+ *
+ * Lifecycle: singleton through getInstance(); the constructor is public but
+ * is only meant to run once. Activation is decided in the constructor, in
+ * this order:
+ * - A `SHORTPIXEL_DEBUG` request parameter, when the current user can
+ *   `manage_options`, enables manual debugging; `true` means
+ *   DebugItem::LEVEL_INFO, any other value is cast to a level number. On
+ *   multisite the user check is deferred to the `wp_loaded` action
+ *   (msCheckUserLevel()), because the user is not known yet when the
+ *   plugins instantiate the logger.
+ * - Otherwise the `SHORTPIXEL_DEBUG` constant, when defined and greater than
+ *   zero, enables logging; `true` means LEVEL_INFO, a number is the level.
+ * - Otherwise the logger stays inactive and the add*() calls return early.
+ * The level defaults to DebugItem::LEVEL_WARN and can be changed later with
+ * logLevel().
+ *
+ * Log file: the consumer sets it with setLogPath() right after getInstance()
+ * when debugIsActive() is true (the plugins use their uploads or backup
+ * directory). Without that, the first write defaults to
+ * `<uploads basedir>/<first namespace segment>.log`. The file is opened once
+ * in append mode and the handle is kept for the request; when the directory
+ * or file is not writable the problem is reported through error_log() and
+ * writing is skipped silently afterwards.
+ *
+ * Manual mode: when enabled through the request parameter, initView() (on
+ * `init`) schedules loadView() on `admin_footer`, which builds the link to
+ * the log file and includes the view-debug-box.php template: a draggable
+ * box with that link in the admin. The link is built that late because
+ * consumers may set the log path on `init` themselves, after initView().
+ *
+ * Constants read: `SHORTPIXEL_DEBUG` (activation and level),
+ * `SHORTPIXEL_DEBUG_TARGET` and `SHORTPIXEL_LOG_OVERWRITE` (together they
+ * request a reset of the log file at construction, see the @todo). The
+ * request parameter and constant names are the same in every plugin; the
+ * build does not rewrite them.
+ *
+ * Fires no hooks. Registers callbacks on the WordPress core actions
+ * `wp_loaded` (msCheckUserLevel(), multisite manual mode only), `init`
+ * (initView()) and `admin_footer` (loadView()). monitorHooks() can wrap
+ * arbitrary filters for logging, but $hooks is empty so it never runs.
+ *
+ * Bundling: this source is written with the ShortPixel namespace and the
+ * ShortPixel text domain. The build tool that bundles the module into a
+ * plugin rewrites the namespace and the text domain mechanically, so each
+ * consuming plugin (for example Enable Media Replace) sees its own
+ * namespace. The default log file name derives from the first segment of
+ * that namespace. The module uses no `shortpixel/*` hooks.
+ *
+ * @todo The `SHORTPIXEL_LOG_OVERWRITE` reset in the constructor writes to
+ *       $logPath while it is still false (no path is set at construction),
+ *       so the log is never reset and PHP warns about an empty filename.
+ *       Suggested fix: perform the reset in setLogPath() or on the first
+ *       getWriteFile() call.
  */
 class ShortPixelLogger
 {
+  /**
+   * Shared instance returned by getInstance().
+   *
+   * @var ShortPixelLogger|null
+   */
   static protected $instance = null;
+
+  /**
+   * microtime() at construction; the `time_passed` column of every line is
+   * measured from it.
+   *
+   * @var float
+   */
   protected $start_time;
+
+  /**
+   * PHP `memory_limit` in bytes, resolved on the first addMemoryLog() call.
+   *
+   * @var int|null
+   */
   protected $memoryLimit; // to be used for memory logs only.
 
+  /**
+   * Whether anything is logged at all, decided in the constructor.
+   *
+   * @var bool
+   */
   protected $is_active = false;
+
+  /**
+   * True when logging was enabled through the `SHORTPIXEL_DEBUG` request
+   * parameter rather than the constant. Enables the admin debug box and
+   * the per-call administrator check in addLog().
+   *
+   * @var bool
+   */
   protected $is_manual_request = false;
+
+  /**
+   * Unused; the debug box is shown whenever $is_manual_request is true.
+   *
+   * @var bool
+   */
   protected $show_debug_view = false;
 
+  /**
+   * Every DebugItem logged in this request, in order. Only appended to.
+   *
+   * @var DebugItem[]
+   */
   protected $items = array();
+
+  /**
+   * Absolute path of the log file, or false until setLogPath() runs or the
+   * first write picks the default.
+   *
+   * @var string|false
+   */
   protected $logPath = false;
+
+  /**
+   * Unused; the file is always opened in append mode by getWriteFile().
+   *
+   * @var int
+   */
   protected $logMode = FILE_APPEND;
 
+  /**
+   * Highest DebugItem level that is written; items with a higher number
+   * (less severe) are dropped.
+   *
+   * @var int
+   */
   protected $logLevel;
+
+  /**
+   * Line template for formatLine(). `%%key%%` placeholders are replaced by
+   * the scalar entries of DebugItem::getForFormat() plus `time_passed`.
+   *
+   * @var string
+   */
   protected $format = "[ %%time%% ] %%color%% %%level%% %%color_end%% \t %%message%%  \t %%caller%% ( %%time_passed%% )";
+
+  /**
+   * Unused; data lines are appended verbatim by formatLine().
+   *
+   * @var string
+   */
   protected $format_data = "\t %%data%% ";
 
+  /**
+   * Filters to wrap for logging, as `hook => ['numargs' => int,
+   * 'priority' => int]`, consumed by monitorHooks(). Always empty.
+   *
+   * @var array
+   */
   protected $hooks = array();
 
+  /**
+   * Open stream of the log file, false when it could not be opened, null
+   * before the first getWriteFile() call.
+   *
+   * @var resource|false|null
+   */
   private $logFile; // pointer resource to the logFile.
-  /*   protected $hooks = array(
-      'shortpixel_image_exists' => array('numargs' => 3),
-      'shortpixel_webp_image_base' => array('numargs' => 2),
-      'shortpixel_image_urls' => array('numargs' => 2),
-   ); // @todo monitor hooks, but this should be more dynamic. Do when moving to module via config.
-*/
 
-  // utility
+  /**
+   * First segment of this class's namespace (`ShortPixel`, or the plugin
+   * namespace after bundling). Names the default log file and the debug
+   * box.
+   *
+   * @var string
+   */
   private $namespace;
+
+  /**
+   * View data for the debug box template. Created by initView(); loadView()
+   * fills in `logLink` and `namespace`.
+   *
+   * @var \stdClass|null
+   */
   private $view;
 
+  /**
+   * Template file name (without `.php`) next to this file, included by
+   * loadView().
+   *
+   * @var string
+   */
   protected $template = 'view-debug-box';
 
-  /** Debugger constructor
-   *  Two ways to activate the debugger. 1) Define SHORTPIXEL_DEBUG in wp-config.php. Either must be true or a number corresponding to required LogLevel
-   *  2) Put SHORTPIXEL_DEBUG in the request. Either true or number.
+  /**
+   * Decides whether logging is active and at which level.
+   *
+   * See the class description for the order of the `SHORTPIXEL_DEBUG`
+   * request parameter and constant. The request parameter is only honoured
+   * for administrators; on multisite that check waits for `wp_loaded`. When
+   * active, initView() is scheduled on `init`, when the current user is
+   * known.
+   *
+   * @return void
    */
   public function __construct()
   {
@@ -92,15 +264,35 @@ class ShortPixelLogger
     }
   }
 
+  /**
+   * Deferred manual-mode check for multisite, bound to `wp_loaded`.
+   *
+   * Public because it is a hook callback; not meant to be called directly.
+   * Enables manual logging when the request carries `SHORTPIXEL_DEBUG` and
+   * the current user is an administrator. The constructor returned before
+   * scheduling initView() in this case and `init` has already run, so the
+   * debug box is prepared here.
+   *
+   * @return void
+   */
   public function msCheckUserLevel()
   {
       if (isset($_REQUEST['SHORTPIXEL_DEBUG']) && true === $this->checkUserLevel())
       {
          $this->setManualLog();
+         $this->initView();
       }
 
   }
 
+  /**
+   * Activates logging from the `SHORTPIXEL_DEBUG` request parameter.
+   *
+   * The literal `true` selects DebugItem::LEVEL_INFO; any other value is
+   * cast to an integer level.
+   *
+   * @return void
+   */
   protected function setManualLog()
   {
       $this->is_manual_request = true;
@@ -115,9 +307,13 @@ class ShortPixelLogger
       }
   }
 
-  /** Allow only admin users to manually debug 
-   * 
-   * @return bool 
+  /**
+   * Tells whether the current user may use manual debugging.
+   *
+   * Loads `wp-includes/pluggable.php` when the user functions are not
+   * available yet, so this works before `plugins_loaded`.
+   *
+   * @return bool True when the current user can `manage_options`.
    */
   protected function checkUserLevel()
   {
@@ -129,30 +325,78 @@ class ShortPixelLogger
     return $user_is_administrator;
   }
 
-  /** Init the view when needed. Private function ( public because of WP_HOOK )
-   * Never call directly */
+  /**
+   * Prepares the debug box, bound to `init`.
+   *
+   * Public because it is a hook callback; not meant to be called directly.
+   * Only acts in manual mode for administrators: creates $view and
+   * schedules loadView() on `admin_footer`. The log link is not built here,
+   * because a consumer that sets the log path on `init` may do so after
+   * this callback.
+   *
+   * @return void
+   */
   public function initView()
   {
     $user_is_administrator = $this->checkUserLevel();
 
     if ($this->is_active && $this->is_manual_request && $user_is_administrator) {
-
-      $logPath = $logLink = $this->logPath; // default
-      $uploads = wp_get_upload_dir();
-
-
-      if (0 === strpos($logPath, $uploads['basedir'])) { // Simple as it should, filepath and basedir share.
-        // Replace file location with url location.
-        $logLink = str_replace($uploads['basedir'], $uploads['baseurl'], $logPath);
-      }
-
-
       $this->view = new \stdClass;
-      $this->view->logLink = 'view-source:' . esc_url($logLink);
       add_action('admin_footer', array($this, 'loadView'));
     }
   }
 
+  /**
+   * Returns the link to the log file for the debug box.
+   *
+   * The URL of the file when it lives inside the uploads directory of the
+   * current site or, failing that, inside the content directory (on a
+   * multisite subsite a consumer may keep one log for the network above
+   * the site's own uploads directory); otherwise the path itself.
+   * Unescaped; the template escapes it on output. A plain link, without a
+   * `view-source:` prefix: browsers do not follow links to that scheme.
+   *
+   * On multisite only network administrators get the link: the log can
+   * hold entries of every site of the network, and the debug box is shown
+   * to the administrators of a single site too.
+   *
+   * @return string Empty when no log path is set, or on multisite for a
+   *                user who cannot manage the network.
+   */
+  protected function getLogLink()
+  {
+    $logPath = $this->logPath;
+
+    if (! is_string($logPath) || '' === $logPath) {
+      return '';
+    }
+
+    if (is_multisite() && ! current_user_can('manage_network_options')) {
+      return '';
+    }
+
+    $uploads = wp_get_upload_dir();
+    $uploadBase = trailingslashit($uploads['basedir']);
+
+    if (0 === strpos($logPath, $uploadBase)) { // Simple as it should, filepath and basedir share.
+      // Replace file location with url location.
+      return trailingslashit($uploads['baseurl']) . substr($logPath, strlen($uploadBase));
+    }
+
+    $contentBase = trailingslashit(WP_CONTENT_DIR);
+
+    if (0 === strpos($logPath, $contentBase)) {
+      return content_url(substr($logPath, strlen($contentBase)));
+    }
+
+    return $logPath;
+  }
+
+  /**
+   * Returns the shared logger, creating it on first use.
+   *
+   * @return ShortPixelLogger
+   */
   public static function getInstance()
   {
     if (self::$instance === null) {
@@ -161,11 +405,48 @@ class ShortPixelLogger
     return self::$instance;
   }
 
+  /**
+   * Sets the log file.
+   *
+   * An active logger opens the file at once, replacing any previously
+   * opened handle; problems opening it are reported through error_log() by
+   * getWriteFile(). An inactive logger only remembers the path and touches
+   * nothing on disk; the file is opened by the first write, should logging
+   * be switched on later in the request (the multisite manual mode is
+   * decided on `wp_loaded`). Consumers can therefore call this
+   * unconditionally right after getInstance().
+   *
+   * @param string $logPath Absolute path of the log file; its directory
+   *                        must exist and be writable.
+   * @return void
+   */
   public function setLogPath($logPath)
   {
     $this->logPath = $logPath;
-    $this->getWriteFile(true); // reset the writeFile here.
+
+    if ($this->is_active) {
+      $this->getWriteFile(true); // reset the writeFile here.
+    } else {
+      $this->logFile = null; // opened by the first write.
+    }
   }
+  /**
+   * Records one entry and writes it to the log file.
+   *
+   * Drops the entry when the logger is inactive or $level is above
+   * $logLevel. In manual mode the entry is also dropped when the user
+   * functions are not loaded yet or the current user is not an
+   * administrator, so a `SHORTPIXEL_DEBUG` parameter from a visitor cannot
+   * produce output. Picks the default log path on the first write when
+   * none is set: `<Namespace>.log` in the uploads base directory.
+   *
+   * @param mixed $message Log message; arrays and objects are moved into the
+   *                       data by DebugItem.
+   * @param int   $level   One of the DebugItem::LEVEL_* constants.
+   * @param array $data    Extra variables to dump under the line.
+   * @return void|false False when dropped by the manual-mode user check;
+   *                    nothing otherwise.
+   */
   protected function addLog($message, $level, $data = array())
   {
     //   $log = self::getInstance();
@@ -188,7 +469,7 @@ class ShortPixelLogger
     // Check where to log to.
     if ($this->logPath === false) {
       $upload_dir = wp_upload_dir(null, false, false);
-      $this->logPath = $this->setLogPath($upload_dir['basedir'] . '/' . $this->namespace . ".log");
+      $this->setLogPath($upload_dir['basedir'] . '/' . $this->namespace . ".log");
     }
 
     $arg = array();
@@ -203,7 +484,17 @@ class ShortPixelLogger
     }
   }
 
-  /** Writes to log File. */
+  /**
+   * Formats one item and appends it to the log file.
+   *
+   * Adds the seconds elapsed since construction, renders the timestamp and
+   * flattens the caller array to `file in function(line)`. Nothing is
+   * written when the file could not be opened.
+   *
+   * @param DebugItem $debugItem Entry to write.
+   * @param string    $mode      Unused.
+   * @return void
+   */
   protected function write($debugItem, $mode = 'file')
   {
     $items = $debugItem->getForFormat();
@@ -228,6 +519,23 @@ class ShortPixelLogger
     }
   }
 
+  /**
+   * Returns the open log file handle, opening it on first use.
+   *
+   * The handle is cached in $logFile; a failed attempt is cached as false so
+   * the checks and error_log() calls happen once per request. The
+   * directory must exist and be writable, and an existing file must be
+   * writable; the file is created when missing.
+   *
+   * @param bool $reset True to close the cached handle and reopen $logPath.
+   * @return resource|false Stream in append mode, or false when the
+   *                        directory or file is not usable.
+   *
+   * @todo The reset branch tests `is_object($this->logFile)`, which is
+   *       never true for a stream resource, so the previous handle is not
+   *       closed when setLogPath() is called a second time. Suggested fix:
+   *       test with is_resource().
+   */
   protected function getWriteFile($reset = false)
   {
     if (! is_null($this->logFile) && $reset === false) {
@@ -264,6 +572,17 @@ class ShortPixelLogger
     return $file;
   }
 
+  /**
+   * Renders one log line from $format plus the dumped data.
+   *
+   * Scalar entries replace their `%%key%%` placeholder; placeholders without
+   * a value are left in place. Each non-empty data entry follows on its own
+   * line, booleans spelled out as `true`/`false`.
+   *
+   * @param array $args Output of DebugItem::getForFormat() with
+   *                    `time_passed` added.
+   * @return string Line(s) ending with PHP_EOL.
+   */
   protected function formatLine($args = array())
   {
     $line = $this->format;
@@ -290,11 +609,23 @@ class ShortPixelLogger
     return $line;
   }
 
+  /**
+   * Changes the level threshold for the rest of the request.
+   *
+   * @param int $level One of the DebugItem::LEVEL_* constants.
+   * @return void
+   */
   protected function setLogLevel($level)
   {
     $this->logLevel = $level;
   }
 
+  /**
+   * Reads a property for the static getters.
+   *
+   * @param string $name Property name.
+   * @return mixed Property value, or false when it is unset or null.
+   */
   protected function getEnv($name)
   {
     if (isset($this->{$name})) {
@@ -305,6 +636,15 @@ class ShortPixelLogger
   }
 
 
+  /**
+   * Wraps every filter in $hooks with a logging callback.
+   *
+   * Each callback logs the hook name, the filtered value and the extra
+   * arguments through logHook() and returns the value unchanged. Called
+   * from the constructor only when $hooks is non-empty, which it never is.
+   *
+   * @return void
+   */
   protected function monitorHooks()
   {
 
@@ -319,6 +659,15 @@ class ShortPixelLogger
     }
   }
 
+  /**
+   * Filter callback used by monitorHooks(); logs at LEVEL_INFO.
+   *
+   * @param string $hook  Filter name.
+   * @param mixed  $value Value being filtered, returned unchanged.
+   * @param array  $args  All filter arguments; the first (the value) is
+   *                      dropped before logging.
+   * @return mixed $value.
+   */
   public function logHook($hook, $value, $args)
   {
     array_shift($args);
@@ -326,12 +675,23 @@ class ShortPixelLogger
     return $value;
   }
 
+  /**
+   * Includes the debug box template, bound to `admin_footer`.
+   *
+   * Builds the log link now, when the consumer has set the log path. The
+   * template sees `$view` (with `logLink`, unescaped, and `namespace`) and
+   * `$controller` (this logger). A missing template is logged as an error
+   * instead of rendered.
+   *
+   * @return void
+   */
   public function loadView()
   {
     // load either param or class template.
     $template = $this->template;
 
     $view = $this->view;
+    $view->logLink = $this->getLogLink();
     $view->namespace = $this->namespace;
     $controller = $this;
 
@@ -347,6 +707,18 @@ class ShortPixelLogger
     }
   }
 
+  /**
+   * Logs a message suffixed with current memory usage, limit and
+   * percentage, at LEVEL_DEBUG.
+   *
+   * @param string $message Log message.
+   * @param array  $args    Extra variables to dump under the line.
+   * @return void
+   *
+   * @todo A `memory_limit` of `-1` (unlimited) is converted to -1, which
+   *       yields a negative percentage. Suggested fix: treat a negative
+   *       limit as unlimited and skip the percentage.
+   */
   public function addMemoryLog($message, $args = array())
   {
     if (is_null($this->memoryLimit)) {
@@ -365,6 +737,15 @@ class ShortPixelLogger
     $this->addLog($message . ' ' . $memmsg, $level, $args);
   }
 
+  /**
+   * Converts a php.ini size such as `256M` to bytes.
+   *
+   * Recognises the `K`, `M` and `G` suffixes; a bare number is returned as
+   * is.
+   *
+   * @param string $s Size with optional unit suffix.
+   * @return int Bytes.
+   */
   private function unitToInt($s)
   {
     return (int)preg_replace_callback('/(\-?\d+)(.?)/', function ($m) {
@@ -372,6 +753,14 @@ class ShortPixelLogger
     }, strtoupper($s));
   }
 
+  /**
+   * Formats a byte count with a `K`/`M`/`G`/`T` suffix.
+   *
+   * @param int $size      Bytes.
+   * @param int $precision Decimals to keep.
+   * @return string|int Formatted size, or 0 for zero or a non-finite
+   *                    result.
+   */
   private function formatBytes($size, $precision = 2)
   {
     $base = log($size, 1024);
@@ -389,29 +778,66 @@ class ShortPixelLogger
     return round($calculation, $precision) . ' ' . $suffixes[floor($base)];
   }
 
+  /**
+   * Logs at DebugItem::LEVEL_ERROR.
+   *
+   * @param mixed $message Log message; arrays and objects are dumped as data.
+   * @param array $args    Extra variables to dump under the line.
+   * @return void
+   */
   public static function addError($message, $args = array())
   {
     $level = DebugItem::LEVEL_ERROR;
     $log = self::getInstance();
     $log->addLog($message, $level, $args);
   }
+  /**
+   * Logs at DebugItem::LEVEL_WARN.
+   *
+   * @param mixed $message Log message; arrays and objects are dumped as data.
+   * @param array $args    Extra variables to dump under the line.
+   * @return void
+   */
   public static function addWarn($message, $args = array())
   {
     $level = DebugItem::LEVEL_WARN;
     $log = self::getInstance();
     $log->addLog($message, $level, $args);
   }
-  // Alias, since it goes wrong so often.
+  /**
+   * Alias of addWarn().
+   *
+   * The caller column of the resulting line names this method rather than
+   * the real caller (see DebugItem::setCaller()).
+   *
+   * @param mixed $message Log message.
+   * @param array $args    Extra variables to dump under the line.
+   * @return void
+   */
   public static function addWarning($message, $args = array())
   {
     self::addWarn($message, $args);
   }
+  /**
+   * Logs at DebugItem::LEVEL_INFO.
+   *
+   * @param mixed $message Log message; arrays and objects are dumped as data.
+   * @param array $args    Extra variables to dump under the line.
+   * @return void
+   */
   public static function addInfo($message, $args = array())
   {
     $level = DebugItem::LEVEL_INFO;
     $log = self::getInstance();
     $log->addLog($message, $level, $args);
   }
+  /**
+   * Logs at DebugItem::LEVEL_DEBUG.
+   *
+   * @param mixed $message Log message; arrays and objects are dumped as data.
+   * @param array $args    Extra variables to dump under the line.
+   * @return void
+   */
   public static function addDebug($message, $args = array())
   {
     $level = DebugItem::LEVEL_DEBUG;
@@ -420,10 +846,16 @@ class ShortPixelLogger
   }
 
   /**
-   * Adds a trace for debuggins.
-   * @param String  $message       Description
-   * @param integer  $amount        Amount of lines needed.
-   * @param integer $debug_option  Debug backtrace ( default IGNORE_ARGS, see docs )
+   * Logs a message followed by a backtrace, at LEVEL_DEBUG.
+   *
+   * The trace frames are passed as data, so each frame is dumped on its own
+   * line by DebugItem.
+   *
+   * @param string $message      Log message.
+   * @param int    $amount       Maximum number of frames.
+   * @param int    $debug_option Options for debug_backtrace(); defaults to
+   *                             DEBUG_BACKTRACE_IGNORE_ARGS.
+   * @return void
    */
   public static function addTrace($message, $amount = 10, $debug_option = 2)
   {
@@ -432,18 +864,41 @@ class ShortPixelLogger
     $log->addLog($message, DebugItem::LEVEL_DEBUG, $trace);
   }
 
+  /**
+   * Static entry point for addMemoryLog().
+   *
+   * @param string $message Log message.
+   * @param array  $args    Extra variables to dump under the line.
+   * @return void
+   */
   public static function addMemory($message, $args = array())
   {
     $log = self::getInstance();
     $log->addMemoryLog($message, $args);
   }
 
-  /** These should be removed every release. They are temporary only for d'bugging the current release */
+  /**
+   * Alias of addDebug() for temporary statements.
+   *
+   * Calls to it mark debugging code that is meant to be removed before a
+   * release, so they are easy to grep for.
+   *
+   * @param mixed $message Log message.
+   * @param array $args    Extra variables to dump under the line.
+   * @return void
+   */
   public static function addTemp($message, $args = array())
   {
     self::addDebug($message, $args);
   }
 
+  /**
+   * Changes the level threshold at runtime and logs the change at
+   * LEVEL_INFO (under the previous threshold).
+   *
+   * @param int $level One of the DebugItem::LEVEL_* constants.
+   * @return void
+   */
   public static function logLevel($level)
   {
     $log = self::getInstance();
@@ -451,26 +906,51 @@ class ShortPixelLogger
     $log->setLogLevel($level);
   }
 
+  /**
+   * Returns the current level threshold.
+   *
+   * @return int One of the DebugItem::LEVEL_* constants.
+   */
   public static function getLogLevel()
   {
     $log = self::getInstance();
     return $log->getEnv('logLevel');
   }
 
+  /**
+   * Tells whether logging was enabled through the request parameter.
+   *
+   * Consumers use it to carry `SHORTPIXEL_DEBUG` over to the URLs they
+   * generate and to show debugging aids in their settings pages.
+   *
+   * @return bool
+   */
   public static function isManualDebug()
   {
     $log = self::getInstance();
     return $log->getEnv('is_manual_request');
   }
 
+  /**
+   * Returns the log file path.
+   *
+   * @return string|false Absolute path, or false when no path is set yet:
+   *                      the consumer has not called setLogPath() and
+   *                      nothing was logged, so no default was picked.
+   */
   public static function getLogPath()
   {
     $log = self::getInstance();
     return $log->getEnv('logPath');
   }
 
-  /** Function to test if the debugger is active
-   * @return boolean true when active.
+  /**
+   * Tells whether the logger writes anything in this request.
+   *
+   * Consumers check it before calling setLogPath() and before building
+   * debug-only output.
+   *
+   * @return bool
    */
   public static function debugIsActive()
   {

@@ -1,0 +1,64 @@
+name: Test change guard
+
+# Existing tests are read-only by default (CLAUDE.md, "Changing existing
+# tests"). This workflow runs bin/check-test-changes.sh, which finds changes
+# that weaken or remove an existing test: a deleted or renamed test file, a
+# removed or edited test or assertion, an added skip, a changed screenshot
+# baseline. New tests and new assertions pass freely.
+#
+# - Push to `updates` or `bulk`: every non-merge commit of the push is
+#   checked on its own. A commit that changes existing tests passes only
+#   with a `Tests-Changed: <reason>` line in its message.
+# - Pull request into `updates` or `master`: one verdict for the whole
+#   change set. It passes only with the `test-changes-approved` label, which
+#   only maintainers can apply; adding or removing the label runs the check
+#   again.
+on:
+  push:
+    branches: [ updates, bulk ]
+  pull_request:
+    branches: [ updates, master ]
+    types: [ opened, synchronize, reopened, labeled, unlabeled ]
+
+concurrency:
+  group: test-guard-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  guard:
+    name: Existing tests unchanged, or approved
+    # A pull request whose SOURCE branch is `updates` or `bulk` in this
+    # repository is skipped: its commits were checked when they were pushed.
+    if: github.event_name != 'pull_request' || (github.event.pull_request.head.ref != 'updates' && github.event.pull_request.head.ref != 'bulk') || github.event.pull_request.head.repo.full_name != github.repository
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code with its history
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Check a pull request as a whole
+        if: github.event_name == 'pull_request'
+        env:
+          TEST_CHANGES_APPROVED: ${{ contains(github.event.pull_request.labels.*.name, 'test-changes-approved') }}
+          BASE_REF: ${{ github.base_ref }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: bin/check-test-changes.sh --range "origin/$BASE_REF" "$HEAD_SHA"
+
+      - name: Check every pushed commit
+        if: github.event_name == 'push'
+        env:
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.sha }}
+        run: |
+          # A new branch has no "before"; a force push may name a commit
+          # that is gone. In both cases only the pushed head is checked.
+          if [ "$BEFORE" = "0000000000000000000000000000000000000000" ] || ! git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+            echo "==> No usable previous head: checking the pushed head commit only."
+            BEFORE="$AFTER^"
+          fi
+          bin/check-test-changes.sh --per-commit "$BEFORE" "$AFTER"

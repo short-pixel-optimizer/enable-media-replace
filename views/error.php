@@ -1,4 +1,24 @@
 <?php
+/**
+ * Error screen.
+ *
+ * Loaded by ViewController::viewError(), which maps an error code to a
+ * message (and for some codes a description) and exits after the view. The
+ * view ends by requiring wp-admin/admin-footer.php itself.
+ *
+ * Variables in scope:
+ * - $controller the calling ViewController
+ * - $view stdClass with:
+ *   - errorMessage (string) always set by viewError(); printed escaped
+ *   - errorDescription (string, optional) printed only when the property
+ *     exists (ERROR_TARGET_EXISTS, ERROR_NONCE, and ERROR_DIRECTORY_SECURITY
+ *     when path data is passed)
+ *
+ * No form, no hooks. Links: "previous page" is the shared `data-action="history-back"`
+ * link (js/emr_admin.js calls history.back(); the href is the Media Library); a link to
+ * the plugin documentation on shortpixel.com.
+
+ */
 namespace EnableMediaReplace;
 
 if (! defined('ABSPATH')) {
@@ -15,7 +35,7 @@ use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
 	<h3 class='title'><?php _e('Enable Media Replace', 'enable-media-replace'); ?></h3>
 
 	<div class='content'>
-		<h1><?php _e('An error occured', 'enable-media-replace'); ?></h1>
+		<h1><?php _e('An error occurred', 'enable-media-replace'); ?></h1>
 		<p class="error-message"> <?php echo esc_html($view->errorMessage); ?> </p>
 
 		<?php if (property_exists($view, 'errorDescription'))
@@ -24,7 +44,7 @@ use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
 		} ?>
 
 		<p><?php printf(esc_html__('You can return to %s previous page %s','enable-media-replace'),
-		 '<a href="javascript:history.back()">', '</a>');	?></p>
+		 '<a href="' . esc_url(admin_url('upload.php')) . '" data-action="history-back">', '</a>');	?></p>
 
 
 		<p><?php printf(esc_html__('If you need help, please see the plugin %sdocumentation%s. It contains clear solutions to most of the problems you may encounter when using our plugin.', 'enable-media-replace'), '<a href="https://shortpixel.com/knowledge-base/category/308-enable-media-replace" target="_blank">', '</a>'); ?></p>

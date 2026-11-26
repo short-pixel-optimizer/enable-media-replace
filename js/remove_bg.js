@@ -1,8 +1,9 @@
 jQuery(document).ready(function ($) {
 
 	// Dismiss handler for the in-form notice.
+	// Showing and hiding goes through the `hidden` attribute, as everywhere else in the plugin.
 	$(document).on('click', '#emr-bg-notice .notice-dismiss', function () {
-		$('#emr-bg-notice').fadeOut(150);
+		$('#emr-bg-notice').prop('hidden', true);
 	});
 
 	// Init
@@ -12,12 +13,14 @@ jQuery(document).ready(function ($) {
 	backgroundInputs(); // init initial
 	transparancyOptions();
 
- $('.replace_type.wrapper input').on('change', function () {
+ // A changed option invalidates the preview: Replace waits for a new one, Preview is offered again.
+ $('.replace_type.wrapper input').on('change input', function () {
 	 	 $('#replace_image_button').prop('disabled', 'disabled');
+	 	 $('#emr_preview_button').prop('disabled', false);
  });
 
   // Remove bg click
-  $('#remove_background_button').on('click', () => {
+  $('#emr_preview_button').on('click', () => {
     const method = 'POST'
     const url = emrObject.ajax_url;
    // const image = emrObject.base_url;
@@ -44,7 +47,8 @@ jQuery(document).ready(function ($) {
         nonce,
         attachment_id,
         background,
-        compression_level : cLvl
+        compression_level : cLvl,
+        upscale: $('input[type=radio][name="upscale"]:checked').val() // Only on the upscale page.
       },
       beforeSend: function () {
         $('html, body').animate({
@@ -52,12 +56,14 @@ jQuery(document).ready(function ($) {
         }, 1000);
         $('input[type=radio][name=background_type]').attr('disabled', 'disabled');
         $('input[type=radio][name=compression_level]').attr('disabled', 'disabled');
-        $('#remove_background_button').attr('disabled', 'disabled');
+        $('#emr_preview_button').attr('disabled', 'disabled');
 				$('h1.response').remove();
-				$('#emr-bg-notice').hide().find('p').empty();
+				$('#emr-bg-notice').prop('hidden', true).find('p').empty();
         $('#overlay').css('visibility', 'visible');
 				var preview = $('.image_placeholder').last();
 				preview.find('img').remove();
+				preview.find('.textlayer').text('');
+				preview.find('.emr-preview-hint').remove();
        // $('#preview-area').hide();
       },
       success: function (response) {
@@ -73,6 +79,9 @@ jQuery(document).ready(function ($) {
           $('#replace_image_button').prop('disabled', false);
 
 				 var img = new Image();
+				 img.onload = function () { // Dimensions of the new image, shown on the upscale screen.
+					 preview.find('.textlayer').text(emrObject.strings.dimensions.replace('%1$s', img.naturalWidth).replace('%2$s', img.naturalHeight));
+				 };
          img.src = response.image;
 				 img.setAttribute('style', 'height: inherit;');
 
@@ -80,19 +89,20 @@ jQuery(document).ready(function ($) {
 				// preview.removeClass('not_image');
 				 preview.addClass('is_image');
 
-				 $('input[name="key"]').val(response.key);
 				 $('input[type=radio][name=background_type]').attr('disabled', false);
          $('input[type=radio][name=compression_level]').attr('disabled', false);
-         $('#remove_background_button').attr('disabled', false);
+         // Preview stays disabled until an option changes: the same settings give the same result.
 
 				 var badBg = document.getElementById('bad-background-link');
-				 var href = badBg.dataset.link;
-				 href = href.replace('{url}', response.url);
-				 href = href.replace('{settings}', response.settings);
+				 if (badBg) { // Not on the upscale page.
+					 var href = badBg.dataset.link;
+					 href = href.replace('{url}', response.url);
+					 href = href.replace('{settings}', response.settings);
 
-				 badBg.setAttribute('href', href);
+					 badBg.setAttribute('href', href);
 
-				 badBg.style.visibility = 'visible';
+					 badBg.parentNode.classList.add('is-ready'); // Shows the link and its hint.
+				 }
          /* $('#removed_image').html(`
 						<div class="img-comp-container">
   						<div class="img-comp-img">
@@ -107,29 +117,21 @@ jQuery(document).ready(function ($) {
           $('#overlay').css('visibility', 'hidden');
           if (response.plan_expired || response.quota_exceeded) {
             // Leave the preview empty; surface the message as a dismissible notice instead.
+            // The text and the link come from PHP: message_html is escaped there (Api::addNoticeHtml()).
             var $p = $('#emr-bg-notice').find('p').empty();
-            $('<strong></strong>').text('Enable Media Replace: ').appendTo($p);
-
-            var msg = response.message;
-            var linkText = 'shortpixel.com/pricing';
-            var idx = msg.indexOf(linkText);
-            if (idx !== -1) {
-              $p.append(document.createTextNode(msg.substring(0, idx)));
-              $('<a></a>')
-                .attr({ href: 'https://shortpixel.com/pricing', target: '_blank', rel: 'noopener' })
-                .text(linkText)
-                .appendTo($p);
-              $p.append(document.createTextNode(msg.substring(idx + linkText.length)));
+            $('<strong></strong>').text(emrObject.strings.noticePrefix).appendTo($p);
+            if (response.message_html) {
+              $p.append(response.message_html);
             } else {
-              $p.append(document.createTextNode(msg));
+              $p.append(document.createTextNode(response.message));
             }
 
-            $('#emr-bg-notice').show();
+            $('#emr-bg-notice').prop('hidden', false);
             $('html, body').animate({ scrollTop: 0 }, 400);
           } else {
-            preview.prepend(`<h1 class='response'>${response.message}</h1>`);
+            preview.prepend($('<h1></h1>').addClass('response').text(response.message)); // the API's message, as text
           }
-          $('#remove_background_button').attr('disabled', false)
+          $('#emr_preview_button').attr('disabled', false)
           $('input[type=radio][name=background_type]').attr('disabled', false)
           $('input[type=radio][name=compression_level]').attr('disabled', false)
          //$('#preview-area').show();
@@ -139,14 +141,8 @@ jQuery(document).ready(function ($) {
   });
 
   function backgroundInputs () {
-    const bgInputs = $('#solid_selecter');
-		var input = $('input[type=radio][name=background_type]:checked');
-    if (input.val() === 'solid') {
-      bgInputs.show();
-    } else {
-      bgInputs.hide();
-    }
-
+    var input = $('input[type=radio][name=background_type]:checked');
+    $('#solid_selecter').prop('hidden', input.val() !== 'solid'); // PHP renders the initial state the same way.
   };
 
   $('#bg_display_picker').on('input', function () {

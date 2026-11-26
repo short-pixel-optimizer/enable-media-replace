@@ -361,17 +361,22 @@
     this.showReplaceOptions = function(e)
     {
         let locationOption = document.querySelector('section.options .location_option');
-        locationOption.classList.add('hidden'); 
+        if (null !== locationOption)
+        {
+          locationOption.classList.add('hidden'); 
+        }
 
         let replaceType = document.querySelector('input[name="replace_type"]:checked');
 
-        var replace_option = replaceType.value;
-        if (replace_option == 'replace_and_search')
+        if (null !== replaceType)
         {
-           locationOption.classList.remove('hidden');
-           locationOption.style.display = '';
+          var replace_option = replaceType.value;
+          if (replace_option == 'replace_and_search')
+          {
+            locationOption.classList.remove('hidden');
+            locationOption.style.display = '';
+          }
         }
-
     }
     this.dragOverArea = function(e)
     {
@@ -458,3 +463,14 @@ else
         }
     }
     setTimeout(emrDelayedInit, 3000);
+
+// "Cancel" and "previous page" on every EMR screen: one shared link with
+// data-action="history-back" (its href, the Media Library, is the fallback
+// without scripts), handled here instead of inline onclick / javascript: URLs.
+document.addEventListener('click', function (event) {
+  var link = event.target.closest('[data-action="history-back"]');
+  if (link) {
+    event.preventDefault();
+    window.history.back();
+  }
+});

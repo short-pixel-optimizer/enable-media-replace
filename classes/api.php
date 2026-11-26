@@ -1,6 +1,8 @@
 <?php
 /**
  * This page contains api class.
+ *
+ * @package EnableMediaReplace
  */
 namespace EnableMediaReplace;
 
@@ -13,11 +15,32 @@ use Exception;
 use stdClass;
 /**
  * This class contains api methods
+ *
+ * Client for the ShortPixel remove-background service.
+ *
+ * Lifecycle: `new Api` per use (Ajax::remove_background() for the preview,
+ * RemoveBackGroundViewController::fetchResult() for the apply step). Not a singleton,
+ * registers no hooks. State: a retry counter and the `refresh` flag, both per instance, so
+ * the retry loop in request() lives on one object.
+ *
+ * Two endpoints: without an API key the free reducer (`http://.../free-reducer.php`,
+ * JSON headers, 60 s timeout, max 9 requests); with a key the authenticated reducer
+ * (`https://.../reducer.php`, 15 s timeout, max 29 requests) after an Unlimited-plan check
+ * and a one-time remote cache purge.
+ *
+ * Nothing is stored between the preview and the apply step, as in ShortPixel Image
+ * Optimizer's editor preview: the preview (Ajax::remove_background()) answers the result URL
+ * for display only, and the apply step (RemoveBackGroundViewController::loadPost()) runs
+ * request() again with the same options on the original and downloads that result
+ * (download()). The second call is free of charge at the API.
  */
 class Api {
 
 	/**
 	 * Request Counter
+	 *
+	 * Number of request() calls on this instance, used for the back-off and the attempt
+	 * limit. The first call sees 0.
 	 *
 	 * @var int $counter
 	 */
@@ -32,9 +55,17 @@ class Api {
 
 	/**
 	 * ShortPixel authenticated api url — used when a valid API key is configured.
+	 *
+	 * @var string
 	 */
 	private $authenticated_url = 'https://api.shortpixel.com/v2/reducer.php';
 
+	/**
+	 * Remote cache purge endpoint, called once before the first keyed request so the
+	 * reducer does not return a cached result for the same URL.
+	 *
+	 * @var string
+	 */
 	private $cleanup_url = 'https://api.shortpixel.com/v2/cleanup.php';
 
 	/**
@@ -47,25 +78,134 @@ class Api {
 		'Accept: application/json',
 	);
 
+	/**
+	 * Sent as `refresh` in the request body; true only until the first request is sent, so
+	 * retries poll the same job instead of starting a new one. Also gates the cache purge.
+	 *
+	 * @var bool
+	 */
 	private $refresh = true; // only first request should be fresh
 
 
 
+	/** The upgrade page the quota and plan messages point to, and the text they name it by. */
+	const PRICING_URL  = 'https://shortpixel.com/pricing';
+	const PRICING_TEXT = 'shortpixel.com/pricing';
+
+	/**
+	 * The `background.type` (and stored `bg_type`) of the "Transparent PNG" option: the
+	 * request carries `bg_remove_format`, and the result is a PNG with a transparent
+	 * background even when the source is a JPG.
+	 */
+	const BG_TYPE_TRANSPARENT_PNG = 'transparent_png';
+
+	/** Value of the `bg_remove_format` request parameter: a transparent PNG whenever possible. */
+	const BG_REMOVE_FORMAT_AUTO = 'auto';
+
+	/**
+	 * Creates the client. No setup.
+	 */
 	public function __construct()
 	{
 
 	}
+
+	/**
+	 * Adds `message_html` to a quota or plan result: the escaped message with
+	 * PRICING_TEXT turned into a link to PRICING_URL. The screen script prints
+	 * it as is; the plain `message` stays for logs, tests and the bulk. Built
+	 * here so no script has to find a URL inside a translated sentence.
+	 *
+	 * @param \stdClass $result With `message` set.
+	 * @return \stdClass
+	 */
+	protected function addNoticeHtml($result)
+	{
+		$message = (string) $result->message;
+		$link    = '<a href="' . esc_url(self::PRICING_URL) . '" target="_blank" rel="noopener">' . esc_html(self::PRICING_TEXT) . '</a>';
+		$result->message_html = str_replace(esc_html(self::PRICING_TEXT), $link, esc_html($message));
+		return $result;
+	}
 	/**
 	 * Create ShortPixel api request
 	 *
-	 * @param  array $data
-	 * @return stdClass $result
+	 * Sends the attachment's source URL to the reducer and polls until a result is ready.
+	 *
+	 * Serves both screens: a background removal (the default) or, when
+	 * `$posted_data['upscale']` is 2, 3 or 4, an upscale by that factor.
+	 *
+	 * Called twice per operation: by the AJAX preview with `$_POST`, and by the apply step
+	 * with the array RemoveBackGroundViewController::apiData() builds from the form.
+	 *
+	 * Sequence:
+	 * 1. Reads `attachment_id` from $posted_data; a missing one gives
+	 *    "No attachment ID given", a failed checkImagePermission() "No permission for user".
+	 *    `upscale` is intval() of `$posted_data['upscale']`, 0 when absent; any value other
+	 *    than 0, 2, 3 or 4 gives "Invalid upscale factor" before anything is saved or sent.
+	 * 2. Saves `bg_type`, `bg_color` (default '#ffffff') and `bg_transparency` from
+	 *    `$posted_data['background']` into the `enable_media_replace` option before any
+	 *    request is sent, and again on every retry. Skipped for an upscale, which has no
+	 *    background options to remember.
+	 * 3. `bg_remove`: '1' for transparent (types 'transparent' and 'transparent_png'); for type 'solid' the colour from
+	 *    `$posted_data['background']`, with a two-character alpha suffix when the
+	 *    transparency is 0-100 ('FF' for 100). `background.type` is read without isset(),
+	 *    but only for a background removal: an upscale skips this step, so it accepts
+	 *    posted data without a background.
+	 * 4. Builds the body: `plugin_version`, `bg_remove`, `urllist` (urlencoded esc_url),
+	 *    `lossy` (always 0), `refresh`. For an upscale `bg_remove` is removed from the body
+	 *    and `upscale` (the integer factor) is added instead. For the type
+	 *    BG_TYPE_TRANSPARENT_PNG, and only then, `bg_remove_format` 'auto' is added: the
+	 *    API then answers a transparent PNG whenever possible, also for a JPG source. Every
+	 *    other request has the same body as before that option existed.
+	 * 5. With an API key: on the first call, verifyUnlimitedPlan() must pass (else a result
+	 *    with `plan_expired` true); adds `key`, `item_id`, a raw `urllist`, uses the
+	 *    authenticated endpoint, and on the first call with refresh purges the remote cache.
+	 * 6. Retries: from the second call on, sleeps 3 s (keyed) or counter+3 s (free) before
+	 *    sending. The counter is incremented before the limit check against 30 (keyed) or
+	 *    10 (free), so at most 29 / 9 requests are sent; past that the result carries a
+	 *    "reasonable amount of time" message. The free path can sleep about 60 s in total on
+	 *    top of 60 s per request timeout, which can hit PHP's max_execution_time.
+	 * 7. Response status (string compare): '2' is done: `image` is the LosslessURL (the
+	 *    LossyURL branch needs `lossy` '1'/'2' and never runs because it is the integer 0)
+	 *    with a `ts` cache-buster, `url` the source URL and `settings` a "key:value"
+	 *    summary of the body. Nothing is stored.
+	 *    '1' is still processing: request() calls itself recursively and returns that
+	 *    result. Anything else copies the API message; a message containing
+	 *    "Quota exceeded" is replaced with an upgrade message and `quota_exceeded` true.
+	 *    The quota and the "reasonable amount of time" messages have an upscale wording
+	 *    ("continue upscaling images", "The image could not be upscaled").
+	 *
+	 * @todo The upscale factor is validated against the allowed set only, not against the
+	 *       image: the width limits of UIHelper::getUpscaleFactors(), which the upscale
+	 *       screen enforces by disabling radios, are not checked here, so a crafted request
+	 *       sends a factor the screen would have refused (for instance 4 for an image wider
+	 *       than 1024 px). Suggested fix: refuse a factor whose limit is at or below the
+	 *       attachment's metadata width, with the same message as the invalid factor.
+	 * @todo `plugin_version` is hard-coded to 'EMR4.2.0' here and in purgeRemoteCache().
+	 *       Suggested fix: `'EMR' . EMR_VERSION`.
+	 * @todo The alpha suffix is `str_pad($transparency, 2, '0')` of the decimal 0-99 value,
+	 *       not a hex alpha: 50 becomes '50' (0x50, about 31 %), 5 becomes '05'. Suggested
+	 *       fix: `sprintf('%02X', round($transparency * 255 / 100))`.
+	 * @todo The feature gate is not checked: neither this method nor Ajax::remove_background()
+	 *       consults \emr()->useFeature('background') / useFeature('upscale'), so an
+	 *       author-restricted user (every entry point hidden) or a site that turned the
+	 *       feature off through the emr/feature/* filters still gets the remote request sent
+	 *       (spending the quota or the key) and a usable result key; only the apply step
+	 *       (loadPost()) refuses. Suggested fix: refuse here, next to checkImagePermission(),
+	 *       with the permission message and no request, when the feature is off for the user.
+	 *
+	 * @param  array $posted_data `attachment_id`, `upscale`, `background.type`, `.color`
+	 *                            and `.transparency`.
+	 * @return stdClass $result `success`, `image`, `message`, and depending on the outcome
+	 *                          `url`, `settings`, `plan_expired`, `quota_exceeded`, `message_html`
+	 *                          (the quota and plan messages with their link, addNoticeHtml()).
 	 */
 	public function request( array $posted_data ) {
 		$bg_remove         = '1';
 		$compression_level = 0; //  intval($posted_data['compression_level']); // off for now.
+		$upscale           = isset($posted_data['upscale']) ? intval($posted_data['upscale']) : 0; // 0 is no upscale, else 2, 3 or 4.
 
-		$attachment_id = isset($_POST['attachment_id']) ? intval($_POST['attachment_id']) : null;
+		$attachment_id = isset($posted_data['attachment_id']) ? intval($posted_data['attachment_id']) : null;
 		$attachment = get_post($attachment_id);
 
 
@@ -84,18 +224,28 @@ class Api {
 			return $result;
 	  }
 
+		if (! in_array($upscale, array(0, 2, 3, 4), true))
+		{
+			 $result = $this->getResponseObject();
+			 $result->success = false;
+			 $result->message = __('Invalid upscale factor', 'enable-media-replace');
+			 return $result;
+		}
+
 		$replaceController = new ReplaceController($attachment_id);
 		$url = $replaceController->getSourceUrl();
 
 		$settings = get_option('enable_media_replace', array()); // save settings and show last loaded.
-		$settings['bg_type'] = isset($_POST['background']['type']) ? sanitize_text_field($_POST['background']['type']) : false;
-		$settings['bg_color'] = isset($_POST['background']['color']) ? sanitize_text_field($_POST['background']['color']) : '#ffffff'; // default to white.
-		$settings['bg_transparency'] = isset($_POST['background']['transparency']) ? sanitize_text_field($_POST['background']['transparency']) : false;
+		$settings['bg_type'] = isset($posted_data['background']['type']) ? sanitize_text_field($posted_data['background']['type']) : false;
+		$settings['bg_color'] = isset($posted_data['background']['color']) ? sanitize_text_field($posted_data['background']['color']) : '#ffffff'; // default to white.
+		$settings['bg_transparency'] = isset($posted_data['background']['transparency']) ? sanitize_text_field($posted_data['background']['transparency']) : false;
 
-		update_option('enable_media_replace', $settings, false);
+		if (0 === $upscale) { // Upscale has no background settings to remember.
+			update_option('enable_media_replace', $settings, false);
+		}
 
 
-		if ( 'solid' === $posted_data['background']['type'] ) {
+		if ( 0 === $upscale && 'solid' === $posted_data['background']['type'] ) {
 			$bg_remove = $posted_data['background']['color'];
 
 			$transparency = isset($posted_data['background']['transparency']) ? intval($posted_data['background']['transparency']) : -1;
@@ -120,6 +270,13 @@ class Api {
 			'refresh'				 => $this->refresh,
 		);
 
+		if ($upscale > 0) {
+			unset($data['bg_remove']);
+			$data['upscale'] = $upscale;
+		} elseif (self::BG_TYPE_TRANSPARENT_PNG === $settings['bg_type']) {
+			$data['bg_remove_format'] = self::BG_REMOVE_FORMAT_AUTO;
+		}
+
 		$apiKeyManager = ApiKeyManager::getInstance();
 		$apiKey   = $apiKeyManager->getApiKey();
 		$endpoint = $this->url;
@@ -128,8 +285,8 @@ class Api {
 				$result = $this->getResponseObject();
 				$result->success      = false;
 				$result->plan_expired = true;
-				$result->message      = __( 'Your Unlimited plan is no longer active. Please renew at shortpixel.com/pricing or remove your API Key to use the Free plan.', 'enable-media-replace' );
-				return $result;
+				$result->message      = __( 'Your Unlimited plan is no longer active. Please renew at shortpixel.com/pricing or remove your API key to use the Free plan.', 'enable-media-replace' );
+				return $this->addNoticeHtml( $result );
 			}
 			$data['key']     = $apiKey;
 			$data['urllist'] = array( esc_url_raw( $url ) );
@@ -208,14 +365,10 @@ class Api {
 							$result->image = $json[0]->LosslessURL;
 						}
 
-						$key = $this->handleSuccess($result);
-						$result->key = $key;
 						$result->url = $url;
 						$result->image = add_query_arg('ts', time(), $result->image);
 
 						$result->settings = $settingsData;
-
-//						$this->handleSuccess($result);
 					} elseif ( is_array( $json ) && '1' === $json[0]->Status->Code ) {
 						return $this->request( $posted_data );
 					} else {
@@ -231,7 +384,17 @@ class Api {
 						// Friendly override + flag when the free-reducer quota is exhausted.
 						if ( ! empty( $result->message ) && stripos( $result->message, 'Quota exceeded' ) !== false ) {
 							$result->quota_exceeded = true;
-							$result->message       = __( 'Quota exceeded. Please purchase the Unlimited or Unlimited AI plan and add your API key to continue removing backgrounds.', 'enable-media-replace' );
+							// With a key the monthly AI credits ran out; without one the Free plan did.
+							// addNoticeHtml() turns "shortpixel.com/pricing" into the link the screen prints.
+							if ( ! empty( $apiKey ) ) {
+								ApiKeyManager::getInstance()->forgetAiCredits();
+								$result->message = __( 'You have no AI credits left this month. Upgrade to Unlimited AI at shortpixel.com/pricing for no limit, or wait until your credits renew.', 'enable-media-replace' );
+							} else {
+								$result->message = ($upscale > 0)
+									? __( 'The Free plan limit is reached. Add an API key from a ShortPixel Unlimited plan (shortpixel.com/pricing) to continue upscaling images.', 'enable-media-replace' )
+									: __( 'The Free plan limit is reached. Add an API key from a ShortPixel Unlimited plan (shortpixel.com/pricing) to continue removing backgrounds.', 'enable-media-replace' );
+							}
+							$this->addNoticeHtml( $result );
 						}
 					}
 				}
@@ -239,12 +402,27 @@ class Api {
 				$result->message = $e->getMessage();
 			}
 		} else {
-			$result->message = __( 'The background could not be removed in a reasonable amount of time. The file might be too big, or the API could be busy. Please try again later!', 'enable-media-replace' );
+			$result->message = ($upscale > 0)
+				? __( 'The image could not be upscaled in a reasonable amount of time. The file might be too big, or the API could be busy. Please try again later!', 'enable-media-replace' )
+				: __( 'The background could not be removed in a reasonable amount of time. The file might be too big, or the API could be busy. Please try again later!', 'enable-media-replace' );
 		}
 
 		return $result;
 	}
 
+	/**
+	 * Asks the API to drop any cached result for the image, so the first keyed request
+	 * processes it fresh.
+	 *
+	 * Blocking POST (15 s timeout) to the cleanup endpoint with `plugin_version` (hard-coded
+	 * 'EMR4.2.0', see the @todo on request()), `key`, `urllist` and `item_id`. The response
+	 * or error is only logged.
+	 *
+	 * @param string $apiKey   The API key.
+	 * @param string $imageUrl Raw source image URL.
+	 * @param int    $itemId   Attachment ID.
+	 * @return void
+	 */
 	private function purgeRemoteCache( $apiKey, $imageUrl, $itemId = 0 )
 	{
 		$body = array(
@@ -277,26 +455,25 @@ class Api {
 		}
 	}
 
-	public function handleSuccess($result)
+	/**
+	 * Downloads a result image to a temporary file (the apply step, after a second
+	 * request() on the original).
+	 *
+	 * Downloads $url with FileSystemController::downloadFile() into a wp_tempnam() file.
+	 *
+	 * @param string $url The result URL request() answered in `image`.
+	 * @return \stdClass `success`; `image` is the temp file path on success; `message` on
+	 *                   failure.
+	 */
+	public function download($url)
 	{
-		 // $fs = emr()->filesystem();
-		//	$result = $fs->downloadFile($result->image, wp_tempnam($result->image));
-		$nonce = isset($_POST['nonce']) ? sanitize_text_field($_POST['nonce']) : wp_create_nonce();
-		$key = wp_hash($nonce . $result->image, 'logged_in');
-
-		set_transient('emr_' . $key, $result->image, 30 * MINUTE_IN_SECONDS);
-		return $key;
-	}
-
-	public function handleDownload($key)
-	{
-		$url = get_transient('emr_' . $key);
 		$result = $this->getResponseObject();
+		$url    = (string) $url;
 
-		if ($url === false)
+		if ('' === $url)
 		{
-			 	$result->message = __('This file seems not available anymore. Please try again', 'enable-media-replace');
-				return $result;
+			$result->message = __('This file does not seem to be available anymore. Please try again.', 'enable-media-replace');
+			return $result;
 		}
 
 		$fs = emr()->filesystem();
@@ -315,6 +492,11 @@ class Api {
 		return $result;
 	}
 
+	/**
+	 * Returns an empty result object.
+	 *
+	 * @return \stdClass With `success` false, `image` null and `message` null.
+	 */
 	protected function  getResponseObject()
 	{
 		$result          = new stdClass;

@@ -1,0 +1,165 @@
+# Browser end-to-end (E2E) test stack for EMR — a REAL, served WordPress
+# with the plugin installed, driven by Playwright.
+#
+# Deliberately a SEPARATE file from docker-compose.tests.yml: the PHPUnit
+# harness drops and reinstalls every table in its database on each run, so
+# the two stacks must never share a database or a WordPress directory.
+# Nothing here touches the `wp-tests-cache` volume or the spio-tests:php*
+# images. SPIO's own E2E stack (project spio-e2e, port 8030) is separate too:
+# a different project name, port and set of volumes.
+#
+# One-command usage lives in bin/test-e2e.sh. Raw equivalents:
+#
+#     docker compose -f docker-compose.e2e.yml up -d wordpress
+#     docker compose -f docker-compose.e2e.yml run --rm wpcli \
+#         sh wp-content/plugins/enable-media-replace/tests/E2E/provision/provision.sh
+#     docker compose -f docker-compose.e2e.yml run --rm playwright \
+#         sh -c 'npm install && npx playwright test'
+#     docker compose -f docker-compose.e2e.yml down -v      # wipe everything
+#
+# URL scheme: the site is http://localhost:8031 EVERYWHERE — from the host
+# browser (published port), from the Playwright container (which shares the
+# wordpress container's network namespace via network_mode, so its
+# localhost IS the wordpress container) and from WP-CLI (siteurl option).
+# Apache is told to listen on 8031 in addition to 80 (tests/E2E/docker/apache)
+# so that the single URL works in all three places without WP_HOME tricks.
+
+# Own compose project name: without it both compose files default to the
+# directory name, each stack sees the other's containers as "orphans" and a
+# `down` here would remove the PHPUnit stack's network/containers.
+name: emr-e2e
+
+services:
+  mysql-e2e:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: wordpress_e2e
+    # No published port — reachable only as `mysql-e2e` on the compose network.
+    volumes:
+      - e2e-mysql:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-ppassword"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  wordpress:
+    # Official image: Apache + PHP + the latest WordPress core baked in.
+    # bin/test-e2e.sh --wp <version> switches the tag to
+    # "<version>-php8.3-apache" for deliberate back-testing; the default is
+    # always the latest WordPress (same policy as the PHPUnit harness).
+    image: wordpress:${E2E_WP_TAG:-php8.3-apache}
+    ports:
+      - "127.0.0.1:8031:8031"
+    environment:
+      WORDPRESS_DB_HOST: mysql-e2e
+      WORDPRESS_DB_USER: root
+      WORDPRESS_DB_PASSWORD: password
+      WORDPRESS_DB_NAME: wordpress_e2e
+      WORDPRESS_DEBUG: 1
+      # The image's wp-config.php eval()s this environment variable on every
+      # request (getenv_docker('WORDPRESS_CONFIG_EXTRA')), so it must be set
+      # in EVERY container that loads WordPress: the wpcli service shares it
+      # through the anchor, otherwise EMR_E2E is undefined under WP-CLI and
+      # the mu-plugins stay inert during provisioning.
+      #
+      #   EMR_E2E         gates the test-support mu-plugins (never define in prod)
+      #   EMR_E2E_TOKEN   shared secret the Playwright side sends as a header
+      #   SCRIPT_DEBUG    unminified JS, matches how the plugin is developed
+      #   DISABLE_WP_CRON no background cron requests during a test, so
+      #                   every server-side effect comes from the test itself
+      WORDPRESS_CONFIG_EXTRA: &wp-config-extra |
+        define('EMR_E2E', true);
+        define('EMR_E2E_TOKEN', 'emr-e2e-local');
+        define('SCRIPT_DEBUG', true);
+        define('WP_DEBUG_DISPLAY', false);
+        define('WP_DEBUG_LOG', true);
+        define('DISABLE_WP_CRON', true);
+        define('WP_HOME', 'http://localhost:8031');
+        define('WP_SITEURL', 'http://localhost:8031');
+    volumes:
+      # WordPress core + uploads persist across runs (fast re-runs; the
+      # support endpoint resets STATE between tests, not the install).
+      - e2e-wp-core:/var/www/html
+      # The plugin is the live repo checkout, mounted under its real slug so
+      # plugin_basename() and the hidden page slug match a normal install.
+      - .:/var/www/html/wp-content/plugins/enable-media-replace
+      # Test-support mu-plugins: mock ShortPixel + wordpress.org APIs, REST control endpoint.
+      - ./tests/E2E/mu-plugins:/var/www/html/wp-content/mu-plugins
+      # Apache listens on 8031 too (see URL scheme note above).
+      - ./tests/E2E/docker/apache/ports.conf:/etc/apache2/ports.conf:ro
+      - ./tests/E2E/docker/apache/000-default.conf:/etc/apache2/sites-available/000-default.conf:ro
+    depends_on:
+      mysql-e2e:
+        condition: service_healthy
+    healthcheck:
+      # The login page answering means Apache + PHP + DB + wp-config are up.
+      test: ["CMD-SHELL", "php -r 'exit(false === @file_get_contents(\"http://localhost:8031/wp-login.php\") ? 1 : 0);'"]
+      interval: 5s
+      timeout: 10s
+      retries: 24
+      start_period: 15s
+
+  wpcli:
+    # Same core volume + mounts as `wordpress`, so `wp` operates on the
+    # exact install the browser sees.
+    image: wordpress:cli-php8.3
+    # The cli image is Alpine-based (www-data = uid 82); the Apache image is
+    # Debian-based (www-data = uid 33). The seed creates uploads (the seed
+    # attachment, its year/month directory), so WP-CLI runs as uid 33:
+    # otherwise Apache could not replace or delete what provisioning wrote.
+    # HOME points at a writable directory for WP-CLI's cache.
+    user: "33:33"
+    environment:
+      WORDPRESS_DB_HOST: mysql-e2e
+      WORDPRESS_DB_USER: root
+      WORDPRESS_DB_PASSWORD: password
+      WORDPRESS_DB_NAME: wordpress_e2e
+      WORDPRESS_DEBUG: 1
+      WORDPRESS_CONFIG_EXTRA: *wp-config-extra
+      E2E_URL: http://localhost:8031
+      HOME: /tmp
+    volumes:
+      - e2e-wp-core:/var/www/html
+      - .:/var/www/html/wp-content/plugins/enable-media-replace
+      - ./tests/E2E/mu-plugins:/var/www/html/wp-content/mu-plugins
+    depends_on:
+      wordpress:
+        condition: service_healthy
+
+  playwright:
+    # Browsers inside the image MUST match the @playwright/test version, so
+    # bin/test-e2e.sh exports the exact version pinned in
+    # tests/E2E/package.json. Run the suite through that script; a bare
+    # `docker compose` (logs, down) never needs this image, and the
+    # placeholder tag makes a direct pull fail by name.
+    image: mcr.microsoft.com/playwright:v${EMR_PLAYWRIGHT_VERSION:-set-by-bin-test-e2e}-noble
+    # Share the wordpress container's network namespace so
+    # http://localhost:8031 resolves to the site here as well.
+    network_mode: "service:wordpress"
+    ipc: host
+    working_dir: /e2e
+    environment:
+      E2E_BASE_URL: http://localhost:8031
+      E2E_TOKEN: emr-e2e-local
+      # Screenshot assertions only run where baselines were made (this image).
+      E2E_IN_DOCKER: "1"
+      CI: ${CI:-}
+    volumes:
+      - ./tests/E2E:/e2e
+      # The shared fixtures, at the same path relative to /e2e as in the
+      # checkout (helpers/emr.ts fixtureFile() reads ../../fixtures).
+      - ./tests/fixtures:/fixtures:ro
+      # node_modules live in a volume: Linux binaries never land in the host
+      # checkout, and a native host run (npm install in tests/E2E) can coexist.
+      - e2e-node-modules:/e2e/node_modules
+    depends_on:
+      wordpress:
+        condition: service_healthy
+
+volumes:
+  e2e-mysql:
+  e2e-wp-core:
+  e2e-node-modules:

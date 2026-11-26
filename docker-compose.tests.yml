@@ -1,0 +1,79 @@
+# Local PHPUnit test runner for EMR — mirrors the GitHub Actions job at
+# .github/workflows/phpunit.yml so results locally match results on CI.
+#
+# One-command usage lives in bin/test.sh. If you'd rather drive Compose
+# directly, the raw commands are:
+#
+#     docker compose -f docker-compose.tests.yml up -d mysql
+#     docker compose -f docker-compose.tests.yml run --rm php \
+#         bash -c 'COMPOSER=composer.tests.json composer install && bin/install-wp-tests.sh wordpress_test root password mysql latest && vendor-tests/bin/phpunit'
+#     docker compose -f docker-compose.tests.yml down
+#
+# The `wp-tests-cache` named volume persists /tmp/wordpress-tests-lib and
+# /tmp/wordpress across runs so the ~3-minute WP-tests SVN checkout only
+# happens on the first invocation. The volume is per Compose project (the
+# repository directory name), so it is not shared with the ShortPixel Image
+# Optimizer harness; only the PHP image is.
+
+services:
+  mysql:
+    # Match the CI image + version exactly.
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: wordpress_test
+    # No published port — the php container reaches mysql via the internal
+    # network hostname `mysql`. Publishing to the host would clash with any
+    # locally-installed MySQL on port 3306.
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-ppassword"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  php:
+    # Distinct image tag per PHP version so switching versions doesn't
+    # invalidate the cache — each version stays warm. The tag is the
+    # ShortPixel Image Optimizer one on purpose: .docker/Dockerfile.tests
+    # builds the same image for both plugins, so one build serves both.
+    image: spio-tests:php${PHP_VERSION:-8.3}
+    build:
+      context: .
+      dockerfile: .docker/Dockerfile.tests
+      args:
+        # Set PHP_VERSION in the host env (or via bin/test.sh --php <v>)
+        # to switch between 7.4 / 8.3 / 8.5. Defaults to 8.3 if unset.
+        PHP_VERSION: ${PHP_VERSION:-8.3}
+    # Mount at a path with a non-root parent (parent = /opt) so the plugin
+    # sits in a directory shaped like a real `wp-content/plugins/{slug}`
+    # install. plugin_dir_path( EMR_ROOT_FILE ) and plugin_basename() then
+    # resolve to ordinary values; with a mount at `/app` the parent would be
+    # `/`, and path arithmetic that strips the plugins directory from a file
+    # path would strip every slash instead.
+    working_dir: /opt/plugin
+    volumes:
+      # Live-mount the repo so edits on the host are immediately visible
+      # inside the container. `vendor-tests/` populated by the test-deps
+      # composer install (COMPOSER=composer.tests.json) is written back to
+      # the host too — that's intentional so the IDE has autoload data.
+      - .:/opt/plugin
+      # Persistent cache for /tmp so the WP-tests SVN checkout + wp core
+      # download only pay their cost once. `bin/test.sh --clean` wipes this.
+      - wp-tests-cache:/tmp
+    environment:
+      # Match the CI env vars 1:1.
+      WP_CORE_DIR: /tmp/wordpress
+      WP_TESTS_DIR: /tmp/wordpress-tests-lib
+      DB_NAME: wordpress_test
+      DB_USER: root
+      DB_PASS: password
+      # DB_HOST inside the compose network is the service name, NOT 127.0.0.1
+      # (the CI runs mysql as a service on 127.0.0.1 because it uses ports).
+      DB_HOST: mysql
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+volumes:
+  wp-tests-cache:
