@@ -274,7 +274,7 @@ class MultisitePermissionsTest extends EMR_IntegrationTestCase {
 		ob_start();
 		emr()->replace_meta_box( $post );
 		$html = (string) ob_get_clean();
-		$this->assertStringContainsString( 'Upload a new file', $html );
+		$this->assertStringContainsString( '<span class="emr-operation-title">Replace media</span>', $html );
 		$this->assertStringContainsString( 'Remove background', $html );
 		$this->assertStringContainsString( get_admin_url( $this->blog ), html_entity_decode( $html ), 'The buttons point at the subsite admin.' );
 	}

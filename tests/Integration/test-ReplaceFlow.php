@@ -994,7 +994,7 @@ class ReplaceFlowTest extends EMR_IntegrationTestCase {
 		ob_start();
 		emr()->admin_date_replaced_media_on_edit_media_screen( get_post( $id ) );
 		$html = ob_get_clean();
-		$this->assertStringContainsString( 'Replaced By', $html );
+		$this->assertStringContainsString( 'Replaced by', $html );
 		$this->assertStringContainsString( '<b>EMR Flow Admin</b>', $html );
 	}
 
@@ -1012,7 +1012,7 @@ class ReplaceFlowTest extends EMR_IntegrationTestCase {
 		ob_start();
 		emr()->admin_date_replaced_media_on_edit_media_screen( get_post( $id ) );
 		$html = ob_get_clean();
-		$this->assertStringNotContainsString( 'Replaced By', $html );
+		$this->assertStringNotContainsString( 'Replaced by', $html );
 	}
 
 	public function test_cache_flush_fires_for_the_post_and_cached_reads_are_fresh() {

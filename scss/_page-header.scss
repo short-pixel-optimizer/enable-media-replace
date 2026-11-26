@@ -1,0 +1,24 @@
+// White header bar at the top of every EMR screen (SPIO's elements/_header.scss).
+// The first child of the `.wrap`; the negative margins stretch it over the
+// content area. Logical properties keep it right in RTL.
+.emr-page-header {
+	background: #fff;
+	display: flex;
+	align-items: center;
+	margin-block: -10px 10px;
+	margin-inline: -22px -20px;
+	padding: 8px 24px;
+	box-shadow: 0 1px 4px 0 rgba(0, 0, 0, .1);
+
+	h1 {
+		margin: 0;
+		padding: 0;
+		font-size: 23px;
+		font-weight: 600;
+		line-height: 50px;
+	}
+}
+
+@media (max-width: 782px) {
+	.emr-page-header { margin-inline: -12px -10px; }
+}

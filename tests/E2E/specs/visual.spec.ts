@@ -10,7 +10,7 @@
  * refreshed with `bin/test-e2e.sh --project visual --update-snapshots`.
  */
 import { test, expect } from '../fixtures';
-import { KNOWN_JS_DEFECTS, RemoveBackgroundScreen, ReplaceScreen, expectOnlyKnownErrors } from '../helpers/emr';
+import { RemoveBackgroundScreen, ReplaceScreen } from '../helpers/emr';
 import type { Locator } from '@playwright/test';
 
 /** Every <img> under `root` has finished loading with pixels. */
@@ -39,17 +39,13 @@ test.describe('Visual', () => {
 	});
 
 	test.describe('remove-background screen', () => {
-		// The known emr_admin.js error of this screen (pinned in smoke.spec.ts).
-		test.use({ allowConsoleErrors: true });
-
-		test('remove-background screen', async ({ page, emr, consoleErrors }) => {
+		test('remove-background screen', async ({ page, emr }) => {
 			const screen = new RemoveBackgroundScreen(page);
 			await screen.goto(emr.seed.attachment_id);
 			const root = page.locator('#remove-background-form');
 			await imagesLoaded(root);
 
 			await expect(root).toHaveScreenshot('remove-background-screen.png');
-			expectOnlyKnownErrors(consoleErrors, [KNOWN_JS_DEFECTS.removeBackgroundLocationOption]);
 		});
 	});
 });

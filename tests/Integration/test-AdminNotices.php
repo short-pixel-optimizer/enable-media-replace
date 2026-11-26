@@ -349,7 +349,7 @@ class AdminNoticesTest extends EMR_AjaxTestCase {
 	}
 
 	// ---------------------------------------------------------------------
-	// The feature notice (EMR001).
+	// The feature notice (EMR002, the Bulk Enhance announcement).
 	// ---------------------------------------------------------------------
 
 	public function test_the_feature_notice_queued_by_route_prints_on_the_next_page() {
@@ -363,8 +363,9 @@ class AdminNoticesTest extends EMR_AjaxTestCase {
 		$next = $this->renderNotices();
 
 		$this->assertSame( array(), $this->renderedIds( $first ), 'Not on the page that queued it.' );
-		$this->assertSame( array( UIHelper::NOTICE_NEW_FEATURE ), $this->renderedIds( $next ) );
-		$this->assertStringContainsString( '<h3> New Beta Feature! </h3>', $next );
+		$this->assertSame( array( UIHelper::NOTICE_BULK_ENHANCE ), $this->renderedIds( $next ) );
+		$this->assertStringContainsString( '<h3>New: Bulk Enhance</h3>', $next );
+		$this->assertStringContainsString( 'Open Bulk Enhance', $next );
 		$this->assertMatchesRegularExpression( '/class="[^"]*notice-info[^"]*is-dismissible[^"]*is-persistent/', $next );
 	}
 
@@ -378,16 +379,16 @@ class AdminNoticesTest extends EMR_AjaxTestCase {
 		$this->onScreen( self::EMR_PAGE );
 		$html = $this->renderNotices();
 
-		$this->assertCount( 1, $this->storedWithId( UIHelper::NOTICE_NEW_FEATURE ) );
+		$this->assertCount( 1, $this->storedWithId( UIHelper::NOTICE_BULK_ENHANCE ) );
 		$this->assertCount( 1, get_option( self::OPTION ), 'Only the feature notice is stored.' );
-		$this->assertSame( array( UIHelper::NOTICE_NEW_FEATURE ), $this->renderedIds( $html ) );
+		$this->assertSame( array( UIHelper::NOTICE_BULK_ENHANCE ), $this->renderedIds( $html ) );
 	}
 
 	public function test_a_dismissed_feature_notice_stays_hidden_on_later_pages() {
 		$this->api->setKnob( 'notices', array() );
 		$this->routeEmrPage();
 		$this->nextRequest();
-		$response = $this->dismiss( UIHelper::NOTICE_NEW_FEATURE );
+		$response = $this->dismiss( UIHelper::NOTICE_BULK_ENHANCE );
 		$this->nextRequest();
 		$this->routeEmrPage();
 		$this->nextRequest();
@@ -397,7 +398,7 @@ class AdminNoticesTest extends EMR_AjaxTestCase {
 
 		$this->assertTrue( $response->dismissed );
 		$this->assertSame( array(), $this->renderedIds( $html ) );
-		$stored = $this->storedWithId( UIHelper::NOTICE_NEW_FEATURE );
+		$stored = $this->storedWithId( UIHelper::NOTICE_BULK_ENHANCE );
 		$this->assertCount( 1, $stored );
 		$this->assertTrue( $stored[0]->isDismissed() );
 	}

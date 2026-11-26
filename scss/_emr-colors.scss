@@ -1,0 +1,24 @@
+// ShortPixel palette, the same names and values as SPIO's
+// res/scss/elements/_colors.scss, shared by the bulk page (bulk.scss) and the
+// single screens (single.scss), so they look like SPIO.
+$color-darkest: #0f6a7d;
+$color-dark: #1cbecb;
+$color-light: #d1f5fd;
+
+$color-brokenwhite: #F5F5F5;
+$color-grey: #D7D7D7;
+
+$blue_default: #1ABDCA;
+$blue_dark: #116C7E;
+$blue_light: #92D5E3;
+$blue_extralight: #D9F9FF;
+$blue_background: #F4FBFC;
+
+$black_default: #001E24;
+$green_highlight: #00C898;
+
+// EMR additions (WordPress admin status colors).
+$emr-green: #008a20;
+$emr-red: #d63638;
+$emr-orange: #dba617;
+$emr-text-muted: #50575e;

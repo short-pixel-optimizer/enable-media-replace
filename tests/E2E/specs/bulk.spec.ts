@@ -1,0 +1,331 @@
+/**
+ * The Media > Bulk page: dashboard → selection → summary → process →
+ * finished, the restore of the originals, pause / resume / stop, the API
+ * error path, the two-tab lock and the WP-Cron hand-over.
+ *
+ * The E2E install has no WooCommerce, so the background operation is
+ * unavailable here (asserted) and every run uses the upscale operation. The
+ * mock answers the reducer with tests/fixtures/test-image.jpg (50x50), so an
+ * upscaled attachment ends up 50 pixels wide: an unmistakable sign the
+ * result was applied, and the restore brings the original width back.
+ */
+import { test, expect } from '../fixtures';
+import { adminUrls } from '../helpers/wp-admin';
+import { BulkPage } from '../helpers/bulk-page';
+import type { EmrSupport } from '../helpers/emr';
+import { loginAs } from '../helpers/journeys';
+
+const API_KEY = 'E2EBULKKEY0123456789'; // 20 characters, what ApiKeyManager stores
+
+/** Three images under the default 1200 px threshold (the seed included) and one above it. */
+async function seedLibrary(emr: EmrSupport) {
+	const small = await emr.uploadGenerated(600, 400, { format: 'jpg', as: 'bulk-small.jpg' });
+	const medium = await emr.uploadGenerated(1000, 700, { format: 'png', as: 'bulk-medium.png' });
+	const wide = await emr.uploadGenerated(1600, 1200, { format: 'jpg', as: 'bulk-wide.jpg' });
+	return { queued: [emr.seed.attachment_id, small.id, medium.id], wide: wide.id };
+}
+
+async function widthOf(emr: EmrSupport, id: number): Promise<number> {
+	const state = await emr.attachment(id);
+	return state.metadata ? Number(state.metadata.width) : NaN;
+}
+
+test.describe('Bulk page: dashboard', () => {
+	test('without an API key the operations cannot start, and without WooCommerce the background operation says why', async ({ page }) => {
+		const bulk = new BulkPage(page);
+		await bulk.goto();
+		await bulk.expectPanel('dashboard');
+
+		await expect(bulk.panel('dashboard').locator('.emr-bulk-alert-warning')).toContainText('API key required');
+		await expect(bulk.startButton('upscale')).toBeDisabled();
+		await expect(bulk.startButton('background')).toBeDisabled();
+
+		// No `product` post type on this install: the selector reports the reason.
+		await expect(bulk.card('background')).toHaveAttribute('data-available', '0');
+		await expect(bulk.card('background').locator('.emr-bulk-unavailable')).toBeVisible();
+		await expect(bulk.card('upscale')).toHaveAttribute('data-available', '1');
+		await expect(bulk.restoreButton('upscale')).toHaveCount(0);
+	});
+});
+
+test.describe('Bulk page: upscale', () => {
+	test.beforeEach(async ({ emr }) => {
+		await emr.setApiKey(API_KEY); // the mock reports Unlimited by default
+	});
+
+	test('a full run upscales every image under the threshold, then the restore brings the originals back', async ({ page, emr }) => {
+		const { queued, wide } = await seedLibrary(emr);
+		const before = new Map<number, number>();
+		for (const id of [...queued, wide]) {
+			before.set(id, await widthOf(emr, id));
+		}
+
+		const bulk = new BulkPage(page);
+		await bulk.goto();
+		await expect(bulk.startButton('upscale')).toBeEnabled();
+		await bulk.startSelection('upscale');
+		await expect(bulk.thresholdInput).toHaveValue('1200');
+		await bulk.prepare();
+
+		// The summary counts the three images narrower than 1200 px, not the wide one.
+		await expect(bulk.stat('total')).toHaveText('3');
+		// 1000 AI credits left (the mock's default): no shortage warning.
+		await expect(bulk.panel('summary').locator('.emr-bulk-credits')).toContainText('AI credits: 1,000 of 1,000 left this month');
+		await expect(bulk.panel('summary').locator('.emr-bulk-credits-warning')).toBeHidden();
+		await bulk.startBulk();
+		await bulk.driveToFinish(emr);
+
+		await expect(bulk.stat('done')).toHaveText('3');
+		await expect(bulk.stat('fatal_errors')).toHaveText('0');
+		for (const id of queued) {
+			expect(await widthOf(emr, id), `attachment ${id} must carry the API result`).toBe(50);
+		}
+		expect(await widthOf(emr, wide), 'the wide image must be untouched').toBe(before.get(wide));
+
+		// The mock was asked to upscale (the body carries `upscale`, not `bg_remove`), once per image.
+		const requests = await emr.mockRequests('reducer.php');
+		expect(requests.length).toBeGreaterThanOrEqual(3);
+		for (const request of requests) {
+			expect(request.request?.upscale, 'upscale factor in the reducer body').toBeTruthy();
+			expect(request.request?.bg_remove).toBeUndefined();
+		}
+
+		// The last result's before/after preview opened during the run.
+		await expect(page.locator('.emr-bulk-preview')).not.toHaveAttribute('hidden', '');
+
+		await bulk.finish(emr);
+		await expect(bulk.restoreButton('upscale')).toHaveText(/Restore 3 originals/);
+		await expect(bulk.panel('dashboard').locator('.emr-bulk-history tbody tr')).toHaveCount(1);
+
+		// The Media Library filter (MediaLibraryFilterController): the dashboard's "View in Media Library" next to
+		// the restore button opens the list, which shows the three upscaled images only...
+		await bulk.card('upscale').getByRole('link', { name: 'View in Media Library' }).click();
+		await expect(page).toHaveURL(/upload\.php\?mode=list&emr_bulk=upscale/);
+		await expect(page.locator('select#emr_bulk')).toHaveValue('upscale');
+		await expect(page.locator('table.wp-list-table.media tbody tr[id^="post-"]')).toHaveCount(3);
+		for (const id of queued) {
+			await expect(page.locator(`tr#post-${id}`)).toBeVisible();
+		}
+		await expect(page.locator(`tr#post-${wide}`)).toHaveCount(0);
+		// ...and the grid toolbar has the same dropdown, filtering through the attachments query.
+		await page.goto(adminUrls.mediaGrid);
+		const gridFilter = page.locator('select#emr-media-filter');
+		await expect(gridFilter).toBeVisible();
+		await expect(page.locator('li.attachment')).toHaveCount(4);
+		await gridFilter.selectOption('upscale');
+		await expect(page.locator('li.attachment')).toHaveCount(3);
+		await expect(page.locator(`li.attachment[data-id="${wide}"]`)).toHaveCount(0);
+		await bulk.goto();
+
+		// Restore: the backups under EMR_Backups replace the results in place.
+		await bulk.startRestoreAll('upscale');
+		await bulk.driveToFinish(emr);
+		await expect(bulk.stat('done')).toHaveText('3');
+		// A restore has nothing to compare: the preview stays closed (SPIO's FILE_RESTORED).
+		await expect(page.locator('.emr-bulk-preview')).toHaveAttribute('hidden', '');
+		for (const id of queued) {
+			expect(await widthOf(emr, id), `attachment ${id} must be back to its original width`).toBe(before.get(id));
+		}
+		await bulk.finish(emr);
+		await expect(bulk.restoreButton('upscale')).toHaveCount(0);
+	});
+
+	test('the summary warns when the bulk has more images than the AI credits left, and Start stays enabled', async ({ page, emr }) => {
+		await seedLibrary(emr);
+		await emr.mock({ captionsMade: 998 }); // 2 AI credits left, 3 images queued
+
+		const bulk = new BulkPage(page);
+		await bulk.goto();
+		await expect(bulk.panel('dashboard').locator('details.emr-sp-account > summary')).toContainText('2 AI credits left');
+		await bulk.startSelection('upscale');
+		await bulk.prepare();
+
+		await expect(bulk.stat('total')).toHaveText('3');
+		const warning = bulk.panel('summary').locator('.emr-bulk-credits-warning');
+		await expect(warning).toBeVisible();
+		await expect(warning).toContainText('This bulk has 3 image(s), but only 2 AI credits are left this month.');
+		await expect(bulk.panel('summary').getByRole('link', { name: 'Buy Unlimited AI credits' })).toHaveAttribute('href', /utm_campaign=emr_unlimited_ai/);
+		await expect(bulk.panel('summary').locator('[data-action="StartBulk"]')).toBeEnabled();
+		await bulk.cancelSummary(emr);
+	});
+
+	test('Unlimited AI: no credit count, no warning, the "Enjoy!" line', async ({ page, emr }) => {
+		await seedLibrary(emr);
+		await emr.mock({ planType: 'Unlimited AI', captionsMade: 1000 });
+
+		const bulk = new BulkPage(page);
+		await bulk.goto();
+		await expect(bulk.panel('dashboard').locator('details.emr-sp-account > summary')).toContainText('Unlimited AI');
+		await bulk.startSelection('upscale');
+		await bulk.prepare();
+
+		await expect(bulk.panel('summary').locator('.emr-bulk-credits')).toContainText('you do not have to worry about AI credits. Enjoy!');
+		await expect(bulk.panel('summary').locator('.emr-bulk-credits-warning')).toHaveCount(0);
+		await bulk.cancelSummary(emr);
+	});
+
+	test.describe('a request that does not answer JSON', () => {
+		test.use({ allowConsoleErrors: true });
+
+		test('a tick answered with a WordPress database error page shows what happened, the server answer, the retry and a reload button', async ({ page, emr, consoleErrors }) => {
+			await seedLibrary(emr);
+			// What WordPress sends when MySQL is unreachable (wpdb::bail(), as seen on a real site).
+			const dbErrorPage = '<p><code>No such file or directory</code></p>\n<h1>Error reconnecting to the database</h1>\n<p>This means that the contact with the database server at <code>localhost</code> was lost.</p>';
+			await page.context().route('**/wp-admin/admin-ajax.php', async (route) => {
+				if ((route.request().postData() || '').includes('action=emr_bulk_process')) {
+					await route.fulfill({ status: 200, contentType: 'text/html', body: dbErrorPage });
+					return;
+				}
+				await route.continue();
+			});
+
+			const bulk = new BulkPage(page);
+			await bulk.goto();
+			await bulk.startSelection('upscale');
+			await page.locator('#emr-bulk-create').click();
+
+			const notice = page.locator('#emr-bulk-request-error');
+			await expect(notice).toBeVisible({ timeout: 30_000 });
+			await expect(notice).toContainText('The bulk lost its connection to the database');
+			await expect(notice).toContainText('The site\'s database server could not be reached for a moment');
+			await expect(notice).toContainText('Server answer: \u201cNo such file or directory Error reconnecting to the database');
+			await expect(notice).toContainText('(attempt 1 of 3)');
+			await expect(notice.getByRole('button', { name: 'Reload the page' })).toBeVisible();
+			await expect(notice).not.toContainText('SyntaxError');
+			await expect(page.locator('#emr-bulk-request-error')).toHaveCount(1);
+			await page.context().unroute('**/wp-admin/admin-ajax.php');
+			// The processor logs the failed request on purpose; nothing else may fail.
+			expect(consoleErrors.filter((entry) => ! /EMR bulk:/.test(entry))).toEqual([]);
+		});
+
+		test('a tick answered with PHP output instead of JSON names that cause', async ({ page, emr, consoleErrors }) => {
+			await seedLibrary(emr);
+			await page.context().route('**/wp-admin/admin-ajax.php', async (route) => {
+				if ((route.request().postData() || '').includes('action=emr_bulk_process')) {
+					await route.fulfill({ status: 200, contentType: 'text/html', body: '<br />\n<b>Notice</b>:  Undefined index: foo in /x/plugin.php on line <b>3</b><br />\n{"status":true}' });
+					return;
+				}
+				await route.continue();
+			});
+
+			const bulk = new BulkPage(page);
+			await bulk.goto();
+			await bulk.startSelection('upscale');
+			await page.locator('#emr-bulk-create').click();
+
+			const notice = page.locator('#emr-bulk-request-error');
+			await expect(notice).toBeVisible({ timeout: 30_000 });
+			await expect(notice).toContainText('The server answered with an error page instead of a bulk result');
+			await expect(notice).toContainText('Server answer: \u201cNotice : Undefined index: foo in /x/plugin.php on line 3');
+			await page.context().unroute('**/wp-admin/admin-ajax.php');
+			// The processor logs the failed request on purpose; nothing else may fail.
+			expect(consoleErrors.filter((entry) => ! /EMR bulk:/.test(entry))).toEqual([]);
+		});
+	});
+
+	test('pause and resume during processing, stop confirms and finishes the bulk server-side', async ({ page, emr }) => {
+		const { queued } = await seedLibrary(emr);
+		await emr.mock({ waitingRounds: 50 }); // the API keeps every item pending: the run never ends by itself
+
+		const bulk = new BulkPage(page);
+		await bulk.goto();
+		await bulk.startSelection('upscale');
+		await bulk.prepare();
+		await bulk.startBulk();
+
+		await bulk.pause();
+		await expect
+			.poll(async () => (await emr.bulkStatus()).media.stats.is_running, { message: 'the bulk stays running server-side while paused in the browser' })
+			.toBe(true);
+		await bulk.resume();
+		await expect(bulk.panel('process').locator('[data-action="StopBulk"]')).toBeVisible();
+
+		await bulk.stop(emr);
+		const { stats } = (await emr.bulkStatus()).media;
+		expect(stats.is_running).toBe(false);
+		expect(Number(stats.in_queue)).toBe(0);
+		for (const id of queued) {
+			expect(await widthOf(emr, id), `attachment ${id} must be untouched after a stop`).not.toBe(50);
+		}
+	});
+
+	test('API errors are counted, listed and logged; the images stay as they were', async ({ page, emr }) => {
+		const { queued } = await seedLibrary(emr);
+		const before = new Map<number, number>();
+		for (const id of queued) {
+			before.set(id, await widthOf(emr, id));
+		}
+		await emr.mock({ forceStatusCode: '-102', errorMessage: 'E2E: invalid URL' });
+
+		const bulk = new BulkPage(page);
+		await bulk.goto();
+		await bulk.startSelection('upscale');
+		await bulk.prepare();
+		await bulk.startBulk();
+		await bulk.driveToFinish(emr);
+
+		await expect(bulk.stat('fatal_errors')).toHaveText('3');
+		const rows = await bulk.showErrors();
+		await expect(rows).toHaveCount(3);
+		await expect(rows.first()).toContainText('E2E: invalid URL');
+		for (const id of queued) {
+			expect(await widthOf(emr, id), `attachment ${id} must be untouched after an API error`).toBe(before.get(id));
+		}
+
+		await bulk.finish(emr);
+		const history = bulk.panel('dashboard').locator('.emr-bulk-history tbody tr');
+		await expect(history).toHaveCount(1);
+		await expect(history.first().locator('td').nth(2)).toHaveText('3');
+		await expect(bulk.restoreButton('upscale')).toHaveCount(0);
+	});
+
+	test('a second browser sees the running bulk but is blocked from processing it', async ({ page, emr, browser }) => {
+		await seedLibrary(emr);
+		await emr.mock({ waitingRounds: 50 });
+
+		const bulk = new BulkPage(page);
+		await bulk.goto();
+		await bulk.startSelection('upscale');
+		await bulk.prepare();
+		await bulk.startBulk();
+		// One answered tick: the processor key (transient emr_bulk_secret) is claimed.
+		await bulk.driveToFinish(emr, 1).catch(() => undefined);
+		await bulk.expectPanel('process');
+
+		const other = await loginAs(browser, 'admin');
+		try {
+			const otherBulk = new BulkPage(other.page);
+			await otherBulk.goto();
+			await otherBulk.expectPanel('process');
+			await expect(other.page.locator('#emr-bulk-blocked')).toBeVisible();
+			expect(other.errors, 'no JS errors in the second browser').toEqual([]);
+		} finally {
+			await other.context.close();
+		}
+
+		await bulk.stop(emr);
+	});
+
+	test('the background-process choice is stored and schedules the cron event while the bulk runs', async ({ page, emr }) => {
+		await seedLibrary(emr);
+		await emr.mock({ waitingRounds: 50 });
+
+		const bulk = new BulkPage(page);
+		await bulk.goto();
+		await bulk.startSelection('upscale');
+		await expect(bulk.backgroundProcessCheckbox).not.toBeChecked();
+		await bulk.backgroundProcessCheckbox.check();
+		await bulk.prepare();
+
+		const settings = await emr.getOption<Record<string, unknown>>('enable_media_replace');
+		expect(settings.value?.bulk_background_process).toBe(true);
+		expect(settings.value?.bulk_upscale_threshold).toBe(1200);
+
+		await bulk.startBulk();
+		const scheduled = async () => JSON.stringify((await emr.getOption('cron')).value).includes('emr_bulk_cron');
+		await expect.poll(scheduled, { message: 'startBulk must schedule emr_bulk_cron' }).toBe(true);
+
+		await bulk.stop(emr);
+		await expect.poll(scheduled, { message: 'finishBulk must unschedule emr_bulk_cron' }).toBe(false);
+	});
+});

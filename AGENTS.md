@@ -62,6 +62,13 @@ One test stack at a time on a machine. Never start a run while another run
   docblock (what, where, suggested fix). A fixed bug is not mentioned at all.
 - **A green run that ran nothing is a failure.** Report the executed test
   count. No retries, no sleeps, no skips as a fix.
+- **Existing tests are read-only by default.** Never change, loosen or
+  delete a test to make a run green. Name the cause of every failing test
+  (code wrong, intended behaviour changed, test wrong). Only a flipped pin
+  or a pure rename may be changed without asking; for anything else stop and
+  report. List every changed test with its reason, keep those changes in
+  their own commit, and run `bin/check-test-changes.sh` before the hand-off.
+  The full rule is "Changing existing tests" in `CLAUDE.md`.
 - **Document before you test.** The docblocks are the spec the tests are
   checked against.
 
@@ -73,8 +80,10 @@ One test stack at a time on a machine. Never start a run while another run
 
 ## Conventions
 
-- Plugin classes are namespaced `EnableMediaReplace\` and required
-  explicitly from `enable-media-replace.php`; bundled modules are autoloaded
+- Plugin classes are namespaced `EnableMediaReplace\`. Legacy files are
+  required explicitly from `enable-media-replace.php`; files whose path
+  matches their class name are autoloaded through `classes/plugin.json`
+  (PSR-4), and new classes use that scheme. Bundled modules are autoloaded
   from `build/shortpixel/`.
 - Test files are `tests/**/test-<Name>.php`; test classes are `<Name>Test`;
   test methods are `test_<description>`.

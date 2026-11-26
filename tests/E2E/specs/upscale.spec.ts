@@ -12,19 +12,13 @@
  *   - the quota-exceeded (free) notice with the upscale wording;
  *   - the `upscale` feature off: no entry points, the URL refused, the
  *     remove-background entry points untouched.
- *
- * The screen enqueues js/emr_admin.js like the remove-background screen
- * does, so it may throw the same known TypeError
- * (KNOWN_JS_DEFECTS.removeBackgroundLocationOption, pinned in
- * smoke.spec.ts); the screen tests accept that error and nothing else.
  */
 import { test, expect } from '../fixtures';
-import { KNOWN_JS_DEFECTS, RemoveBackgroundScreen, ReplaceScreen, UpscaleScreen, emrUrls, expectOnlyKnownErrors } from '../helpers/emr';
+import { RemoveBackgroundScreen, ReplaceScreen, UpscaleScreen, emrUrls } from '../helpers/emr';
 import { expectSuccessThenRedirect, fetchBytes } from '../helpers/journeys';
 import { EditAttachment, MediaList } from '../helpers/media-list';
 import type { Page } from '@playwright/test';
 
-const KNOWN = [KNOWN_JS_DEFECTS.removeBackgroundLocationOption];
 
 /** Click Preview and wait for the emr_remove_background answer. */
 async function preview(page: Page, screen: UpscaleScreen): Promise<Record<string, unknown>> {
@@ -38,9 +32,7 @@ async function preview(page: Page, screen: UpscaleScreen): Promise<Record<string
 }
 
 test.describe('Upscale', () => {
-	test.use({ allowConsoleErrors: true });
-
-	test('the entry points: row action, meta box button and the links on the two other screens', async ({ page, emr, consoleErrors }) => {
+	test('the entry points: row action, meta box button and the links on the two other screens', async ({ page, emr }) => {
 		const id = emr.seed.attachment_id;
 		const list = new MediaList(page);
 		await list.goto();
@@ -64,11 +56,9 @@ test.describe('Upscale', () => {
 		await remove.upscaleLink.click();
 		await page.waitForURL(/action=emr_prepare_upscale/);
 		await expect(new UpscaleScreen(page).form).toBeVisible();
-
-		expectOnlyKnownErrors(consoleErrors, KNOWN);
 	});
 
-	test('the screen shows the previews, the factors and the upscale account wording', async ({ page, emr, consoleErrors }) => {
+	test('the screen shows the previews, the factors and the upscale account wording', async ({ page, emr }) => {
 		const screen = new UpscaleScreen(page);
 		await screen.goto(emr.seed.attachment_id);
 
@@ -76,9 +66,9 @@ test.describe('Upscale', () => {
 		await expect(original).toBeVisible();
 		await expect(original).toHaveAttribute('src', /\/emr-seed(-\d+x\d+)?\.jpg/);
 		await expect(screen.resultImage).toHaveCount(0);
-		await expect(screen.resultPreview).toContainText('Upscaling image...');
+		await expect(screen.resultPreview).toContainText('Upscaling image…');
 		await expect(screen.form.locator('input[name="ID"]')).toHaveValue(String(emr.seed.attachment_id));
-		await expect(screen.resultKey).toHaveValue('');
+		await expect(screen.form.locator('input[name="key"]')).toHaveCount(0); // nothing of the preview is stored; the apply step requests again
 		await expect(screen.replaceButton).toBeDisabled();
 		await expect(screen.previewButton).toBeEnabled();
 		await expect(screen.replaceInsteadLink).toHaveAttribute('href', /action=media_replace.*_wpnonce=/);
@@ -92,15 +82,12 @@ test.describe('Upscale', () => {
 		await expect(page.locator('input[name="background_type"]')).toHaveCount(0);
 		await expect(screen.badBackgroundLink).toHaveCount(0);
 
-		await expect(screen.account).toContainText('Image Upscale is limited on the Free plan');
-		await expect(screen.account).not.toContainText('Background Removal');
-		await expect(screen.account).toHaveAttribute('data-confirm-remove', 'Remove the saved ShortPixel API Key? Image upscale will fall back to the Free plan.');
+		await expect(screen.account).toContainText('Free plan (10 images)');
+		await expect(screen.account).toHaveAttribute('data-confirm-remove', 'Remove the API key? Background removal and image upscale go back to the Free plan (10 images).');
 		await expect(screen.apiKeySave).toHaveText('Activate');
-
-		expectOnlyKnownErrors(consoleErrors, KNOWN);
 	});
 
-	test('the image width disables the factors it is too wide for', async ({ page, emr, consoleErrors }) => {
+	test('the image width disables the factors it is too wide for', async ({ page, emr }) => {
 		const wide = await emr.uploadGenerated(1100, 200, { as: 'emr-e2e-wide-1100.jpg', title: 'Wide 1100' });
 		const screen = new UpscaleScreen(page);
 		await screen.goto(wide.id);
@@ -115,7 +102,7 @@ test.describe('Upscale', () => {
 		await expect(screen.factor(3)).toBeDisabled();
 		await expect(screen.factor(4)).toBeDisabled();
 		await expect(page.locator('input[name="upscale"]:checked')).toHaveCount(0);
-		await expect(screen.factorHelp).toHaveText('This image is too big to be upscaled.');
+		await expect(screen.factorHelp).toHaveText('This image is too large to be upscaled.');
 		await expect(screen.previewButton).toBeDisabled();
 
 		// Above the largest limit there is no entry point at all.
@@ -126,10 +113,17 @@ test.describe('Upscale', () => {
 		await expect(list.rowActionLink(huge.id, 'remove_background')).toHaveCount(1);
 		await expect(list.rowActionLink(huge.id, 'upscale_image')).toHaveCount(0);
 
-		expectOnlyKnownErrors(consoleErrors, KNOWN);
+		// Edit Media keeps the Upscale tile in the Replace Media box, greyed out and without a link.
+		const edit = new EditAttachment(page);
+		await edit.goto(huge.id);
+		await expect(edit.upscaleButton).toHaveCount(0);
+		const greyed = page.locator('#emr-replace-box .emr-operation-upscale.is-disabled');
+		await expect(greyed).toBeVisible();
+		await expect(greyed).toHaveAttribute('aria-disabled', 'true');
+		await expect(greyed).toContainText('This image is already large enough');
 	});
 
-	test('Preview sends the factor, shows the result with its dimensions and enables Replace', async ({ page, emr, consoleErrors }) => {
+	test('Preview sends the factor, shows the result with its dimensions and enables Replace', async ({ page, emr }) => {
 		const screen = new UpscaleScreen(page);
 		await screen.goto(emr.seed.attachment_id);
 		await screen.factor(3).check();
@@ -146,9 +140,12 @@ test.describe('Upscale', () => {
 			})
 			.toBe(true);
 		await expect(screen.resultDimensions).toHaveText('50 x 50');
-		await expect(screen.resultKey).not.toHaveValue('');
 		await expect(screen.replaceButton).toBeEnabled();
+		await expect(screen.previewButton).toBeDisabled();
+		// Another factor invalidates the result: Preview again, Replace waits.
+		await screen.factor(2).check();
 		await expect(screen.previewButton).toBeEnabled();
+		await expect(screen.replaceButton).toBeDisabled();
 
 		const calls = await emr.mockRequests('free-reducer.php');
 		expect(calls.length).toBe(1);
@@ -157,11 +154,9 @@ test.describe('Upscale', () => {
 		expect(decodeURIComponent(String((calls[0].request?.urllist as string[])[0]))).toBe(emr.seed.attachment_url);
 		// An upscale remembers no options.
 		expect((await emr.getOption('enable_media_replace')).exists).toBe(false);
-
-		expectOnlyKnownErrors(consoleErrors, KNOWN);
 	});
 
-	test('Replace after a preview replaces the image with the result', async ({ page, emr, consoleErrors }) => {
+	test('Replace after a preview replaces the image with the result', async ({ page, emr }) => {
 		const id = emr.seed.attachment_id;
 		const before = await emr.attachment(id);
 		const screen = new UpscaleScreen(page);
@@ -184,11 +179,9 @@ test.describe('Upscale', () => {
 		expect(served.body.equals(result.body), 'the attachment holds the downloaded result').toBe(true);
 		expect((await emr.mockRequests('/f/')).length, 'the result was downloaded from the API').toBeGreaterThan(0);
 		await expect(new EditAttachment(page).thumbnailsBox).toBeAttached();
-
-		expectOnlyKnownErrors(consoleErrors, KNOWN);
 	});
 
-	test('quota exceeded on the free plan: the upscale wording, no preview', async ({ page, emr, consoleErrors }) => {
+	test('quota exceeded on the free plan: the upscale wording, no preview', async ({ page, emr }) => {
 		await emr.mock({ quotaExceeded: true });
 		const screen = new UpscaleScreen(page);
 		await screen.goto(emr.seed.attachment_id);
@@ -199,12 +192,10 @@ test.describe('Upscale', () => {
 
 		await expect(screen.notice).toBeVisible();
 		await expect(screen.notice).toContainText(
-			'Enable Media Replace: Quota exceeded. Please purchase the Unlimited or Unlimited AI plan and add your API key to continue upscaling images.',
+			'Enable Media Replace: The Free plan limit is reached. Add an API key from a ShortPixel Unlimited plan (shortpixel.com/pricing) to continue upscaling images.',
 		);
 		await expect(screen.resultImage).toHaveCount(0);
 		await expect(screen.replaceButton).toBeDisabled();
-
-		expectOnlyKnownErrors(consoleErrors, KNOWN);
 	});
 });
 

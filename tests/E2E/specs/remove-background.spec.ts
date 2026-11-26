@@ -9,19 +9,14 @@
  *   - the replace screen's "remove the background after replacing" option;
  *   - the quota-exceeded (free) and plan-expired (keyed) notices;
  *   - the `background` feature off: no entry points, the URL refused.
- *
- * Every load of this screen throws the known emr_admin.js TypeError
- * (KNOWN_JS_DEFECTS.removeBackgroundLocationOption, pinned in
- * smoke.spec.ts), so the screen tests accept that error and nothing else.
  */
 import { test, expect } from '../fixtures';
-import { KNOWN_JS_DEFECTS, RemoveBackgroundScreen, ReplaceScreen, SuccessScreen, emrUrls, expectOnlyKnownErrors } from '../helpers/emr';
+import { RemoveBackgroundScreen, ReplaceScreen, SuccessScreen, emrUrls } from '../helpers/emr';
 import { expectSuccessThenRedirect, fetchBytes, submitReplace } from '../helpers/journeys';
 import { EditAttachment, MediaList } from '../helpers/media-list';
 import type { Page } from '@playwright/test';
 
 const KEY = 'E2EKEY0123456789ABCD';
-const KNOWN = [KNOWN_JS_DEFECTS.removeBackgroundLocationOption];
 
 /** Click Preview and wait for the emr_remove_background answer. */
 async function preview(page: Page, screen: RemoveBackgroundScreen): Promise<Record<string, unknown>> {
@@ -35,9 +30,7 @@ async function preview(page: Page, screen: RemoveBackgroundScreen): Promise<Reco
 }
 
 test.describe('Remove background', () => {
-	test.use({ allowConsoleErrors: true });
-
-	test('the screen shows the previews and the background options', async ({ page, emr, consoleErrors }) => {
+	test('the screen shows the previews and the background options', async ({ page, emr }) => {
 		const screen = new RemoveBackgroundScreen(page);
 		await screen.goto(emr.seed.attachment_id);
 
@@ -49,15 +42,19 @@ test.describe('Remove background', () => {
 			.toBe(true);
 		await expect(screen.resultImage).toHaveCount(0);
 		await expect(screen.form.locator('input[name="ID"]')).toHaveValue(String(emr.seed.attachment_id));
-		await expect(screen.resultKey).toHaveValue('');
+		await expect(screen.form.locator('input[name="key"]')).toHaveCount(0); // nothing of the preview is stored; the apply step requests again
 		await expect(screen.replaceButton).toBeDisabled();
 		await expect(screen.replaceInsteadLink).toHaveAttribute('href', /action=media_replace.*_wpnonce=/);
 
-		// Defaults: transparent, white, fully opaque; the solid options hidden.
+		// Defaults: transparent, white, fully opaque; the solid options hidden with the `hidden` attribute PHP renders, no inline style.
 		await expect(screen.backgroundType('transparent')).toBeChecked();
 		await expect(page.locator('#solid_selecter')).toBeHidden();
+		await expect(page.locator('#solid_selecter')).toHaveAttribute('hidden', '');
+		await expect(page.locator('#solid_selecter')).not.toHaveAttribute('style', /display/);
+		await expect(screen.notice).toHaveAttribute('hidden', '');
 		await screen.backgroundType('solid').check();
 		await expect(page.locator('#solid_selecter')).toBeVisible();
+		await expect(page.locator('#solid_selecter')).not.toHaveAttribute('hidden', '');
 		await expect(screen.colorPicker).toHaveValue('#ffffff');
 		await expect(screen.transparency).toHaveValue('100');
 
@@ -69,67 +66,81 @@ test.describe('Remove background', () => {
 
 		await screen.backgroundType('transparent').check();
 		await expect(page.locator('#solid_selecter')).toBeHidden();
-
-		expectOnlyKnownErrors(consoleErrors, KNOWN);
 	});
 
-	test('API key: a valid Unlimited key is saved, then removed', async ({ page, emr, consoleErrors }) => {
+	test('Cancel goes back to the page the screen was opened from, through the shared history-back link', async ({ page, emr }) => {
+		const list = new MediaList(page);
+		await list.goto();
 		const screen = new RemoveBackgroundScreen(page);
 		await screen.goto(emr.seed.attachment_id);
-		await expect(screen.account).toContainText('limited to 100 images on the Free plan');
+		await expect(screen.cancelButton).toHaveText('Cancel');
+		await expect(screen.cancelButton).toHaveAttribute('href', /\/wp-admin\/upload\.php$/); // the fallback without scripts
+		await expect(screen.cancelButton).not.toHaveAttribute('onclick', /.*/);
 
+		await Promise.all([page.waitForURL(/upload\.php\?mode=list/), screen.cancelButton.click()]);
+
+		await expect(page.locator('table.wp-list-table.media')).toBeVisible();
+	});
+
+	test('API key: a valid Unlimited key is saved, then removed', async ({ page, emr }) => {
+		const screen = new RemoveBackgroundScreen(page);
+		await screen.goto(emr.seed.attachment_id);
+		await expect(screen.account).toContainText('Free plan (10 images)');
+		await expect(screen.account).not.toHaveAttribute('open', '');
+
+		await screen.openAccount();
 		await screen.apiKeyInput.fill(KEY);
 		await screen.apiKeySave.click();
-		await expect(screen.apiKeyNotice).toHaveText('API Key saved and verified successfully. You now have unlimited background removal.');
+		await expect(screen.apiKeyNotice).toHaveText('API key saved and verified. Bulk background removal and image upscale is unlocked.');
 		await expect(screen.apiKeyNotice).toHaveClass(/notice-success/);
 		// The page reloads itself; the connected-key card replaces the form.
 		await expect(screen.maskedKey).toHaveText('E2EK************ABCD');
-		await expect(screen.account).toContainText('Your ShortPixel API Key is connected');
+		await expect(screen.account).toContainText('Connected');
+		await expect(screen.account).toContainText('1,000 AI credits left');
+		await expect(screen.account).toContainText('AI credits: 1,000 of 1,000 left this month');
 		expect((await emr.getOption<string>('emr_shortpixel_api_key')).value).toBe(KEY);
 
 		page.once('dialog', (dialog) => {
 			expect(dialog.type()).toBe('confirm');
-			expect(dialog.message()).toContain('Remove the saved ShortPixel API Key?');
+			expect(dialog.message()).toBe('Remove the API key? Background removal and image upscale go back to the Free plan (10 images).');
 			void dialog.accept();
 		});
+		await screen.openAccount();
 		await screen.removeKey.click();
-		await expect(screen.apiKeyNotice).toHaveText('API Key removed.');
+		await expect(screen.apiKeyNotice).toHaveText('API key removed.');
 		// Reloaded: the form for a new key is back.
 		await expect(screen.apiKeySave).toHaveText('Activate');
 		await expect(screen.maskedKey).toHaveCount(0);
 		expect((await emr.getOption('emr_shortpixel_api_key')).exists).toBe(false);
-
-		expectOnlyKnownErrors(consoleErrors, KNOWN);
 	});
 
-	test('API key: a wrong key and a key without the Unlimited plan are refused with their messages', async ({ page, emr, consoleErrors }) => {
+	test('API key: a wrong key and a key without the Unlimited plan are refused with their messages', async ({ page, emr }) => {
 		const screen = new RemoveBackgroundScreen(page);
 		await screen.goto(emr.seed.attachment_id);
 
 		await emr.mock({ apiStatusCode: -401, apiStatusMessage: 'Wrong API Key' });
+		await screen.openAccount();
 		await screen.apiKeyInput.fill(KEY);
 		await screen.apiKeySave.click();
-		await expect(screen.apiKeyNotice).toHaveText('The API Key is not correct. Please try again.');
+		await expect(screen.apiKeyNotice).toHaveText('The API key is not correct. Please try again.');
 		await expect(screen.apiKeyNotice).toHaveClass(/notice-error/);
 		await expect(screen.apiKeySave).toBeEnabled();
 		expect((await emr.getOption('emr_shortpixel_api_key')).exists).toBe(false);
 
 		await emr.mock({ apiStatusCode: 2, unlimited: 'false' });
 		await screen.apiKeySave.click();
-		await expect(screen.apiKeyNotice).toContainText('to the Unlimited or Unlimited AI plan to unlock unlimited background removal.');
-		await expect(screen.apiKeyNotice.getByRole('link', { name: 'upgrade' })).toHaveAttribute('href', 'https://shortpixel.com/pricing');
+		await expect(screen.apiKeyNotice).toContainText('to Unlimited or Unlimited AI to unlock background removal and image upscale with it.');
+		await expect(screen.apiKeyNotice.getByRole('link', { name: 'upgrade' })).toHaveAttribute('href', 'https://shortpixel.com/pricing?utm_source=plugin&utm_medium=emr&utm_campaign=emr_upgrade_unlimited');
 		expect((await emr.getOption('emr_shortpixel_api_key')).exists).toBe(false);
 
 		// A too-short key never reaches the API.
 		await screen.apiKeyInput.fill('SHORT');
 		await screen.apiKeySave.click();
-		await expect(screen.apiKeyNotice).toHaveText('The API Key must be exactly 20 characters.');
+		await expect(screen.apiKeyNotice).toHaveText('The API key must be exactly 20 characters.');
 		expect((await emr.mockRequests('api-status.php')).length).toBe(2);
-
-		expectOnlyKnownErrors(consoleErrors, KNOWN);
 	});
 
-	test('Preview shows the API result and enables Replace', async ({ page, emr, consoleErrors }) => {
+	test('Preview shows the API result and enables Replace', async ({ page, emr }) => {
 		const screen = new RemoveBackgroundScreen(page);
 		await screen.goto(emr.seed.attachment_id);
 		await screen.backgroundType('solid').check();
@@ -147,10 +158,12 @@ test.describe('Remove background', () => {
 			})
 			.toBe(true);
 		await expect(screen.resultPreview).toHaveClass(/is_image/);
-		await expect(screen.resultKey).not.toHaveValue('');
 		await expect(screen.replaceButton).toBeEnabled();
-		await expect(screen.previewButton).toBeEnabled();
+		// The same settings give the same result: Preview waits for a changed option.
+		await expect(screen.previewButton).toBeDisabled();
 		await expect(screen.badBackgroundLink).toHaveAttribute('href', /^mailto:support@shortpixel\.com\?.*bg_remove:#ff000040/);
+		await expect(screen.badBackgroundLink).toBeVisible();
+		await expect(screen.badBackgroundLink).toHaveText('Report a bad result');
 
 		// Free path: the reducer got the source URL and the colour with the alpha suffix.
 		const calls = await emr.mockRequests('free-reducer.php');
@@ -162,11 +175,9 @@ test.describe('Remove background', () => {
 		await expect(screen.backgroundType('solid')).toBeChecked();
 		await expect(screen.colorPicker).toHaveValue('#ff0000');
 		await expect(screen.transparency).toHaveValue('40');
-
-		expectOnlyKnownErrors(consoleErrors, KNOWN);
 	});
 
-	test('Replace after a preview replaces the image with the result', async ({ page, emr, consoleErrors }) => {
+	test('Replace after a preview replaces the image with the result', async ({ page, emr }) => {
 		const id = emr.seed.attachment_id;
 		const before = await emr.attachment(id);
 		const screen = new RemoveBackgroundScreen(page);
@@ -191,11 +202,9 @@ test.describe('Remove background', () => {
 		expect(served.body.equals(result.body), 'the attachment holds the downloaded result').toBe(true);
 		expect((await emr.mockRequests('/f/')).length, 'the result was downloaded from the API').toBeGreaterThan(0);
 		await expect(new EditAttachment(page).thumbnailsBox).toBeAttached();
-
-		expectOnlyKnownErrors(consoleErrors, KNOWN);
 	});
 
-	test('quota exceeded on the free plan: a dismissible notice, no preview', async ({ page, emr, consoleErrors }) => {
+	test('quota exceeded on the free plan: a dismissible notice, no preview', async ({ page, emr }) => {
 		await emr.mock({ quotaExceeded: true });
 		const screen = new RemoveBackgroundScreen(page);
 		await screen.goto(emr.seed.attachment_id);
@@ -206,7 +215,7 @@ test.describe('Remove background', () => {
 
 		await expect(screen.notice).toBeVisible();
 		await expect(screen.notice).toContainText(
-			'Enable Media Replace: Quota exceeded. Please purchase the Unlimited or Unlimited AI plan and add your API key to continue removing backgrounds.',
+			'Enable Media Replace: The Free plan limit is reached. Add an API key from a ShortPixel Unlimited plan (shortpixel.com/pricing) to continue removing backgrounds.',
 		);
 		await expect(screen.resultImage).toHaveCount(0);
 		await expect(screen.resultError).toHaveCount(0);
@@ -215,34 +224,32 @@ test.describe('Remove background', () => {
 
 		await screen.notice.locator('.notice-dismiss').click();
 		await expect(screen.notice).toBeHidden();
-
-		expectOnlyKnownErrors(consoleErrors, KNOWN);
 	});
 
-	test('plan expired with a stored key: the renew notice, no reducer call', async ({ page, emr, consoleErrors }) => {
+	test('plan expired with a stored key: the renew notice, no reducer call', async ({ page, emr }) => {
 		await emr.setApiKey(KEY);
 		await emr.mock({ unlimited: 'false' });
 		const screen = new RemoveBackgroundScreen(page);
 		await screen.goto(emr.seed.attachment_id);
 		await expect(screen.maskedKey).toHaveText('E2EK************ABCD');
+		// The page load already asked api-status for the AI credits of the account row.
+		const statusCallsBefore = (await emr.mockRequests('api-status.php')).length;
 
 		const answer = await preview(page, screen);
 		expect(answer.success).toBe(false);
 		expect(answer.plan_expired).toBe(true);
 
 		await expect(screen.notice).toBeVisible();
-		await expect(screen.notice).toContainText('Your Unlimited plan is no longer active. Please renew at shortpixel.com/pricing or remove your API Key to use the Free plan.');
+		await expect(screen.notice).toContainText('Your Unlimited plan is no longer active. Please renew at shortpixel.com/pricing or remove your API key to use the Free plan.');
 		await expect(screen.notice.getByRole('link', { name: 'shortpixel.com/pricing' })).toHaveAttribute('href', 'https://shortpixel.com/pricing');
 		await expect(screen.resultImage).toHaveCount(0);
 		await expect(screen.replaceButton).toBeDisabled();
 
-		expect((await emr.mockRequests('api-status.php')).length).toBe(1);
+		expect((await emr.mockRequests('api-status.php')).length - statusCallsBefore, 'the preview checks the plan once').toBe(1);
 		expect(await emr.mockRequests('reducer.php')).toEqual([]);
-
-		expectOnlyKnownErrors(consoleErrors, KNOWN);
 	});
 
-	test('an API error message is shown in the result panel', async ({ page, emr, consoleErrors }) => {
+	test('an API error message is shown in the result panel', async ({ page, emr }) => {
 		await emr.mock({ forceStatusCode: '-201', errorMessage: 'Invalid image (E2E)' });
 		const screen = new RemoveBackgroundScreen(page);
 		await screen.goto(emr.seed.attachment_id);
@@ -252,10 +259,8 @@ test.describe('Remove background', () => {
 		await expect(screen.resultError).toHaveText('Invalid image (E2E)');
 		await expect(screen.notice).toBeHidden();
 		await expect(screen.replaceButton).toBeDisabled();
-
-		expectOnlyKnownErrors(consoleErrors, KNOWN);
 	});
-	test('"remove the background after replacing" sends the success redirect to this screen', async ({ page, emr, consoleErrors }) => {
+	test('"remove the background after replacing" sends the success redirect to this screen', async ({ page, emr }) => {
 		const id = emr.seed.attachment_id;
 		const replace = new ReplaceScreen(page);
 		await replace.goto(id);
@@ -272,8 +277,6 @@ test.describe('Remove background', () => {
 		await expect(screen.form).toBeVisible();
 		await expect(screen.form.locator('input[name="ID"]')).toHaveValue(String(id));
 		expect((await emr.attachment(id)).metadata).toMatchObject({ width: 640, height: 480 });
-
-		expectOnlyKnownErrors(consoleErrors, KNOWN);
 	});
 });
 

@@ -90,7 +90,7 @@ if (! apply_filters('emr/upsell', current_user_can('install_plugins')))
 					<?php _e('ACTIVATE', 'enable-media-replace') ?>
 				</a>
 
-				<h4 class='emr-activate-done hidden' data-plugin='spio'><?php _e('Shortpixel activated!', 'enable-media-replace'); ?></h4>
+				<h4 class='emr-activate-done hidden' data-plugin='spio'><?php _e('ShortPixel activated!', 'enable-media-replace'); ?></h4>
 			</p>
 
     </div>
@@ -159,7 +159,7 @@ if (! apply_filters('emr/upsell', current_user_can('install_plugins')))
 					<?php _e('ACTIVATE', 'enable-media-replace') ?>
 				</a>
 
-				<h4 class='emr-activate-done hidden' data-plugin='spai'><?php _e('Shortpixel Adaptive Images activated!', 'enable-media-replace'); ?></h4>
+				<h4 class='emr-activate-done hidden' data-plugin='spai'><?php _e('ShortPixel Adaptive Images activated!', 'enable-media-replace'); ?></h4>
 			</p>
 
     </div>

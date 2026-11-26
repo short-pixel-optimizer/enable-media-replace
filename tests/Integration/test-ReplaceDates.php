@@ -200,7 +200,7 @@ class ReplaceDatesTest extends EMR_IntegrationTestCase {
 		$html = $this->dateBox( $id );
 		$this->assertStringContainsString( 'Revised', $html );
 		$this->assertStringContainsString( '<b>' . esc_html( date_i18n( __( 'M j, Y @ H:i' ), strtotime( $post->post_modified ) ) ) . '</b>', $html );
-		$this->assertStringNotContainsString( 'Replaced By', $html, 'The admin is the author.' );
+		$this->assertStringNotContainsString( 'Replaced by', $html, 'The admin is the author.' );
 	}
 
 	// ---------------------------------------------------------------------
