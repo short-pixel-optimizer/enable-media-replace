@@ -10,7 +10,7 @@
  *      remove-background screen goes through the REAL ajax handler and
  *      ApiKeyManager, and the key is stored;
  *   6. the console-error tripwire really fails a test.
- * It also pins the JS error the remove-background screen throws on load.
+ * It also checks that the remove-background screen loads without a JS error.
  */
 import { test, expect } from '../fixtures';
 import { RemoveBackgroundScreen, ReplaceScreen, emrQuery } from '../helpers/emr';

@@ -11,7 +11,11 @@
  *     a post rewritten, old file gone;
  *   - `replace_and_search` with a new location: the file moves there;
  *   - the client-side size check, through the file input and through
- *     drag and drop.
+ *     drag and drop;
+ *   - an SVG sanitizer on `wp_handle_upload_prefilter` (the support plugin's
+ *     stand-in, option emr_e2e_svg_sanitizer): the type is checked after the
+ *     prefilter cleaned the file, and a prefilter refusal ends on the error
+ *     screen.
  */
 import { test, expect } from '../fixtures';
 import { ErrorScreen, ReplaceScreen, fixtureFile } from '../helpers/emr';
@@ -255,5 +259,64 @@ test.describe('Replace: client-side size check', () => {
 		await expect(screen.submit).toBeEnabled();
 		await expect(screen.uploadPreview.locator('.textlayer')).toHaveText('320 x 200');
 		await expect(page.locator('#emr-drop-area-active')).toHaveCount(0);
+	});
+});
+
+test.describe('Replace: upload prefilter', () => {
+	const SCRIPT = '<script>alert(1)</script>';
+	const dirtySvg = () => ({
+		name: 'emr-e2e-dirty.svg',
+		mimeType: 'image/svg+xml',
+		buffer: Buffer.from(
+			`<svg xmlns="http://www.w3.org/2000/svg" width="64" height="48" viewBox="0 0 64 48">${SCRIPT}<rect width="64" height="48" fill="#a27"/></svg>`,
+		),
+	});
+
+	test('an SVG a prefilter sanitizes passes the type check and is stored sanitized', async ({ page, emr, request }) => {
+		// Set first: the stand-in also makes SVG an allowed type for the fixture upload.
+		await emr.setOption('emr_e2e_svg_sanitizer', 'sanitize');
+		const svg = await emr.uploadFixture('test-vector.svg', { as: 'emr-e2e-prefilter.svg' });
+		const before = await fetchBytes(request, svg.url);
+		expect(before.body.toString()).toContain('fill="#2a7"');
+
+		const screen = new ReplaceScreen(page);
+		await screen.goto(svg.id);
+		await screen.chooseFile(dirtySvg());
+		await submitReplace(screen);
+
+		// The sanitizer's type check only approves the file its prefilter
+		// cleaned: reaching the success screen means the prefilter ran first.
+		await expectSuccessThenRedirect(page, svg.id);
+
+		const after = await emr.attachment(svg.id);
+		expect(after.mime).toBe('image/svg+xml');
+		expect(after.file).toBe(svg.file);
+		const stored = (await fetchBytes(request, `${after.url}?t=${Date.now()}`)).body.toString();
+		expect(stored).toContain('fill="#a27"');
+		expect(stored, 'the stored file is the sanitized one').not.toContain('<script');
+	});
+
+	test('an SVG the prefilter refuses ends on the error screen and leaves the attachment alone', async ({ page, emr, request }) => {
+		// Set first: the stand-in also makes SVG an allowed type for the fixture upload.
+		await emr.setOption('emr_e2e_svg_sanitizer', 'reject');
+		const svg = await emr.uploadFixture('test-vector.svg', { as: 'emr-e2e-refused.svg' });
+		const before = await emr.attachment(svg.id);
+
+		const screen = new ReplaceScreen(page);
+		await screen.goto(svg.id);
+		await screen.chooseFile(dirtySvg());
+		await submitReplace(screen);
+
+		const error = new ErrorScreen(page);
+		await expect(error.title).toBeVisible();
+		// The prefilter's error is honoured (the upload error), not passed
+		// over to end as a file type refusal (the security message).
+		await expect(error.message).toHaveText('Updating the WordPress attachment failed');
+
+		const after = await emr.attachment(svg.id);
+		expect(after.file).toBe(before.file);
+		expect(after.post_modified).toBe(before.post_modified);
+		const stored = (await fetchBytes(request, `${after.url}?t=${Date.now()}`)).body.toString();
+		expect(stored).toContain('fill="#2a7"');
 	});
 });

@@ -12,7 +12,7 @@
  * coverage of its Breakdance-facing half: it calls the real
  * \Breakdance\Data functions directly.
  *
- *   - Detection: has_action('breakdance_loaded') and the four required
+ *   - Detection: has_action('breakdance_loaded') and the five required
  *     \Breakdance\Data functions. A fresh Replacer construction registers
  *     addBreakdance(), loadContent() and saveContent().
  *   - Storage: `_breakdance_data` is an outer JSON object whose
@@ -33,10 +33,10 @@
  *     nothing left to match. EMR registers its
  *     Elementor support twice (the module and Externals\Elementor), and the
  *     only switch, `emr/externals/elementor_is_active`, turns both off.
- *   - Breakdance 2.x: saveContent() passes `false` as futureLayerMeta to the
- *     ten-argument save_document(), which stores it unconditionally, so a
- *     replace that rewrites a document wipes `_breakdance_futurelayer_meta`.
- *     Pinned below; Breakdance 3.0 and later skip a false value.
+ *   - FutureLayer meta: saveContent() passes the stored
+ *     `_breakdance_futurelayer_meta` back to the ten-argument
+ *     save_document(), which stores its futureLayerMeta argument, so a
+ *     replace that rewrites a document keeps that meta.
  *
  * Unit coverage with Breakdance ABSENT (registration, the abort fallback,
  * the run's args, pass-through for other runs):
@@ -144,7 +144,7 @@ class CompatBreakdanceTest extends EMR_IntegrationTestCase {
 	public function test_breakdance_loads_alongside_emr() {
 		$this->assertTrue( defined( 'BREAKDANCE_MODE' ), 'Breakdance defines BREAKDANCE_MODE.' );
 		$this->assertNotFalse( has_action( 'breakdance_loaded' ), 'Breakdance wired its breakdance_loaded action.' );
-		foreach ( array( 'get_tree', 'encode_before_writing_to_wp', 'get_global_option', 'save_document' ) as $function ) {
+		foreach ( array( 'get_tree', 'encode_before_writing_to_wp', 'get_global_option', 'save_document', 'get_meta' ) as $function ) {
 			$this->assertTrue( function_exists( '\\Breakdance\\Data\\' . $function ), "Breakdance\\Data\\$function exists." );
 		}
 		$this->assertInstanceOf( 'EnableMediaReplace\EnableMediaReplacePlugin', emr() );
@@ -283,29 +283,18 @@ class CompatBreakdanceTest extends EMR_IntegrationTestCase {
 	}
 
 	// -------------------------------------------------------------------
-	// Pinned defects
+	// FutureLayer meta
 	// -------------------------------------------------------------------
 
 	/**
-	 * On Breakdance 2.x, a replace that rewrites a document wipes its
-	 * `_breakdance_futurelayer_meta`: Modules\Breakdance::saveContent()
-	 * calls the ten-argument save_document() with `false` as
-	 * futureLayerMeta, and Breakdance before 3.0 stores that value
-	 * unconditionally. The correct behaviour is to pass the stored value,
-	 * \Breakdance\Data\get_meta($post_id, '_breakdance_futurelayer_meta').
-	 * Breakdance 3.0 and later skip a false value; with such a zip this
-	 * test skips, because the defect cannot be observed there.
-	 *
-	 * How to recognise the fix: the meta keeps its sentinel value and the
-	 * pinned assertFalse below fails.
+	 * A replace that rewrites a document keeps its
+	 * `_breakdance_futurelayer_meta`: the ten-argument save_document()
+	 * stores its futureLayerMeta argument, and Modules\Breakdance::saveContent()
+	 * passes the stored value, read with \Breakdance\Data\get_meta().
 	 */
-	public function test_rename_wipes_the_future_layer_meta_on_breakdance_2_pinned_for_deferred_fix() {
-		$version = defined( '__BREAKDANCE_VERSION' ) ? constant( '__BREAKDANCE_VERSION' ) : '0';
-		if ( version_compare( $version, '3.0.0', '>=' ) ) {
-			$this->markTestSkipped( 'Breakdance ' . $version . ' keeps a false futureLayerMeta out of the database; the defect shows on 2.x only.' );
-		}
+	public function test_rename_keeps_the_future_layer_meta() {
 		$reflection = new \ReflectionFunction( 'Breakdance\Data\save_document' );
-		$this->assertSame( 10, $reflection->getNumberOfParameters(), 'Sentinel: the ten-argument save_document() the module calls with false.' );
+		$this->assertSame( 10, $reflection->getNumberOfParameters(), 'Sentinel: the ten-argument save_document() that takes futureLayerMeta.' );
 
 		$this->withoutElementorSupport();
 		list( $id, $url ) = $this->standardCompatImage( 'emr-bd-fl' );
@@ -317,6 +306,6 @@ class CompatBreakdanceTest extends EMR_IntegrationTestCase {
 
 		$this->assertSame( array( wp_get_attachment_url( $id ) ), $this->documentUrls( $post ), 'Sentinel: the document was rewritten through save_document().' );
 		wp_cache_delete( $post, 'post_meta' );
-		$this->assertFalse( \Breakdance\Data\get_meta( $post, '_breakdance_futurelayer_meta' ), 'Pinned: the future-layer meta is overwritten with false.' );
+		$this->assertSame( '{"sentinel":"keep-me"}', \Breakdance\Data\get_meta( $post, '_breakdance_futurelayer_meta' ), 'The future-layer meta keeps its value.' );
 	}
 }

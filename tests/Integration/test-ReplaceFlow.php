@@ -744,32 +744,24 @@ class ReplaceFlowTest extends EMR_IntegrationTestCase {
 	/**
 	 * Replacing a `-scaled` image with one below the big-image threshold in
 	 * MODE_REPLACE deletes the `-scaled` file (removeCurrent()) and no new
-	 * one is generated, but the references to the `-scaled` URL, which is
-	 * the URL WordPress hands out for the image, are not rewritten: run()
-	 * passes `thumbnails_only`, and Replacer2::replace() drops both `base`
-	 * (the original) and `file` (the metadata file, here the `-scaled`
-	 * file) in that mode. Every post that embedded the image now points at
-	 * a missing file. The correct behaviour is to treat a vanished
-	 * `-scaled` file like a vanished size and rewrite it to the new main
-	 * file (keep the `file` pair in thumbnails-only mode when it differs
-	 * from `base`). Lives in ReplaceController::run() and
-	 * Replacer2::replace().
-	 *
-	 * How to recognise the fix: the post content holds the new main URL and
-	 * the assertSame() on the old content fails.
+	 * one is generated. run() passes `thumbnails_only`, which leaves `base`
+	 * out but keeps the `file` pair when the metadata file (the `-scaled`
+	 * file) differs from `base`, so the references to the `-scaled` URL are
+	 * rewritten to the new main file.
 	 */
-	public function test_replace_mode_with_a_smaller_image_leaves_references_to_the_deleted_scaled_file_pinned_for_deferred_fix() {
+	public function test_replace_mode_with_a_smaller_image_rewrites_references_to_the_deleted_scaled_file() {
 		list( $id, $original, $scaled ) = $this->scaledImage();
 		$scaled_url = wp_get_attachment_url( $id );
-		$content    = '<img src="' . $scaled_url . '" />';
-		$post       = $this->makePost( $content );
+		$post       = $this->makePost( '<img src="' . $scaled_url . '" />' );
 
 		$this->replaceMode( $id, $this->tmpJpeg( 400, 300 ), 'small.jpg' );
 
 		$this->assertSame( $original, get_attached_file( $id ), 'Sentinel: no -scaled file is attached any more.' );
 		$this->assertFileDoesNotExist( $scaled, 'Sentinel: the -scaled file is deleted.' );
 		$this->assertArrayNotHasKey( 'original_image', wp_get_attachment_metadata( $id ) );
-		$this->assertSame( $content, $this->rawContent( $post ), 'Pinned: the post still points at the deleted -scaled file.' );
+		$new_url = wp_get_attachment_url( $id );
+		$this->assertStringEndsWith( '/' . wp_basename( $original ), $new_url );
+		$this->assertSame( '<img src="' . $new_url . '" />', $this->rawContent( $post ), 'The post points at the new main file.' );
 	}
 
 	public function test_search_replace_on_a_scaled_image_renames_both_files_and_rewrites_both_urls() {
@@ -874,25 +866,15 @@ class ReplaceFlowTest extends EMR_IntegrationTestCase {
 
 	/**
 	 * Replacing an image with a non-image file in search-replace mode moves
-	 * the attachment to the new file and deletes the image and its sizes,
-	 * but rewrites no reference at all: the source side has `file` and
-	 * size entries, the target metadata has neither `file` nor `width`,
-	 * findNearestSize() finds no partner (the SVG rule does not apply), the
-	 * search and replace arrays stay unbalanced and Replacer2::replace()
-	 * aborts before any query, including for the main URL (`base`), which
-	 * has a valid pair. run() ignores the abort. Every post that embedded
-	 * the image now points at a deleted file. The correct behaviour is to
-	 * map the unpaired entries to the new main file (as the SVG rule does)
-	 * or at least to run the balanced `base` pair. Lives in
-	 * Classes\Setup::matchReplaceUrls() / findNearestSize().
-	 *
-	 * How to recognise the fix: the post content holds the new .txt URL and
-	 * the pinned assertSame() fails.
+	 * the attachment to the new file and deletes the image and its sizes.
+	 * The target metadata has neither `file` nor `width`, so
+	 * findNearestSize() maps every source entry the target lacks to the new
+	 * main file and every reference points at the new file.
 	 */
-	public function test_search_replace_from_an_image_to_a_non_image_rewrites_no_reference_pinned_for_deferred_fix() {
+	public function test_search_replace_from_an_image_to_a_non_image_rewrites_the_references_to_the_new_file() {
 		list( $id, $path, $url ) = $this->standardImage();
-		$content                 = '<a href="' . $url . '">see</a>';
-		$post                    = $this->makePost( $content );
+		$thumb                   = $this->sizeUrl( $id, 'thumbnail' );
+		$post                    = $this->makePost( '<a href="' . $url . '">see</a><img src="' . $thumb . '" />' );
 		$tmp                     = wp_tempnam( 'emr-upload' );
 		file_put_contents( $tmp, "now a text file\n" ); // phpcs:ignore WordPress.WP.AlternativeFunctions
 		$this->flowFiles[] = $tmp;
@@ -903,7 +885,9 @@ class ReplaceFlowTest extends EMR_IntegrationTestCase {
 		$this->assertSame( dirname( $path ) . '/' . $name, get_attached_file( $id ), 'Sentinel: the attachment moved to the text file.' );
 		$this->assertSame( 'text/plain', get_post_mime_type( $id ) );
 		$this->assertFileDoesNotExist( $path, 'Sentinel: the image is deleted.' );
-		$this->assertSame( $content, $this->rawContent( $post ), 'Pinned: the link still points at the deleted image.' );
+		$new_url = wp_get_attachment_url( $id );
+		$this->assertStringEndsWith( '/' . $name, $new_url );
+		$this->assertSame( '<a href="' . $new_url . '">see</a><img src="' . $new_url . '" />', $this->rawContent( $post ), 'The main file and the size both point at the new file.' );
 	}
 
 	// ---------------------------------------------------------------------

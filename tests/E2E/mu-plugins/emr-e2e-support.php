@@ -69,6 +69,7 @@ define( 'EMR_E2E_PLUGIN_DIR', WP_PLUGIN_DIR . '/enable-media-replace' );
 define( 'EMR_E2E_SEED_OPTION', 'emr_e2e_seed' );
 define( 'EMR_E2E_FEATURE_OPTION', 'emr_e2e_features' );
 define( 'EMR_E2E_USER_META', 'emr_e2e_user' );
+define( 'EMR_E2E_SVG_OPTION', 'emr_e2e_svg_sanitizer' );
 
 // -----------------------------------------------------------------------
 // Hermetic install
@@ -163,6 +164,74 @@ add_filter( 'emr/feature/background', 'emr_e2e_feature_background', 999 );
 add_filter( 'emr/feature/upscale', 'emr_e2e_feature_upscale', 999 );
 add_filter( 'emr/feature/remote_notice', 'emr_e2e_feature_remote_notice', 999 );
 
+/**
+ * A stand-in for a plugin or theme that sanitizes SVG uploads the way core
+ * expects it: in `wp_handle_upload_prefilter`, with a type check that only
+ * approves a file it has sanitized. Off unless the option
+ * `emr_e2e_svg_sanitizer` is set (the `option` route; reset and seed delete
+ * it):
+ *
+ *   'sanitize'  SVG is an allowed type; the prefilter removes <script>
+ *               elements from the temporary file and remembers its hash;
+ *               the type check (wp_check_filetype_and_ext, last priority)
+ *               answers image/svg+xml for a remembered file and "no type"
+ *               for any other SVG.
+ *   'reject'    the prefilter refuses every SVG with an error message, as a
+ *               sanitizer does for a file it cannot clean.
+ */
+function emr_e2e_svg_mode() {
+	return (string) get_option( EMR_E2E_SVG_OPTION, '' );
+}
+
+/** True for an upload array or file name with the .svg extension. */
+function emr_e2e_is_svg_name( $name ) {
+	return 'svg' === strtolower( pathinfo( (string) $name, PATHINFO_EXTENSION ) );
+}
+
+/** Hashes of the temporary files sanitized in this request. */
+function emr_e2e_svg_sanitized( $add = null ) {
+	static $hashes = array();
+	if ( null !== $add ) {
+		$hashes[] = $add;
+	}
+	return $hashes;
+}
+
+function emr_e2e_svg_upload_mimes( $mimes ) {
+	if ( '' !== emr_e2e_svg_mode() ) {
+		$mimes['svg'] = 'image/svg+xml';
+	}
+	return $mimes;
+}
+add_filter( 'upload_mimes', 'emr_e2e_svg_upload_mimes' );
+
+function emr_e2e_svg_prefilter( $file ) {
+	$mode = emr_e2e_svg_mode();
+	if ( '' === $mode || ! is_array( $file ) || ! isset( $file['name'], $file['tmp_name'] ) || ! emr_e2e_is_svg_name( $file['name'] ) ) {
+		return $file;
+	}
+	if ( 'reject' === $mode ) {
+		$file['error'] = 'This SVG could not be safely imported.';
+		return $file;
+	}
+	$clean = preg_replace( '#<script\b.*?</script>#is', '', (string) file_get_contents( $file['tmp_name'] ) ); // phpcs:ignore WordPress.WP.AlternativeFunctions
+	file_put_contents( $file['tmp_name'], $clean ); // phpcs:ignore WordPress.WP.AlternativeFunctions
+	emr_e2e_svg_sanitized( md5( $clean ) );
+	return $file;
+}
+add_filter( 'wp_handle_upload_prefilter', 'emr_e2e_svg_prefilter' );
+
+function emr_e2e_svg_check_filetype( $data, $file, $filename, $mimes ) {
+	if ( '' === emr_e2e_svg_mode() || ! emr_e2e_is_svg_name( $filename ) ) {
+		return $data;
+	}
+	if ( is_file( $file ) && in_array( md5_file( $file ), emr_e2e_svg_sanitized(), true ) ) {
+		return array( 'ext' => 'svg', 'type' => 'image/svg+xml', 'proper_filename' => false );
+	}
+	return array( 'ext' => false, 'type' => false, 'proper_filename' => false );
+}
+add_filter( 'wp_check_filetype_and_ext', 'emr_e2e_svg_check_filetype', PHP_INT_MAX, 4 );
+
 // -----------------------------------------------------------------------
 // Seed
 // -----------------------------------------------------------------------
@@ -186,6 +255,7 @@ function emr_e2e_apply_seed() {
 	delete_option( 'emr_shortpixel_api_key' );
 	delete_transient( 'emr_ai_credits' ); // ApiKeyManager::CREDITS_TRANSIENT
 	delete_option( EMR_E2E_FEATURE_OPTION );
+	delete_option( EMR_E2E_SVG_OPTION );
 	delete_option( 'emr_e2e_classic_editor' );
 	delete_option( 'emr_e2e_promo_window' );
 	delete_option( 'emr-promo-banner' ); // PromoBanner::optionNameFor( EnableMediaReplacePlugin::PROMO_PREFIX )
@@ -457,6 +527,7 @@ function emr_e2e_route_reset( WP_REST_Request $request ) {
 	delete_transient( 'emr_ai_credits' ); // ApiKeyManager::CREDITS_TRANSIENT
 	delete_option( 'EnableMediaReplace-notices' );
 	delete_option( EMR_E2E_FEATURE_OPTION );
+	delete_option( EMR_E2E_SVG_OPTION );
 	delete_transient( 'emr_remote_notice' );
 	emr_e2e_reset_bulk();
 	$like = $wpdb->esc_like( '_transient_emr_' ) . '%';

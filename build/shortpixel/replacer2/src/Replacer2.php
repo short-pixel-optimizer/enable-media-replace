@@ -223,8 +223,9 @@ class Replacer2
 	 * 2. Validation: Setup::validateData($args) always runs here, also when
 	 *    the caller already ran it; its errors are returned when it fails
 	 *    (fail-safes on the search base, invalid input, unbalanced arrays).
-	 *    With `thumbnails_only` the validation leaves the main file out; the
-	 *    sides themselves are not changed.
+	 *    With `thumbnails_only` the validation leaves the main file out (a
+	 *    `-scaled` metadata file that differs from it stays, see
+	 *    Setup::validateData()); the sides themselves are not changed.
 	 * 3. Fires `shortpixel/replacer/replace_urls`; returns 0 when nothing is
 	 *    left to search for.
 	 * 4. For the main run and every integration run (getReplaceRuns()):
@@ -237,7 +238,8 @@ class Replacer2
 	 *
 	 * @param array $args {
 	 *     @type bool $thumbnails_only Only replace thumbnail sizes, not the
-	 *                                 main file. Default false.
+	 *                                 main file; a `-scaled` metadata file
+	 *                                 counts as a size. Default false.
 	 * }
 	 * @return int|array|false Number of records found by all runs; an array
 	 *                         of error strings when validation fails; false

@@ -280,17 +280,15 @@ class UploadViewController extends \EnableMediaReplace\ViewController
 	/**
 	 * Validates the uploaded file `userfile` and returns its temporary path and name.
 	 *
-	 * Checks is_uploaded_file(), runs wp_check_filetype_and_ext() on the original array,
-	 * then applies the core `wp_handle_upload_prefilter` filter. A file whose extension is
-	 * not allowed shows ERROR_SECURITY, unless the user has `unfiltered_upload`. No uploaded
-	 * file shows ERROR_UPLOAD_FAILED. `$new_filetype` is computed but unused, and the
-	 * comment after the return is unreachable.
-	 *
-	 * @todo The error check reads `$uploadFilearray` (lower-case "a", an undefined variable)
-	 *       and then `$uploadFileArray['userfile']['error']` (wrong index), so it never
-	 *       fires and an error set by `wp_handle_upload_prefilter` is ignored. Suggested fix:
-	 *       `if (isset($uploadFileArray['error']) && $uploadFileArray['error'])`, which also
-	 *       covers the string error that prefilter callbacks return.
+	 * Follows the order of core's _wp_handle_upload(): checks is_uploaded_file(), applies
+	 * the core `wp_handle_upload_prefilter` filter, then runs wp_check_filetype_and_ext() on
+	 * the filtered array. A prefilter that rewrites the temporary file in place (an SVG
+	 * sanitizer) has therefore run when the type is checked. A non-numeric, non-empty
+	 * `error` set by a prefilter callback shows ERROR_UPDATE_FAILED; the callback's own
+	 * message is not shown. A file whose extension is not allowed shows ERROR_SECURITY,
+	 * unless the user has `unfiltered_upload`. No uploaded file shows ERROR_UPLOAD_FAILED.
+	 * `$new_filetype` is computed but unused, and the comment after the return is
+	 * unreachable.
 	 *
 	 * @hook filter wp_handle_upload_prefilter
 	 * @return array{0: string, 1: string} Temporary file path and original file name. On
@@ -304,18 +302,22 @@ class UploadViewController extends \EnableMediaReplace\ViewController
 			$uploadFileArray = $_FILES['userfile'];
 
 			// New method for validating that the uploaded file is allowed, using WP:s internal wp_check_filetype_and_ext() function.
-			$filedata = wp_check_filetype_and_ext($uploadFileArray["tmp_name"], $uploadFileArray["name"]);
 
 			$uploadFileArray = apply_filters('wp_handle_upload_prefilter', $uploadFileArray); 
 
-			Log::addDebug('Data after check', $filedata);
-			if (isset($uploadFilearray['error']) && $uploadFileArray['userfile']['error'] > 0) {
+			if (isset($uploadFileArray['error']) && ! is_numeric($uploadFileArray['error']) && $uploadFileArray['error']) 
+			{
 				$this->viewError(self::ERROR_UPDATE_FAILED);
 			}
+
+			$filedata = wp_check_filetype_and_ext($uploadFileArray["tmp_name"], $uploadFileArray["name"]);
+			Log::addDebug('Data after check', $filedata);
+
 
 			if ($filedata["ext"] == false && ! current_user_can('unfiltered_upload')) {
 				$this->viewError(self::ERROR_SECURITY);
 			}
+
 
 
 			// Here we have the uploaded file

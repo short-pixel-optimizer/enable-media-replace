@@ -336,14 +336,36 @@ class ReplacerReplaceTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * A target without widths (a PDF or any other non-image file) has no
+	 * size to pair by width, so every source entry it lacks is rewritten to
+	 * the target's main file, as for an SVG. No reference is left pointing
+	 * at a deleted size.
+	 */
+	public function test_pdf_target_without_width_replaces_every_size_with_its_main_file() {
+		$pdf = 'http://example.org/wp-content/uploads/2026/10/document.pdf';
+
+		$result = $this->makeReplacer( self::SOURCE_URL, $pdf, null, array( 'file' => '2026/10/document.pdf' ) )->replace();
+
+		$this->assertIsInt( $result );
+		list( $search, $replace ) = $this->captured[0];
+		$this->assertSame( array( 'base', 'file', 'thumbnail', 'medium', 'large' ), array_keys( $search ) );
+		$this->assertSame( array_keys( $search ), array_keys( $replace ) );
+		$this->assertSame( '/wp-content/uploads/2026/10/document.pdf', $replace['base'] );
+		$this->assertSame( '/wp-content/uploads/2026/10/document.pdf', $replace['file'] );
+		foreach ( array( 'thumbnail', 'medium', 'large' ) as $size ) {
+			$this->assertSame( self::SOURCE_DIR . 'document.pdf', $replace[ $size ], $size );
+		}
+	}
+
+	/**
 	 * Replacer2::replace() returns three types: false for missing input, an
 	 * array of error strings when validation fails and an int count on
 	 * success, so
-	 * every caller has to type-check the result. A PDF target without
-	 * `width` gets no nearest size, the arrays stay unbalanced and the run
-	 * aborts with an array. The correct behaviour is one return type (a
-	 * result object, or always the errors array with the count exposed
-	 * separately).
+	 * every caller has to type-check the result. A target whose metadata
+	 * has a `width` but neither a main `file` nor a size with a file gets
+	 * no nearest size, the arrays stay unbalanced and the run aborts with
+	 * an array. The correct behaviour is one return type (a result object,
+	 * or always the errors array with the count exposed separately).
 	 *
 	 * How to recognise the fix: the abort no longer returns a plain array
 	 * (or the success no longer returns a plain int) and one of the
@@ -351,10 +373,9 @@ class ReplacerReplaceTest extends WP_UnitTestCase {
 	 */
 	public function test_replace_returns_an_array_on_abort_and_an_int_on_success_pinned_for_deferred_fix() {
 		global $wpdb;
-		$pdf = 'http://example.org/wp-content/uploads/2026/10/document.pdf';
 
 		$before = $wpdb->num_queries;
-		$abort  = $this->makeReplacer( self::SOURCE_URL, $pdf, null, array( 'file' => '2026/10/document.pdf' ) )->replace();
+		$abort  = $this->makeReplacer( self::SOURCE_URL, self::TARGET_URL, null, array( 'width' => 800 ) )->replace();
 		$after  = $wpdb->num_queries;
 		$ok     = $this->makeReplacer()->replace();
 

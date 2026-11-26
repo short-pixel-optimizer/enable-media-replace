@@ -682,21 +682,16 @@ class UploadViewControllerTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * getUpload() checks `isset($uploadFilearray['error'])` (lower-case "a",
-	 * an undefined variable, so always false) and then
-	 * `$uploadFileArray['userfile']['error']` (wrong index: the array IS the
-	 * userfile entry). The check never fires, so an error set by a
-	 * `wp_handle_upload_prefilter` callback is ignored. The branch is only
-	 * reachable after is_uploaded_file() succeeds, which no in-process test
-	 * can arrange, so this pin reads the source: the behavioural check
-	 * belongs to the integration phase. Intended:
-	 * `if (isset($uploadFileArray['error']) && $uploadFileArray['error'])`.
+	 * The source of getUpload(), for the checks below. Everything after
+	 * is_uploaded_file() is only reachable with a real HTTP upload, which no
+	 * in-process test can arrange, so these tests read the source; the
+	 * behaviour is covered in the browser by tests/E2E/specs/replace.spec.ts
+	 * ("Replace: upload prefilter").
 	 *
-	 * How to recognise the fix: the misspelled variable and the
-	 * `['userfile']['error']` access disappear from getUpload() and the
-	 * counts below drop to zero.
+	 * @return array{0: string[], 1: string} The variable names in order, and
+	 *                                       the code without whitespace.
 	 */
-	public function test_get_upload_error_check_reads_the_wrong_variable_pinned_for_deferred_fix() {
+	private function getUploadSource() {
 		$method = new ReflectionMethod( UploadViewController::class, 'getUpload' );
 		$lines  = file( $method->getFileName() );
 		$source = implode( '', array_slice( $lines, $method->getStartLine() - 1, $method->getEndLine() - $method->getStartLine() + 1 ) );
@@ -709,18 +704,66 @@ class UploadViewControllerTest extends WP_UnitTestCase {
 				if ( T_VARIABLE === $token[0] ) {
 					$variables[] = $token[1];
 				}
-				if ( T_WHITESPACE !== $token[0] ) {
+				if ( T_WHITESPACE !== $token[0] && T_COMMENT !== $token[0] && T_DOC_COMMENT !== $token[0] ) {
 					$compact .= $token[1];
 				}
 			} else {
 				$compact .= $token;
 			}
 		}
+		return array( $variables, $compact );
+	}
 
-		$this->assertContains( '$uploadFileArray', $variables, 'Precondition: the real variable is used.' );
-		$this->assertSame( 1, count( array_keys( $variables, '$uploadFilearray', true ) ), 'The misspelled variable is read once.' );
-		$this->assertSame( 1, substr_count( $compact, "\$uploadFileArray['userfile']['error']" ) );
-		$this->assertSame( 1, substr_count( $compact, "isset(\$uploadFilearray['error'])&&\$uploadFileArray['userfile']['error']>0" ) );
+	/**
+	 * getUpload() reads the error a `wp_handle_upload_prefilter` callback
+	 * set the way core's _wp_handle_upload() does: a non-numeric, non-empty
+	 * `error` of the filtered array ends in ERROR_UPDATE_FAILED. The numeric
+	 * 0 PHP writes for a good upload does not count.
+	 */
+	public function test_get_upload_checks_the_prefilter_error_as_core_does() {
+		list( $variables, $compact ) = $this->getUploadSource();
+
+		$this->assertContains( '$uploadFileArray', $variables, 'Precondition: the upload array is used.' );
+		$this->assertNotContains( '$uploadFilearray', $variables, 'No misspelled variable.' );
+		$this->assertSame( 0, substr_count( $compact, "['userfile']['error']" ), 'The filtered array is the userfile entry itself.' );
+		$this->assertSame(
+			1,
+			substr_count( $compact, "if(isset(\$uploadFileArray['error'])&&!is_numeric(\$uploadFileArray['error'])&&\$uploadFileArray['error']){\$this->viewError(self::ERROR_UPDATE_FAILED);}" )
+		);
+	}
+
+	/**
+	 * getUpload() applies `wp_handle_upload_prefilter` before
+	 * wp_check_filetype_and_ext(), the order of core's _wp_handle_upload(),
+	 * and checks the type of the filtered file: a prefilter that sanitizes
+	 * the upload in place (an SVG sanitizer) has run when the type is
+	 * checked.
+	 */
+	public function test_get_upload_applies_the_prefilter_before_the_type_check() {
+		list( , $compact ) = $this->getUploadSource();
+
+		$prefilter = "\$uploadFileArray=apply_filters('wp_handle_upload_prefilter',\$uploadFileArray);";
+		$check     = '$filedata=wp_check_filetype_and_ext($uploadFileArray["tmp_name"],$uploadFileArray["name"]);';
+		$this->assertSame( 1, substr_count( $compact, $prefilter ), 'The prefilter is applied once.' );
+		$this->assertSame( 1, substr_count( $compact, 'wp_check_filetype_and_ext(' ), 'The type is checked once.' );
+		$this->assertSame( 1, substr_count( $compact, $check ), 'The type check reads the filtered array.' );
+		$this->assertLessThan( strpos( $compact, $check ), strpos( $compact, $prefilter ), 'The prefilter comes first.' );
+	}
+
+	/**
+	 * getUpload() logs the result of the type check ("Data after check")
+	 * after wp_check_filetype_and_ext() assigned it, so the debug log gets
+	 * the result and `$filedata` is never read before it exists.
+	 */
+	public function test_get_upload_logs_the_type_check_result_after_it_is_assigned() {
+		list( , $compact ) = $this->getUploadSource();
+
+		$log    = "Log::addDebug('Data after check',\$filedata);";
+		$assign = '$filedata=wp_check_filetype_and_ext(';
+		$this->assertSame( 1, substr_count( $compact, $log ), 'Precondition: the log line exists.' );
+		$this->assertSame( 1, substr_count( $compact, $assign ), 'Precondition: the result is assigned once.' );
+		$this->assertGreaterThan( strpos( $compact, $assign ), strpos( $compact, $log ), 'The result is logged after it is assigned.' );
+		$this->assertSame( strpos( $compact, $assign ), strpos( $compact, '$filedata' ), 'The assignment is the first use of $filedata.' );
 	}
 
 	/*
