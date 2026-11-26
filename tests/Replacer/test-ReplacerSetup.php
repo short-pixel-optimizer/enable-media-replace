@@ -166,6 +166,37 @@ class ReplacerSetupTest extends WP_UnitTestCase {
 		$this->assertArrayHasKey( 'base', $setup->search()->getUrls(), 'The side keeps its main file' );
 	}
 
+	/**
+	 * In thumbnails-only mode the `file` pair stays when the source's
+	 * metadata file differs from its main file (a `-scaled` image): a
+	 * replace with a smaller image drops the `-scaled` file, so its
+	 * references are rewritten to the target's main file. `base` is still
+	 * left out.
+	 */
+	public function test_thumbnails_only_keeps_a_scaled_metadata_file_that_differs_from_the_main_file() {
+		$setup = $this->fill( new Setup() );
+		$setup->search()->setMetaData(
+			array(
+				'file'  => '2026/10/old-scaled.jpg',
+				'width' => 2560,
+				'sizes' => array(
+					'thumbnail' => array( 'file' => 'old-150x150.jpg', 'width' => 150 ),
+					'medium'    => array( 'file' => 'old-300x200.jpg', 'width' => 300 ),
+				),
+			)
+		);
+		$this->assertSame( '/wp-content/uploads/2026/10/old-scaled.jpg', $setup->search()->getUrls()['file'], 'Sentinel: the metadata file is the -scaled file.' );
+		$this->assertNotSame( $setup->search()->getUrls()['file'], $setup->search()->getPath(), 'Sentinel: it differs from the main file.' );
+
+		$this->assertTrue( $setup->validateData( array( 'thumbnails_only' => true ) ) );
+		$data = $setup->getValidatedData();
+
+		$this->assertSame( array( 'file', 'thumbnail', 'medium' ), array_keys( $data['search'] ) );
+		$this->assertSame( array_keys( $data['search'] ), array_keys( $data['replace'] ) );
+		$this->assertSame( '/wp-content/uploads/2026/10/old-scaled.jpg', $data['search']['file'] );
+		$this->assertSame( '/wp-content/uploads/2026/11/new.jpg', $data['replace']['file'] );
+	}
+
 	public function test_errors_of_an_earlier_run_are_cleared() {
 		$setup = new Setup();
 		$this->assertFalse( $setup->validateData(), 'precondition: fails without URLs' );

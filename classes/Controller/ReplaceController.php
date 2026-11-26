@@ -433,7 +433,7 @@ class ReplaceController
 		// Using RawFullPath because FullPath does normalize path, which update_attached_file doesn't so in case of windows / strange Apspaths it fails.
 		$updated = update_attached_file($this->post_id, $this->targetFile->getRawFullPath());
 		if (! $updated) {
-			Log::addError('Update Attached File reports as not updated or same value');
+			Log::addWarn('Update Attached File reports as not updated or same value. This is normal if attached filename is the same');
 		}
 
 

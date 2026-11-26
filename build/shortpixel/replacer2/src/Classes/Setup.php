@@ -127,7 +127,12 @@ class Setup
         $replace_urls = $this->replace()->getUrls();
 
         if (is_array($args) && ! empty($args['thumbnails_only'])) {
-            unset($search_urls['base'], $search_urls['file'], $replace_urls['base'], $replace_urls['file']);
+            unset($search_urls['base'], $replace_urls['base']);
+
+            // Only remove file with the same file replace if they are the same.  This prevents not catching replacing -scaled to non-scaled if that happens (big to small file)
+            if (! isset($search_urls['file']) || $search_urls['file'] === $this->search()->getPath()) {
+                   unset($search_urls['file'], $replace_urls['file']);
+            }
         }
 
         $replace_urls = $this->matchReplaceUrls($search_urls, $replace_urls);
@@ -298,7 +303,7 @@ class Setup
 	 * Finds the target file closest in width to a source size the target lacks.
 	 *
 	 * Starts from the target's main file and takes any target size with a
-	 * smaller width difference. Without widths (PDF, SVG), an SVG target
+	 * smaller width difference. Without widths (any non-image file / SVG), a target
 	 * replaces every size with its main file.
 	 *
 	 * @param string $sizeName Size name present on the search side.
@@ -310,11 +315,9 @@ class Setup
 		$target_metadata = $this->replace()->getMetaData();
 
 		if (! isset($source_metadata['sizes'][$sizeName]['width'], $target_metadata['width'])) {
+             // When replacing and there is no candidate for the source to replace to, replace it to the main result, otherwise there will be a broken reference, so better to default to this. 
 			$target_path = (string) $this->replace()->getPath();
-			if ('svg' === strtolower(pathinfo($target_path, PATHINFO_EXTENSION))) {
-				return wp_basename($target_path);
-			}
-			return false;
+			return wp_basename($target_path);
 		}
 
 		$old_width = (int) $source_metadata['sizes'][$sizeName]['width'];
@@ -333,6 +336,7 @@ class Setup
 				$diff = $this_diff;
 			}
 		}
+
 
 		return ('' === $closest_file) ? false : $closest_file;
 	}

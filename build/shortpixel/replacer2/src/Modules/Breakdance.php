@@ -19,7 +19,7 @@ use EnableMediaReplace\ShortPixelLogger\ShortPixelLogger as Log;
  * instead of the replacer's SQL update.
  *
  * Detection: `has_action('breakdance_loaded')` is truthy when the module is
- * constructed, and checkRequiredFunctions() finds the four Breakdance
+ * constructed, and checkRequiredFunctions() finds the five Breakdance
  * functions it calls. When the functions are missing, only the
  * abortOnContent() fallback is registered.
  *
@@ -93,11 +93,11 @@ class Breakdance
     /**
      * Checks that the Breakdance functions used by this module exist.
      *
-     * Checks `get_tree`, `encode_before_writing_to_wp`, `get_global_option`
-     * and `save_document` in the `Breakdance\Data` namespace, and logs a
-     * warning for the first missing one.
+     * Checks `get_tree`, `encode_before_writing_to_wp`, `get_global_option`,
+     * `save_document` and `get_meta` in the `Breakdance\Data` namespace, and
+     * logs a warning for the first missing one.
      *
-     * @return bool True when all four exist.
+     * @return bool True when all five exist.
      */
     public function checkRequiredFunctions()
     {
@@ -105,7 +105,8 @@ class Breakdance
           '\Breakdance\Data\get_tree',
           '\Breakdance\Data\encode_before_writing_to_wp',
           '\Breakdance\Data\get_global_option',
-          '\Breakdance\Data\save_document'
+          '\Breakdance\Data\save_document',
+          '\Breakdance\Data\get_meta',
         ];
 
         foreach($functions as $function)
@@ -223,7 +224,10 @@ class Breakdance
      * and calls `Breakdance\Data\save_document()`. The signature differs
      * between Breakdance versions, so the parameter count is read by
      * reflection: with 4 parameters it is called as (tree, global settings,
-     * null, post id); with 10 as (tree, eight times false, post id). Any
+     * null, post id); with 10 as (tree, false, the post's stored FutureLayer
+     * meta, six times false, post id), because that form overwrites the
+     * FutureLayer meta with its third argument; the meta key carries the
+     * prefix of getMetaPrefix(), so Oxygen 6 is covered too. Any
      * other count saves nothing. When reflection throws, the error is logged
      * and the 4-parameter form is used.
      *
@@ -271,11 +275,38 @@ class Breakdance
      }
      elseif (10 === $paramCount)
      {
-          \Breakdance\Data\save_document($tree, false, false, false, false, false, false, false, false, $meta_row['post_id']);
+          // save_document() overwrites the FutureLayer meta with this argument, so pass the stored one back.
+          $futureLayer = \Breakdance\Data\get_meta($meta_row['post_id'], $this->getMetaPrefix() . 'futurelayer_meta');
+          \Breakdance\Data\save_document($tree, false, $futureLayer, false, false, false, false, false, false, $meta_row['post_id']);
      }
-    
+      
+     return $content;
 
-       return $content;
+    }
+
+    /**
+     * Returns the prefix of Breakdance's own post meta keys.
+     *
+     * Breakdance prefixes its meta with `_breakdance_`; Oxygen 6, built on
+     * Breakdance, with `_oxygen_`. Breakdance exposes the active one as
+     * `__bdox('_meta_prefix')`; versions without that function only know
+     * `_breakdance_`.
+     *
+     * @return string
+     */
+    protected function getMetaPrefix()
+    {
+      $function = 'Breakdance\BreakdanceOxygen\Strings\__bdox';
+      if (function_exists($function))
+      {
+         $prefix = $function('_meta_prefix');
+         if (is_string($prefix) && '' !== $prefix)
+         {
+            return $prefix;
+         }
+      }
+
+      return '_breakdance_';
     }
 
     // If something is wrong with breakdance, don't replace content for it since it breaks the whole page content.
