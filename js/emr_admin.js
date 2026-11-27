@@ -301,17 +301,15 @@
         document.querySelector('input[name="custom_minute"]').value = min;
         document.querySelector('input[name="custom_date_formatted"]').value = format;
 		}
+    // The Replace button is looked up in the form of the file input: an admin
+    // notice of another plugin can print its own submit input above this form,
+    // and a selector on the whole document would pick that one.
     this.checkSubmit = function()
     {
-      var check = (document.querySelector('input[name="userfile"]').value.length > 0) ? true : false;
+      var userFile = document.querySelector('input[name="userfile"]');
+      var submit = userFile.form.querySelector('input[type="submit"]');
 
-        if (check)
-        {
-          document.querySelector('input[type="submit"]').disabled = false;
-        }
-        else {
-          document.querySelector('input[type="submit"]').disabled = true;
-        }
+      submit.disabled = (userFile.value.length > 0) ? false : true;
     }
     this.toggleErrors = function(toggle)
     {
@@ -344,6 +342,11 @@
       document.querySelector('.form-error.filesize .fn').textContent = fileItem.name;
       document.querySelector('.form-error.filesize').style.display = 'block';
     }
+    // @todo Only the first .form-warning.filetype is shown (the one above the
+    // previews, querySelector). The second one, the paragraph under "Just
+    // replace the file" in views/screen.php, stays hidden on a type mismatch.
+    // Suggested fix: show every match (querySelectorAll), as toggleErrors()
+    // hides them.
     this.warningFileType = function(source_type, target_type)
     {
       document.querySelector('.form-warning.filetype .source_type').textContent = source_type;

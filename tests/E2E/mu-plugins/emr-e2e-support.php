@@ -40,6 +40,9 @@
  *   (option emr_e2e_promo_window, set through POST option: puts "now"
  *   inside the promo banner's campaign window; without it "now" is outside,
  *   whatever the date)
+ *   (option emr_e2e_foreign_notice, set through POST option: prints an
+ *   admin notice with its own form and "Dismiss" submit input, as other
+ *   plugins do, above the forms of every admin screen)
  *   POST user             { role[, login] } a user with password "password"
  *   GET  mock             the mock knobs
  *   POST mock             merge knobs into the mock (see emr-e2e-mock-api.php)
@@ -160,6 +163,25 @@ function emr_e2e_promo_window( $inWindow ) {
 add_filter( 'emr/promo_banner/in_window', 'emr_e2e_promo_window', 999 );
 add_filter( 'use_block_editor_for_post_type', 'emr_e2e_use_block_editor', 999 );
 
+/**
+ * A stand-in for a plugin whose admin notice carries its own form: with the
+ * option `emr_e2e_foreign_notice` set, every admin screen prints a notice
+ * with a "Dismiss" submit input. WordPress moves notices under the screen's
+ * header, so that input comes before the inputs of the screen's own form in
+ * the document. The form posts nowhere (GET to the same screen). The seed
+ * removes the option.
+ */
+function emr_e2e_foreign_notice() {
+	if ( ! get_option( 'emr_e2e_foreign_notice' ) ) {
+		return;
+	}
+	echo '<div class="notice notice-info emr-e2e-foreign-notice"><form method="get" action="">'
+		. '<p>EMR E2E: a notice of another plugin. '
+		. '<input type="submit" name="dismiss" class="button" value="Dismiss" /></p>'
+		. '</form></div>';
+}
+add_action( 'admin_notices', 'emr_e2e_foreign_notice' );
+
 add_filter( 'emr/feature/background', 'emr_e2e_feature_background', 999 );
 add_filter( 'emr/feature/upscale', 'emr_e2e_feature_upscale', 999 );
 add_filter( 'emr/feature/remote_notice', 'emr_e2e_feature_remote_notice', 999 );
@@ -258,6 +280,7 @@ function emr_e2e_apply_seed() {
 	delete_option( EMR_E2E_SVG_OPTION );
 	delete_option( 'emr_e2e_classic_editor' );
 	delete_option( 'emr_e2e_promo_window' );
+	delete_option( 'emr_e2e_foreign_notice' );
 	delete_option( 'emr-promo-banner' ); // PromoBanner::optionNameFor( EnableMediaReplacePlugin::PROMO_PREFIX )
 
 	$previous = (array) get_option( EMR_E2E_SEED_OPTION, array() );

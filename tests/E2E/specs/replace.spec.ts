@@ -10,6 +10,10 @@
  *   - `replace_and_search` with another file name: renamed file, links in
  *     a post rewritten, old file gone;
  *   - `replace_and_search` with a new location: the file moves there;
+ *   - a submit input of another plugin's admin notice above the form: the
+ *     Replace button is still the one that is enabled;
+ *   - the second file type warning, under "Just replace the file" (pinned:
+ *     it stays hidden);
  *   - the client-side size check, through the file input and through
  *     drag and drop;
  *   - an SVG sanitizer on `wp_handle_upload_prefilter` (the support plugin's
@@ -115,6 +119,72 @@ test.describe('Replace: replace mode', () => {
 		await expect(page.locator('.form-warning.mimetype')).toBeHidden();
 		await expect(page.locator('.form-error.filesize')).toBeHidden();
 		await expect(screen.uploadPreview.locator('.textlayer')).toHaveText('190 x 15');
+	});
+
+	test('a submit input of another plugin above the form does not keep the Replace button disabled', async ({ page, emr }) => {
+		const id = emr.seed.attachment_id;
+		// The support plugin's notice: a form with a "Dismiss" submit input.
+		await emr.setOption('emr_e2e_foreign_notice', 1);
+
+		const screen = new ReplaceScreen(page);
+		await screen.goto(id);
+
+		// Precondition: the foreign input is the first submit input of the
+		// document, before the Replace button, and both start as rendered.
+		const foreign = page.locator('.emr-e2e-foreign-notice input[type="submit"]');
+		await expect(foreign).toHaveCount(1);
+		const firstSubmit = await page.evaluate(() => {
+			const first = document.querySelector('input[type="submit"]') as HTMLInputElement;
+			return { name: first.name, id: first.id };
+		});
+		expect(firstSubmit).toEqual({ name: 'dismiss', id: '' });
+		await expect(foreign).toBeEnabled();
+		await expect(screen.submit).toBeDisabled();
+
+		const upload = await emr.generatedFile(640, 480, { name: 'emr-e2e-foreign-notice.jpg' });
+		await screen.fileInput.setInputFiles(upload);
+		await expect(screen.uploadPreview.locator('.textlayer')).toHaveText('640 x 480');
+		await expect(screen.submit).toBeEnabled();
+		await expect(foreign).toBeEnabled();
+
+		// A file the size check refuses disables the Replace button again, and only it.
+		const max = await page.evaluate(() => Number((window as unknown as { emr_options: { maxfilesize: number } }).emr_options.maxfilesize));
+		expect(max).toBeGreaterThan(0);
+		expect(max).toBeLessThan(64 * 1024 * 1024);
+		await screen.fileInput.setInputFiles(paddedJpeg(upload, max + 1, 'emr-e2e-foreign-too-big.jpg'));
+		await expect(page.locator('.form-error.filesize')).toBeVisible();
+		await expect(screen.submit).toBeDisabled();
+		await expect(foreign).toBeEnabled();
+
+		// The whole journey works with the notice on the screen.
+		await screen.chooseFile(upload);
+		await submitReplace(screen);
+		await expectSuccessThenRedirect(page, id);
+		const after = await emr.attachment(id);
+		expect(after.metadata && after.metadata.width).toBe(640);
+	});
+
+	/**
+	 * Defect: views/screen.php has two `.form-warning.filetype` elements, the
+	 * box above the previews and a paragraph under "Just replace the file".
+	 * js/emr_admin.js (warningFileType) shows only the first one, so the
+	 * paragraph never appears. Fixed when both are visible on a type
+	 * mismatch: the last assertion then fails and flips to toBeVisible().
+	 */
+	test('the file type warning under the replace option stays hidden on a type mismatch pinned_for_deferred_fix', async ({ page, emr }) => {
+		const screen = new ReplaceScreen(page);
+		await screen.goto(emr.seed.attachment_id);
+
+		const warnings = page.locator('.form-warning.filetype');
+		await expect(warnings).toHaveCount(2);
+		const second = page.locator('p.form-warning.filetype');
+		await expect(second).toHaveCount(1);
+		await expect(second).toContainText('If you replace the file with a different filetype');
+
+		await screen.chooseFile(fixtureFile('codeispoetry.png'));
+		// The first warning proves the mismatch was detected.
+		await expect(page.locator('div.form-warning.filetype')).toBeVisible();
+		await expect(second).toBeHidden();
 	});
 });
 
